@@ -13,6 +13,7 @@ import EventBus from '../bus/EventBus.js';
 import StateManager from '../state/StateManager.js';
 import SyncManager from '../network/SyncManager.js';
 import CommandSender from '../network/CommandSender.js';
+import AuthorityExecutor from '../network/AuthorityExecutor.js';
 import GameCommand, { ActionType, CommandType } from '../network/GameCommand.js';
 import { getCurrentUserId } from '../network/supabaseClient.js';
 import { GAME_EVENTS } from '../types/events.js';
@@ -30,10 +31,8 @@ const GameEngine = {
 
   init() {
     if (this._initialized) {
-      console.log('[GameEngine] 已经初始化，跳过');
       return;
     }
-    console.log('[GameEngine] 初始化...');
     this._bindEvents();
     this._initialized = true;
   },
@@ -66,7 +65,6 @@ const GameEngine = {
   },
 
   startTurn() {
-    console.log('[GameEngine] startTurn called');
     TurnManager.startTurn();
   },
 
@@ -74,7 +72,6 @@ const GameEngine = {
     // 检查是否已经有同步过来的天干
     const state = StateManager.getState();
     if (state.currentStem) {
-      console.log('[GameEngine] 使用已存在的天干:', state.currentStem.name);
       EventBus.emit('game:stem-generated', { stem: state.currentStem });
       return;
     }
@@ -84,13 +81,11 @@ const GameEngine = {
       const isMyTurn = (state.currentPlayer === SyncManager.myRole);
       
       if (!isMyTurn) {
-        console.log(`[GameEngine] PvP模式：非我方回合(${state.currentPlayer} vs ${SyncManager.myRole})，等待对手生成天干`);
         return;
       }
     }
 
     const stem = STEMS_LIST[Math.floor(Math.random() * 10)];
-    console.log('[GameEngine] 生成随机天干:', stem.name);
     StateManager.update({ currentStem: stem });
     EventBus.emit('game:stem-generated', { stem });
 
@@ -101,7 +96,6 @@ const GameEngine = {
   },
 
   handleSyncedStem(stem) {
-    console.log('[GameEngine] 收到同步天干:', stem);
     StateManager.update({ currentStem: stem });
     EventBus.emit('game:stem-generated', { stem });
   },
@@ -117,7 +111,6 @@ const GameEngine = {
 
     // PvP 同步逻辑：非当前回合玩家不执行任何逻辑，等待网络同步
     if (SyncManager.isEnabled && playerId !== SyncManager.myPlayerId) {
-      console.log('[GameEngine] PvP模式：等待对手操作...');
       return;
     }
 
@@ -159,7 +152,6 @@ const GameEngine = {
     const decision = ActionCandidates.getAvailableActions(playerId, elementIndex, isYang);
 
     if (decision.actions.length === 0) {
-      console.log('[GameEngine] 无可用操作，触发空转');
       this._playSkipAnimation(stem, playerId);
       return;
     }
@@ -207,9 +199,6 @@ const GameEngine = {
     const stem = state.currentStem;
     const myPlayerId = getCurrentUserId();
 
-    console.log('[GameEngine] ====== 发送操作命令 ======');
-    console.log('[GameEngine] action:', action.type);
-
     // 创建操作命令
     const command = GameCommand.createActionMove({
       sessionId: TurnManager.currentSessionId,
@@ -225,8 +214,6 @@ const GameEngine = {
     if (!result.success) {
       console.error('[GameEngine] 操作命令发送失败:', result.error);
       // TODO: 显示错误提示
-    } else {
-      console.log('[GameEngine] ✓ 操作命令已发送');
     }
   },
 
@@ -240,8 +227,6 @@ const GameEngine = {
     const stem = state.currentStem;
     const opponentId = currentPlayer === 'P1' ? 'P2' : 'P1';
 
-    console.log('[GameEngine] ====== 执行操作 ======');
-    console.log('[GameEngine] action:', action.type, 'by', currentPlayer);
 
     // 处理自动吸纳的特殊情况
     if (action.type === 'AUTO') {
@@ -289,9 +274,6 @@ const GameEngine = {
   executeCommand(data) {
     const { commandId, command, payload } = data;
 
-    console.log('[GameEngine] ====== 执行命令 ======');
-    console.log('[GameEngine] 摘要:', GameCommand.getSummary(command));
-
     switch (command.commandType) {
       case CommandType.ACTION_MOVE:
         // 执行操作
@@ -300,12 +282,10 @@ const GameEngine = {
 
       case CommandType.TURN_END:
         // 回合切换已由 AuthorityExecutor 处理
-        console.log('[GameEngine] 回合切换命令已处理');
         break;
 
       case CommandType.GAME_END:
         // 游戏结束已由 AuthorityExecutor 处理
-        console.log('[GameEngine] 游戏结束命令已处理');
         break;
     }
   },
@@ -339,12 +319,24 @@ const GameEngine = {
   async resolveStage1() {
     if (!this.activeSession) return;
     const { type, action, stem, playerId, isYang } = this.activeSession;
-    console.log('[GameEngine] 收到初段撞击，处理消耗/中间态逻辑');
 
     if (type === 'AUTO_ABSORB') {
       ActionResolver.applyPlus(playerId, stem.element, isYang, 'AUTO', false);
       this.activeSession = null;
-      setTimeout(() => TurnManager.requestTurnEnd(), 800);
+      
+      // ⚠️ 检查：确保是当前回合的玩家才能结束回合
+      setTimeout(() => {
+        const state = StateManager.getState();
+        const myRole = StateManager.getMyRole() || AuthorityExecutor.myRole;
+        
+        // 在PVP模式下，只有当前回合的玩家才能结束回合
+        if (state.gameMode === 0 && myRole && state.currentPlayer !== myRole) {
+          console.warn('[GameEngine] 不是当前回合，跳过回合结束。当前:', state.currentPlayer, '我的角色:', myRole);
+          return;
+        }
+        
+        TurnManager.requestTurnEnd();
+      }, 800);
     } else if (type === 'DECISION_ACTION' && (action.type === 'BURST_ATK' || action.type === 'BURST')) {
       ActionResolver.applyMinus(playerId, stem.element, action.type === 'BURST_ATK', action.type, false);
     }
@@ -355,23 +347,17 @@ const GameEngine = {
    */
   resolveFinal() {
     if (!this.activeSession) {
-      console.warn('[GameEngine] resolveFinal: 没有活动会话');
       return;
     }
 
     const { action, playerId, secondTarget } = this.activeSession;
     const opponentId = playerId === 'P1' ? 'P2' : 'P1';
 
-    console.log('[GameEngine] ========== resolveFinal ==========');
-    console.log('[GameEngine] action:', action.type, 'playerId:', playerId);
-    console.log('[GameEngine] secondTarget:', secondTarget);
-
     this._executeActionLogic(action, playerId, opponentId);
 
     const savedActionType = action.type;
     this.activeSession = null;
 
-    console.log('[GameEngine] 调用 _handlePostAction');
     this._handlePostAction(playerId, savedActionType);
   },
 
@@ -445,20 +431,13 @@ const GameEngine = {
    * @param {Object} action - 对手的动作数据
    */
   handleOpponentAction(action) {
-    console.log('[GameEngine] ========== 处理对手操作 ==========');
-    console.log('[GameEngine] action:', action);
-
     const state = StateManager.getState();
     const opponentId = state.currentPlayer === 'P1' ? 'P2' : 'P1';
     const stem = action.stem || state.currentStem;
 
-    console.log('[GameEngine] opponentId:', opponentId, 'stem:', stem);
-
     // 确定次要目标
     const myPlayerId = state.currentPlayer === 'P1' ? 'P1' : 'P2';
     const secondTarget = this._determineSecondTarget(action, opponentId, myPlayerId);
-
-    console.log('[GameEngine] secondTarget:', secondTarget);
 
     // 锁定节点（如果有次要目标）
     if (secondTarget) {
@@ -486,14 +465,10 @@ const GameEngine = {
 
     // 延迟后执行逻辑更新（等动画完成后）
     setTimeout(() => {
-      console.log('[GameEngine] 执行对手逻辑...');
       this._executeActionLogic(action, opponentId, myPlayerId);
 
       // 清理会话
       this.activeSession = null;
-
-      // 注意：不在这里调用 endTurn，回合切换会通过 syncTurnChange 同步
-      console.log('[GameEngine] 对手操作完成，等待回合切换同步');
     }, 1200);
   }
 };

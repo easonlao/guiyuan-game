@@ -32,7 +32,6 @@ const CommandSender = {
    * 初始化
    */
   init() {
-    console.log('[CommandSender] 初始化命令发送器...');
     this._bindEvents();
   },
 
@@ -51,8 +50,6 @@ const CommandSender = {
    * @param {string} playerId - 玩家ID
    */
   setSession(sessionId, playerId) {
-    console.log('[CommandSender] 设置会话:', { sessionId, playerId });
-
     // 清理旧订阅
     this.cleanup();
 
@@ -72,8 +69,6 @@ const CommandSender = {
       console.warn('[CommandSender] 无法订阅：未设置会话ID');
       return;
     }
-
-    console.log('[CommandSender] 订阅命令确认...');
 
     // 移除旧订阅
     if (this.movesChannel) {
@@ -96,7 +91,6 @@ const CommandSender = {
         }
       )
       .subscribe((status) => {
-        console.log('[CommandSender] 命令订阅状态:', status);
         if (status === 'SUBSCRIBED') {
           console.log('[CommandSender] ✓ 已订阅命令确认');
         } else if (status === 'CHANNEL_ERROR') {
@@ -113,15 +107,8 @@ const CommandSender = {
     const { eventType, new: newRecord, old: oldRecord } = payload;
     const commandId = newRecord.command_id;
 
-    console.log('[CommandSender] ====== 命令状态变化 ======');
-    console.log('[CommandSender] eventType:', eventType);
-    console.log('[CommandSender] commandId:', commandId);
-    console.log('[CommandSender] status:', newRecord.status);
-    console.log('[CommandSender] playerId:', newRecord.player_id, 'myPlayerId:', this.myPlayerId);
-
     // 只处理自己的命令
     if (newRecord.player_id !== this.myPlayerId) {
-      console.log('[CommandSender] 不是我的命令，忽略');
       return;
     }
 
@@ -158,12 +145,10 @@ const CommandSender = {
 
     // 检查是否已经发送过（幂等性）
     if (this.pendingCommands.has(command.commandId)) {
-      console.log('[CommandSender] 命令已在队列中:', command.commandId);
       return { success: true, message: 'Already pending' };
     }
 
-    console.log('[CommandSender] ====== 发送命令 ======');
-    console.log('[CommandSender] 摘要:', GameCommand.getSummary(command));
+    console.log('[CommandSender] 发送命令:', GameCommand.getSummary(command));
 
     // 创建 Promise 用于等待确认
     let commandResolve, commandReject;
@@ -183,6 +168,8 @@ const CommandSender = {
 
     // 写入数据库
     try {
+      // INITIATIVE 命令初始状态设为 pending，如果没有数据库触发器会自动更新为 confirmed
+      // 其他命令也设为 pending，等待数据库触发器更新
       const result = await insert('game_moves', {
         id: this._generateUUID(), // 使用命令ID作为数据库ID
         command_id: command.commandId,
@@ -190,7 +177,8 @@ const CommandSender = {
         command_type: command.commandType,
         player_id: command.playerId,
         turn_number: command.turnNumber,
-        payload: command.payload
+        payload: command.payload,
+        status: 'pending'  // 明确设置初始状态
       });
 
       if (!result || result.length === 0) {
@@ -198,7 +186,6 @@ const CommandSender = {
       }
 
       const dbRecord = result[0];
-      console.log('[CommandSender] 命令已写入数据库，状态:', dbRecord.status);
 
       // 如果服务器立即拒绝，直接返回
       if (dbRecord.status === 'rejected') {
@@ -240,8 +227,6 @@ const CommandSender = {
   _handleCommandConfirmed(commandId) {
     const pending = this.pendingCommands.get(commandId);
     if (!pending) return;
-
-    console.log('[CommandSender] ✓ 命令已确认:', GameCommand.getSummary(pending.command));
 
     // 发送确认事件
     EventBus.emit('COMMAND:confirmed', {
@@ -285,8 +270,6 @@ const CommandSender = {
     const pending = this.pendingCommands.get(commandId);
     if (!pending) return;
 
-    console.log('[CommandSender] ✓ 命令已执行:', GameCommand.getSummary(pending.command));
-
     // 移除待确认
     this.pendingCommands.delete(commandId);
 
@@ -316,6 +299,26 @@ const CommandSender = {
     const { command, retryCount } = pending;
 
     console.warn('[CommandSender] 命令超时:', GameCommand.getSummary(command));
+
+    // ⚠️ 特殊处理：INITIATIVE 命令超时后，直接触发执行事件（因为可能数据库没有触发器）
+    if (command.commandType === 'INITIATIVE') {
+      console.log('[CommandSender] INITIATIVE 命令超时，直接触发执行（可能数据库无触发器）');
+      this.pendingCommands.delete(commandId);
+      pending.resolve({
+        success: true,
+        command: pending.command,
+        executedAt: new Date()
+      });
+
+      // 直接触发执行事件（确保payload是完整的）
+      // ⚠️ 重要：使用command对象的payload，确保数据完整
+      EventBus.emit('COMMAND:execute', {
+        commandId,
+        command: pending.command,
+        payload: { ...pending.command.payload }  // 创建副本确保数据完整
+      });
+      return;
+    }
 
     if (retryCount < this.MAX_RETRY) {
       // 重试
@@ -361,8 +364,6 @@ const CommandSender = {
    * 清理资源
    */
   cleanup() {
-    console.log('[CommandSender] 清理资源...');
-
     // 移除订阅
     if (this.movesChannel) {
       supabase.removeChannel(this.movesChannel);

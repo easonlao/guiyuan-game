@@ -11,6 +11,11 @@
 import EventBus from '../bus/EventBus.js';
 import { supabase, query, insert, update } from './supabaseClient.js';
 import { GAME_EVENTS, PLAYER_EVENTS } from '../types/events.js';
+import StateManager from '../state/StateManager.js';
+
+// PVP 调试日志函数
+const log = (...args) => window.PVP_DEBUG && console.log('[RoomManager]', ...args);
+const logError = (...args) => console.error('[RoomManager]', ...args);
 
 const RoomManager = {
   currentRoomCode: null,
@@ -21,7 +26,7 @@ const RoomManager = {
   hasOpponentJoined: false,
 
   init() {
-    console.log('[RoomManager] 初始化房间管理器...');
+    log('初始化房间管理器');
     EventBus.on('room:create', this.handleCreateRoom.bind(this));
     EventBus.on('room:join', this.handleJoinRoom.bind(this));
     EventBus.on('room:leave', this.handleLeaveRoom.bind(this));
@@ -30,7 +35,7 @@ const RoomManager = {
 
   async handleCreateRoom({ playerId }) {
     try {
-      console.log('[RoomManager] 创建房间:', { playerId });
+      log('创建房间', { playerId });
       this.currentUserId = playerId;
       this.hasOpponentJoined = false;
 
@@ -41,7 +46,7 @@ const RoomManager = {
         player1_id: playerId,
         player2_id: null,
         status: 'waiting',
-        game_mode: 0,  // PvP
+        game_mode: 0,
         current_turn: 0,
         current_player: 'P1',
         current_state: { phase: 'INITIATIVE' }
@@ -55,16 +60,15 @@ const RoomManager = {
       this.currentRoomCode = roomCode;
       this.currentRoomId = room.id;
 
-      console.log('[RoomManager] 房间创建成功:', room);
+      log('✓ 房间创建成功', { roomCode, roomId: room.id });
 
-      // 订阅房间状态变化
       this.subscribeToRoom(room.id);
 
       EventBus.emit('game:waiting-info', { roomCode, shareUrl: this.getShareUrl(roomCode) });
 
       return { success: true, room, roomCode };
     } catch (error) {
-      console.error('[RoomManager] 创建房间失败:', error);
+      logError('创建房间失败:', error.message);
       EventBus.emit('game:room-error', { error: error.message });
       return { success: false, error: error.message };
     }
@@ -72,7 +76,7 @@ const RoomManager = {
 
   async handleJoinRoom({ playerId, roomCode }) {
     try {
-      console.log('[RoomManager] 加入房间:', { playerId, roomCode });
+      log('加入房间', { playerId, roomCode });
       this.currentUserId = playerId;
 
       const rooms = await query('game_sessions', {
@@ -101,24 +105,22 @@ const RoomManager = {
       this.currentRoomCode = roomCode;
       this.currentRoomId = room.id;
 
-      console.log('[RoomManager] 加入房间成功:', room);
+      log('✓ 加入房间成功', { roomCode, roomId: room.id });
 
-      // 订阅房间状态变化
       this.subscribeToRoom(room.id);
 
-      // P2 加入成功后，通知双方开始游戏
-      EventBus.emit('game:player-joined', { playerId: 'P1' });
+      // 修复：P2加入时应该发出 playerId: 'P2'
+      EventBus.emit('game:player-joined', { playerId: 'P2' });
 
       return { success: true, room };
     } catch (error) {
-      console.error('[RoomManager] 加入房间失败:', error);
+      logError('加入房间失败:', error.message);
       EventBus.emit('game:room-error', { error: error.message });
       return { success: false, error: error.message };
     }
   },
 
   subscribeToRoom(roomId) {
-    // 取消旧订阅
     if (this.roomChannel) {
       supabase.removeChannel(this.roomChannel);
     }
@@ -127,7 +129,8 @@ const RoomManager = {
       this.pollInterval = null;
     }
 
-    // 方法1: Realtime 订阅
+    log('订阅 Realtime 频道', { roomId });
+
     this.roomChannel = supabase
       .channel(`room:${roomId}`)
       .on(
@@ -139,29 +142,32 @@ const RoomManager = {
           filter: `id=eq.${roomId}`
         },
         (payload) => {
-          console.log('[RoomManager] Realtime: 房间状态更新:', payload);
+          log('Realtime: 房间状态更新', payload.new);
           this.handleRoomUpdate(payload.new);
         }
       )
       .subscribe((status) => {
-        console.log(`[RoomManager] Realtime 状态: ${status}`);
+        log(`Realtime 状态: ${status}`);
+        if (status === 'SUBSCRIBED') {
+          log('✓ Realtime 已连接');
+        } else if (status === 'CHANNEL_ERROR') {
+          logError('✗ Realtime 连接错误');
+        }
       });
 
-    // 方法2: 轮询检测（备用方案，每2秒检查一次）
+    log('启动轮询检测 (2秒间隔)');
     this.pollInterval = setInterval(async () => {
       try {
-        console.log('[RoomManager] 轮询检查房间状态...');
         const rooms = await query('game_sessions', {
           match: { id: roomId }
         });
 
         if (rooms && rooms.length > 0) {
           const room = rooms[0];
-          console.log('[RoomManager] 轮询获取到房间:', room);
           this.handleRoomUpdate(room);
         }
       } catch (error) {
-        console.error('[RoomManager] 轮询检测失败:', error);
+        logError('轮询检测失败:', error.message);
       }
     }, 2000);
   },
@@ -169,29 +175,42 @@ const RoomManager = {
   handleRoomUpdate(room) {
     if (!room) return;
 
-    console.log('[RoomManager] handleRoomUpdate:', {
-      currentUserId: this.currentUserId,
-      player1_id: room.player1_id,
+    const currentState = StateManager.getState();
+    const isGameStarted = currentState.phase === 'INITIATIVE' || currentState.phase === 'PLAYING';
+
+    // 如果游戏已经进入 INITIATIVE 或 PLAYING 阶段，忽略旧的状态更新
+    // 防止 Realtime 订阅收到旧的更新覆盖正确的 current_player
+    if (isGameStarted && room.current_player && currentState.currentPlayer) {
+      // 检查 current_player 是否与当前状态一致
+      if (room.current_player !== currentState.currentPlayer) {
+        log('忽略旧的状态更新', {
+          db_player: room.current_player,
+          local_player: currentState.currentPlayer
+        });
+        return;
+      }
+    }
+
+    log('处理房间更新', {
+      myRole: this.currentUserId === room.player1_id ? 'P1' : 'P2',
       player2_id: room.player2_id,
-      status: room.status
+      status: room.status,
+      current_player: room.current_player
     });
 
-    // 检测对手加入（我是 P1，检测 P2 加入）
     if (this.currentUserId === room.player1_id && room.player2_id && !this.hasOpponentJoined) {
-      console.log('[RoomManager] 对手已加入!');
+      log('✓ 对手 (P2) 已加入!');
       this.hasOpponentJoined = true;
-      
-      // 停止轮询
+
       if (this.pollInterval) {
         clearInterval(this.pollInterval);
         this.pollInterval = null;
       }
       EventBus.emit('game:player-joined', { playerId: 'P2' });
     }
-    // 检测房间状态变为 playing（P2 端）
+
     if (room.status === 'playing' && this.currentUserId === room.player2_id) {
-      console.log('[RoomManager] 游戏状态已更新为 playing');
-      // 停止轮询
+      log('✓ 游戏状态: playing');
       if (this.pollInterval) {
         clearInterval(this.pollInterval);
         this.pollInterval = null;
@@ -212,19 +231,17 @@ const RoomManager = {
   },
 
   handlePlayerJoined(data) {
-    console.log('[RoomManager] 玩家加入事件:', data);
-    // 这个事件由 Renderer 处理，触发游戏开始
+    log('玩家加入事件触发', data);
   },
 
   async handleLeaveRoom() {
     try {
-      console.log('[RoomManager] 离开房间');
+      log('离开房间');
 
-      // 取消订阅
       this.unsubscribeFromRoom();
 
       if (!this.currentRoomId) {
-        console.warn('[RoomManager] 没有加入的房间');
+        log('没有加入的房间');
         return { success: true };
       }
 
@@ -236,7 +253,7 @@ const RoomManager = {
       this.currentRoomId = null;
       this.currentUserId = null;
 
-      console.log('[RoomManager] 离开房间成功');
+      log('✓ 离开房间成功');
 
       EventBus.emit(GAME_EVENTS.STATE_CHANGED, {
         actionType: 'room:left',
@@ -245,7 +262,7 @@ const RoomManager = {
 
       return { success: true };
     } catch (error) {
-      console.error('[RoomManager] 离开房间失败:', error);
+      logError('离开房间失败:', error.message);
       return { success: false, error: error.message };
     }
   },

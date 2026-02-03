@@ -5,18 +5,52 @@
 // - 渲染棋盘和节点状态
 // - 管理棋盘转场动画
 // - 更新节点样式
+// - 根据 myRole 决定 PVP 镜像显示
 // ============================================
 
 import NodeInitializer from './NodeInitializer.js';
+import StateManager from '../../state/StateManager.js';
 
 const BoardRenderer = {
+  /**
+   * 获取渲染顺序（PVP 镜像显示）
+   * - P1 玩家：先渲染 P1（上方），再渲染 P2（下方）
+   * - P2 玩家：先渲染 P2（上方），再渲染 P1（下方）
+   */
+  _getRenderOrder() {
+    const myRole = StateManager.getMyRole();
+    // P2 玩家需要镜像：P2 在上（对手位置），P1 在下（自己的位置）
+    if (myRole === 'P2') {
+      return ['P2', 'P1'];
+    }
+    // P1 玩家或 PvAI：正常顺序
+    return ['P1', 'P2'];
+  },
+
+  /**
+   * 获取显示的角色标签
+   * @param {string} playerId - 'P1' | 'P2'
+   * @returns {string} - 显示的标签
+   */
+  _getDisplayLabel(playerId) {
+    const myRole = StateManager.getMyRole();
+    if (myRole === 'P2') {
+      // P2 玩家看到的界面：P2 显示为"我方"，P1 显示为"对手"
+      return playerId === 'P2' ? 'P1 (我方)' : 'P2 (对手)';
+    }
+    // P1 玩家看到的界面：P1 显示为"P1"，P2 显示为"P2"
+    return playerId;
+  },
+
   /**
    * 渲染棋盘
    * @param {Object} nodeStates - 节点状态
    * @param {Object} animatingNodes - 动画中的节点
    */
   renderBoard(nodeStates, animatingNodes) {
-    ['P1', 'P2'].forEach(playerId => {
+    const renderOrder = this._getRenderOrder();
+
+    renderOrder.forEach(playerId => {
       const starEl = document.getElementById(`${playerId.toLowerCase()}-star`);
       if (!starEl) return;
 
@@ -45,7 +79,6 @@ const BoardRenderer = {
    * @param {number} elementIndex - 五行索引
    */
   updateNodeStyle(el, state, elementIndex) {
-    console.log('[BoardRenderer] updateNodeStyle:', { elementIndex, yang: state.yang, yin: state.yin });
     el.classList.remove('lit-yang', 'lit-yin', 'cracked-yang', 'cracked-yin', 'blessed-yang', 'blessed-yin');
 
     if (state.yang === 1) el.classList.add('lit-yang');
@@ -62,7 +95,6 @@ const BoardRenderer = {
    * @param {number} progress - 动画进度 (0-1)
    */
   handleTransitionUpdate(progress) {
-    console.log('[BoardRenderer] handleTransitionUpdate called, progress:', progress);
     const battleLayer = document.getElementById('battle-layer');
     if (battleLayer.style.display !== 'flex') {
       battleLayer.style.display = 'flex';
@@ -70,22 +102,20 @@ const BoardRenderer = {
     }
     battleLayer.style.opacity = Math.min(1, progress * 1.5);
 
-    ['P1', 'P2'].forEach(playerId => {
+    const renderOrder = this._getRenderOrder();
+
+    renderOrder.forEach(playerId => {
       const starEl = document.getElementById(`${playerId.toLowerCase()}-star`);
       if (!starEl) {
-        console.warn('[BoardRenderer] starEl not found for', playerId);
         return;
       }
 
       const container = starEl.querySelector('.pentagram-container');
-      console.log('[BoardRenderer]', playerId, 'container children before init:', container.children.length);
       if (container.children.length === 0) {
         NodeInitializer.initBoardNodes(container, playerId);
-        console.log('[BoardRenderer]', playerId, 'container children after init:', container.children.length);
       }
 
       const nodes = container.querySelectorAll('.node');
-      console.log('[BoardRenderer]', playerId, 'nodes found:', nodes.length);
       nodes.forEach(node => {
         const angleRad = parseFloat(node.dataset.angle);
         const currentRadius = 40 * progress;

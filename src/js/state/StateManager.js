@@ -19,8 +19,11 @@ const ACTION_PROBABILITY = {
 
 const initialState = {
   // 游戏阶段: 'HOME', 'INITIATIVE', 'STEM_GENERATION', 'DECISION', 'GAME_END'
-  phase: 'HOME', 
-  
+  phase: 'HOME',
+
+  // 当前玩家的角色（用于 PVP 镜像显示）: 'P1' | 'P2' | null
+  myRole: null,
+
   // 游戏模式: 0: PvP, 1: PvAI, 2: AIvAI
   gameMode: 1,
 
@@ -159,7 +162,6 @@ const StateManager = {
     }
 
     if (!silent) {
-      console.log('[StateManager] 状态更新:', Object.keys(updates));
       EventBus.emit(GAME_EVENTS.STATE_CHANGED, {
         old: oldState,
         new: state,
@@ -270,14 +272,12 @@ const StateManager = {
       if (actionScore > 0 && state.actionStats[playerId][actionName] !== undefined) {
         state.actionStats[playerId][actionName]++;
         state.actionScores[playerId][actionName] += this._applyRarityBonus(actionScore, actionType);
-        console.log(`[StateManager] [行为] ${actionName}: 次数=${state.actionStats[playerId][actionName]}, 分数=${state.actionScores[playerId][actionName]}`);
       }
 
       // 记录状态统计
       if (stateScore > 0 && state.stateStats[playerId][stateName] !== undefined) {
         state.stateStats[playerId][stateName]++;
         state.stateScores[playerId][stateName] += this._applyRarityBonus(stateScore, actionType);
-        console.log(`[StateManager] [状态] ${stateName}: 次数=${state.stateStats[playerId][stateName]}, 分数=${state.stateScores[playerId][stateName]}`);
       }
     } else {
       // 非组合格式，按原逻辑判断
@@ -373,9 +373,6 @@ const StateManager = {
     if (stats[playerId][cleanReason] !== undefined) {
       stats[playerId][cleanReason]++;
       scores[playerId][cleanReason] += amount;
-      console.log(`[StateManager] [${statType}] ${cleanReason}: 次数=${stats[playerId][cleanReason]}, 分数=${scores[playerId][cleanReason]}`);
-    } else {
-      console.log(`[StateManager] 警告: 未找到统计键值 "${cleanReason}" (类型: ${statType})`);
     }
   },
 
@@ -453,7 +450,6 @@ const StateManager = {
    */
   recordAction(playerId, actionType) {
     // 静默记录日志，不再修改统计数据
-    console.log(`[StateManager] ${playerId} 行为: ${actionType}`);
   },
 
   /**
@@ -496,6 +492,22 @@ const StateManager = {
    */
   getPassiveScores(playerId) {
     return state.passiveScores[playerId];
+  },
+
+  /**
+   * 设置当前玩家的角色（用于 PVP 镜像显示）
+   * @param {string} role - 'P1' | 'P2' | null
+   */
+  setMyRole(role) {
+    state.myRole = role;
+  },
+
+  /**
+   * 获取当前玩家的角色
+   * @returns {string|null} - 'P1' | 'P2' | null
+   */
+  getMyRole() {
+    return state.myRole;
   },
 
   /**

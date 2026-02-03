@@ -25,23 +25,20 @@ const GameSequence = {
   _isStarting: false,
 
   init() {
-    console.log('[GameSequence] 初始化...');
     EventBus.on('game:player-joined', this.handlePlayerJoined.bind(this));
   },
 
   handlePlayerJoined(data) {
-    console.log('[GameSequence] handlePlayerJoined:', data);
-    
     // 检查当前游戏阶段，如果已经开始游戏，则忽略重复的加入事件
     const currentPhase = StateManager.getState().phase;
     if (currentPhase === 'PLAYING' || currentPhase === 'INITIATIVE') {
-      console.log('[GameSequence] 游戏已在进行中 (phase:', currentPhase, ')，忽略重复加入事件');
       return;
     }
 
     // 只有房主（P1）在检测到 P2 加入时，才启动游戏序列
-    if (this.currentRoomId && this.myPlayerId && data.playerId === 'P2') {
-      console.log('[GameSequence] P2 已加入，房主启动游戏序列');
+    // 必须同时满足：我是 P1，且有房间 ID，事件是关于 P2 加入的
+    if (this.myRole === 'P1' && this.currentRoomId && this.myPlayerId && data.playerId === 'P2') {
+      console.log('[GameSequence] ✓ P2 已加入，房主启动游戏序列');
       if (!this._isStarting) {
          this._startGameSequence();
       }
@@ -55,12 +52,8 @@ const GameSequence = {
   startNewGame(data) {
     // 防止重复调用
     if (this._isStarting) {
-      console.log('[GameSequence] 游戏正在启动中，忽略重复调用');
       return;
     }
-
-    console.log('[GameSequence] ========== startNewGame ==========');
-    console.log('[GameSequence] data:', data);
 
     this._isStarting = true;
 
@@ -69,18 +62,16 @@ const GameSequence = {
 
     // 如果是从等待界面返回的，说明已经在房间中，直接开始游戏序列
     if (data.fromWaiting && this.currentRoomId) {
-      console.log('[GameSequence] 从等待界面返回，已在房间中');
       this._startGameSequence();
       return;
     }
 
     if (data.mode === 0 && !data.skipRoom) {
-      console.log('[GameSequence] PvP 模式，需要房间设置');
+      console.log('[GameSequence] PvP 模式，开始房间设置');
       this._handlePvPRoomSetup(data);
       return; // 等待房间设置完成后，在各自的函数中处理后续流程
     }
 
-    console.log('[GameSequence] 单机模式，直接启动游戏序列');
     this._startGameSequence();
   },
 
@@ -107,6 +98,7 @@ const GameSequence = {
     const playerId = getCurrentUserId();
     this.myPlayerId = playerId;
     this.myRole = 'P1'; // 我是房主
+    StateManager.setMyRole('P1'); // 设置角色用于镜像显示
     EventBus.emit('game:show-waiting', { isHost: true });
 
     const result = await RoomManager.handleCreateRoom({ playerId });
@@ -130,7 +122,7 @@ const GameSequence = {
       });
 
       // P1（房主）创建房间后，等待对手加入
-      console.log('[GameSequence] P1 房间创建成功，等待对手加入...');
+      console.log('[GameSequence] ✓ P1 房间创建成功，等待对手加入');
       this._isStarting = false;
     } else {
       EventBus.emit('game:room-error', { error: result.error });
@@ -147,6 +139,7 @@ const GameSequence = {
     const playerId = getCurrentUserId();
     this.myPlayerId = playerId;
     this.myRole = 'P2'; // 我是加入者
+    StateManager.setMyRole('P2'); // 设置角色用于镜像显示
     EventBus.emit('game:show-waiting', { isHost: false });
 
     const result = await RoomManager.handleJoinRoom({ playerId, roomCode });
@@ -167,7 +160,7 @@ const GameSequence = {
 
       // P2 加入后重置 _isStarting
       this._isStarting = false;
-      console.log('[GameSequence] P2 加入房间，等待 P1 的先手判定');
+      console.log('[GameSequence] ✓ P2 加入房间，等待 P1 的先手判定');
     } else {
       EventBus.emit('game:room-error', { error: result.error });
       this._isStarting = false; // 失败时也要重置
@@ -182,17 +175,14 @@ const GameSequence = {
     // 双重检查：防止在游戏进行中意外触发
     const currentPhase = StateManager.getState().phase;
     if (currentPhase === 'PLAYING') {
-      console.warn('[GameSequence] 游戏已在进行中，取消启动序列');
       this._isStarting = false;
       return;
     }
 
-    console.log('[GameSequence] ========== _startGameSequence ==========');
     StateManager.update({ phase: 'INITIATIVE' });
-    console.log('[GameSequence] phase 设置为 INITIATIVE');
+    console.log('[GameSequence] 启动先手判定阶段');
 
     setTimeout(async () => {
-      console.log('[GameSequence] 发送 game:initiative-start');
       EventBus.emit('game:initiative-start');
 
       setTimeout(async () => {
@@ -203,14 +193,13 @@ const GameSequence = {
         if (this.currentRoomId && this.myPlayerId) {
           if (this.myRole === 'P1') {
             // 我是房主（P1），需要决定先手
-            console.log('[GameSequence] 我是房主，决定先手');
             currentPlayer = Math.random() > 0.5 ? 'P1' : 'P2';
             isFirstPlayer = true;
 
             // 生成第一个天干，确保同步
             const { STEMS_LIST } = await import('../../config/game-config.js');
             const firstStem = STEMS_LIST[Math.floor(Math.random() * 10)];
-            console.log('[GameSequence] 生成初始天干:', firstStem.name);
+            console.log('[GameSequence] P1 决定先手:', currentPlayer, '初始天干:', firstStem.name);
 
             // 发送先手判定命令
             const initiativeCommand = GameCommand.create({
@@ -225,28 +214,23 @@ const GameSequence = {
             });
 
             await CommandSender.sendCommand(initiativeCommand);
-
-            // ⚠️ 不在这里更新本地状态！
-            // 等待 AuthorityExecutor 确认命令并更新数据库后，再通过 _executeInitiative 更新本地状态
-            console.log('[GameSequence] INITIATIVE 命令已发送，等待数据库确认...');
+            console.log('[GameSequence] ✓ INITIATIVE 命令已发送，等待确认');
 
             // 重置启动标志
             this._isStarting = false;
             return; // 等待数据库确认后再继续
           } else {
             // 我是 P2，等待房主的先手判定命令
-            console.log('[GameSequence] 我是 P2，等待房主的先手判定');
+            console.log('[GameSequence] P2 等待房主的先手判定');
             this._isStarting = false;
             return;
           }
         } else {
           // 非 PvP 模式随机决定
           currentPlayer = Math.random() > 0.5 ? 'P1' : 'P2';
-          console.log('[GameSequence] 单人模式，随机先手:', currentPlayer);
           StateManager.update({ currentPlayer });
         }
 
-        console.log('[GameSequence] 发送 game:initiative-completed');
         EventBus.emit('game:initiative-completed', {
           winner: currentPlayer,
           isHost: isFirstPlayer

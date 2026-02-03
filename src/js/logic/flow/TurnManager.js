@@ -15,6 +15,7 @@ import { POINTS_CONFIG } from '../../config/game-config.js';
 import CommandSender from '../../network/CommandSender.js';
 import GameCommand, { CommandType } from '../../network/GameCommand.js';
 import { getCurrentUserId } from '../../network/supabaseClient.js';
+import AuthorityExecutor from '../../network/AuthorityExecutor.js';
 
 const TurnManager = {
   // 当前会话ID（用于权威服务器）
@@ -92,12 +93,49 @@ const TurnManager = {
   async requestTurnEnd() {
     console.log('[TurnManager] ====== 请求结束回合 ======');
 
-    // 1. 计算回合结算效果
-    this._calculatePassiveEffects();
-
     // 2. 获取当前状态
     const state = StateManager.getState();
     const myPlayerId = getCurrentUserId();
+    let myRole = StateManager.getMyRole();
+
+    // ⚠️ 备用方案：如果 StateManager 的 myRole 未设置，尝试从 AuthorityExecutor 获取
+    if (!myRole && state.gameMode === 0) {
+      myRole = AuthorityExecutor.myRole;
+      if (myRole) {
+        console.log('[TurnManager] 从 AuthorityExecutor 获取 myRole:', myRole);
+        // 同步到 StateManager
+        StateManager.setMyRole(myRole);
+      }
+    }
+
+    // ⚠️ 调试：输出详细信息
+    console.log('[TurnManager] 回合检查:', {
+      gameMode: state.gameMode,
+      currentPlayer: state.currentPlayer,
+      myRole: myRole,
+      myPlayerId: myPlayerId,
+      comparison: state.currentPlayer === myRole,
+      authorityExecutorRole: AuthorityExecutor.myRole
+    });
+
+    // ⚠️ 检查：只有当前回合的玩家才能结束回合（PVP模式）
+    if (state.gameMode === 0) {
+      if (!myRole) {
+        console.warn('[TurnManager] myRole 未设置，无法验证回合。允许继续（可能是初始化问题）');
+        // 在PVP模式下，如果没有myRole，可能是初始化问题，允许继续
+      } else if (state.currentPlayer !== myRole) {
+        console.warn('[TurnManager] ✗ 不是当前回合，无法结束回合');
+        console.warn('[TurnManager]   当前回合玩家:', state.currentPlayer);
+        console.warn('[TurnManager]   我的角色:', myRole);
+        console.warn('[TurnManager]   比较结果:', state.currentPlayer, '!==', myRole);
+        return { success: false, error: `Not your turn: current is ${state.currentPlayer}` };
+      } else {
+        console.log('[TurnManager] ✓ 回合检查通过，当前玩家:', state.currentPlayer, '我的角色:', myRole);
+      }
+    }
+
+    // 1. 计算回合结算效果
+    this._calculatePassiveEffects();
 
     // 3. 计算下一回合状态（准备发送给服务器）
     const nextPlayer = state.currentPlayer === 'P1' ? 'P2' : 'P1';

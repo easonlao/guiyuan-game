@@ -25,13 +25,11 @@ const Renderer = {
   animatingNodes: {},
 
   init() {
-    console.log('[Renderer] 初始化...');
     this._bindEvents();
     this._initUIButtons();
   },
 
   _bindEvents() {
-    console.log('[Renderer] 绑定事件监听器...');
     EventBus.on('game:state-changed', this.render.bind(this));
     EventBus.on('game:node-changed', this.handleNodeChange.bind(this));
     EventBus.on('game:lock-nodes', this.handleLockNodes.bind(this));
@@ -39,7 +37,6 @@ const Renderer = {
     EventBus.on('ui:hide-decision', DecisionPanel.hideDecision.bind(DecisionPanel));
     EventBus.on('game:stem-generated', this.showStem.bind(this));
     EventBus.on('anim:transition-update', (data) => {
-      console.log('[Renderer] 收到 anim:transition-update 事件:', data);
       BoardRenderer.handleTransitionUpdate(data.progress || data);
     });
     EventBus.on('game:initiative-start', BoardAnimation.playInitiativeAnimation.bind(BoardAnimation));
@@ -53,7 +50,6 @@ const Renderer = {
 
     EventBus.on('game:return-to-menu', () => {
       this.animatingNodes = {};
-      console.log('[Renderer] 清理所有 animatingNodes');
     });
   },
 
@@ -61,13 +57,9 @@ const Renderer = {
     const backBtn = document.getElementById('victory-back-btn');
     if (backBtn) {
       backBtn.addEventListener('click', () => {
-        console.log('[Renderer] 胜利弹窗返回按钮被点击');
         VictoryOverlay.hideVictory();
-        console.log('[Renderer] 发送 game:return-to-menu 事件');
         EventBus.emit('game:return-to-menu');
       });
-    } else {
-      console.warn('[Renderer] victory-back-btn 未找到!');
     }
 
     const cancelBtn = document.getElementById('waiting-cancel-btn');
@@ -94,9 +86,25 @@ const Renderer = {
     if (state.phase === 'RIPPLE') return;
 
     this.renderPhase(state.phase);
+    this.renderMirrorMode(state.myRole);
     this.renderScores(state.players);
     this.renderTurnCount(state.turnCount, state.maxTurns, state.phase);
     BoardRenderer.renderBoard(state.nodeStates, this.animatingNodes);
+  },
+
+  /**
+   * 根据 myRole 设置镜像模式
+   * @param {string} myRole - 'P1' | 'P2' | null
+   */
+  renderMirrorMode(myRole) {
+    const battleLayer = document.getElementById('battle-layer');
+    if (!battleLayer) return;
+
+    if (myRole === 'P2') {
+      battleLayer.classList.add('mirrored');
+    } else {
+      battleLayer.classList.remove('mirrored');
+    }
   },
 
   renderPhase(phase) {
@@ -143,15 +151,11 @@ const Renderer = {
   showStem(data) {
     const { stem } = data;
     const currentPlayerId = StateManager.getState().currentPlayer;
-    console.log('[Renderer] showStem 被调用', { stem: stem.name, currentPlayerId });
     StemAnimation.playStemGenerationAnimation(currentPlayerId, stem, this.animatingNodes);
   },
 
   handleFlyAction(data) {
-    console.log('[Renderer] ========== handleFlyAction ==========');
-    console.log('[Renderer] data:', data);
     FlyAnimation.handleFlyAction(data, (playerId, elementIndex) => {
-      console.log('[Renderer] 飞行动画回调:', playerId, elementIndex);
       NodeRenderer.flushPendingState(playerId, elementIndex, this.animatingNodes, BoardRenderer.updateNodeStyle.bind(BoardRenderer));
     }, this.animatingNodes, BoardRenderer.updateNodeStyle.bind(BoardRenderer));
   },
