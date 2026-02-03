@@ -300,9 +300,9 @@ const CommandSender = {
 
     console.warn('[CommandSender] 命令超时:', GameCommand.getSummary(command));
 
-    // ⚠️ 特殊处理：INITIATIVE 命令超时后，直接触发执行事件（因为可能数据库没有触发器）
-    if (command.commandType === 'INITIATIVE') {
-      console.log('[CommandSender] INITIATIVE 命令超时，直接触发执行（可能数据库无触发器）');
+    // ⚠️ 特殊处理：INITIATIVE 和 TURN_END 命令超时后，直接触发执行事件（因为可能数据库没有触发器）
+    if (command.commandType === 'INITIATIVE' || command.commandType === 'TURN_END') {
+      console.log(`[CommandSender] ${command.commandType} 命令超时，直接触发执行（可能数据库无触发器）`);
       this.pendingCommands.delete(commandId);
       pending.resolve({
         success: true,
