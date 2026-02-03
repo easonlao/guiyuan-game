@@ -56,6 +56,12 @@ const CommandSender = {
     this.currentSessionId = sessionId;
     this.myPlayerId = playerId;
 
+    console.log('[CommandSender] 设置会话:', {
+      sessionId,
+      playerId,
+      myPlayerId: this.myPlayerId
+    });
+
     // 订阅命令确认
     this._subscribeToCommands();
   },
@@ -170,7 +176,7 @@ const CommandSender = {
     try {
       // INITIATIVE 命令初始状态设为 pending，如果没有数据库触发器会自动更新为 confirmed
       // 其他命令也设为 pending，等待数据库触发器更新
-      const result = await insert('game_moves', {
+      const dbData = {
         id: this._generateUUID(), // 使用命令ID作为数据库ID
         command_id: command.commandId,
         session_id: this.currentSessionId,
@@ -179,7 +185,14 @@ const CommandSender = {
         turn_number: command.turnNumber,
         payload: command.payload,
         status: 'pending'  // 明确设置初始状态
+      };
+
+      console.log('[CommandSender] 准备写入数据库:', {
+        ...dbData,
+        payload: JSON.stringify(dbData.payload).substring(0, 100) + '...'
       });
+
+      const result = await insert('game_moves', dbData);
 
       if (!result || result.length === 0) {
         throw new Error('数据库插入失败');
@@ -187,8 +200,24 @@ const CommandSender = {
 
       const dbRecord = result[0];
 
+      console.log('[CommandSender] 数据库返回:', {
+        id: dbRecord.id,
+        command_id: dbRecord.command_id,
+        status: dbRecord.status,
+        rejection_reason: dbRecord.rejection_reason,
+        player_id: dbRecord.player_id,
+        turn_number: dbRecord.turn_number
+      });
+
       // 如果服务器立即拒绝，直接返回
       if (dbRecord.status === 'rejected') {
+        console.error('[CommandSender] ✗ 命令被数据库拒绝:', {
+          reason: dbRecord.rejection_reason,
+          command: GameCommand.getSummary(command),
+          playerId: command.playerId,
+          turnNumber: command.turnNumber,
+          sessionId: this.currentSessionId
+        });
         this.pendingCommands.delete(command.commandId);
         return {
           success: false,

@@ -63,6 +63,14 @@ const AuthorityExecutor = {
     this.myPlayerId = playerId;
     this.myRole = role;
 
+    console.log('[AuthorityExecutor] 设置会话:', {
+      sessionId,
+      playerId,
+      role,
+      myPlayerId: this.myPlayerId,
+      myRole: this.myRole
+    });
+
     // 订阅对手命令
     this._subscribeToOpponentCommands();
   },
