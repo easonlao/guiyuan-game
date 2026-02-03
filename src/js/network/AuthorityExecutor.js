@@ -138,13 +138,13 @@ const AuthorityExecutor = {
   },
 
   /**
-   * 处理会话状态更新（用于 P2 检测游戏开始）
+   * 处理会话状态更新（用于 P2 检测游戏开始和回合切换）
    * @private
    */
   async _handleSessionUpdate(payload) {
     const { new: newRecord, old: oldRecord } = payload;
 
-    // 只处理 phase 变为 PLAYING 的情况
+    // 处理游戏开始（phase 变为 PLAYING）
     if (newRecord.current_state?.phase === 'PLAYING' && oldRecord.current_state?.phase !== 'PLAYING') {
       console.log('[AuthorityExecutor] 检测到游戏开始（phase: PLAYING）');
 
@@ -153,6 +153,34 @@ const AuthorityExecutor = {
 
       // 延迟一下，确保状态已更新
       setTimeout(() => GameEngine.onInitiativeFinished(), 500);
+      return;
+    }
+
+    // ⚠️ 处理回合切换（current_player 变化，但 phase 保持 PLAYING）
+    // 只在 phase 已经是 PLAYING 的情况下才处理回合切换
+    if (newRecord.current_state?.phase === 'PLAYING' &&
+        oldRecord.current_state?.phase === 'PLAYING' &&
+        newRecord.current_player !== oldRecord.current_player) {
+      console.log('[AuthorityExecutor] 检测到回合切换:', oldRecord.current_player, '->', newRecord.current_player);
+
+      const newTurn = newRecord.current_turn;
+      const newPlayer = newRecord.current_player;
+      const newStem = newRecord.current_state?.currentStem;
+
+      // 更新本地状态
+      StateManager.update({
+        turnCount: newTurn,
+        currentPlayer: newPlayer,
+        currentStem: newStem || null
+      }, true);
+
+      // 触发回合切换事件
+      EventBus.emit('game:next-turn', {
+        fromServer: true,
+        newPlayer: newPlayer
+      });
+
+      console.log('[AuthorityExecutor] ✓ 回合切换已同步:', newPlayer);
     }
   },
 
@@ -399,6 +427,31 @@ const AuthorityExecutor = {
    */
   async _executeTurnEnd(playerId, payload) {
     const { finalState } = payload;
+
+    console.log('[AuthorityExecutor] 执行 TURN_END 命令:', {
+      currentPlayer: finalState.currentPlayer,
+      turnCount: finalState.turnCount,
+      myRole: this.myRole
+    });
+
+    // ⚠️ 只由 P1 更新 game_sessions 表，向 P2 发送回合切换信号
+    // 避免重复触发（如果命令被数据库拒绝，只有发送者的客户端会执行到这里）
+    if (this.myRole === 'P1' && this.currentSessionId) {
+      console.log('[AuthorityExecutor] 更新 game_sessions 表以同步回合状态');
+      try {
+        // 只更新 current_player 和 current_turn，不更新 current_state
+        // 这样可以避免触发 INITIATIVE 重新执行
+        await update('game_sessions', {
+          current_player: finalState.currentPlayer,
+          current_turn: finalState.turnCount
+        }, {
+          match: { id: this.currentSessionId }
+        });
+        console.log('[AuthorityExecutor] ✓ game_sessions 表已更新');
+      } catch (error) {
+        console.error('[AuthorityExecutor] ✗ game_sessions 表更新失败:', error);
+      }
+    }
 
     // 静默应用完整状态（防止触发同步循环）
     StateManager.update({
