@@ -280,8 +280,15 @@ const AuthorityExecutor = {
     console.log('[AuthorityExecutor] handleOwnCommand:', {
       commandId,
       commandType: command.commandType,
-      turnNumber: command.turnNumber
+      turnNumber: command.turnNumber,
+      alreadyExecuted: this.executedCommands.has(commandId)
     });
+
+    // 防止重复执行
+    if (this.executedCommands.has(commandId)) {
+      console.warn('[AuthorityExecutor] 命令已执行，跳过:', commandId);
+      return;
+    }
 
     // 标记为已执行
     this.executedCommands.add(commandId);

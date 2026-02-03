@@ -323,18 +323,28 @@ const GameEngine = {
     if (type === 'AUTO_ABSORB') {
       ActionResolver.applyPlus(playerId, stem.element, isYang, 'AUTO', false);
       this.activeSession = null;
-      
+
       // ⚠️ 检查：确保是当前回合的玩家才能结束回合
       setTimeout(() => {
         const state = StateManager.getState();
         const myRole = StateManager.getMyRole() || AuthorityExecutor.myRole;
-        
+
+        console.log('[GameEngine] AUTO_ABSORB 完成，检查回合结束:', {
+          currentPlayer: state.currentPlayer,
+          myRole: myRole,
+          stateManagerMyRole: StateManager.getMyRole(),
+          authorityExecutorMyRole: AuthorityExecutor.myRole,
+          isMyTurn: state.currentPlayer === myRole,
+          gameMode: state.gameMode
+        });
+
         // 在PVP模式下，只有当前回合的玩家才能结束回合
         if (state.gameMode === 0 && myRole && state.currentPlayer !== myRole) {
           console.warn('[GameEngine] 不是当前回合，跳过回合结束。当前:', state.currentPlayer, '我的角色:', myRole);
           return;
         }
-        
+
+        console.log('[GameEngine] 当前回合玩家，尝试结束回合');
         TurnManager.requestTurnEnd();
       }, 800);
     } else if (type === 'DECISION_ACTION' && (action.type === 'BURST_ATK' || action.type === 'BURST')) {
