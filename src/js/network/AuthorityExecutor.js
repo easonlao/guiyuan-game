@@ -195,24 +195,27 @@ const AuthorityExecutor = {
     const playerId = newRecord.player_id;
     const commandType = newRecord.command_type;
 
-    // ⚠️ 特殊处理：INITIATIVE 命令在 pending 状态也需要处理（因为可能没有数据库触发器）
-    const isInitiativeCommand = (commandType === 'INITIATIVE');
-    
-    // 只处理已确认的命令，或者 INITIATIVE 命令（pending 状态也处理）
-    if (!isInitiativeCommand && newRecord.status !== 'confirmed') {
+    // ⚠️ 特殊处理：INITIATIVE 和 TURN_SYNC 命令在 pending 状态也需要处理
+    const isSpecialCommand = (commandType === 'INITIATIVE' || commandType === 'TURN_SYNC');
+
+    // 只处理已确认的命令，或者特殊命令（pending 状态也处理）
+    if (!isSpecialCommand && newRecord.status !== 'confirmed') {
       return;
     }
 
-    // ⚠️ 特殊处理：INITIATIVE 命令需要执行者（P1）也处理，用于更新数据库和发出完成事件
-    const isOwnInitiativeCommand = (playerId === this.myPlayerId && commandType === 'INITIATIVE');
+    // ⚠️ 特殊处理：INITIATIVE 和 TURN_SYNC 命令需要执行者也处理
+    const isOwnSpecialCommand = (
+      playerId === this.myPlayerId &&
+      (commandType === 'INITIATIVE' || commandType === 'TURN_SYNC')
+    );
 
-    // 跳过自己的命令（除了 INITIATIVE）
-    if (!isOwnInitiativeCommand && playerId === this.myPlayerId) {
+    // 跳过自己的命令（除了特殊命令）
+    if (!isOwnSpecialCommand && playerId === this.myPlayerId) {
       return;
     }
 
-    if (isOwnInitiativeCommand) {
-      console.log('[AuthorityExecutor] 处理自己的 INITIATIVE 命令');
+    if (isOwnSpecialCommand) {
+      console.log('[AuthorityExecutor] 处理自己的', commandType, '命令');
     } else {
       console.log('[AuthorityExecutor] 收到对手命令:', commandType, 'by', playerId);
     }
@@ -397,6 +400,10 @@ const AuthorityExecutor = {
         await this._executeInitiative(playerId, payload);
         break;
 
+      case 'TURN_SYNC':
+        await this._executeTurnSync(playerId, payload);
+        break;
+
       default:
         console.warn('[AuthorityExecutor] 未知命令类型:', commandType);
     }
@@ -428,31 +435,6 @@ const AuthorityExecutor = {
   async _executeTurnEnd(playerId, payload) {
     const { finalState } = payload;
 
-    console.log('[AuthorityExecutor] 执行 TURN_END 命令:', {
-      currentPlayer: finalState.currentPlayer,
-      turnCount: finalState.turnCount,
-      myRole: this.myRole
-    });
-
-    // ⚠️ 只由 P1 更新 game_sessions 表，向 P2 发送回合切换信号
-    // 避免重复触发（如果命令被数据库拒绝，只有发送者的客户端会执行到这里）
-    if (this.myRole === 'P1' && this.currentSessionId) {
-      console.log('[AuthorityExecutor] 更新 game_sessions 表以同步回合状态');
-      try {
-        // 只更新 current_player 和 current_turn，不更新 current_state
-        // 这样可以避免触发 INITIATIVE 重新执行
-        await update('game_sessions', {
-          current_player: finalState.currentPlayer,
-          current_turn: finalState.turnCount
-        }, {
-          match: { id: this.currentSessionId }
-        });
-        console.log('[AuthorityExecutor] ✓ game_sessions 表已更新');
-      } catch (error) {
-        console.error('[AuthorityExecutor] ✗ game_sessions 表更新失败:', error);
-      }
-    }
-
     // 静默应用完整状态（防止触发同步循环）
     StateManager.update({
       turnCount: finalState.turnCount,
@@ -462,11 +444,81 @@ const AuthorityExecutor = {
       currentStem: finalState.currentStem
     }, true);
 
+    // ⚠️ 只由 P1 发送 TURN_SYNC 信号给 P2
+    if (this.myRole === 'P1' && this.currentSessionId) {
+      console.log('[AuthorityExecutor] 发送 TURN_SYNC 信号给对手');
+      try {
+        const { insert } = await import('./supabaseClient.js');
+
+        // TURN_SYNC 命令直接设为 confirmed，这样 P2 能立即收到
+        await insert('game_moves', {
+          id: this._generateUUID(),
+          command_id: `TURNSYNC-${this.currentSessionId}-${finalState.turnCount}-${Date.now()}`,
+          session_id: this.currentSessionId,
+          command_type: 'TURN_SYNC',
+          player_id: this.myPlayerId,
+          turn_number: finalState.turnCount,
+          payload: {
+            currentPlayer: finalState.currentPlayer,
+            turnCount: finalState.turnCount,
+            currentStem: finalState.currentStem
+          },
+          status: 'confirmed'
+        });
+        console.log('[AuthorityExecutor] ✓ TURN_SYNC 信号已发送');
+      } catch (error) {
+        console.error('[AuthorityExecutor] ✗ TURN_SYNC信号发送失败:', error);
+      }
+    }
+
     // 触发回合切换事件
     EventBus.emit('game:next-turn', {
       fromServer: true,
       newPlayer: finalState.currentPlayer
     });
+  },
+
+  /**
+   * 执行回合同步命令（P2 收到 P1 的回合切换通知）
+   * @private
+   */
+  async _executeTurnSync(playerId, payload) {
+    const { currentPlayer, turnCount, currentStem } = payload;
+
+    console.log('[AuthorityExecutor] 执行 TURN_SYNC 命令:', {
+      currentPlayer,
+      turnCount,
+      currentStem,
+      myRole: this.myRole
+    });
+
+    // 更新本地状态
+    StateManager.update({
+      turnCount: turnCount,
+      currentPlayer: currentPlayer,
+      currentStem: currentStem || null
+    }, true);
+
+    // 触发回合切换事件
+    EventBus.emit('game:next-turn', {
+      fromServer: true,
+      newPlayer: currentPlayer
+    });
+
+    console.log('[AuthorityExecutor] ✓ 回合切换已同步');
+  },
+
+  /**
+   * 生成 UUID
+   * @private
+   */
+  _generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  },
   },
 
   /**
