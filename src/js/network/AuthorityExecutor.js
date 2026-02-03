@@ -277,8 +277,21 @@ const AuthorityExecutor = {
   handleOwnCommand(data) {
     const { commandId, command, payload } = data;
 
+    console.log('[AuthorityExecutor] handleOwnCommand:', {
+      commandId,
+      commandType: command.commandType,
+      turnNumber: command.turnNumber
+    });
+
     // 标记为已执行
     this.executedCommands.add(commandId);
+
+    // ⚠️ 特殊处理：TURN_END 命令立即执行，不加入队列
+    if (command.commandType === 'TURN_END') {
+      console.log('[AuthorityExecutor] 立即执行 TURN_END 命令');
+      this._executeTurnEnd(command.playerId, payload);
+      return;
+    }
 
     // 添加到执行队列
     this.executionQueue.push({
@@ -463,11 +476,18 @@ const AuthorityExecutor = {
     }
 
     // 数据库更新完成后，再更新本地状态
-    StateManager.update({ 
+    StateManager.update({
       currentPlayer: firstPlayer,
       currentStem: firstStem || null,
       phase: 'INITIATIVE'  // 确保阶段正确
     });
+
+    // ⚠️ 确保同步 AuthorityExecutor 的 myRole 到 StateManager
+    // 这样 StateManager.getMyRole() 才能返回正确的值
+    if (this.myRole && !StateManager.getMyRole()) {
+      StateManager.setMyRole(this.myRole);
+      console.log('[AuthorityExecutor] 同步 myRole 到 StateManager:', this.myRole);
+    }
 
     console.log('[AuthorityExecutor] ✓ 先手判定完成:', firstPlayer);
 
