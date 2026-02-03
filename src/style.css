@@ -1,0 +1,1218 @@
+:root {
+  /* 五行颜色 */
+  --wood-y: #2dcc70; --wood-i: #1e8e4e; --fire-y: #ff6b6b; --fire-i: #c85555;
+  --earth-y: #f4a460; --earth-i: #c8824b; --metal-y: #e6ebf0; --metal-i: #d4d8dc;
+  --water-y: #4a90e2; --water-i: #3c73b4; 
+  
+  /* 通用颜色 */
+  --gold: #ffd700; 
+  --gold-dim: rgba(255, 215, 0, 0.30); 
+  --bg-dark: #080b16;
+  --text-main: #ffffff;
+  
+  /* 道损颜色 */
+  --crack-color: #8b0000; 
+  --evil-red: #ff1a1a; 
+  --evil-glow: rgba(255, 0, 0, 0.6);
+  
+  /* 字体 */
+  font-family: 'Ma Shan Zheng', 'STSong', 'SimSun', serif;
+  
+  /* 响应式基准：完全复刻测试.html */
+  /* 基于 390px 逻辑宽度，1rem = 10px */
+  font-size: clamp(8px, 2.564vw, 10px);
+}
+
+body {
+  margin: 0; padding: 0;
+  background: var(--bg-dark);
+  color: var(--text-main);
+  overflow: hidden;
+  width: 100vw; height: 100vh;
+  -webkit-tap-highlight-color: transparent;
+  /* 防止字体缩放 */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+#app {
+  width: 100%; height: 100%;
+  position: relative;
+  background: radial-gradient(circle at 50% 50%, #161b2e 0%, #05070a 100%);
+}
+
+.bg-glow { position: fixed; inset: 0; z-index: 0; background: radial-gradient(circle at 50% 50%, #161b2e 0%, #05070a 100%); pointer-events: none; }
+
+/* ==================== 菜单 UI ==================== */
+#menu-layer {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  z-index: 100;
+}
+
+.taiji-orb {
+    position: absolute;
+    width: clamp(4rem, 12vw, 7rem); height: clamp(4rem, 12vw, 7rem);
+    border-radius: 50%; overflow: hidden;
+    left: 50%; top: 50%;
+    margin-left: clamp(-2rem, -6vw, -3.5rem); margin-top: clamp(-2rem, -6vw, -3.5rem);
+    background: var(--ci); box-shadow: 0 0 25px var(--cy);
+    will-change: transform;
+}
+.taiji-orb .y-body { position: absolute; left: 0; width: 50%; height: 100%; background: var(--cy); border-radius: 100% 0 0 100%; }
+.taiji-orb .y-head { position: absolute; top: 0; left: 25%; width: 50%; height: 50%; background: var(--cy); border-radius: 50%; z-index: 2; }
+.taiji-orb .i-head { position: absolute; bottom: 0; left: 25%; width: 50%; height: 50%; background: var(--ci); border-radius: 50%; z-index: 2; }
+
+.menu-title {
+  color: var(--gold);
+  font-size: clamp(2.5rem, 10vw, 4.5rem);
+  letter-spacing: clamp(0.3rem, 1.5vw, 0.8rem);
+  margin: 0; text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+  writing-mode: vertical-rl; text-orientation: upright;
+  animation: slow-pulse 3s infinite ease-in-out;
+  cursor: pointer; z-index: 102;
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  text-align: center; padding: 1rem;
+  transition: all 0.6s ease;
+  will-change: transform, letter-spacing, filter;
+}
+.menu-title.hidden { opacity: 0 !important; transform: translate(-50%, -50%) scale(0.8) !important; pointer-events: none !important; visibility: hidden !important; }
+
+@keyframes slow-pulse { 0%, 100% { opacity: 0.8; text-shadow: 0 0 10px rgba(255,215,0,0.3); } 50% { opacity: 1; text-shadow: 0 0 20px rgba(255,215,0,0.8); } }
+
+.menu-buttons {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(0.9);
+  display: flex; flex-direction: column; gap: clamp(0.8rem, 2vh, 1.2rem);
+  z-index: 103; opacity: 0; visibility: hidden;
+  transition: opacity 0.8s ease, transform 0.8s ease, visibility 0s 0.8s;
+  width: 100%; max-width: 280px; align-items: center;
+}
+.menu-buttons.visible { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); transition: opacity 0.8s ease, transform 0.8s ease, visibility 0s 0s; }
+
+.menu-btn {
+  background: transparent; border: none; position: relative; color: var(--gold-dim);
+  /* 稍微调大字号：1.1rem -> 1.3rem */
+  font-size: clamp(1.3rem, 5vw, 1.8rem); 
+  padding: clamp(0.5rem, 1.5vh, 0.8rem) clamp(1rem, 4vw, 2rem);
+  min-width: 160px; cursor: pointer; font-family: inherit; letter-spacing: 0.15rem; white-space: nowrap;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.menu-btn::after { content: ''; position: absolute; bottom: 0; left: 50%; width: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); transition: width 0.6s ease, left 0.6s ease; }
+.menu-btn:hover::after { width: 100%; left: 0; }
+.menu-btn:hover { color: var(--gold); transform: scale(1.05); letter-spacing: clamp(0.3rem, 1vw, 0.5rem); text-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
+
+/* ==================== 战场 UI ==================== */
+#battle-layer { position: absolute; inset: 0; display: flex; flex-direction: column; z-index: 50; }
+.score-panel-top { position: absolute; top: clamp(1rem, 5vh, 2rem); left: 0; right: 0; display: flex; justify-content: center; z-index: 60; pointer-events: none; }
+.score-panel-bottom { position: absolute; bottom: clamp(1rem, 5vh, 2rem); left: 0; right: 0; display: flex; justify-content: center; z-index: 60; pointer-events: none; }
+.score-value { font-size: clamp(1.5rem, 6vw, 2.5rem); color: var(--gold); text-shadow: 0 0 10px var(--gold-dim); font-weight: 300; letter-spacing: 0.05em; }
+
+.player-area { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; height: 100%; padding: clamp(1rem, 5vh, 2rem) 0; box-sizing: border-box; }
+.taiji-star { position: relative; width: clamp(200px, 80vw, 400px); height: clamp(200px, 80vw, 400px); }
+.pentagram-container { width: 100%; height: 100%; position: relative; transition: filter 0.3s ease, transform 0.3s ease; }
+.pentagram-container.highlight { filter: drop-shadow(0 0 30px var(--gold)); transform: scale(1.05); }
+
+/* 回合中心（楚河汉界） */
+.turn-center {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem 0;
+}
+
+.turn-info {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  position: relative;
+}
+
+.turn-info.visible {
+  opacity: 1;
+}
+
+.turn-info::before {
+  content: '';
+  position: absolute;
+  inset: -5px -15px;
+  background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.15), transparent 70%);
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.turn-count {
+  font-size: 2.2rem;
+  color: var(--gold);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-shadow:
+    0 0 10px rgba(255, 215, 0, 0.8),
+    0 0 20px rgba(255, 215, 0, 0.4),
+    0 0 30px rgba(255, 215, 0, 0.2);
+  min-width: 1.5rem;
+  text-align: center;
+  position: relative;
+}
+
+.turn-count::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0.6;
+}
+
+.turn-divider {
+  font-size: 1.6rem;
+  color: var(--gold);
+  opacity: 0.6;
+  margin: 0 0.3rem;
+  font-weight: 200;
+}
+
+.turn-max {
+  font-size: 1.4rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+
+/* 先后手提示 */
+#init-message {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    font-size: clamp(1.5rem, 6vw, 3rem); color: var(--gold); text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+    opacity: 0; visibility: hidden; pointer-events: none; z-index: 1000; white-space: nowrap; letter-spacing: 0.5rem; font-weight: bold;
+}
+#init-message.message-fade-in { visibility: visible; animation: messageEffect 2.5s ease-out forwards; }
+@keyframes messageEffect {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); filter: blur(10px); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); filter: blur(0px); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); filter: blur(0px); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); filter: blur(10px); }
+}
+
+/* ==================== 动画元素样式 ==================== */
+.center-stem {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(0);
+    /* 统一使用节点天干的字体大小 */
+    font-size: clamp(0.9rem, 3.5vw, 1.4rem);
+    opacity: 0; z-index: 100; pointer-events: none;
+    color: #fff; text-shadow: 0 0 10px #fff, 1px 1px 0px #000, 0 0 20px rgba(0,0,0,0.8);
+    transition: none; will-change: transform, opacity, left, top;
+    background: transparent; display: flex; justify-content: center; align-items: center;
+    white-space: nowrap; line-height: 1;
+    font-weight: 400;
+}
+
+.energy-projectile {
+    position: absolute; width: 20px; height: 20px; border-radius: 50%; z-index: 150; pointer-events: none;
+    background: radial-gradient(circle, #fff 0%, currentColor 40%, transparent 80%);
+    box-shadow: 0 0 20px currentColor, 0 0 40px currentColor; filter: blur(2px); transform: translate(-50%, -50%);
+}
+
+.energy-particle { position: absolute; width: 4px; height: 4px; border-radius: 50%; z-index: 90; pointer-events: none; opacity: 0; }
+.node-impact { animation: impact-flash 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+@keyframes impact-flash {
+    0% { filter: brightness(3) drop-shadow(0 0 30px currentColor); transform: translate(-50%, -50%) scale(1.1); }
+    100% { filter: brightness(1) drop-shadow(0 0 0px transparent); transform: translate(-50%, -50%) scale(1); }
+}
+
+#taiji-core {
+    position: fixed; width: clamp(5rem, 20.5vw, 12rem); height: clamp(5rem, 20.5vw, 12rem);
+    border-radius: 50%; overflow: hidden; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    background: #000; z-index: 200; box-shadow: 0 0 30px rgba(255,255,255,0.2); will-change: transform, opacity;
+}
+#taiji-core .y-body { position: absolute; left: 0; width: 50%; height: 100%; background: #fff; border-radius: 100% 0 0 100%; }
+#taiji-core .y-head { position: absolute; top: 0; left: 25%; width: 50%; height: 50%; background: #fff; border-radius: 50%; z-index: 2; }
+#taiji-core .i-head { position: absolute; bottom: 0; left: 25%; width: 50%; height: 50%; background: #000; border-radius: 50%; z-index: 2; }
+
+.projectile {
+    position: fixed; width: clamp(3.5rem, 14.4vw, 8rem); height: clamp(3.5rem, 14.4vw, 8rem);
+    border-radius: 50%; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    z-index: 210; filter: blur(15px); will-change: transform;
+}
+#orb-yang { background: radial-gradient(circle, #fff 0%, transparent 70%); box-shadow: 0 0 40px #fff; }
+#orb-yin { background: radial-gradient(circle, #222 0%, transparent 70%); box-shadow: 0 0 40px #000; }
+
+.ripple {
+    position: fixed; width: clamp(6rem, 25.6vw, 10rem); height: clamp(6rem, 25.6vw, 10rem);
+    border: 2px solid rgba(255, 215, 0, 0.6); border-radius: 50%; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(0); opacity: 0; z-index: 190;
+    will-change: transform, opacity;
+}
+
+/* ==================== 太极卡片核心样式 (逻辑修正版) ==================== */
+.node {
+    position: absolute; width: 25%; aspect-ratio: 1 / 1; border-radius: 50%; transform: translate(-50%, -50%);
+    overflow: hidden; background: transparent;
+}
+
+.taiji-card {
+    /* 默认虚空底色 */
+    --void-color: rgb(28, 34, 52);
+    --real-c-yang: var(--void-color);
+    --real-c-yin: var(--void-color);
+}
+
+/* 左半圆（阳鱼身体） */
+.yang-body {
+    position: absolute; top: 0; left: 0; width: 50%; height: 100%;
+    background-color: var(--void-color);
+    border-radius: 100% 0 0 100%;
+    z-index: 1; /* 最底层 */
+    transition: background-color 1.2s ease-out, box-shadow 1.2s ease-out;
+    margin: -0.5px;
+}
+
+/* 右半圆（阴鱼身体） */
+.taiji-card::before {
+    content: '';
+    position: absolute; top: 0; right: 0; width: 50%; height: 100%;
+    background-color: var(--void-color);
+    border-radius: 0 100% 100% 0;
+    z-index: 2; /* 在左半圆之上 */
+    transition: background-color 1.2s ease-out, box-shadow 1.2s ease-out;
+    margin: -0.5px;
+}
+
+/* 下小圆（阴鱼头部/阴中之阳） */
+.yin-head {
+    position: absolute; bottom: 0; left: 25%; width: 50%; height: 50%;
+    background-color: var(--void-color);
+    border-radius: 50%;
+    z-index: 3; /* 在右半圆之上 */
+    transition: background-color 1.2s ease-out, box-shadow 1.2s ease-out;
+    margin: -0.2px;
+}
+
+/* 上小圆（阳鱼头部/阳中之阴） */
+.yang-head {
+    position: absolute; top: 0; left: 25%; width: 50%; height: 50%;
+    background-color: var(--void-color);
+    border-radius: 50%;
+    z-index: 4; /* 最顶层，用于在右半圆上抠出阳鱼头 */
+    transition: background-color 1.2s ease-out, box-shadow 1.2s ease-out;
+    margin: -0.2px;
+}
+
+/* 线条与文字 */
+.line-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
+/* 默认：虚线（虚空状态） */
+.arc-seg { fill: none; stroke: rgb(148, 163, 184); stroke-width: 1.2px; stroke-dasharray: 4, 3; stroke-opacity: 0.5; transition: all 0.6s ease; }
+.stem-name {
+    position: absolute;
+    /* 复刻原版尺寸：1.4rem ~ 2.2rem */
+    font-size: clamp(1.4rem, 5.6vw, 2.2rem);
+    z-index: 30; font-weight: 400; color: rgba(255, 255, 255, 0.3); transition: all 0.6s ease; left: 50%; transform: translate(-50%, -50%); pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+}
+.name-yang { top: 25%; } .name-yin { top: 75%; }
+
+/* ==================== 状态边线逻辑 ==================== */
+
+/* 1. 点亮状态：五行原本颜色实线，带微光 */
+/* 阳干点亮：左大半圆 + 上小圆右半圆 + 下小圆左半圆 */
+.node.lit-yang .line-svg .arc-left,
+.node.lit-yang .line-svg .arc-top,
+.node.lit-yang .line-svg .arc-bottom {
+    stroke: var(--real-c-yang) !important;
+    stroke-dasharray: none !important;
+    stroke-opacity: 1 !important;
+    filter: drop-shadow(0 0 2px var(--real-c-yang));
+}
+
+/* 阴干点亮：右大半圆 + 下小圆左半圆 + 上小圆右半圆 */
+.node.lit-yin .line-svg .arc-right,
+.node.lit-yin .line-svg .arc-bottom,
+.node.lit-yin .line-svg .arc-top {
+    stroke: var(--real-c-yin) !important;
+    stroke-dasharray: none !important;
+    stroke-opacity: 1 !important;
+    filter: drop-shadow(0 0 2px var(--real-c-yin));
+}
+
+/* 2. 道损状态：暗红发亮边线 */
+/* 阳干道损 */
+.node.cracked-yang .line-svg .arc-left,
+.node.cracked-yang .line-svg .arc-top,
+.node.cracked-yang .line-svg .arc-bottom {
+    stroke: var(--evil-red) !important;
+    stroke-dasharray: none !important;
+    stroke-opacity: 1 !important;
+    filter: drop-shadow(0 0 4px var(--evil-red)) drop-shadow(0 0 8px var(--evil-red));
+}
+
+/* 阴干道损 */
+.node.cracked-yin .line-svg .arc-right,
+.node.cracked-yin .line-svg .arc-bottom,
+.node.cracked-yin .line-svg .arc-top {
+    stroke: var(--evil-red) !important;
+    stroke-dasharray: none !important;
+    stroke-opacity: 1 !important;
+    filter: drop-shadow(0 0 4px var(--evil-red)) drop-shadow(0 0 8px var(--evil-red));
+}
+
+/* 3. 加持状态：金色边线 */
+/* 阳干加持 */
+.node.blessed-yang .line-svg .arc-left,
+.node.blessed-yang .line-svg .arc-top,
+.node.blessed-yang .line-svg .arc-bottom {
+    stroke: var(--gold) !important;
+    stroke-dasharray: none !important;
+    stroke-opacity: 1 !important;
+    filter: drop-shadow(0 0 3px var(--gold)) drop-shadow(0 0 6px var(--gold));
+}
+
+/* 阴干加持 */
+.node.blessed-yin .line-svg .arc-right,
+.node.blessed-yin .line-svg .arc-bottom,
+.node.blessed-yin .line-svg .arc-top {
+    stroke: var(--gold) !important;
+    stroke-dasharray: none !important;
+    stroke-opacity: 1 !important;
+    filter: drop-shadow(0 0 3px var(--gold)) drop-shadow(0 0 6px var(--gold));
+}
+
+/* ==================== 状态点亮逻辑 (严格遵循用户需求) ==================== */
+
+/* 1. 阳干点亮：左半圆 + 上小圆 有色 */
+.node.lit-yang .yang-body {
+    background-color: var(--real-c-yang) !important;
+    box-shadow: 0 0 15px var(--real-c-yang);
+}
+.node.lit-yang .yang-head {
+    background-color: var(--real-c-yang) !important;
+}
+.node.lit-yang .name-yang { color: var(--real-c-yin) !important; opacity: 1; text-shadow: 0 0 5px rgba(0,0,0,0.8); font-weight: 400; }
+
+/* 2. 阴干点亮：右半圆 + 下小圆 有色 */
+.node.lit-yin::before {
+    background-color: var(--real-c-yin) !important;
+    box-shadow: 0 0 15px var(--real-c-yin);
+}
+.node.lit-yin .yin-head {
+    background-color: var(--real-c-yin) !important;
+}
+.node.lit-yin .name-yin { color: var(--real-c-yang) !important; opacity: 1; text-shadow: 0 0 5px rgba(0,0,0,0.8); font-weight: 400; }
+
+/* 3. 阴阳同时点亮（+1 +1）：才有呼吸效果 */
+/* 阳干呼吸：最暗时比阴干最亮还亮 */
+.node.lit-yang.lit-yin .yang-body {
+    animation: body-breathe-yang 3s infinite ease-in-out;
+}
+.node.lit-yang.lit-yin .yang-head {
+    animation: head-breathe-yang 3s infinite ease-in-out;
+}
+
+/* 阴干呼吸：整体比阳干暗 */
+.node.lit-yang.lit-yin::before {
+    animation: body-breathe-yin 3s infinite ease-in-out;
+}
+.node.lit-yang.lit-yin .yin-head {
+    animation: head-breathe-yin 3s infinite ease-in-out;
+}
+
+/* 道损与加持 */
+/* 修复：身体部分保持内发光 */
+.node.cracked-yang .yang-body,
+.node.cracked-yin::before {
+    background-color: #000 !important;
+    box-shadow: inset 0 0 10px var(--evil-red) !important;
+}
+
+/* 修复：头部只留黑底，去除内发光 */
+.node.cracked-yang .yang-head,
+.node.cracked-yin .yin-head {
+    background-color: #000 !important;
+    box-shadow: none !important;
+    /* 移除 z-index，让边线（z-index: 20）能够显示在小圆上面 */
+}
+
+/* 核心修复：道损时提升小圆层级... 不，现在不需要了，因为我们去掉了光晕 */
+/* .node.cracked-yang .yang-head ... { z-index: 25 !important; }  <-- 删掉这个 */
+
+.node.cracked-yang .name-yang, .node.cracked-yin .name-yin { color: var(--evil-red) !important; text-shadow: 0 0 10px var(--evil-red); opacity: 1; font-weight: 400; }
+/* 加持状态：文字金色，无呼吸效果 */
+.node.blessed-yang .name-yang, .node.blessed-yin .name-yin { color: var(--gold) !important; text-shadow: 0 0 10px var(--gold); font-weight: 400; }
+
+/* 点亮状态的呼吸动画（仅在阴阳同时+1时触发） */
+
+/* 阳干身体呼吸动画：明显的光晕脉动 */
+@keyframes body-breathe-yang {
+    0%, 100% {
+        box-shadow: 0 0 15px var(--real-c-yang), 0 0 25px var(--real-c-yang);
+        filter: brightness(0.85);
+    }
+    50% {
+        box-shadow: 0 0 25px var(--real-c-yang), 0 0 45px var(--real-c-yang), 0 0 60px var(--real-c-yang);
+        filter: brightness(1.15);
+    }
+}
+
+/* 阴干身体呼吸动画：明显的光晕脉动，但比阳干弱 */
+@keyframes body-breathe-yin {
+    0%, 100% {
+        box-shadow: 0 0 10px var(--real-c-yin), 0 0 18px var(--real-c-yin);
+        filter: brightness(0.75);
+    }
+    50% {
+        box-shadow: 0 0 18px var(--real-c-yin), 0 0 30px var(--real-c-yin), 0 0 40px var(--real-c-yin);
+        filter: brightness(0.95);
+    }
+}
+
+/* 阳干小圆呼吸动画：跟随身体 */
+@keyframes head-breathe-yang {
+    0%, 100% {
+        box-shadow: 0 0 12px var(--real-c-yang);
+        filter: brightness(0.85);
+    }
+    50% {
+        box-shadow: 0 0 22px var(--real-c-yang), 0 0 35px var(--real-c-yang);
+        filter: brightness(1.15);
+    }
+}
+
+/* 阴干小圆呼吸动画：跟随身体 */
+@keyframes head-breathe-yin {
+    0%, 100% {
+        box-shadow: 0 0 8px var(--real-c-yin);
+        filter: brightness(0.75);
+    }
+    50% {
+        box-shadow: 0 0 15px var(--real-c-yin), 0 0 25px var(--real-c-yin);
+        filter: brightness(0.95);
+    }
+}
+
+/* ==================== 决策弹窗 (首页风格统一版) ==================== */
+.decision-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.80); display: flex; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(8px); }
+.decision-panel { background: transparent; text-align: center; display: flex; flex-direction: column; gap: 2rem; }
+
+.decision-option {
+    background: transparent; border: none; position: relative; color: inherit;
+    font-size: clamp(1.5rem, 6vw, 2.2rem); 
+    padding: 1rem 3rem; min-width: 180px; cursor: pointer; font-family: inherit; letter-spacing: 0.2rem; white-space: nowrap;
+    transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+    text-shadow: 0 0 10px currentColor;
+}
+
+/* 统一底线效果 */
+.decision-option::after {
+    content: ''; position: absolute; bottom: 0; left: 50%; width: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, currentColor, transparent);
+    transition: width 0.6s ease, left 0.6s ease;
+}
+.decision-option:hover::after { width: 100%; left: 0; }
+.decision-option:hover { transform: scale(1.1); letter-spacing: 0.5rem; text-shadow: 0 0 20px currentColor; }
+
+/* 辅助工具：强制关闭过渡 */
+.node.no-transition,
+.node.no-transition *,
+.node.no-transition::before,
+.node.no-transition::after {
+    transition: none !important;
+}
+
+/* ==================== 核心修复：精细遮罩工具类（虚空状态） ==================== */
+/* 强制虚空状态：虚线边线 */
+.node.masked-yang .yang-body, .node.masked-yang .yang-head { background-color: var(--void-color) !important; box-shadow: none !important; transition: none !important; }
+.node.masked-yang .name-yang { color: rgba(255, 255, 255, 0.3) !important; text-shadow: none !important; opacity: 1 !important; }
+.node.masked-yang .line-svg .arc-left,
+.node.masked-yang .line-svg .arc-top,
+.node.masked-yang .line-svg .arc-bottom {
+    stroke: rgb(148, 163, 184) !important;
+    stroke-width: 1.2px !important;
+    stroke-dasharray: 4, 3 !important;
+    stroke-opacity: 0.5 !important;
+    filter: none !important;
+}
+
+.node.masked-yin::before, .node.masked-yin .yin-head { background-color: var(--void-color) !important; box-shadow: none !important; transition: none !important; }
+.node.masked-yin .name-yin { color: rgba(255, 255, 255, 0.3) !important; text-shadow: none !important; opacity: 1 !important; }
+.node.masked-yin .line-svg .arc-right,
+.node.masked-yin .line-svg .arc-bottom,
+.node.masked-yin .line-svg .arc-top {
+    stroke: rgb(148, 163, 184) !important;
+    stroke-width: 1.2px !important;
+    stroke-dasharray: 4, 3 !important;
+    stroke-opacity: 0.5 !important;
+    filter: none !important;
+}
+
+/* ==================== 排行榜 UI ==================== */
+#leaderboard-layer {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.leaderboard-container {
+  background: linear-gradient(145deg, #1a1f2e 0%, #0d1016 100%);
+  border: 2px solid var(--gold-dim);
+  border-radius: 20px;
+  padding: 2rem;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  box-shadow: 0 20px 60px rgba(255, 215, 0, 0.15);
+  overflow: hidden;
+}
+
+.leaderboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.leaderboard-title {
+  font-size: 2.5rem;
+  margin: 0;
+  color: var(--gold);
+  text-shadow: 0 0 20px var(--gold-dim);
+}
+
+.leaderboard-close {
+  background: transparent;
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
+  font-size: 1.5rem;
+  width: 3rem; height: 3rem;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.leaderboard-close:hover {
+  background: var(--gold-dim);
+  transform: rotate(90deg);
+}
+
+.leaderboard-content {
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+.leaderboard-loading {
+  text-align: center;
+  color: var(--gold-dim);
+  font-size: 1.2rem;
+  padding: 2rem;
+}
+
+.leaderboard-table-wrapper {
+  display: none;
+}
+
+.leaderboard-table-wrapper.active {
+  display: block;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard-table th {
+  color: var(--gold);
+  font-size: 1rem;
+  padding: 0.8rem;
+  text-align: center;
+  border-bottom: 1px solid var(--gold-dim);
+}
+
+.leaderboard-table td {
+  padding: 0.8rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.leaderboard-table tbody tr:hover {
+  background: rgba(255, 215, 0, 0.05);
+}
+
+.leaderboard-table .rank-1 { color: #ffd700; }
+.leaderboard-table .rank-2 { color: #c0c0c0; }
+.leaderboard-table .rank-3 { color: #cd7f32; }
+.leaderboard-table .rank-top10 { color: var(--gold); font-weight: bold; }
+
+.leaderboard-footer {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.last-updated {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.9rem;
+}
+
+/* 菜单按钮次级样式 */
+.menu-btn-secondary {
+  background: transparent;
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
+  margin-top: 1rem;
+  opacity: 0.8;
+}
+
+.menu-btn-secondary:hover {
+  background: rgba(255, 215, 0, 0.1);
+  opacity: 1;
+}
+
+/* 胜利弹窗 */
+.victory-popup {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-in-out;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.victory-content {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  text-align: center;
+  box-shadow: none;
+  width: 100%;
+  max-width: 600px;
+  animation: scaleIn 0.3s ease-out;
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.victory-title {
+  font-family: 'Ma Shan Zheng', serif;
+  font-size: clamp(2.5rem, 10vw, 4rem);
+  margin: 0 0 1.5rem 0;
+  text-shadow: 0 0 30px currentColor;
+  animation: glow 1.5s ease-in-out infinite alternate;
+  letter-spacing: 0.3rem;
+}
+
+@keyframes glow {
+  from { text-shadow: 0 0 20px currentColor; }
+  to { text-shadow: 0 0 40px currentColor, 0 0 60px currentColor; }
+}
+
+.victory-reason {
+  font-size: clamp(1.2rem, 4vw, 1.8rem);
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 2rem 0;
+}
+
+/* 分数显示 - 改为按钮风格 */
+.victory-scores {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  align-items: center;
+}
+
+.victory-score {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+  padding: 0.8rem 2rem;
+  min-width: 250px;
+  position: relative;
+}
+
+.victory-score::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, currentColor, transparent);
+}
+
+.victory-score .score-label {
+  font-size: clamp(1.3rem, 5vw, 1.8rem);
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 0 10px currentColor;
+}
+
+.victory-score.p1 { color: #2dcc70; }
+.victory-score.p2 { color: #ff6b6b; }
+
+.victory-score .score-value {
+  font-size: clamp(1.5rem, 6vw, 2.2rem);
+  font-weight: bold;
+  text-shadow: 0 0 10px currentColor;
+}
+
+/* 返回按钮 - 与决策按钮风格一致 */
+.victory-btn {
+  background: transparent;
+  border: none;
+  padding: 1rem 3rem;
+  font-size: clamp(1.5rem, 6vw, 2.2rem);
+  font-family: inherit;
+  color: #ffd700;
+  cursor: pointer;
+  text-shadow: 0 0 10px currentColor;
+  letter-spacing: 0.2rem;
+  min-width: 200px;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+}
+
+.victory-btn::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, currentColor, transparent);
+  transition: width 0.6s ease, left 0.6s ease;
+}
+
+.victory-btn:hover::after {
+  width: 100%;
+  left: 0;
+}
+
+.victory-btn:hover {
+  transform: scale(1.1);
+  letter-spacing: 0.5rem;
+  text-shadow: 0 0 20px currentColor;
+}
+
+/* ============================================
+   等待/匹配界面样式
+   ============================================ */
+
+/* ==================== 等待/匹配界面 ==================== */
+.waiting-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 50% 50%, #161b2e 0%, #05070a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.waiting-content {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.8rem, 2vh, 1.2rem);
+  align-items: center;
+}
+
+.waiting-title {
+  font-size: clamp(1.8rem, 6vw, 2.5rem);
+  color: var(--gold);
+  text-align: center;
+  margin: 0;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+.waiting-actions {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.8rem, 2vh, 1.2rem);
+  align-items: center;
+}
+
+.waiting-room-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.waiting-room-label {
+  font-size: 1rem;
+  color: var(--gold-dim);
+  margin: 0;
+}
+
+.waiting-room-code {
+  font-size: clamp(2rem, 8vw, 3rem);
+  color: var(--gold);
+  font-weight: bold;
+  letter-spacing: 0.5rem;
+  margin: 0;
+  font-family: 'Ma Shan Zheng', monospace;
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+}
+
+.waiting-copy-btn {
+  background: transparent;
+  border: none;
+  position: relative;
+  color: var(--gold-dim);
+  font-size: clamp(1.3rem, 5vw, 1.8rem);
+  padding: clamp(0.5rem, 1.5vh, 0.8rem) clamp(1rem, 4vw, 2rem);
+  min-width: 160px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.15rem;
+  white-space: nowrap;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.waiting-copy-btn:hover {
+  color: var(--gold);
+  text-shadow: 0 0 20px var(--gold-dim);
+  transform: scale(1.05);
+}
+
+.waiting-copy-btn.copied {
+  color: var(--gold);
+  text-shadow: 0 0 20px var(--gold-dim);
+}
+
+.waiting-status {
+  text-align: center;
+  padding: 1rem;
+}
+
+.waiting-status p {
+  font-size: clamp(1.3rem, 5vw, 1.8rem);
+  color: var(--gold-dim);
+  margin: 0;
+}
+
+.waiting-cancel-btn {
+  background: transparent;
+  border: none;
+  position: relative;
+  color: var(--gold-dim);
+  font-size: clamp(1.3rem, 5vw, 1.8rem);
+  padding: clamp(0.5rem, 1.5vh, 0.8rem) clamp(1rem, 4vw, 2rem);
+  min-width: 160px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.15rem;
+  white-space: nowrap;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.waiting-cancel-btn:hover {
+  color: var(--gold);
+  text-shadow: 0 0 20px var(--gold-dim);
+  transform: scale(1.05);
+}
+
+
+/* ==================== 得分特效 ==================== */
+.score-float {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  transform: translate(-50%, -50%) scale(var(--score-scale, 1));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  animation: scoreFloat 1s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes scoreFloat {
+  0% {
+    transform: translate(-50%, -30%) scale(var(--score-scale, 1));
+    opacity: 0;
+  }
+  15% {
+    transform: translate(-50%, -50%) scale(var(--score-scale, 1));
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -100%) scale(var(--score-scale, 1));
+    opacity: 0;
+  }
+}
+
+.score-amount {
+  font-size: 2.2rem;
+  font-weight: bold;
+  color: var(--score-color, #ffd700);
+  text-shadow: 0 0 10px var(--score-color, rgba(255, 215, 0, 0.6));
+}
+
+.score-reason {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
+}
+
+/* ==================== 行为统计样式 ==================== */
+.action-stats-container {
+  margin-top: 2rem;
+  padding: 2rem 1rem;
+}
+
+/* 统计按钮风格（与决策按钮一致） */
+.action-stat-button {
+  background: transparent;
+  border: none;
+  position: relative;
+  font-size: clamp(1.3rem, 5vw, 1.8rem);
+  padding: 0.8rem 2rem;
+  min-width: 280px;
+  cursor: default;
+  font-family: inherit;
+  letter-spacing: 0.2rem;
+  white-space: nowrap;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  text-shadow: 0 0 10px currentColor;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 2rem;
+  align-items: center;
+  justify-items: start;
+}
+
+.action-stat-button.total-button {
+  font-size: clamp(1.5rem, 6vw, 2rem);
+  padding: 1rem 2.5rem;
+  margin-top: 0.5rem;
+  min-width: 300px;
+}
+
+.stat-action-name {
+  font-weight: normal;
+  text-align: left;
+}
+
+.stat-count {
+  opacity: 0.7;
+  font-size: 0.9em;
+  text-align: right;
+  min-width: 60px;
+}
+
+.stat-score {
+  font-weight: bold;
+  opacity: 0.9;
+  text-align: right;
+  min-width: 80px;
+}
+
+/* 保留旧的类名兼容性 */
+.action-stats-title { display: none; }
+.action-stats-grid { display: none; }
+.action-stats-player { display: none; }
+.action-stats-player-title { display: none; }
+.action-stats-player-title.p1 { display: none; }
+.action-stats-player-title.p2 { display: none; }
+.action-stat-item { display: none; }
+.action-stat-name { display: none; }
+.action-stat-values { display: none; }
+.action-stat-count { display: none; }
+.action-stat-score { display: none; }
+.action-total-count { display: none; }
+
+@media (max-width: 480px) {
+  .action-stat-button {
+    min-width: 160px;
+    font-size: 1.2rem;
+  }
+}
+
+/* ==================== 成就过场画面 ==================== */
+#achievement-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1500; /* 高于胜利界面的 z-index: 1000 */
+  background: radial-gradient(circle at 50% 50%, rgba(22, 27, 46, 0.98) 0%, rgba(5, 7, 10, 0.98) 100%);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+#achievement-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+#achievement-overlay .bg-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.15) 0%, transparent 70%);
+  animation: achievement-pulse 2s infinite ease-in-out;
+}
+
+@keyframes achievement-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+.achievement-title {
+  color: var(--gold);
+  font-size: clamp(3rem, 12vw, 6rem);
+  letter-spacing: clamp(0.5rem, 2vw, 1.5rem);
+  margin: 0;
+  text-shadow:
+    0 0 30px rgba(255, 215, 0, 0.8),
+    0 0 60px rgba(255, 215, 0, 0.4),
+    0 4px 8px rgba(0, 0, 0, 0.8);
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  position: relative;
+  z-index: 2;
+  animation: achievement-appear 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes achievement-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(20px);
+    filter: blur(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+.achievement-subtitle {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: clamp(1.2rem, 4vw, 2rem);
+  letter-spacing: 0.3rem;
+  margin-top: 2rem;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  opacity: 0;
+  animation: achievement-fade-in 0.8s ease 1s forwards;
+}
+
+@keyframes achievement-fade-in {
+  to { opacity: 1; }
+}
+
+/* 五行元素装饰 - 光球效果 */
+.achievement-elements {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.achievement-element {
+  position: absolute;
+  width: clamp(1.5rem, 4vw, 3rem);
+  height: clamp(1.5rem, 4vw, 3rem);
+  border-radius: 50%;
+  opacity: 0;
+  box-shadow:
+    0 0 20px currentColor,
+    0 0 40px currentColor,
+    0 0 60px currentColor,
+    inset 0 0 20px rgba(255, 255, 255, 0.3);
+  animation: element-orbit 8s infinite linear;
+}
+
+.achievement-element:nth-child(1) {
+  background: radial-gradient(circle at 30% 30%, var(--wood-y), var(--wood-i));
+  color: var(--wood-y);
+  top: 15%;
+  left: 50%;
+  animation-delay: 0s;
+}
+
+.achievement-element:nth-child(2) {
+  background: radial-gradient(circle at 30% 30%, var(--fire-y), var(--fire-i));
+  color: var(--fire-y);
+  top: 30%;
+  right: 15%;
+  animation-delay: -1.6s;
+}
+
+.achievement-element:nth-child(3) {
+  background: radial-gradient(circle at 30% 30%, var(--earth-y), var(--earth-i));
+  color: var(--earth-y);
+  top: 50%;
+  right: 10%;
+  animation-delay: -3.2s;
+}
+
+.achievement-element:nth-child(4) {
+  background: radial-gradient(circle at 30% 30%, var(--metal-y), var(--metal-i));
+  color: var(--metal-y);
+  bottom: 30%;
+  right: 15%;
+  animation-delay: -4.8s;
+}
+
+.achievement-element:nth-child(5) {
+  background: radial-gradient(circle at 30% 30%, var(--water-y), var(--water-i));
+  color: var(--water-y);
+  bottom: 15%;
+  left: 50%;
+  animation-delay: -6.4s;
+}
+
+@keyframes element-orbit {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(0deg) translateX(120px) rotate(0deg) scale(0.5);
+  }
+  10% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) rotate(36deg) translateX(120px) rotate(-36deg) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(180deg) translateX(120px) rotate(-180deg) scale(1.1);
+  }
+  90% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) rotate(324deg) translateX(120px) rotate(-324deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(360deg) translateX(120px) rotate(-360deg) scale(0.5);
+  }
+}

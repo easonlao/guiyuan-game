@@ -1,0 +1,144 @@
+/* ============================================
+   五行色彩系统 - 归元弈全局视觉规范
+   ============================================ */
+:root {
+  /* 五行核心色彩 - 低饱和度高级色调 */
+  --wood-color: #2d5a27;   /* 苍翠木 */
+  --fire-color: #a63d33;   /* 丹砂红 */
+  --earth-color: #8c7042;  /* 琥珀土 */
+  --metal-color: #95a5a6;  /* 寒铁银 */
+  --water-color: #2c3e50;  /* 深潭水 */
+
+  /* 阴干（浓烈） */
+  --wood-yang: #2dcc70;   /* 甲木 */
+  --fire-yang: #ff6b6b;  /* 丙火 */
+  --earth-yang: #f4a460;  /* 戊土 */
+  --metal-yang: #e6ebf0; /* 庚金 */
+  --water-yang: #4a90e2;  /* 壬水 */
+
+  /* 阴干（虚无） */
+  --wood-yin: #1e8e4e;     /* 乙木 */
+  --fire-yin: #c85555;     /* 丁火 */
+  --earth-yin: #c8824b;   /* 己土 */
+  --metal-yin: #d4d8dc;   /* 辛金 */
+  --water-yin: #3c73b4;   /* 癸水 */
+
+  /* 天干专属颜色 */
+  --jia-color: #2d5a27;    /* 甲木 */
+  --yi-color: #4a7c59;     /* 乙木 */
+  --bing-color: #a63d33;   /* 丙火 */
+  --ding-color: #c45a4f;   /* 丁火 */
+  --wu-color: #8c7042;     /* 戊土 */
+  --ji-color: #a68b5c;     /* 己土 */
+  --geng-color: #95a5a6;   /* 庚金 */
+  --xin-color: #b8c5c6;    /* 辛金 */
+  --ren-color: #2c3e50;    /* 壬水 */
+  --gui-color: #4a6fa5;    /* 癸水 */
+
+  /* 辅助色彩 */
+  --bg-color: #faf9f6;     /* 明亮宣纸底色 */
+  --text-main: #2c3e50;    /* 墨色文字 */
+  --accent-gold: #ffd700;  /* 归元金 */
+  --panel-bg: rgba(255,255,253,0.98); /* 面板背景 */
+
+  /* 阴影系统 */
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.1);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.25), 0 4px 8px rgba(0,0,0,0.12);
+
+  /* 圆角 */
+  --border-radius: 16px;
+  --border-radius-yin: 18px;
+
+  /* 动画 */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+
+  /* 尺寸 */
+  --taiji-card-size: clamp(80px, 20vw, 130px);
+  --pentagram-size: clamp(280px, 70vw, 450px);
+}
+
+/* ============================================
+   全局基础样式
+   ============================================ */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Noto Sans SC', "PingFang SC", "Microsoft YaHei", sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* 禁用移动端点击高亮 */
+button, a, .clickable {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* ============================================
+   主容器
+   ============================================ */
+#app {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================
+   动画过渡类
+   ============================================ */
+.fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.scale-in {
+  animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

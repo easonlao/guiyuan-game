@@ -1,0 +1,114 @@
+// ============================================
+// 组件样式
+// ============================================
+
+/* 主菜单 */
+.main-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 2rem;
+  min-height: 100vh;
+}
+
+.menu-title {
+  font-family: 'Ma Shan Zheng', cursive;
+  font-size: clamp(2rem, 8vw, 4rem);
+  color: var(--accent-gold);
+  text-shadow: 0 0 20px var(--accent-gold);
+  letter-spacing: 0.5rem;
+  margin-bottom: 2rem;
+  animation: textGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes textGlow {
+  0%, 100% {
+    text-shadow: 0 0 10px var(--accent-gold), 0 0 20px var(--accent-gold);
+  }
+  50% {
+    text-shadow: 0 0 15px var(--accent-gold), 0 0 30px var(--accent-gold);
+  }
+}
+
+.menu-buttons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.menu-btn {
+  padding: clamp(0.8rem, 2.5vw, 1.2rem) clamp(1.5rem, 4vw, 2.5rem);
+  background: transparent;
+  border: 2px solid var(--accent-gold);
+  color: var(--accent-gold);
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: clamp(0.9rem, 3vw, 1.5rem);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: var(--border-radius);
+  text-transform: uppercase;
+  letter-spacing: 0.2rem;
+}
+
+.menu-btn:hover {
+  background: rgba(255, 215, 0, 0.1);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+/* 游戏区域 */
+.game-container {
+  display: none;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.game-container.active {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* 加载状态 */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--accent-gold);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.loading-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.loading-text {
+  color: white;
+  font-size: 1.2rem;
+}

@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>归元弈 - 五行美学</title>
+  <link rel="stylesheet" href="/src/style.css">
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+</head>
+<body>
+  <div id="app">
+    <div class="bg-glow"></div>
+
+    <!-- 转场动画元素 -->
+    <div id="taiji-core" style="display:none;">
+        <div class="y-body"></div>
+        <div class="y-head"></div>
+        <div class="i-head"></div>
+    </div>
+    <div id="orb-yang" class="projectile" style="display:none;"></div>
+    <div id="orb-yin" class="projectile" style="display:none;"></div>
+    <div id="ripple-up" class="ripple"></div>
+    <div id="ripple-down" class="ripple"></div>
+
+    <!-- 主菜单层 -->
+    <div id="menu-layer">
+      <div id="menu-orbs-container" style="position: absolute; inset:0; pointer-events: none;"></div>
+      <h1 class="menu-title" id="title">归元弈</h1>
+      <div class="menu-buttons" id="menuButtons">
+        <button class="menu-btn" data-mode="0">玩家 VS 玩家</button>
+        <button class="menu-btn" data-mode="1">玩家 VS 天道</button>
+        <button class="menu-btn" data-mode="2">天道运转</button>
+        <button class="menu-btn" id="leaderboard-btn">天道榜</button>
+      </div>
+    </div>
+
+    <!-- 排行榜层 -->
+    <div id="leaderboard-layer" style="display: none;">
+      <div class="leaderboard-container">
+        <div class="leaderboard-header">
+          <h2 class="leaderboard-title">🏆 天道榜</h2>
+          <button class="leaderboard-close" id="leaderboard-close">✕</button>
+        </div>
+        <div class="leaderboard-content">
+          <div class="leaderboard-loading" id="leaderboard-loading">加载中...</div>
+          <div class="leaderboard-table-wrapper" id="leaderboard-table-wrapper">
+            <table class="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>排名</th>
+                  <th>玩家</th>
+                  <th>最高分</th>
+                  <th>总局分</th>
+                  <th>胜场</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-body">
+                <!-- 动态生成 -->
+              </tbody>
+            </table>
+          </div>
+          <div class="leaderboard-footer">
+            <span class="last-updated" id="last-updated"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 游戏区域层 -->
+    <div id="battle-layer" style="display: none;">
+      <!-- 顶部：对家分数 -->
+      <div class="score-panel-top">
+        <span class="score-value" id="score-p2">0</span>
+      </div>
+
+      <div class="player-area">
+        <!-- 上方玩家 P2 -->
+        <div class="taiji-star" id="p2-star">
+          <div class="pentagram-container"></div>
+          <div id="p2-center-stem" class="center-stem"></div>
+        </div>
+
+        <!-- 中央：回合提示（楚河汉界） -->
+        <div class="turn-center">
+          <div class="turn-info" id="turn-info">
+            <span class="turn-count" id="turn-count">1</span>
+            <span class="turn-divider">/</span>
+            <span class="turn-max">60</span>
+          </div>
+        </div>
+
+        <!-- 下方玩家 P1 -->
+        <div class="taiji-star" id="p1-star">
+          <div class="pentagram-container"></div>
+          <div id="p1-center-stem" class="center-stem"></div>
+        </div>
+      </div>
+
+      <!-- 底部：本尊分数 -->
+      <div class="score-panel-bottom">
+        <span class="score-value" id="score-p1">0</span>
+      </div>
+    </div>
+    
+    <!-- 先后手提示文字 -->
+    <div id="init-message"></div>
+
+    <!-- 胜利弹窗 -->
+    <div id="victory-popup" class="victory-popup" style="display: none;">
+      <div class="victory-content">
+        <h2 class="victory-title" id="victory-title">胜利</h2>
+        <p class="victory-reason" id="victory-reason"></p>
+        <div class="victory-scores">
+          <div class="victory-score p1">
+            <span class="score-label">本尊</span>
+            <span class="score-value" id="victory-score-p1">0</span>
+          </div>
+          <div class="victory-score p2">
+            <span class="score-label">对家</span>
+            <span class="score-value" id="victory-score-p2">0</span>
+          </div>
+        </div>
+        <button class="victory-btn" id="victory-back-btn">返回主菜单</button>
+      </div>
+    </div>
+
+    <!-- 等待/匹配界面 -->
+    <div id="waiting-layer" class="waiting-layer" style="display: none;">
+      <div class="waiting-content">
+        <h2 class="waiting-title" id="waiting-title">等待对手加入...</h2>
+        <div class="waiting-actions" id="waiting-actions">
+          <button class="menu-btn waiting-copy-btn" id="waiting-copy-btn">复制邀请链接</button>
+        </div>
+        <div class="waiting-status" id="waiting-status" style="display: none;">
+          <p>等待开始...</p>
+        </div>
+        <button class="menu-btn waiting-cancel-btn" id="waiting-cancel-btn">取消</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    // 捕获所有错误并显示
+    window.onerror = function(msg, url, line, col, error) {
+      document.body.innerHTML += '<div style="position:fixed;top:0;left:0;background:red;color:white;padding:10px;z-index:9999;">ERROR: ' + msg + ' at ' + url + ':' + line + ':' + col + '</div>';
+      return false;
+    };
+    window.addEventListener('unhandledrejection', function(e) {
+      document.body.innerHTML += '<div style="position:fixed;top:30px;left:0;background:orange;color:white;padding:10px;z-index:9999;">PROMISE ERROR: ' + e.reason + '</div>';
+    });
+  </script>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

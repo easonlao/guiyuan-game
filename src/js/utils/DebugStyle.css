@@ -1,0 +1,89 @@
+
+/* ==================== 调试面板样式 ==================== */
+#debug-panel {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid #444;
+    color: #fff;
+    font-family: monospace;
+    font-size: 10px;
+    z-index: 10000;
+    width: 220px;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+.debug-header {
+    background: #333;
+    padding: 5px 10px;
+    display: flex;
+    justify-content: space-between;
+    cursor: move;
+}
+
+#toggle-debug {
+    background: none;
+    border: none;
+    color: #aaa;
+    cursor: pointer;
+    padding: 0 5px;
+}
+
+.debug-content {
+    padding: 10px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.debug-row-label {
+    font-weight: bold;
+    color: #ffd700;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.debug-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+.debug-item {
+    background: #222;
+    border-left: 3px solid;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.debug-btns {
+    display: flex;
+    gap: 5px;
+    margin-top: 3px;
+}
+
+.debug-btns button {
+    background: #444;
+    border: none;
+    color: #fff;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    border-radius: 2px;
+    padding: 0;
+    line-height: 20px;
+}
+
+.debug-btns button:hover {
+    background: #666;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #444;
+    margin: 10px 0;
+}
