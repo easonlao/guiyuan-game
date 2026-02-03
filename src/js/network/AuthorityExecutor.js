@@ -519,7 +519,6 @@ const AuthorityExecutor = {
       return v.toString(16);
     });
   },
-  },
 
   /**
    * 执行游戏结束命令
