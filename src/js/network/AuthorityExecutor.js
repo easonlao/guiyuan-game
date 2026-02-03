@@ -9,10 +9,11 @@
 // ============================================
 
 import EventBus from '../bus/EventBus.js';
-import { supabase } from './supabaseClient.js';
+import { supabase, update } from './supabaseClient.js';
 import GameCommand, { ActionType, CommandType } from './GameCommand.js';
 import StateManager from '../state/StateManager.js';
 import GameEngine from '../logic/GameEngine.js';
+import { STEMS_LIST } from '../config/game-config.js';
 
 const AuthorityExecutor = {
   // 当前会话信息
@@ -34,7 +35,6 @@ const AuthorityExecutor = {
    * 初始化
    */
   init() {
-    console.log('[AuthorityExecutor] 初始化权威命令执行器...');
     this._bindEvents();
   },
 
@@ -57,8 +57,6 @@ const AuthorityExecutor = {
    * @param {string} role - 角色 'P1' or 'P2'
    */
   setSession(sessionId, playerId, role) {
-    console.log('[AuthorityExecutor] 设置会话:', { sessionId, playerId, role });
-
     this.cleanup();
 
     this.currentSessionId = sessionId;
@@ -78,8 +76,6 @@ const AuthorityExecutor = {
       console.warn('[AuthorityExecutor] 无法订阅：未设置会话');
       return;
     }
-
-    console.log('[AuthorityExecutor] 订阅对手命令...');
 
     // 移除旧订阅
     if (this.movesChannel) {
@@ -159,14 +155,17 @@ const AuthorityExecutor = {
   _handleMoveInsert(payload) {
     const { new: newRecord } = payload;
 
-    // 只处理已确认的命令
-    if (newRecord.status !== 'confirmed') {
-      return;
-    }
-
     const commandId = newRecord.command_id;
     const playerId = newRecord.player_id;
     const commandType = newRecord.command_type;
+
+    // ⚠️ 特殊处理：INITIATIVE 命令在 pending 状态也需要处理（因为可能没有数据库触发器）
+    const isInitiativeCommand = (commandType === 'INITIATIVE');
+    
+    // 只处理已确认的命令，或者 INITIATIVE 命令（pending 状态也处理）
+    if (!isInitiativeCommand && newRecord.status !== 'confirmed') {
+      return;
+    }
 
     // ⚠️ 特殊处理：INITIATIVE 命令需要执行者（P1）也处理，用于更新数据库和发出完成事件
     const isOwnInitiativeCommand = (playerId === this.myPlayerId && commandType === 'INITIATIVE');
@@ -177,27 +176,33 @@ const AuthorityExecutor = {
     }
 
     if (isOwnInitiativeCommand) {
-      console.log('[AuthorityExecutor] ====== 处理自己的 INITIATIVE 命令 (INSERT) ======');
+      console.log('[AuthorityExecutor] 处理自己的 INITIATIVE 命令');
     } else {
-      console.log('[AuthorityExecutor] ====== 收到对手命令 (INSERT) ======');
+      console.log('[AuthorityExecutor] 收到对手命令:', commandType, 'by', playerId);
     }
-    console.log('[AuthorityExecutor] commandId:', commandId);
-    console.log('[AuthorityExecutor] playerId:', playerId);
-    console.log('[AuthorityExecutor] type:', commandType);
 
     // 防止重复执行
     if (this.executedCommands.has(commandId)) {
-      console.log('[AuthorityExecutor] 命令已执行，跳过');
       return;
     }
 
     // 添加到执行队列
+    // ⚠️ 重要：确保payload正确解析（数据库可能返回JSON字符串）
+    let parsedPayload = newRecord.payload;
+    if (typeof parsedPayload === 'string') {
+      try {
+        parsedPayload = JSON.parse(parsedPayload);
+      } catch (e) {
+        console.error('[AuthorityExecutor] payload解析失败:', e);
+      }
+    }
+
     this.executionQueue.push({
       commandId,
       playerId,
       commandType: newRecord.command_type,
       turnNumber: newRecord.turn_number,
-      payload: newRecord.payload
+      payload: parsedPayload
     });
 
     this.executedCommands.add(commandId);
@@ -226,24 +231,30 @@ const AuthorityExecutor = {
       return;
     }
 
-    console.log('[AuthorityExecutor] ====== 收到对手命令 ======');
-    console.log('[AuthorityExecutor] commandId:', commandId);
-    console.log('[AuthorityExecutor] playerId:', playerId);
-    console.log('[AuthorityExecutor] type:', newRecord.command_type);
+    console.log('[AuthorityExecutor] 收到对手命令:', newRecord.command_type, 'by', playerId);
 
     // 防止重复执行
     if (this.executedCommands.has(commandId)) {
-      console.log('[AuthorityExecutor] 命令已执行，跳过');
       return;
     }
 
     // 添加到执行队列
+    // ⚠️ 重要：确保payload正确解析（数据库可能返回JSON字符串）
+    let parsedPayload = newRecord.payload;
+    if (typeof parsedPayload === 'string') {
+      try {
+        parsedPayload = JSON.parse(parsedPayload);
+      } catch (e) {
+        console.error('[AuthorityExecutor] payload解析失败:', e);
+      }
+    }
+
     this.executionQueue.push({
       commandId,
       playerId,
       commandType: newRecord.command_type,
       turnNumber: newRecord.turn_number,
-      payload: newRecord.payload
+      payload: parsedPayload
     });
 
     this.executedCommands.add(commandId);
@@ -257,9 +268,6 @@ const AuthorityExecutor = {
    */
   handleOwnCommand(data) {
     const { commandId, command, payload } = data;
-
-    console.log('[AuthorityExecutor] ====== 执行自己的命令 ======');
-    console.log('[AuthorityExecutor] 摘要:', GameCommand.getSummary(command));
 
     // 标记为已执行
     this.executedCommands.add(commandId);
@@ -297,7 +305,6 @@ const AuthorityExecutor = {
       // 检查回合是否匹配
       const currentTurn = StateManager.getState().turnCount;
       if (task.turnNumber !== currentTurn) {
-        console.log(`[AuthorityExecutor] 回合不匹配，等待当前回合完成。当前: ${currentTurn}, 需要: ${task.turnNumber}`);
         // 放回队列头部
         this.executionQueue.unshift(task);
         break;
@@ -316,8 +323,6 @@ const AuthorityExecutor = {
    */
   async _executeCommand(task) {
     const { commandId, playerId, commandType, payload } = task;
-
-    console.log('[AuthorityExecutor] 执行命令:', commandType, 'by', playerId);
 
     switch (commandType) {
       case CommandType.ACTION_MOVE:
@@ -339,8 +344,6 @@ const AuthorityExecutor = {
       default:
         console.warn('[AuthorityExecutor] 未知命令类型:', commandType);
     }
-
-    console.log('[AuthorityExecutor] ✓ 命令执行完成');
   },
 
   /**
@@ -349,8 +352,6 @@ const AuthorityExecutor = {
    */
   async _executeActionMove(playerId, payload) {
     const { action, stem } = payload;
-
-    console.log('[AuthorityExecutor] 执行操作:', action.type, 'by', playerId);
 
     // 判断是自己还是对手
     const isOpponent = (playerId !== this.myPlayerId);
@@ -371,10 +372,6 @@ const AuthorityExecutor = {
   async _executeTurnEnd(playerId, payload) {
     const { finalState } = payload;
 
-    console.log('[AuthorityExecutor] 执行回合切换 by', playerId);
-    console.log('[AuthorityExecutor] 新回合:', finalState.turnCount);
-    console.log('[AuthorityExecutor] 当前玩家:', finalState.currentPlayer);
-
     // 静默应用完整状态（防止触发同步循环）
     StateManager.update({
       turnCount: finalState.turnCount,
@@ -389,8 +386,6 @@ const AuthorityExecutor = {
       fromServer: true,
       newPlayer: finalState.currentPlayer
     });
-
-    console.log('[AuthorityExecutor] ✓ 回合切换完成');
   },
 
   /**
@@ -419,60 +414,86 @@ const AuthorityExecutor = {
    * @private
    */
   async _executeInitiative(playerId, payload) {
-    const { firstPlayer, firstStem } = payload;
+    let { firstPlayer, firstStem } = payload;
 
-    console.log('[AuthorityExecutor] 先手判定:', firstPlayer, 'by', playerId);
+    // ⚠️ 修复：确保firstStem对象完整（从STEMS_LIST中查找）
     if (firstStem) {
-      console.log('[AuthorityExecutor] 初始天干:', firstStem.name);
+      // 如果firstStem只有name属性，从STEMS_LIST中查找完整对象
+      if (typeof firstStem === 'object' && firstStem.name) {
+        // 检查是否缺少element属性（说明对象不完整）
+        if (firstStem.element === undefined || firstStem.color === undefined) {
+          const fullStem = STEMS_LIST.find(s => s.name === firstStem.name);
+          if (fullStem) {
+            firstStem = fullStem;
+            console.log('[AuthorityExecutor] 从STEMS_LIST查找完整天干对象:', firstStem.name);
+          } else {
+            console.warn('[AuthorityExecutor] 未找到天干:', firstStem.name, '使用原始对象');
+          }
+        }
+      }
+      // 如果firstStem是字符串，尝试查找
+      else if (typeof firstStem === 'string') {
+        const fullStem = STEMS_LIST.find(s => s.name === firstStem);
+        if (fullStem) {
+          firstStem = fullStem;
+          console.log('[AuthorityExecutor] 字符串转换为天干对象:', firstStem.name);
+        }
+      }
     }
+
+    console.log('[AuthorityExecutor] 先手判定:', firstPlayer, '初始天干:', firstStem?.name, 'payload原始:', JSON.stringify(payload.firstStem));
 
     // ⚠️ 关键修复：先更新数据库，再更新本地状态
     // 只有房主（P1）需要同步更新数据库
     if (this.myRole === 'P1' && this.currentSessionId) {
-      const { update } = await import('./supabaseClient.js');
       await update('game_sessions', {
         current_player: firstPlayer,
         status: 'playing'  // 确保游戏状态为 playing
       }, {
         match: { id: this.currentSessionId }
       });
-      console.log('[AuthorityExecutor] ✓ 数据库已更新 current_player:', firstPlayer);
     }
 
     // 数据库更新完成后，再更新本地状态
     StateManager.update({ 
       currentPlayer: firstPlayer,
-      currentStem: firstStem || null
+      currentStem: firstStem || null,
+      phase: 'INITIATIVE'  // 确保阶段正确
     });
-    console.log('[AuthorityExecutor] ✓ 本地状态已更新 currentPlayer:', firstPlayer);
 
-    if (this.myRole === 'P1') {
-      // P1 发出 game:initiative-completed 事件
-      // BoardAnimation 收到后会显示结果，然后发出 anim:initiative-finished
-      EventBus.emit('game:initiative-completed', {
-        winner: firstPlayer,
-        isHost: true
-      });
-      console.log('[AuthorityExecutor] P1 发出 game:initiative-completed');
-    } else {
-      // P2 直接触发游戏开始（不经过动画）
-      console.log('[AuthorityExecutor] P2 直接触发游戏开始');
-      EventBus.emit('anim:initiative-finished');
+    console.log('[AuthorityExecutor] ✓ 先手判定完成:', firstPlayer);
 
-      // 重置启动标志
-      const GameSequence = (await import('../logic/flow/GameSequence.js')).default;
-      GameSequence._isStarting = false;
+    // ⚠️ P2需要先播放动画，所以先发送 initiative-start（如果还没发送）
+    // P1已经在 GameSequence 中发送了，但P2没有
+    if (this.myRole === 'P2') {
+      const currentPhase = StateManager.getState().phase;
+      if (currentPhase === 'INITIATIVE') {
+        // 延迟一下确保状态已更新，然后发送动画开始事件
+        setTimeout(() => {
+          EventBus.emit('game:initiative-start');
+          // 再延迟一下发送完成事件，让动画有时间开始
+          setTimeout(() => {
+            EventBus.emit('game:initiative-completed', {
+              winner: firstPlayer,
+              isHost: false
+            });
+          }, 100);
+        }, 100);
+        return;
+      }
     }
 
-    console.log('[AuthorityExecutor] ✓ 先手判定完成');
+    // P1直接发送完成事件（动画已经在GameSequence中开始）
+    EventBus.emit('game:initiative-completed', {
+      winner: firstPlayer,
+      isHost: this.myRole === 'P1'
+    });
   },
 
   /**
    * 清理资源
    */
   cleanup() {
-    console.log('[AuthorityExecutor] 清理资源...');
-
     // 移除订阅
     if (this.movesChannel) {
       supabase.removeChannel(this.movesChannel);

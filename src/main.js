@@ -1,4 +1,5 @@
 import { querySelector } from './js/utils/dom.js';
+import { initPVPDebug } from './js/utils/PVPLogger.js';
 import EventBus from './js/bus/EventBus.js';
 import StateManager from './js/state/StateManager.js';
 import UIStateManager from './js/state/ui-state.js';
@@ -23,7 +24,13 @@ import AchievementOverlay from './js/ui/overlays/AchievementOverlay.js';
 import WaitingOverlay from './js/ui/overlays/WaitingOverlay.js';
 
 function initApp() {
-  console.log('[Main] 初始化归元弈应用...');
+  // 首先初始化 PVP 调试系统
+  initPVPDebug();
+
+  // 只在 PVP 调试模式下显示初始化日志
+  if (window.PVP_DEBUG) {
+    console.log('[Main] 初始化归元弈应用...');
+  }
 
   initUtils();
   initNetwork();
@@ -34,27 +41,17 @@ function initApp() {
 
   // 监听返回主菜单事件
   EventBus.on('game:return-to-menu', () => {
-    console.log('[Main] ========== 返回主菜单事件触发 ==========');
+    if (window.PVP_DEBUG) console.log('[Main] 返回主菜单');
+
     StateManager.reset();
     AchievementOverlay.reset();
-    console.log('[Main] StateManager 已重置');
-
-    // 发送事件重置 SceneTransition 状态
     EventBus.emit('anim:reset-scene');
-    console.log('[Main] 已发送 anim:reset-scene 事件');
 
-    // 清理所有可能存在的遮罩层
     const overlay = document.querySelector('.decision-overlay');
-    if (overlay) {
-      overlay.remove();
-      console.log('[Main] 已清理 decision-overlay');
-    }
+    if (overlay) overlay.remove();
 
-    // 清理所有动态生成的粒子元素
     document.querySelectorAll('.energy-projectile, .energy-particle').forEach(el => el.remove());
-    console.log('[Main] 已清理所有粒子元素');
 
-    // 清理转场动画元素
     const taijiCore = document.getElementById('taiji-core');
     const orbYang = document.getElementById('orb-yang');
     const orbYin = document.getElementById('orb-yin');
@@ -68,9 +65,7 @@ function initApp() {
     if (rippleUp) { rippleUp.style.opacity = '0'; rippleUp.style.transform = 'translate(-50%, -50%) scale(0)'; }
     if (rippleDown) { rippleDown.style.opacity = '0'; rippleDown.style.transform = 'translate(-50%, -50%) scale(0)'; }
     if (initMessage) { initMessage.style.opacity = '0'; initMessage.style.visibility = 'hidden'; }
-    console.log('[Main] 已清理转场动画元素');
 
-    // 直接操作 DOM 确保显示主菜单
     const menuLayer = document.getElementById('menu-layer');
     const battleLayer = document.getElementById('battle-layer');
     const victoryPopup = document.getElementById('victory-popup');
@@ -80,109 +75,80 @@ function initApp() {
     const title = document.getElementById('title');
     const turnInfoEl = document.getElementById('turn-info');
 
-    console.log('[Main] 元素状态:', {
-      menuLayer: menuLayer ? 'found' : 'NOT FOUND',
-      menuButtons: menuButtons ? 'found' : 'NOT FOUND',
-      title: title ? 'found' : 'NOT FOUND'
-    });
-
     if (menuLayer) {
       menuLayer.style.display = 'flex';
-      menuLayer.style.opacity = '1';  // 重置透明度
-      menuLayer.style.pointerEvents = 'auto';  // 确保可交互
-      console.log('[Main] menuLayer display 设置为 flex, opacity 重置为 1');
+      menuLayer.style.opacity = '1';
+      menuLayer.style.pointerEvents = 'auto';
     }
     if (battleLayer) battleLayer.style.display = 'none';
     if (victoryPopup) {
       victoryPopup.style.display = 'none';
-      victoryPopup.style.pointerEvents = 'none';  // 确保不阻挡鼠标
+      victoryPopup.style.pointerEvents = 'none';
     }
     if (waitingLayer) waitingLayer.style.display = 'none';
     if (leaderboardLayer) leaderboardLayer.style.display = 'none';
     if (title) {
       title.classList.remove('hidden');
-      // 重置转场动画中修改的样式
       title.style.letterSpacing = '';
       title.style.filter = '';
-
-      // 添加淡入动画效果
       title.style.opacity = '0';
       title.style.transform = 'translate(-50%, -50%) scale(0.9)';
       title.style.transition = 'opacity 0.6s ease-out, transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)';
-
-      // 延迟一帧后触发动画
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           title.style.opacity = '0.8';
           title.style.transform = 'translate(-50%, -50%) scale(1)';
         });
       });
-
-      console.log('[Main] title 移除 hidden 类并添加淡入动画');
     }
     if (menuButtons) {
-      menuButtons.classList.remove('visible');  // 移除 visible 类，隐藏按钮
-      // 重置所有可能影响交互的样式
+      menuButtons.classList.remove('visible');
       menuButtons.style.opacity = '';
       menuButtons.style.visibility = '';
       menuButtons.style.pointerEvents = '';
       menuButtons.style.transform = '';
-
-      // 清理所有按钮的激活状态
       menuButtons.querySelectorAll('.menu-btn').forEach(btn => {
         btn.classList.remove('active');
         btn.style.opacity = '';
         btn.style.pointerEvents = '';
       });
-
-      console.log('[Main] menuButtons 移除 visible 类并重置样式（按钮隐藏，需要点击标题才能看到）');
     }
     if (turnInfoEl) turnInfoEl.classList.remove('visible');
 
-    // 触发状态更新
     StateManager.update({ phase: 'HOME' });
-    console.log('[Main] phase 设置为 HOME');
-    console.log('[Main] ========== 返回主菜单完成 ==========');
   });
 
   EventBus.emit('app:initialized', { timestamp: Date.now() });
 }
 
 function initUtils() {
-  console.log('[Main] 初始化工具模块...');
+  if (window.PVP_DEBUG) console.log('[Main] 初始化工具模块');
 }
 
 function initNetwork() {
-  console.log('[Main] 初始化网络层（权威服务器架构）...');
+  if (window.PVP_DEBUG) console.log('[Main] 初始化网络层');
 
   const playerId = getCurrentUserId();
-  if (!playerId) {
-    console.warn('[Main] 未生成玩家 ID，将生成临时 ID');
-  }
 
-  // 初始化原有模块
   RoomManager.init();
   LeaderboardManager.init();
-
-  // 初始化权威服务器架构模块
   CommandSender.init();
   AuthorityExecutor.init();
   StateSnapshotManager.init();
   ReconnectionManager.init();
 
-  console.log('[Main] ✓ 权威服务器架构模块已初始化');
+  if (window.PVP_DEBUG) console.log('[Main] ✓ 网络层已初始化');
 }
 
 function initGameEngine() {
-  console.log('[Main] 初始化游戏引擎...');
+  if (window.PVP_DEBUG) console.log('[Main] 初始化游戏引擎');
   GameEngine.init();
   GameSequence.init();
 }
 
 function initUI() {
-  console.log('[Main] 初始化UI层...');
+  if (window.PVP_DEBUG) console.log('[Main] 初始化UI层');
 
-  // 计算一次字体大小并写入 CSS 变量
   const vh = window.innerHeight;
   const size = Math.floor(Math.min(vh * 0.06, 60));
   document.documentElement.style.setProperty('--stem-size', `${size}px`);
@@ -196,12 +162,12 @@ function initUI() {
 }
 
 function initInput() {
-  console.log('[Main] 初始化交互层...');
+  if (window.PVP_DEBUG) console.log('[Main] 初始化交互层');
   InputHandler.init();
 }
 
 function initAnimations() {
-  console.log('[Main] 初始化动画系统...');
+  if (window.PVP_DEBUG) console.log('[Main] 初始化动画系统');
   ParticleSystem.init();
 }
 
@@ -211,8 +177,7 @@ function checkURLParams() {
   const roomCode = params.get('room');
 
   if (roomCode) {
-    console.log('[Main] 检测到房间码:', roomCode);
-    // 自动触发加入房间
+    if (window.PVP_DEBUG) console.log('[Main] 检测到房间码:', roomCode);
     setTimeout(() => {
       EventBus.emit('game:start', {
         mode: 0,

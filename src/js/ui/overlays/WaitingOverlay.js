@@ -19,12 +19,10 @@ const WaitingOverlay = {
    */
   init() {
     EventBus.on('game:initiative-completed', () => {
-      console.log('[WaitingOverlay] 收到 game:initiative-completed，隐藏等待界面');
       this.hideWaiting();
     });
 
     EventBus.on('anim:initiative-finished', () => {
-      console.log('[WaitingOverlay] 收到 anim:initiative-finished，隐藏等待界面');
       this.hideWaiting();
     });
 
@@ -37,8 +35,6 @@ const WaitingOverlay = {
     document.getElementById('waiting-copy-btn')?.addEventListener('click', () => {
       this.copyShareLink();
     });
-
-    console.log('[WaitingOverlay] 事件监听器已绑定');
   },
 
   /**
@@ -73,7 +69,6 @@ const WaitingOverlay = {
   updateWaitingInfo(data) {
     const { shareUrl } = data;
     this._currentShareUrl = shareUrl;
-    console.log('[WaitingOverlay] 分享链接已存储:', shareUrl);
   },
 
   /**
@@ -92,7 +87,6 @@ const WaitingOverlay = {
   copyShareLink() {
     const shareUrl = this._currentShareUrl;
     if (!shareUrl) {
-      console.warn('[WaitingOverlay] 没有可复制的分享链接');
       return;
     }
 
@@ -114,8 +108,6 @@ const WaitingOverlay = {
       copyBtn.textContent = '复制邀请链接';
       copyBtn.classList.remove('copied');
     }, 2000);
-
-    console.log('[WaitingOverlay] 分享链接已复制:', this._currentShareUrl);
   },
 
   /**
@@ -133,8 +125,6 @@ const WaitingOverlay = {
    * 玩家已加入
    */
   onPlayerJoined(data) {
-    console.log('[WaitingOverlay] 玩家加入事件:', data);
-
     const title = document.getElementById('waiting-title');
     const actions = document.getElementById('waiting-actions');
     const status = document.getElementById('waiting-status');
@@ -143,10 +133,6 @@ const WaitingOverlay = {
     if (title) title.textContent = '等待房主准备游戏';
     if (actions) actions.style.display = 'none';
     if (status) status.style.display = 'block';
-
-    // 注意：P2（加入者）在这里不触发游戏开始
-    // 而是等待 P1 的先手判定消息
-    console.log('[WaitingOverlay] 等待房主的先手判定消息...');
   }
 };
 
