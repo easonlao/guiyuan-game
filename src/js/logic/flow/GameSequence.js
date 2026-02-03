@@ -60,6 +60,12 @@ const GameSequence = {
     StateManager.reset();
     StateManager.setGameMode(data.mode);
 
+    // 恢复 myRole（如果是 PVP 模式且已有角色）
+    if (this.myRole && data.mode === 0) {
+      StateManager.setMyRole(this.myRole);
+      console.log('[GameSequence] 恢复 myRole:', this.myRole);
+    }
+
     // 如果是从等待界面返回的，说明已经在房间中，直接开始游戏序列
     if (data.fromWaiting && this.currentRoomId) {
       this._startGameSequence();
