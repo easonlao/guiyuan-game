@@ -27,6 +27,7 @@ const TurnManager = {
    */
   setSession(sessionId) {
     this.currentSessionId = sessionId;
+    console.log('[TurnManager] 设置会话:', { sessionId });
   },
 
   /**
@@ -164,6 +165,17 @@ const TurnManager = {
     });
 
     console.log('[TurnManager] 发送回合结束命令:', GameCommand.getSummary(command));
+    console.log('[TurnManager] 命令详情:', {
+      sessionId: this.currentSessionId,
+      playerId: myPlayerId,
+      myRole: myRole,
+      turnNumber: state.turnCount,
+      nextTurnNumber: nextTurnCount,
+      currentPlayer: state.currentPlayer,
+      nextPlayer: nextPlayer,
+      currentStem: state.currentStem?.name,
+      nextStem: nextStem.name
+    });
 
     // 6. 发送命令给服务器
     const result = await CommandSender.sendCommand(command);
