@@ -417,29 +417,12 @@ const GameEngine = {
     const state = StateManager.getState();
     const stem = action.stem || state.currentStem;
 
-    // 优先使用 executorId，回退到 action.target.playerId 或 actionPlayerId
-    let playerId = action.executorId || action.target?.playerId || actionPlayerId;
+    // 优先使用 executorId，回退到 action.target.playerId，action.playerId（AUTO类型），或 actionPlayerId
+    let playerId = action.executorId || action.target?.playerId || action.playerId || actionPlayerId;
     if (!playerId) {
       console.error('[GameEngine] handleOpponentAction: 无法确定action的执行者', action);
-      console.error('[GameEngine] 请确保 action.executorId 或 action.target.playerId 存在');
+      console.error('[GameEngine] 请确保 action.executorId、action.target.playerId 或 action.playerId 存在');
       return;
-    }
-
-    // ⚠️ 新增：回合验证 - 确保是对手的回合才播放动画
-    if (state.gameMode === 0) {
-      const myRole = StateManager.getMyRole();
-      const opponentId = (myRole === 'P1') ? 'P2' : 'P1';
-
-      // 只有对手是当前回合玩家才执行
-      if (playerId !== opponentId || playerId !== state.currentPlayer) {
-        console.warn('[GameEngine] 不是对手的回合，跳过动画:', {
-          opponentId,
-          playerId,
-          currentPlayer: state.currentPlayer,
-          myRole
-        });
-        return;
-      }
     }
 
     const opponentId = playerId; // 执行操作的玩家
