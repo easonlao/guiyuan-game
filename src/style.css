@@ -156,7 +156,7 @@ body {
 .score-value { font-size: clamp(1.5rem, 6vw, 2.5rem); color: var(--gold); text-shadow: 0 0 10px var(--gold-dim); font-weight: 300; letter-spacing: 0.05em; }
 
 .player-area { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; height: 100%; padding: clamp(0.5rem, 2vh, 1rem) 0; box-sizing: border-box; }
-.taiji-star { position: relative; width: clamp(150px, 80vw, 400px); height: clamp(150px, 80vw, 400px); }
+.taiji-star { position: relative; width: clamp(150px, 35vh, 400px); height: clamp(150px, 35vh, 400px); }
 .pentagram-container { width: 100%; height: 100%; position: relative; transition: filter 0.3s ease, transform 0.3s ease; }
 .pentagram-container.highlight { filter: drop-shadow(0 0 30px var(--gold)); transform: scale(1.05); }
 
