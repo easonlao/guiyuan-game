@@ -87,25 +87,15 @@ const BoardAnimation = {
     };
 
     // 先设置监听器，再开始动画
-    if (!this._listenerRegistered) {
-      EventBus.on('game:initiative-completed', (data) => {
-        winnerId = data.winner;
-        // 如果动画还没开始，先开始动画（P2可能先收到completed事件）
-        if (!this._animationTimer && !this._hasShownResult) {
-          flash();
-        }
-        // 延迟一下再显示结果，确保动画有时间播放
-        setTimeout(() => {
-          showResult();
-        }, 800);  // 增加延迟，确保动画有时间播放
-      }, { once: true });
-      this._listenerRegistered = true;
-    }
+    // 注意：由于使用了 { once: true }，监听器会在触发后自动移除
+    // 所以每次都需要重新注册监听器
+    EventBus.on('game:initiative-completed', (data) => {
+      winnerId = data.winner;
+      // flash() 循环会检测到 winnerId 并在正确的时机停止
+    }, { once: true });
 
-    // ⚠️ 关键修复：不要立即开始动画，等待 game:initiative-completed 事件
-    // 只有在收到 completed 事件后才开始动画和显示结果
-    // 这样可以确保 INITIATIVE 命令已经发送并执行
-    // flash(); // 移除立即调用，等待事件触发
+    // 立即启动闪烁动画
+    flash();
   }
 };
 

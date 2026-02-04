@@ -23,6 +23,7 @@ import GameSequence from './flow/GameSequence.js';
 import TurnManager from './flow/TurnManager.js';
 import ActionCandidates from './actions/ActionCandidates.js';
 import ActionResolver from './actions/ActionResolver.js';
+import PassiveEffects from '../ui/effects/PassiveEffects.js';
 import AIController from './ai/AIController.js';
 
 const GameEngine = {
@@ -110,7 +111,9 @@ const GameEngine = {
     const currentState = isYang ? nodeState.yang : nodeState.yin;
 
     // PvP 同步逻辑：非当前回合玩家不执行任何逻辑，等待网络同步
-    if (SyncManager.isEnabled && playerId !== SyncManager.myPlayerId) {
+    // 使用 myRole (P1/P2) 而不是 myPlayerId (完整ID) 进行比较
+    if (SyncManager.isEnabled && playerId !== SyncManager.myRole) {
+      console.log(`[GameEngine] checkStemLogic: 非当前回合玩家，跳过。当前回合: ${playerId}, 我的角色: ${SyncManager.myRole}`);
       return;
     }
 
@@ -149,6 +152,17 @@ const GameEngine = {
    * @private
    */
   _handlePlayerDecision(playerId, elementIndex, isYang, stem) {
+    const state = StateManager.getState();
+
+    // ⚠️ PvP 模式：只有当前回合玩家才显示决策窗口
+    if (state.gameMode === 0) {
+      const myRole = StateManager.getMyRole();
+      if (myRole !== playerId) {
+        console.log(`[GameEngine] 不是${playerId}的回合，跳过决策显示`);
+        return;
+      }
+    }
+
     const decision = ActionCandidates.getAvailableActions(playerId, elementIndex, isYang);
 
     if (decision.actions.length === 0) {
@@ -156,8 +170,8 @@ const GameEngine = {
       return;
     }
 
-    if (StateManager.getState().players[playerId].type === 'AI') {
-      AIController.execute(decision.actions, stem, playerId, this.handleActionExecution.bind(this));
+    if (state.players[playerId].type === 'AI') {
+      AIController.execute(decision.actions, stem, playerId, this.handleActionSelection.bind(this));
     } else {
       EventBus.emit('ui:show-decision', { actions: decision.actions, stem });
     }
@@ -168,8 +182,13 @@ const GameEngine = {
    * @private
    */
   async _playSkipAnimation(stem, playerId) {
+    // 清理 activeSession，避免影响后续操作
+    this.activeSession = null;
+
+    // 播放跳过动画
+    PassiveEffects.playSkip({ stem, playerId });
     EventBus.emit('game:skip-turn', { stem, playerId });
-    setTimeout(() => TurnManager.requestTurnEnd(), 1200);
+    setTimeout(() => TurnManager.endTurn(), 1200);
   },
 
   /**
@@ -223,10 +242,19 @@ const GameEngine = {
    */
   executeAction(action) {
     const state = StateManager.getState();
-    const currentPlayer = state.currentPlayer;
     const stem = state.currentStem;
+
+    // 使用 executorId 确定执行者，回退到 state.currentPlayer
+    const currentPlayer = action.executorId || state.currentPlayer;
     const opponentId = currentPlayer === 'P1' ? 'P2' : 'P1';
 
+    console.log('[GameEngine] executeAction:', {
+      action,
+      currentPlayer,
+      opponentId,
+      actionType: action.type,
+      stateCurrentPlayer: state.currentPlayer
+    });
 
     // 处理自动吸纳的特殊情况
     if (action.type === 'AUTO') {
@@ -320,36 +348,32 @@ const GameEngine = {
     if (!this.activeSession) return;
     const { type, action, stem, playerId, isYang } = this.activeSession;
 
+    console.log('[GameEngine] resolveStage1:', {
+      type,
+      actionType: action?.type,
+      playerId,
+      turnCount: StateManager.getState().turnCount
+    });
+
     if (type === 'AUTO_ABSORB') {
       ActionResolver.applyPlus(playerId, stem.element, isYang, 'AUTO', false);
       this.activeSession = null;
 
-      // ⚠️ 检查：确保是当前回合的玩家才能结束回合
-      setTimeout(() => {
-        const state = StateManager.getState();
-        const myRole = StateManager.getMyRole() || AuthorityExecutor.myRole;
+      // ⚠️ AUTO 动作完成后自动结束回合
+      // requestTurnEnd 会处理结算动画和时序
+      TurnManager.endTurn();
+    } else if (type === 'OPPONENT_ACTION' && action?.type === 'AUTO') {
+      // 对手的 AUTO 动作：统一在这里执行逻辑
+      const autoYang = (STEMS_MAP[stem.element].yang === stem.name);
+      ActionResolver.applyPlus(playerId, stem.element, autoYang, 'AUTO', false);
+      this.activeSession = null;
 
-        console.log('[GameEngine] AUTO_ABSORB 完成，检查回合结束:', {
-          currentPlayer: state.currentPlayer,
-          myRole: myRole,
-          stateManagerMyRole: StateManager.getMyRole(),
-          authorityExecutorMyRole: AuthorityExecutor.myRole,
-          isMyTurn: state.currentPlayer === myRole,
-          gameMode: state.gameMode
-        });
-
-        // 在PVP模式下，只有当前回合的玩家才能结束回合
-        if (state.gameMode === 0 && myRole && state.currentPlayer !== myRole) {
-          console.warn('[GameEngine] 不是当前回合，跳过回合结束。当前:', state.currentPlayer, '我的角色:', myRole);
-          return;
-        }
-
-        console.log('[GameEngine] 当前回合玩家，尝试结束回合');
-        TurnManager.requestTurnEnd();
-      }, 800);
-    } else if (type === 'DECISION_ACTION' && (action.type === 'BURST_ATK' || action.type === 'BURST')) {
-      ActionResolver.applyMinus(playerId, stem.element, action.type === 'BURST_ATK', action.type, false);
+      // ⚠️ 对于对手的 AUTO 动作，需要等待对手的 TURN_END 命令
+      // 不要在这里调用 TurnManager.endTurn()
+      console.log('[GameEngine] 对手 AUTO 动作完成，等待 TURN_END 命令');
     }
+    // 注意：BURST_ATK（强破）和 BURST（强化）的第一阶段不需要执行状态变更
+    // 它们的实际效果在 resolveFinal 的 _executeActionLogic 中处理
   },
 
   /**
@@ -376,7 +400,19 @@ const GameEngine = {
    * @private
    */
   _executeActionLogic(action, playerId, opponentId) {
+    const state = StateManager.getState();
+    const stem = state.currentStem;
+    const isYang = stem && state.players[playerId].burst?.yang;
+
     switch (action.type) {
+      case 'AUTO': {
+        // 自动吸纳：天干状态<1时自动飞入
+        // 使用本命元素和当前天干的阴阳属性
+        const autoYang = (STEMS_MAP[stem.element].yang === stem.name);
+        ActionResolver.applyPlus(playerId, stem.element, autoYang, 'AUTO', false);
+        break;
+      }
+
       case 'CONVERT':
         ActionResolver.applyPlus(action.target.playerId, action.target.elementIndex, action.target.isYang, 'CONVERT', false);
         break;
@@ -390,23 +426,15 @@ const GameEngine = {
         break;
 
       case 'BURST_ATK':
+        // 强破：原子性执行 - 消耗自身阳1点，攻击对方克属性2次
         const tElAtk = action.targetEl;
-        for (let i = 0; i < 2; i++) {
-          const cands = ActionCandidates.getMinusCandidates(opponentId, tElAtk);
-          if (cands.length > 0) {
-            ActionResolver.applyMinus(cands[0].playerId, cands[0].elementIndex, cands[0].isYang, 'BURST_ATK', true);
-          }
-        }
+        ActionResolver.applyBurstAtk(playerId, stem.element, opponentId, tElAtk);
         break;
 
       case 'BURST':
+        // 强化：原子性执行 - 消耗自身阴1点，强化自身生属性2次
         const tElBst = action.targetEl;
-        for (let i = 0; i < 2; i++) {
-          const cands = ActionCandidates.getPlusCandidates(playerId, tElBst);
-          if (cands.length > 0) {
-            ActionResolver.applyPlus(cands[0].playerId, cands[0].elementIndex, cands[0].isYang, 'BURST', false);
-          }
-        }
+        ActionResolver.applyBurst(playerId, stem.element, tElBst);
         break;
     }
   },
@@ -420,6 +448,8 @@ const GameEngine = {
     const currentState = StateManager.getState();
     const hasBurstBonus = currentState.players[playerId].burstBonus;
 
+    // ⚠️ 修复：立即调用 requestTurnEnd，不延迟
+    // 让 TurnManager 内部处理时序，避免竞态条件
     if (isBurstAction && hasBurstBonus) {
       StateManager.update({
         players: {
@@ -432,21 +462,56 @@ const GameEngine = {
       });
       setTimeout(() => this.startTurn(), 1000);
     } else {
-      setTimeout(() => TurnManager.requestTurnEnd(), 1000);
+      // ⚠️ 使用 endTurn() 自动检测单机/PVP模式
+      TurnManager.endTurn();
     }
   },
 
   /**
    * 处理对手的同步操作（PvP 模式）
    * @param {Object} action - 对手的动作数据
+   * @param {string} actionPlayerId - 执行动作的玩家ID（可选，优先使用 action.executorId）
    */
-  handleOpponentAction(action) {
+  handleOpponentAction(action, actionPlayerId = null) {
     const state = StateManager.getState();
-    const opponentId = state.currentPlayer === 'P1' ? 'P2' : 'P1';
     const stem = action.stem || state.currentStem;
 
+    // 优先使用 executorId，回退到 action.target.playerId 或 actionPlayerId
+    let playerId = action.executorId || action.target?.playerId || actionPlayerId;
+    if (!playerId) {
+      console.error('[GameEngine] handleOpponentAction: 无法确定action的执行者', action);
+      console.error('[GameEngine] 请确保 action.executorId 或 action.target.playerId 存在');
+      return;
+    }
+
+    // ⚠️ 新增：回合验证 - 确保是对手的回合才播放动画
+    if (state.gameMode === 0) {
+      const myRole = StateManager.getMyRole();
+      const opponentId = (myRole === 'P1') ? 'P2' : 'P1';
+
+      // 只有对手是当前回合玩家才执行
+      if (playerId !== opponentId || playerId !== state.currentPlayer) {
+        console.warn('[GameEngine] 不是对手的回合，跳过动画:', {
+          opponentId,
+          playerId,
+          currentPlayer: state.currentPlayer,
+          myRole
+        });
+        return;
+      }
+    }
+
+    const opponentId = playerId; // 执行操作的玩家
+    const myPlayerId = opponentId === 'P1' ? 'P2' : 'P1'; // 我是另一个玩家
+
+    console.log('[GameEngine] handleOpponentAction:', {
+      opponentId,
+      myPlayerId,
+      actionType: action.type,
+      stateCurrentPlayer: state.currentPlayer
+    });
+
     // 确定次要目标
-    const myPlayerId = state.currentPlayer === 'P1' ? 'P1' : 'P2';
     const secondTarget = this._determineSecondTarget(action, opponentId, myPlayerId);
 
     // 锁定节点（如果有次要目标）
@@ -466,20 +531,17 @@ const GameEngine = {
       isOpponent: true
     });
 
-    // 保存会话信息用于后续处理
+    // 保存会话信息用于动画回调处理
     this.activeSession = {
       type: 'OPPONENT_ACTION',
       action, stem, playerId: opponentId, secondTarget,
       step: 1
     };
 
-    // 延迟后执行逻辑更新（等动画完成后）
-    setTimeout(() => {
-      this._executeActionLogic(action, opponentId, myPlayerId);
-
-      // 清理会话
-      this.activeSession = null;
-    }, 1200);
+    // ⚠️ 统一执行路径：不再使用 setTimeout 直接执行
+    // 而是通过动画回调 resolveStage1() 和 resolveFinal() 来执行
+    // AUTO 动作在 resolveStage1() 中执行
+    // 其他动作在 resolveFinal() 中执行
   }
 };
 

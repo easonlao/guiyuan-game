@@ -57,6 +57,7 @@ const initialState = {
   currentStem: null, // 当前生成的天干 { name: '甲', element: 0, color: ... }
   turnScoreChanges: { P1: 0, P2: 0 }, // 本回合积分变化
   lastAction: null, // 上一步操作记录
+  pendingSettlement: false, // 是否有待显示的结算效果（用于控制天干生成延迟）
 
   // 【分层统计】- 用于游戏结束界面展示
   // 1. 行为统计：记录执行的动作

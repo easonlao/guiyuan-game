@@ -718,7 +718,20 @@ body {
   box-shadow: none;
   width: 100%;
   max-width: 600px;
+  max-height: 80vh;           /* 限制最大高度为视口的 80% */
+  overflow-y: auto;           /* 允许垂直滚动 */
   animation: scaleIn 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* 隐藏滚动条 */
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* IE/Edge */
+}
+
+/* 隐藏 Webkit 浏览器的滚动条 */
+.victory-content::-webkit-scrollbar {
+  display: none;
 }
 
 @keyframes scaleIn {
@@ -739,6 +752,8 @@ body {
   text-shadow: 0 0 30px currentColor;
   animation: glow 1.5s ease-in-out infinite alternate;
   letter-spacing: 0.3rem;
+  width: 100%;
+  text-align: center;
 }
 
 @keyframes glow {
@@ -750,6 +765,8 @@ body {
   font-size: clamp(1.2rem, 4vw, 1.8rem);
   color: rgba(255, 255, 255, 0.8);
   margin: 0 0 2rem 0;
+  width: 100%;
+  text-align: center;
 }
 
 /* 分数显示 - 改为按钮风格 */
@@ -809,6 +826,8 @@ body {
   text-shadow: 0 0 10px currentColor;
   letter-spacing: 0.2rem;
   min-width: 200px;
+  width: auto;
+  max-width: 400px;
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   position: relative;
 }
@@ -1012,7 +1031,7 @@ body {
   position: relative;
   font-size: clamp(1.3rem, 5vw, 1.8rem);
   padding: 0.8rem 2rem;
-  min-width: 280px;
+  width: 320px;
   cursor: default;
   font-family: inherit;
   letter-spacing: 0.2rem;
@@ -1020,17 +1039,17 @@ body {
   transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   text-shadow: 0 0 10px currentColor;
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr 60px 80px;
   gap: 2rem;
   align-items: center;
-  justify-items: start;
+  box-sizing: border-box;
 }
 
 .action-stat-button.total-button {
   font-size: clamp(1.5rem, 6vw, 2rem);
   padding: 1rem 2.5rem;
   margin-top: 0.5rem;
-  min-width: 300px;
+  width: 340px;
 }
 
 .stat-action-name {
@@ -1042,14 +1061,12 @@ body {
   opacity: 0.7;
   font-size: 0.9em;
   text-align: right;
-  min-width: 60px;
 }
 
 .stat-score {
   font-weight: bold;
   opacity: 0.9;
   text-align: right;
-  min-width: 80px;
 }
 
 /* 保留旧的类名兼容性 */

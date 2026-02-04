@@ -46,9 +46,10 @@ const SyncManager = {
   _bindEvents() {
     EventBus.on('game:start', this._eventHandlers.handleGameStart);
     EventBus.on('game:action-selected', this._eventHandlers.syncAction);
-    EventBus.on('game:next-turn', this._eventHandlers.syncTurnChange);
+    // ⚠️ 移除回合切换监听 - 回合切换现在完全由 AuthorityExecutor 的 TURN_END 命令处理
+    // EventBus.on('game:next-turn', this._eventHandlers.syncTurnChange);
     EventBus.on(GAME_EVENTS.VICTORY, this._eventHandlers.syncGameEnd);
-    log('事件监听器已绑定');
+    log('事件监听器已绑定（回合切换已禁用）');
   },
 
   handleGameStart(data) {
@@ -91,32 +92,12 @@ const SyncManager = {
   },
 
   syncTurnChange() {
-    if (!this.isEnabled || !this.channel) return;
+    // ⚠️ 已弃用 - 回合切换现在完全由 AuthorityExecutor 的 TURN_END 命令处理
+    // 不再使用 Broadcast 同步回合切换
+    if (!this.isEnabled) return;
 
-    const state = StateManager.getState();
-
-    const message = {
-      type: 'turn_change',
-      playerId: this.myPlayerId,
-      data: {
-        turnCount: state.turnCount,
-        currentPlayer: state.currentPlayer,
-        nodeStates: state.nodeStates,
-        players: {
-          P1: { score: state.players.P1.score },
-          P2: { score: state.players.P2.score }
-        },
-        currentStem: state.currentStem
-      },
-      timestamp: Date.now()
-    };
-
-    log('发送回合切换', { turn: message.data.turnCount, player: message.data.currentPlayer });
-    this.channel.send({
-      type: 'broadcast',
-      event: 'game_move',
-      payload: message
-    });
+    console.warn('[SyncManager] syncTurnChange 已弃用，回合切换由 TURN_END 命令处理');
+    return; // 不发送任何消息
   },
 
   syncStem(stem) {

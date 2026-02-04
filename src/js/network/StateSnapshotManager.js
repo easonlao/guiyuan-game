@@ -30,6 +30,13 @@ const StateSnapshotManager = {
     const state = StateManager.getState();
     if (state.gameMode !== 0) return;
 
+    // ⚠️ 只让P1（房主）保存快照，避免重复键冲突
+    const myRole = StateManager.getMyRole();
+    if (myRole !== 'P1') {
+      console.log('[StateSnapshotManager] 不是房主，跳过保存快照');
+      return;
+    }
+
     // 获取会话信息（从 CommandSender）
     const { default: CommandSender } = await import('./CommandSender.js');
     if (!CommandSender.currentSessionId) return;

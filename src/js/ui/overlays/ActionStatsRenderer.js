@@ -68,7 +68,7 @@ const ActionStatsRenderer = {
       .sort(([, a], [, b]) => allScores[b] - allScores[a]);
 
     let html = '<div style="text-align:center;">';
-    html += '<div style="display:flex; flex-direction:column; gap:0.8rem; align-items:center;">';
+    html += '<div style="display:flex; flex-direction:column; gap:0.8rem; align-items:stretch;">';
 
     for (const [key, count] of sortedItems) {
       const score = allScores[key];

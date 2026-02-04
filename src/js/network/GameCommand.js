@@ -241,8 +241,8 @@ class GameCommand {
       return { valid: false, error: 'TURN_END missing final state' };
     }
 
-    // 必要的状态字段
-    const requiredStateFields = ['turnCount', 'currentPlayer', 'nodeStates', 'players'];
+    // ⚠️ 只验证必要的回合信息字段
+    const requiredStateFields = ['turnCount', 'currentPlayer', 'currentStem'];
     for (const field of requiredStateFields) {
       if (!(field in finalState)) {
         return { valid: false, error: `TURN_END missing state field: ${field}` };
