@@ -1,9 +1,9 @@
 // ============================================
-// 回合管理器（简化PVP架构）
+// 回合管理器（主机-客户端PVP架构）
 // ============================================
 // 职责：
 // - 管理回合开始和结束
-// - 控制回合切换（乐观更新）
+// - 控制回合切换（主机权威）
 // - 检测游戏结束条件
 // - 处理胜利/平局判定
 // ============================================
@@ -13,6 +13,13 @@ import StateManager from '../../state/StateManager.js';
 import { GAME_EVENTS } from '../../types/events.js';
 import { POINTS_CONFIG } from '../../config/game-config.js';
 import SimplifiedPVPManager from '../../network/SimplifiedPVPManager.js';
+import AuthorityExecutor from '../AuthorityExecutor.js';
+
+// 获取 PVP 管理器（在线模式）
+function getPVPManager() {
+  return SimplifiedPVPManager;
+}
+
 import PassiveEffects from '../../ui/effects/PassiveEffects.js';
 
 const TurnManager = {
@@ -44,7 +51,8 @@ const TurnManager = {
     StateManager.update({ pendingSettlement: false }, true);
 
     // 根据是否有结算效果决定延迟时间
-    const delay = hasPendingSettlement ? 2400 : 0;
+    // 结算动画约800ms，加上适当的视觉缓冲时间
+    const delay = hasPendingSettlement ? 1000 : 0;
 
     if (delay > 0) {
       console.log('[TurnManager] 有结算效果，延迟', delay, 'ms');
@@ -53,14 +61,32 @@ const TurnManager = {
     }
 
     setTimeout(() => {
-      // 如果已经有同步过来的天干，则直接触发生成事件，不再重新生成
-      if (state.currentStem) {
-        console.log('[TurnManager] 使用已同步的天干:', state.currentStem.name);
-        EventBus.emit('game:stem-generated', { stem: state.currentStem });
+      // 获取最新状态（可能在延迟期间已通过 sync:stem 更新）
+      const latestState = StateManager.getState();
+
+      // 如果已经有同步过来的天干，则直接触发生成事件，播放动画
+      if (latestState.currentStem) {
+        console.log('[TurnManager] 使用已同步的天干:', latestState.currentStem.name);
+        EventBus.emit('game:stem-generated', { stem: latestState.currentStem });
         return;
       }
 
-      console.log('[TurnManager] emitting game:generate-stem');
+      // PVP 模式下的主机-客户端逻辑
+      if (latestState.gameMode === 0) {
+        // 主机：生成天干（无论谁的回合）
+        if (AuthorityExecutor.isHost()) {
+          console.log('[TurnManager] 主机生成天干，当前回合玩家:', latestState.currentPlayer);
+          EventBus.emit('game:generate-stem');
+        } else {
+          // 客户端：等待主机的天干同步
+          console.log('[TurnManager] 客户端等待主机天干同步，当前回合玩家:', latestState.currentPlayer);
+        }
+        return;
+      }
+
+      // 单机模式（玩家 VS 天道）：每回合都生成天干
+      // P1 是玩家，P2 是天道 AI，但每回合都需要天干
+      console.log('[TurnManager] 单机模式，生成天干，当前回合玩家:', latestState.currentPlayer);
       EventBus.emit('game:generate-stem');
     }, delay);
   },
@@ -96,7 +122,7 @@ const TurnManager = {
   },
 
   /**
-   * 结束回合（简化PVP - 乐观更新）
+   * 结束回合（主机-客户端PVP架构）
    * @returns {Promise<Object>} { success, error }
    */
   async endTurn() {
@@ -108,25 +134,50 @@ const TurnManager = {
     // 1. 计算回合结算效果（等待动画完成）
     await this._calculatePassiveEffects();
 
-    // 2. 计算下个玩家（在切换前）
-    const nextPlayer = beforePlayer === 'P1' ? 'P2' : 'P1';
-    console.log('[TurnManager] 当前玩家:', beforePlayer, '→', '下个玩家:', nextPlayer);
-
-    // 3. 异步通知对手（仅PVP模式）- 在切换前发送，使用 beforePlayer 计算
+    // 2. PVP 模式下的主机权威回合切换
     if (state.gameMode === 0) {
-      SimplifiedPVPManager.sendTurnEndNotification(nextPlayer).catch(err => {
-        console.warn('[TurnManager] 回合切换通知失败:', err);
-      });
+      const pvpManager = getPVPManager();
+
+      // 主机：计算下个回合并广播
+      if (AuthorityExecutor.isHost()) {
+        const result = AuthorityExecutor.calculateNextPlayer(beforePlayer);
+        if (!result) {
+          console.error('[TurnManager] 权威执行器未能计算下个回合');
+          return { success: false, error: 'Failed to calculate next player' };
+        }
+
+        const { nextPlayer } = result;
+        console.log('[TurnManager] 主机计算下个玩家:', beforePlayer, '→', nextPlayer);
+
+        // 切换回合
+        StateManager.switchPlayer();
+
+        // 广播回合切换同步
+        if (pvpManager.sendTurnSync) {
+          pvpManager.sendTurnSync(nextPlayer);
+        }
+
+        // 触发下一回合开始
+        EventBus.emit('game:next-turn');
+        return { success: true };
+      }
+
+      // 客户端：等待主机的 turn_sync 消息
+      console.log('[TurnManager] 客户端等待主机回合切换同步');
+      return { success: true };
     }
 
-    // 4. 立即切换回合（不等待服务器）
+    // 3. 单机模式：直接切换回合
+    const nextPlayer = beforePlayer === 'P1' ? 'P2' : 'P1';
+    console.log('[TurnManager] 单机模式切换回合:', beforePlayer, '→', nextPlayer);
+
     StateManager.switchPlayer();
 
     // 获取切换后的状态
     const afterState = StateManager.getState();
     console.log('[TurnManager] 回合切换完成:', beforePlayer, '→', afterState.currentPlayer);
 
-    // 4. 触发下一回合开始
+    // 触发下一回合开始
     EventBus.emit('game:next-turn');
     return { success: true };
   },

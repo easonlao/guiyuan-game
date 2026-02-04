@@ -55,9 +55,15 @@ const StemAnimation = {
    * @private
    */
   _resetStemElement(stemEl) {
+    // 1. 先清除所有内联样式和类名
     stemEl.style.cssText = '';
     stemEl.className = 'center-stem';
     stemEl.innerText = '';
+
+    // 2. 立即强制重排，确保清除生效
+    void stemEl.offsetWidth;
+
+    // 3. 重新设置初始状态（覆盖 CSS 默认的 opacity: 0）
     stemEl.style.fontSize = `var(--stem-size, 50px)`;
     stemEl.style.visibility = 'visible';
     stemEl.style.opacity = '0.3';
@@ -69,7 +75,16 @@ const StemAnimation = {
     stemEl.style.left = '50%';
     stemEl.style.top = '50%';
     stemEl.style.transition = 'none';
+
+    // 4. 再次强制重排，确保新样式生效
     void stemEl.offsetWidth;
+
+    console.log('[StemAnimation] 天干元素已重置:', {
+      visibility: stemEl.style.visibility,
+      opacity: stemEl.style.opacity,
+      display: stemEl.style.display,
+      transform: stemEl.style.transform
+    });
   }
 };
 

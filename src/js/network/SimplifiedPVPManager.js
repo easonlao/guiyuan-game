@@ -13,6 +13,7 @@ import EventBus from '../bus/EventBus.js';
 import { supabase, insert } from './supabaseClient.js';
 import StateManager from '../state/StateManager.js';
 import { getCurrentUserId } from './supabaseClient.js';
+import AuthorityExecutor from '../logic/AuthorityExecutor.js';
 
 const SimplifiedPVPManager = {
   // 会话信息
@@ -20,6 +21,7 @@ const SimplifiedPVPManager = {
   currentRoomId: null,
   myPlayerId: null,
   myRole: null, // 'P1' or 'P2'
+  isHost: false, // 是否为主机
   isEnabled: false,
 
   // Broadcast 频道
@@ -39,6 +41,20 @@ const SimplifiedPVPManager = {
    */
   _bindEvents() {
     EventBus.on('game:return-to-menu', this.cleanup.bind(this));
+    EventBus.on('anim:initiative-finished', this._onInitiativeAnimationFinished.bind(this));
+  },
+
+  /**
+   * 先手动画完成后的处理
+   * @private
+   */
+  _onInitiativeAnimationFinished() {
+    // 如果有待设置的初始天干，现在才设置
+    if (this._pendingFirstStem) {
+      console.log('[SimplifiedPVPManager] 先手动画完成，设置初始天干:', this._pendingFirstStem.name);
+      StateManager.update({ currentStem: this._pendingFirstStem }, true);
+      this._pendingFirstStem = null;
+    }
   },
 
   /**
@@ -56,6 +72,14 @@ const SimplifiedPVPManager = {
     this.myPlayerId = getCurrentUserId();
     this.isEnabled = true;
 
+    // 设置主机状态：P1 是主机，P2 是客户端
+    this.isHost = (role === 'P1');
+    if (this.isHost) {
+      AuthorityExecutor.setAsHost();
+    } else {
+      AuthorityExecutor.reset();
+    }
+
     // 同步 myRole 到 StateManager
     StateManager.setMyRole(role);
 
@@ -63,6 +87,7 @@ const SimplifiedPVPManager = {
       roomId,
       sessionId,
       role,
+      isHost: this.isHost,
       myPlayerId: this.myPlayerId
     });
 
@@ -114,7 +139,22 @@ const SimplifiedPVPManager = {
 
     switch (type) {
       case 'action':
-        // 对手操作 - 通过 EventBus 通知 GameEngine
+        // 对手操作（已确认的）
+        console.log('[SimplifiedPVPManager] 收到已确认的操作:', data.type);
+        EventBus.emit('sync:opponent-action', data);
+        break;
+
+      case 'action_request':
+        // 操作请求（客户端发送给主机）
+        console.log('[SimplifiedPVPManager] 收到操作请求:', data.type);
+        if (this.isHost) {
+          EventBus.emit('authority:action-request', data);
+        }
+        break;
+
+      case 'action_confirmed':
+        // 操作确认（主机发送给双方）
+        console.log('[SimplifiedPVPManager] 收到操作确认:', data.type);
         EventBus.emit('sync:opponent-action', data);
         break;
 
@@ -138,34 +178,57 @@ const SimplifiedPVPManager = {
         EventBus.emit('game:next-turn');
         break;
 
+      case 'turn_sync':
+        // 回合切换同步（主机权威计算）
+        console.log('[SimplifiedPVPManager] 收到回合切换同步，下个玩家:', data.nextPlayer);
+
+        const syncState = StateManager.getState();
+        const syncUpdates = {};
+        if (data.nextPlayer && data.nextPlayer !== syncState.currentPlayer) {
+          syncUpdates.currentPlayer = data.nextPlayer;
+        }
+        syncUpdates.currentStem = null;
+
+        if (Object.keys(syncUpdates).length > 0) {
+          StateManager.update(syncUpdates, true);
+          console.log('[SimplifiedPVPManager] 已同步回合切换:', syncUpdates);
+        }
+
+        EventBus.emit('game:next-turn');
+        break;
+
       case 'stem':
         // 天干同步
         EventBus.emit('sync:stem', data.stem);
+        break;
+
+      case 'stem_generated':
+        // 天干生成（主机权威）
+        console.log('[SimplifiedPVPManager] 收到主机天干生成:', data.stem.name);
+        StateManager.update({ currentStem: data.stem });
+        EventBus.emit('game:stem-generated', { stem: data.stem });
         break;
 
       case 'initiative':
         // 先手判定
         console.log('[SimplifiedPVPManager] 收到先手判定:', data.firstPlayer, data.firstStem ? '初始天干:' + data.firstStem.name : '');
 
-        // 更新先手玩家和初始天干
-        const updates = { currentPlayer: data.firstPlayer };
-        if (data.firstStem) {
-          updates.currentStem = data.firstStem;
-        }
-        StateManager.update(updates, true);
+        // 只设置 currentPlayer，不设置 currentStem
+        // currentStem 会在动画完成后（anim:initiative-finished）才设置
+        StateManager.update({ currentPlayer: data.firstPlayer }, true);
 
-        // 触发先手判定完成事件（隐藏等待界面）
+        // 保存初始天干，等待动画完成后再设置
+        if (data.firstStem) {
+          this._pendingFirstStem = data.firstStem;
+        }
+
+        // 触发先手判定完成事件
+        // BoardAnimation 会在收到此事件后 1200ms 触发 anim:initiative-finished
         const isHost = (this.myRole === 'P1');
         EventBus.emit('game:initiative-completed', {
           winner: data.firstPlayer,
           isHost: isHost
         });
-
-        // 如果是P2，需要启动游戏序列进入游戏
-        if (this.myRole === 'P2') {
-          console.log('[SimplifiedPVPManager] P2 启动游戏序列');
-          EventBus.emit('anim:initiative-finished');
-        }
         break;
 
       case 'state_sync_request':
@@ -384,6 +447,121 @@ const SimplifiedPVPManager = {
   },
 
   /**
+   * 发送天干生成（主机权威）
+   * @param {Object} stem - 天干
+   * @param {number} seed - 随机种子
+   */
+  sendStemGenerated(stem, seed) {
+    if (!this.isEnabled || !this.channel) return;
+
+    const message = {
+      type: 'stem_generated',
+      playerId: this.myPlayerId,
+      data: { stem, seed },
+      timestamp: Date.now()
+    };
+
+    this.channel.send({
+      type: 'broadcast',
+      event: 'game_move',
+      payload: message
+    });
+
+    console.log('[SimplifiedPVPManager] 发送天干生成:', stem.name, 'seed:', seed);
+  },
+
+  /**
+   * 发送回合切换同步（主机权威）
+   * @param {string} nextPlayer - 下个玩家
+   */
+  sendTurnSync(nextPlayer) {
+    if (!this.isEnabled || !this.channel) return;
+
+    const state = StateManager.getState();
+
+    const message = {
+      type: 'turn_sync',
+      playerId: this.myPlayerId,
+      data: {
+        turnNumber: state.turnCount,
+        nextPlayer: nextPlayer
+      },
+      timestamp: Date.now()
+    };
+
+    this.channel.send({
+      type: 'broadcast',
+      event: 'game_move',
+      payload: message
+    });
+
+    console.log('[SimplifiedPVPManager] 发送回合切换同步:', {
+      当前回合: state.turnCount,
+      下个玩家: nextPlayer
+    });
+  },
+
+  /**
+   * 请求操作确认（客户端发送）
+   * @param {Object} action - 操作对象
+   * @returns {Promise<void>}
+   */
+  requestActionConfirmation(action) {
+    return new Promise((resolve) => {
+      if (!this.isEnabled || !this.channel) {
+        resolve();
+        return;
+      }
+
+      const message = {
+        type: 'action_request',
+        playerId: this.myPlayerId,
+        data: action,
+        timestamp: Date.now()
+      };
+
+      this.channel.send({
+        type: 'broadcast',
+        event: 'game_move',
+        payload: message
+      });
+
+      console.log('[SimplifiedPVPManager] 请求操作确认:', action.type);
+      resolve();
+    });
+  },
+
+  /**
+   * 发送操作确认（主机权威）
+   * @param {Object} action - 操作对象
+   * @returns {Promise<void>}
+   */
+  sendActionConfirmed(action) {
+    return new Promise((resolve) => {
+      if (!this.isEnabled || !this.channel) {
+        resolve();
+        return;
+      }
+
+      const message = {
+        type: 'action_confirmed',
+        playerId: this.myPlayerId,
+        data: action,
+        timestamp: Date.now()
+      };
+
+      this.channel.send({
+        type: 'broadcast',
+        event: 'game_move',
+        payload: message
+      });
+
+      console.log('[SimplifiedPVPManager] 发送操作确认:', action.type);
+      resolve();
+    });
+  },
+
+  /**
    * 清理资源
    */
   cleanup() {
@@ -396,7 +574,11 @@ const SimplifiedPVPManager = {
     this.currentRoomId = null;
     this.myPlayerId = null;
     this.myRole = null;
+    this.isHost = false;
     this.isEnabled = false;
+
+    // 重置权威执行器
+    AuthorityExecutor.reset();
 
     console.log('[SimplifiedPVPManager] 资源已清理');
   }

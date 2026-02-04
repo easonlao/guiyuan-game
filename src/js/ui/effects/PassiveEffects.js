@@ -19,9 +19,12 @@ const PassiveEffects = {
     const { stem, playerId } = data;
     console.log('[PassiveEffects] 播放跳过动画（四散消失）', { stem, playerId });
 
-    // 获取天干元素
-    const stemEl = document.querySelector('.current-stem');
-    if (!stemEl) return;
+    // 获取天干元素（使用当前玩家的中心天干）
+    const stemEl = document.getElementById(`${playerId.toLowerCase()}-center-stem`);
+    if (!stemEl) {
+      console.warn('[PassiveEffects] 未找到天干元素:', `${playerId.toLowerCase()}-center-stem`);
+      return;
+    }
 
     // 创建四散粒子
     const container = document.body;
@@ -84,7 +87,12 @@ const PassiveEffects = {
       duration: 600,
       easing: 'ease-in-out',
       fill: 'forwards'
-    });
+    }).onfinish = () => {
+      // 重置天干元素样式
+      stemEl.style.opacity = '0';
+      stemEl.style.transform = '';
+      stemEl.style.visibility = 'hidden';
+    };
   },
 
   /**
@@ -117,6 +125,7 @@ const PassiveEffects = {
       console.log('[PassiveEffects] 回合结算动画完成');
     });
   },
+
 
   /**
    * 播放归一状态动画（金色光晕）
