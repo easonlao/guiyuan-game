@@ -205,8 +205,14 @@ const GameSequence = {
             StateManager.update({ currentPlayer, currentStem: firstStem });
 
             // 同步给对手（异步）
-            SimplifiedPVPManager.syncInitiative(currentPlayer);
+            SimplifiedPVPManager.syncInitiative(currentPlayer, firstStem);
             console.log('[GameSequence] ✓ 先手判定已发送');
+
+            // 触发先手判定完成事件（隐藏等待界面）
+            EventBus.emit('game:initiative-completed', {
+              winner: currentPlayer,
+              isHost: true
+            });
 
             // 重置启动标志
             this._isStarting = false;
