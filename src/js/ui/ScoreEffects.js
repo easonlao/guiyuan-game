@@ -7,9 +7,9 @@ import { GAME_EVENTS } from '../types/events.js';
 import StateManager from '../state/StateManager.js';
 
 const ScoreEffects = {
-  // 防抖记录（防止短时间内多次弹窗）
-  _lastShowTime: { P1: 0, P2: 0 },
-  _debounceDelay: 300, // 300ms 内只显示一次
+  // 弹窗堆叠计数器（用于自动错开位置）
+  _stackCount: { P1: 0, P2: 0 },
+  _stackResetDelay: 1500, // 1.5秒后重置计数器
 
   // 不同行为类型的特效配置（按结果分类）
   effectConfig: {
@@ -99,13 +99,6 @@ const ScoreEffects = {
   showScoreChange(data) {
     const { playerId, amount, reason } = data;
 
-    // 防抖：短时间内只显示一次弹窗
-    const now = Date.now();
-    if (now - this._lastShowTime[playerId] < this._debounceDelay) {
-      return; // 跳过此次显示
-    }
-    this._lastShowTime[playerId] = now;
-
     // 解析组合格式的 reason（如 "调息·点亮"）
     const cleanReason = this._extractReason(reason);
 
@@ -124,7 +117,18 @@ const ScoreEffects = {
     const y = rect.top + rect.height / 2;
 
     // 使用完整的 reason 显示，但用 cleanReason 匹配配置
-    this.createFloatingScore(x, y, amount, reason, config);
+    // 传入堆叠索引，让弹窗自动错开
+    const stackIndex = this._stackCount[playerId];
+    this._stackCount[playerId]++;
+
+    this.createFloatingScore(x, y, amount, reason, config, stackIndex);
+
+    // 重置堆叠计数器（1.5秒后）
+    if (this._stackCount[playerId] === 1) {
+      setTimeout(() => {
+        this._stackCount[playerId] = 0;
+      }, this._stackResetDelay);
+    }
   },
 
   /**
@@ -145,18 +149,19 @@ const ScoreEffects = {
     return match ? match[1].trim() : reason;
   },
 
-  createFloatingScore(x, y, amount, reason, config) {
+  createFloatingScore(x, y, amount, reason, config, stackIndex = 0) {
     const container = document.body;
     const scoreEl = document.createElement('div');
     scoreEl.className = 'score-float';
     scoreEl.innerHTML = `
-      <div class="score-amount" style="color: ${config.color}">+${amount}</div>
+      <div class="score-amount" style="color: ${config.color}">${amount > 0 ? '+' : ''}${amount}</div>
       <div class="score-reason">${reason}</div>
     `;
 
-    // 设置初始位置
+    // 设置初始位置（根据堆叠索引向上偏移）
+    const offsetY = -stackIndex * 50; // 每个弹窗向上偏移50px
     scoreEl.style.left = `${x}px`;
-    scoreEl.style.top = `${y}px`;
+    scoreEl.style.top = `${y + offsetY}px`;
 
     // 根据大小设置缩放
     const sizeMap = {
@@ -173,7 +178,7 @@ const ScoreEffects = {
 
     setTimeout(() => {
       scoreEl.remove();
-    }, 1200);
+    }, 1500);
   }
 };
 
