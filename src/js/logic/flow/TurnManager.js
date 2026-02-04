@@ -21,9 +21,10 @@ const TurnManager = {
    */
   async startTurn() {
     console.log('[TurnManager] startTurn called');
+    const state = StateManager.getState();
+    console.log('[TurnManager] 我的角色:', StateManager.getMyRole(), '当前玩家:', state.currentPlayer, '回合数:', state.turnCount);
 
     // 先增加回合计数
-    const state = StateManager.getState();
     const newTurnCount = state.turnCount + 1;
     StateManager.update({ turnCount: newTurnCount });
     console.log('[TurnManager] 回合计数:', state.turnCount, '→', newTurnCount);
@@ -102,20 +103,28 @@ const TurnManager = {
     console.log('[TurnManager] ====== 结束回合 ======');
 
     const state = StateManager.getState();
+    const beforePlayer = state.currentPlayer;
 
     // 1. 计算回合结算效果（等待动画完成）
     await this._calculatePassiveEffects();
 
-    // 2. 立即切换回合（不等待服务器）
-    StateManager.switchPlayer();
-    console.log('[TurnManager] 回合已切换到:', state.currentPlayer);
+    // 2. 计算下个玩家（在切换前）
+    const nextPlayer = beforePlayer === 'P1' ? 'P2' : 'P1';
+    console.log('[TurnManager] 当前玩家:', beforePlayer, '→', '下个玩家:', nextPlayer);
 
-    // 3. 异步通知对手（仅PVP模式）
+    // 3. 异步通知对手（仅PVP模式）- 在切换前发送，使用 beforePlayer 计算
     if (state.gameMode === 0) {
-      SimplifiedPVPManager.sendTurnEndNotification().catch(err => {
+      SimplifiedPVPManager.sendTurnEndNotification(nextPlayer).catch(err => {
         console.warn('[TurnManager] 回合切换通知失败:', err);
       });
     }
+
+    // 4. 立即切换回合（不等待服务器）
+    StateManager.switchPlayer();
+
+    // 获取切换后的状态
+    const afterState = StateManager.getState();
+    console.log('[TurnManager] 回合切换完成:', beforePlayer, '→', afterState.currentPlayer);
 
     // 4. 触发下一回合开始
     EventBus.emit('game:next-turn');
