@@ -119,9 +119,22 @@ const SimplifiedPVPManager = {
         break;
 
       case 'turn_end':
-        // 对手回合结束 - 切换到我的回合
-        console.log('[SimplifiedPVPManager] 对手回合结束，切换到我的回合');
-        StateManager.switchPlayer();
+        // 对手回合结束 - 使用消息中的 nextPlayer 更新本地状态
+        const currentState = StateManager.getState();
+        console.log('[SimplifiedPVPManager] 对手回合结束，我的角色:', this.myRole, '当前玩家:', currentState.currentPlayer, '通知中的下个玩家:', data.nextPlayer);
+
+        // 一次性更新 currentPlayer 和 currentStem，避免多次更新导致状态不一致
+        const turnUpdates = {};
+        if (data.nextPlayer && data.nextPlayer !== currentState.currentPlayer) {
+          turnUpdates.currentPlayer = data.nextPlayer;
+        }
+        turnUpdates.currentStem = null;  // 清除旧天干
+
+        if (Object.keys(turnUpdates).length > 0) {
+          StateManager.update(turnUpdates, true);
+          console.log('[SimplifiedPVPManager] 已更新状态:', turnUpdates);
+        }
+
         EventBus.emit('game:next-turn');
         break;
 
@@ -132,11 +145,26 @@ const SimplifiedPVPManager = {
 
       case 'initiative':
         // 先手判定
-        console.log('[SimplifiedPVPManager] 收到先手判定:', data.firstPlayer);
-        StateManager.update({ currentPlayer: data.firstPlayer }, true);
-        // 如果是P2，启动游戏序列
-        if (data.firstPlayer === 'P2') {
-          EventBus.emit('game:start-sequence');
+        console.log('[SimplifiedPVPManager] 收到先手判定:', data.firstPlayer, data.firstStem ? '初始天干:' + data.firstStem.name : '');
+
+        // 更新先手玩家和初始天干
+        const updates = { currentPlayer: data.firstPlayer };
+        if (data.firstStem) {
+          updates.currentStem = data.firstStem;
+        }
+        StateManager.update(updates, true);
+
+        // 触发先手判定完成事件（隐藏等待界面）
+        const isHost = (this.myRole === 'P1');
+        EventBus.emit('game:initiative-completed', {
+          winner: data.firstPlayer,
+          isHost: isHost
+        });
+
+        // 如果是P2，需要启动游戏序列进入游戏
+        if (this.myRole === 'P2') {
+          console.log('[SimplifiedPVPManager] P2 启动游戏序列');
+          EventBus.emit('anim:initiative-finished');
         }
         break;
 
@@ -167,30 +195,9 @@ const SimplifiedPVPManager = {
       return;
     }
 
-    const state = StateManager.getState();
-
-    try {
-      // 异步写入数据库（不阻塞）
-      insert('game_moves', {
-        session_id: this.currentSessionId,
-        player_id: this.myPlayerId,
-        turn_number: state.turnCount,
-        move_type: action.type,
-        move_data: action,
-        created_at: new Date().toISOString()
-      }).then(() => {
-        console.log('[SimplifiedPVPManager] 操作已记录到数据库');
-      }).catch(err => {
-        console.error('[SimplifiedPVPManager] 数据库写入失败:', err);
-        // 不抛出错误，因为操作已经执行了
-      });
-
-      // 同时通过 Broadcast 通知对手
-      this._broadcastAction(action);
-
-    } catch (error) {
-      console.error('[SimplifiedPVPManager] sendActionToDatabase 错误:', error);
-    }
+    // 数据库表架构不匹配，完全禁用数据库写入
+    // 只使用 Broadcast 进行实时同步
+    this._broadcastAction(action);
   },
 
   /**
@@ -216,27 +223,12 @@ const SimplifiedPVPManager = {
 
   /**
    * 发送回合切换通知
+   * @param {string} nextPlayer - 下个玩家（由调用方在切换前计算）
    */
-  async sendTurnEndNotification() {
+  async sendTurnEndNotification(nextPlayer) {
     if (!this.isEnabled || !this.channel) return;
 
     const state = StateManager.getState();
-
-    // 记录到数据库
-    try {
-      insert('game_moves', {
-        session_id: this.currentSessionId,
-        player_id: this.myPlayerId,
-        turn_number: state.turnCount,
-        move_type: 'TURN_END',
-        move_data: { turnNumber: state.turnCount },
-        created_at: new Date().toISOString()
-      }).catch(err => {
-        console.error('[SimplifiedPVPManager] 回合结束记录失败:', err);
-      });
-    } catch (error) {
-      console.error('[SimplifiedPVPManager] sendTurnEndNotification 错误:', error);
-    }
 
     // 通过 Broadcast 通知对手
     const message = {
@@ -244,7 +236,7 @@ const SimplifiedPVPManager = {
       playerId: this.myPlayerId,
       data: {
         turnNumber: state.turnCount,
-        nextPlayer: state.currentPlayer === 'P1' ? 'P2' : 'P1'
+        nextPlayer: nextPlayer  // 使用调用方传入的值（在切换前计算）
       },
       timestamp: Date.now()
     };
@@ -255,7 +247,10 @@ const SimplifiedPVPManager = {
       payload: message
     });
 
-    console.log('[SimplifiedPVPManager] 回合切换通知已发送');
+    console.log('[SimplifiedPVPManager] 回合切换通知已发送:', {
+      当前回合: state.turnCount,
+      下个玩家: nextPlayer
+    });
   },
 
   /**
@@ -282,16 +277,17 @@ const SimplifiedPVPManager = {
   /**
    * 发送先手判定
    * @param {string} firstPlayer - 先手玩家 'P1' or 'P2'
+   * @param {Object} firstStem - 初始天干（可选）
    */
-  syncInitiative(firstPlayer) {
+  syncInitiative(firstPlayer, firstStem) {
     if (!this.isEnabled || !this.channel) return;
 
-    console.log('[SimplifiedPVPManager] 发送先手判定:', firstPlayer);
+    console.log('[SimplifiedPVPManager] 发送先手判定:', firstPlayer, firstStem ? '初始天干:' + firstStem.name : '');
 
     const message = {
       type: 'initiative',
       playerId: this.myPlayerId,
-      data: { firstPlayer },
+      data: { firstPlayer, firstStem },
       timestamp: Date.now()
     };
 
