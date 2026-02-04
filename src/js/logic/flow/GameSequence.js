@@ -1,19 +1,17 @@
 // ============================================
-// 游戏序列管理器（权威服务器架构）
+// 游戏序列管理器（简化PVP架构）
 // ============================================
 // 职责：
 // - 管理游戏开始流程
 // - 控制先手判定阶段
 // - 管理房间创建/加入流程
-// - 设置权威服务器会话
+// - 设置PVP会话
 // ============================================
 
 import EventBus from '../../bus/EventBus.js';
 import StateManager from '../../state/StateManager.js';
 import RoomManager from '../../network/RoomManager.js';
-import CommandSender from '../../network/CommandSender.js';
-import AuthorityExecutor from '../../network/AuthorityExecutor.js';
-import GameCommand, { CommandType } from '../../network/GameCommand.js';
+import SimplifiedPVPManager from '../../network/SimplifiedPVPManager.js';
 import TurnManager from './TurnManager.js';
 import { getCurrentUserId } from '../../network/supabaseClient.js';
 
@@ -116,10 +114,8 @@ const GameSequence = {
       const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
       EventBus.emit('game:waiting-info', { roomCode, shareUrl });
 
-      // 设置权威服务器模块 (我是P1)
-      CommandSender.setSession(room.id, playerId);
-      AuthorityExecutor.setSession(room.id, playerId, 'P1');
-      TurnManager.setSession(room.id);
+      // 设置PVP会话（我是P1）
+      SimplifiedPVPManager.initPVPSession(room.id, room.id, 'P1');
 
       // 触发会话开始事件（用于重连）
       EventBus.emit('game:session-start', {
@@ -153,10 +149,8 @@ const GameSequence = {
     if (result.success) {
       this.currentRoomId = result.room.id;
 
-      // 设置权威服务器模块 (我是P2)
-      CommandSender.setSession(result.room.id, playerId);
-      AuthorityExecutor.setSession(result.room.id, playerId, 'P2');
-      TurnManager.setSession(result.room.id);
+      // 设置PVP会话（我是P2）
+      SimplifiedPVPManager.initPVPSession(result.room.id, result.room.id, 'P2');
 
       // 触发会话开始事件（用于重连）
       EventBus.emit('game:session-start', {
@@ -192,7 +186,7 @@ const GameSequence = {
       EventBus.emit('game:initiative-start');
 
       setTimeout(async () => {
-        // PvP 模式：只有房主决定先手，然后通过命令同步给对手
+        // PvP 模式：只有房主决定先手，然后同步给对手
         let currentPlayer = 'P1';
         let isFirstPlayer = false; // 是否是先手决定者
 
@@ -207,26 +201,18 @@ const GameSequence = {
             const firstStem = STEMS_LIST[Math.floor(Math.random() * 10)];
             console.log('[GameSequence] P1 决定先手:', currentPlayer, '初始天干:', firstStem.name);
 
-            // 发送先手判定命令
-            const initiativeCommand = GameCommand.create({
-              sessionId: this.currentRoomId,
-              commandType: 'INITIATIVE',
-              playerId: this.myPlayerId,
-              turnNumber: 0,
-              payload: { 
-                firstPlayer: currentPlayer,
-                firstStem: firstStem 
-              }
-            });
+            // 立即应用先手判定和天干
+            StateManager.update({ currentPlayer, currentStem: firstStem });
 
-            await CommandSender.sendCommand(initiativeCommand);
-            console.log('[GameSequence] ✓ INITIATIVE 命令已发送，等待确认');
+            // 同步给对手（异步）
+            SimplifiedPVPManager.syncInitiative(currentPlayer);
+            console.log('[GameSequence] ✓ 先手判定已发送');
 
             // 重置启动标志
             this._isStarting = false;
-            return; // 等待数据库确认后再继续
+            return; // 等待对手接收后再继续
           } else {
-            // 我是 P2，等待房主的先手判定命令
+            // 我是 P2，等待房主的先手判定
             console.log('[GameSequence] P2 等待房主的先手判定');
             this._isStarting = false;
             return;

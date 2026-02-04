@@ -1,16 +1,15 @@
 // ============================================
-// 断线重连管理器
+// 断线重连管理器（简化PVP架构）
 // ============================================
 // 职责：
 // - 检测网络断开
 // - 重连后恢复游戏状态
-// - 同步丢失的命令
-// - 订阅最新回合状态
+// - 请求对手发送当前状态
 // ============================================
 
 import EventBus from '../bus/EventBus.js';
 import { supabase, query } from './supabaseClient.js';
-import StateSnapshotManager from './StateSnapshotManager.js';
+import SimplifiedPVPManager from './SimplifiedPVPManager.js';
 import StateManager from '../state/StateManager.js';
 
 const ReconnectionManager = {
@@ -126,7 +125,7 @@ const ReconnectionManager = {
   },
 
   /**
-   * 尝试重连
+   * 尝试重连（简化PVP版本）
    * @returns {Promise<Object>} { success, error }
    */
   async attemptReconnect() {
@@ -160,40 +159,29 @@ const ReconnectionManager = {
 
       console.log('[ReconnectionManager] 会话有效:', session);
 
-      // 2. 获取最新状态快照
-      const latestSnapshot = await StateSnapshotManager.getLatestSnapshot(this.lastSessionId);
+      // 2. 重新订阅 Realtime Broadcast
+      SimplifiedPVPManager.initPVPSession(
+        this.lastSessionId,
+        this.lastSessionId,
+        StateManager.getMyRole()
+      );
 
-      if (!latestSnapshot) {
-        throw new Error('无状态快照');
-      }
-
-      console.log('[ReconnectionManager] 找到快照，回合:', latestSnapshot.turnCount);
-
-      // 3. 应用快照
-      StateSnapshotManager.applySnapshot(latestSnapshot);
+      // 3. 请求对手发送当前状态
+      SimplifiedPVPManager.requestStateSync();
 
       // 4. 订阅会话更新
       this._subscribeToSession(this.lastSessionId);
-
-      // 5. 同步丢失的命令
-      await this._syncMissedCommands(this.lastSessionId, latestSnapshot.turnCount);
 
       // 重连成功
       this.isReconnecting = false;
       this.reconnectAttempts = 0;
 
-      console.log('[ReconnectionManager] ✓ 重连成功');
+      console.log('[ReconnectionManager] ✓ 重连成功，等待对手状态...');
 
       // 触发重连成功事件
       EventBus.emit('RECONNECT:success', {
-        sessionId: this.lastSessionId,
-        snapshot: latestSnapshot
+        sessionId: this.lastSessionId
       });
-
-      // 调用回调
-      if (this.onStateRestored) {
-        this.onStateRestored(latestSnapshot);
-      }
 
       return { success: true };
     } catch (error) {
@@ -285,51 +273,6 @@ const ReconnectionManager = {
       .subscribe((status) => {
         console.log('[ReconnectionManager] 会话订阅状态:', status);
       });
-  },
-
-  /**
-   * 同步丢失的命令
-   * @private
-   */
-  async _syncMissedCommands(sessionId, lastTurnNumber) {
-    console.log('[ReconnectionManager] 同步丢失的命令，回合 >', lastTurnNumber);
-
-    try {
-      // 获取该回合之后的所有已执行命令
-      const { data: moves } = await supabase
-        .from('game_moves')
-        .select('*')
-        .eq('session_id', sessionId)
-        .gt('turn_number', lastTurnNumber)
-        .eq('status', 'executed')
-        .order('turn_number', { ascending: true });
-
-      if (!moves || moves.length === 0) {
-        console.log('[ReconnectionManager] 无丢失命令');
-        return;
-      }
-
-      console.log('[ReconnectionManager] 发现', moves.length, '个丢失命令');
-
-      // 触发命令执行事件（让 AuthorityExecutor 处理）
-      const { default: AuthorityExecutor } = await import('./AuthorityExecutor.js');
-
-      for (const move of moves) {
-        EventBus.emit('COMMAND:execute', {
-          commandId: move.command_id,
-          command: {
-            playerId: move.player_id,
-            commandType: move.command_type,
-            turnNumber: move.turn_number
-          },
-          payload: move.payload
-        });
-      }
-
-      console.log('[ReconnectionManager] ✓ 命令已同步');
-    } catch (error) {
-      console.error('[ReconnectionManager] 同步命令失败:', error);
-    }
   },
 
   /**
