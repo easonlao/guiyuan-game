@@ -13,6 +13,12 @@ import StateManager from '../state/StateManager.js';
 import SimplifiedPVPManager from '../network/SimplifiedPVPManager.js';
 import { GAME_EVENTS } from '../types/events.js';
 import { STEMS_LIST, STEMS_MAP } from '../config/game-config.js';
+import AuthorityExecutor from './AuthorityExecutor.js';
+
+// 获取 PVP 管理器（在线模式）
+function getPVPManager() {
+  return SimplifiedPVPManager;
+}
 
 import GameSequence from './flow/GameSequence.js';
 import TurnManager from './flow/TurnManager.js';
@@ -29,6 +35,7 @@ const GameEngine = {
     if (this._initialized) {
       return;
     }
+    AuthorityExecutor.init();
     this._bindEvents();
     this._initialized = true;
   },
@@ -46,6 +53,9 @@ const GameEngine = {
     // PVP同步事件
     EventBus.on('sync:opponent-action', this.handleOpponentAction.bind(this));
     EventBus.on('sync:stem', this.handleSyncedStem.bind(this));
+
+    // 主机权威事件
+    EventBus.on('authority:action-request', this.handleAuthorityActionRequest.bind(this));
   },
 
   startNewGame(data) {
@@ -69,28 +79,44 @@ const GameEngine = {
       return;
     }
 
-    // PvP 模式下，只有当前回合玩家生成天干
-    if (SimplifiedPVPManager.isEnabled) {
-      const isMyTurn = (state.currentPlayer === SimplifiedPVPManager.myRole);
-
-      if (!isMyTurn) {
+    // PvP 模式下，只有主机生成天干
+    const pvpManager = getPVPManager();
+    if (pvpManager.isEnabled) {
+      // 只有主机才能生成天干
+      if (!AuthorityExecutor.isHost()) {
+        console.log('[GameEngine] 非主机，等待主机天干同步');
         return;
       }
+
+      // 主机使用 AuthorityExecutor 生成天干
+      const result = AuthorityExecutor.generateStem();
+      if (!result) {
+        console.error('[GameEngine] 权威执行器未能生成天干');
+        return;
+      }
+
+      const { stem, seed } = result;
+      StateManager.update({ currentStem: stem });
+      EventBus.emit('game:stem-generated', { stem });
+
+      // 广播天干生成（带种子）
+      if (pvpManager.sendStemGenerated) {
+        pvpManager.sendStemGenerated(stem, seed);
+      }
+      return;
     }
 
-    const stem = STEMS_LIST[Math.floor(Math.random() * 10)];
+    // 单机模式：直接生成天干
+    const stem = STEMS_LIST[Math.floor(Math.random() * STEMS_LIST.length)];
     StateManager.update({ currentStem: stem });
     EventBus.emit('game:stem-generated', { stem });
-
-    // PvP模式下同步天干
-    if (SimplifiedPVPManager.isEnabled) {
-      SimplifiedPVPManager.syncStem(stem);
-    }
   },
 
   handleSyncedStem(stem) {
+    // 只更新状态，不触发事件
+    // TurnManager.startTurn() 会检测到 currentStem 并触发 game:stem-generated
     StateManager.update({ currentStem: stem });
-    EventBus.emit('game:stem-generated', { stem });
+    console.log('[GameEngine] handleSyncedStem: 已更新 currentStem:', stem.name);
   },
 
   /**
@@ -103,13 +129,15 @@ const GameEngine = {
     const currentState = isYang ? nodeState.yang : nodeState.yin;
 
     // PvP 同步逻辑：非当前回合玩家不执行任何逻辑，等待网络同步
-    if (SimplifiedPVPManager.isEnabled && playerId !== SimplifiedPVPManager.myRole) {
-      console.log(`[GameEngine] checkStemLogic: 非当前回合玩家，跳过。当前回合: ${playerId}, 我的角色: ${SimplifiedPVPManager.myRole}`);
+    const pvpManager = getPVPManager();
+    const myRole = pvpManager.getMyRole?.() || pvpManager.myRole;
+    if (pvpManager.isEnabled && playerId !== myRole) {
+      console.log(`[GameEngine] checkStemLogic: 非当前回合玩家，跳过。当前回合: ${playerId}, 我的角色: ${myRole}`);
       return;
     }
 
     if (currentState < 1) {
-      if (SimplifiedPVPManager.isEnabled) {
+      if (pvpManager.isEnabled) {
         // PvP模式下，自动吸纳也视为一种"动作"，需要广播
         EventBus.emit('game:action-selected', {
           type: 'AUTO',
@@ -183,21 +211,68 @@ const GameEngine = {
   },
 
   /**
-   * 处理玩家操作选择（简化PVP - 乐观更新）
+   * 处理玩家的操作请求（主机权威）
+   * @param {Object} action - 操作对象
+   */
+  async handleAuthorityActionRequest(action) {
+    console.log('[GameEngine] 主机收到操作请求:', action.type);
+
+    // 主机确认操作
+    const result = AuthorityExecutor.confirmAction(action);
+    if (!result.confirmed) {
+      console.error('[GameEngine] 主机拒绝操作:', action.type);
+      return;
+    }
+
+    // 主机执行操作
+    this.executeAction(action);
+
+    // 广播操作确认到双方
+    const pvpManager = getPVPManager();
+    if (pvpManager.sendActionConfirmed) {
+      await pvpManager.sendActionConfirmed(action);
+    }
+  },
+
+  /**
+   * 处理玩家操作选择（主机-客户端架构）
    * @param {Object} action - 操作对象
    */
   async handleActionSelection(action) {
     const state = StateManager.getState();
 
-    // 1. 立即执行操作（不等待）
-    this.executeAction(action);
-
-    // 2. 异步发送到数据库（仅PVP模式）
+    // PvP 模式下的请求-确认流程
     if (state.gameMode === 0) {
-      SimplifiedPVPManager.sendActionToDatabase(action).catch(err => {
-        console.warn('[GameEngine] 操作发送失败:', err);
-      });
+      const pvpManager = getPVPManager();
+
+      // 客户端：发送操作请求到主机
+      if (!AuthorityExecutor.isHost()) {
+        console.log('[GameEngine] 客户端请求操作确认:', action.type);
+        if (pvpManager.requestActionConfirmation) {
+          await pvpManager.requestActionConfirmation(action);
+        }
+        return; // 等待主机的确认消息
+      }
+
+      // 主机：确认操作并广播
+      const result = AuthorityExecutor.confirmAction(action);
+      if (!result.confirmed) {
+        console.error('[GameEngine] 主机拒绝操作:', action.type);
+        return;
+      }
+
+      // 主机执行操作
+      this.executeAction(action);
+
+      // 广播操作确认到双方
+      if (pvpManager.sendActionConfirmed) {
+        await pvpManager.sendActionConfirmed(action);
+      }
+      return;
     }
+
+    // 单机模式：直接执行操作
+    this.executeAction(action);
   },
 
   /**

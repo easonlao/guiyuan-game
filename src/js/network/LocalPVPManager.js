@@ -1,0 +1,502 @@
+// ============================================
+// 本地PVP管理器
+// ============================================
+// 职责：
+// - 使用 BroadcastChannel API 在同一设备的两个标签页之间通信
+// - 管理本地 PVP 会话状态
+// - 处理回合切换同步
+// - 同步对手操作
+// ============================================
+
+import EventBus from '../bus/EventBus.js';
+import StateManager from '../state/StateManager.js';
+import AuthorityExecutor from '../logic/AuthorityExecutor.js';
+
+const LocalPVPManager = {
+  // 会话信息
+  isEnabled: false,
+  myRole: null, // 'P1' or 'P2'
+  isHost: false,
+
+  // Broadcast Channel
+  channel: null,
+  CHANNEL_NAME: 'local-pvp-game',
+
+  /**
+   * 初始化
+   */
+  init() {
+    console.log('[LocalPVPManager] 初始化');
+    this._bindEvents();
+  },
+
+  /**
+   * 绑定事件
+   * @private
+   */
+  _bindEvents() {
+    EventBus.on('game:return-to-menu', this.cleanup.bind(this));
+    EventBus.on('anim:initiative-finished', this._onInitiativeAnimationFinished.bind(this));
+  },
+
+  /**
+   * 先手动画完成后的处理
+   * @private
+   */
+  _onInitiativeAnimationFinished() {
+    // 如果有待设置的初始天干，现在才设置
+    if (this._pendingFirstStem) {
+      console.log('[LocalPVPManager] 先手动画完成，设置初始天干:', this._pendingFirstStem.name);
+      StateManager.update({ currentStem: this._pendingFirstStem }, true);
+      this._pendingFirstStem = null;
+    }
+  },
+
+  /**
+   * 创建本地 PVP 房间（作为 P1 主机）
+   */
+  createLocalRoom() {
+    this.cleanup();
+
+    this.isEnabled = true;
+    this.myRole = 'P1';
+    this.isHost = true;
+
+    // 设置为主机
+    AuthorityExecutor.setAsHost();
+
+    // 同步 myRole 到 StateManager
+    StateManager.setMyRole('P1');
+
+    // 设置游戏模式为 PVP
+    StateManager.update({ gameMode: 0 });
+
+    // 订阅 Broadcast Channel
+    this._subscribeToChannel();
+
+    // 广播房间创建消息
+    this._broadcast({
+      type: 'room_created',
+      role: 'P1',
+      timestamp: Date.now()
+    });
+
+    console.log('[LocalPVPManager] 本地房间已创建 (P1)');
+  },
+
+  /**
+   * 加入本地 PVP 房间（作为 P2）
+   */
+  joinLocalRoom() {
+    this.cleanup();
+
+    this.isEnabled = true;
+    this.myRole = 'P2';
+    this.isHost = false;
+
+    // 重置为主机（客户端）
+    AuthorityExecutor.reset();
+
+    // 同步 myRole 到 StateManager
+    StateManager.setMyRole('P2');
+
+    // 设置游戏模式为 PVP
+    StateManager.update({ gameMode: 0 });
+
+    // 订阅 Broadcast Channel
+    this._subscribeToChannel();
+
+    // 广播加入消息
+    this._broadcast({
+      type: 'player_joined',
+      role: 'P2',
+      timestamp: Date.now()
+    });
+
+    console.log('[LocalPVPManager] 已加入本地房间 (P2)');
+
+    // 通知主机可以开始游戏
+    return true;
+  },
+
+  /**
+   * 订阅 Broadcast Channel
+   * @private
+   */
+  _subscribeToChannel() {
+    if (this.channel) {
+      this.channel.close();
+    }
+
+    console.log('[LocalPVPManager] 订阅 Broadcast Channel:', this.CHANNEL_NAME);
+
+    this.channel = new BroadcastChannel(this.CHANNEL_NAME);
+
+    this.channel.onmessage = (event) => {
+      const message = event.data;
+
+      // 忽略自己的消息
+      if (message.role === this.myRole) {
+        return;
+      }
+
+      console.log('[LocalPVPManager] 收到消息:', message.type);
+      this._handleMessage(message);
+    };
+  },
+
+  /**
+   * 处理接收到的消息
+   * @private
+   */
+  _handleMessage(message) {
+    const { type, data } = message;
+
+    switch (type) {
+      case 'room_created':
+        console.log('[LocalPVPManager] 检测到主机房间');
+        break;
+
+      case 'player_joined':
+        console.log('[LocalPVPManager] 对手已加入');
+        EventBus.emit('game:opponent-connected');
+        break;
+
+      case 'action':
+        // 对手操作（已确认的）
+        console.log('[LocalPVPManager] 收到已确认的操作:', data.type);
+        EventBus.emit('sync:opponent-action', data);
+        break;
+
+      case 'action_request':
+        // 操作请求（客户端发送给主机）
+        console.log('[LocalPVPManager] 收到操作请求:', data.type);
+        if (this.isHost) {
+          EventBus.emit('authority:action-request', data);
+        }
+        break;
+
+      case 'action_confirmed':
+        // 操作确认（主机发送给双方）
+        console.log('[LocalPVPManager] 收到操作确认:', data.type);
+        EventBus.emit('sync:opponent-action', data);
+        break;
+
+      case 'turn_end':
+        // 对手回合结束
+        console.log('[LocalPVPManager] 对手回合结束，我的角色:', this.myRole, '通知中的下个玩家:', data.nextPlayer);
+
+        const currentState = StateManager.getState();
+        const turnUpdates = {};
+        if (data.nextPlayer && data.nextPlayer !== currentState.currentPlayer) {
+          turnUpdates.currentPlayer = data.nextPlayer;
+        }
+        turnUpdates.currentStem = null;
+
+        if (Object.keys(turnUpdates).length > 0) {
+          StateManager.update(turnUpdates, true);
+          console.log('[LocalPVPManager] 已更新状态:', turnUpdates);
+        }
+
+        EventBus.emit('game:next-turn');
+        break;
+
+      case 'turn_sync':
+        // 回合切换同步（主机权威计算）
+        console.log('[LocalPVPManager] 收到回合切换同步，下个玩家:', data.nextPlayer);
+
+        const syncState = StateManager.getState();
+        const syncUpdates = {};
+        if (data.nextPlayer && data.nextPlayer !== syncState.currentPlayer) {
+          syncUpdates.currentPlayer = data.nextPlayer;
+        }
+        syncUpdates.currentStem = null;
+
+        if (Object.keys(syncUpdates).length > 0) {
+          StateManager.update(syncUpdates, true);
+          console.log('[LocalPVPManager] 已同步回合切换:', syncUpdates);
+        }
+
+        EventBus.emit('game:next-turn');
+        break;
+
+      case 'stem':
+        // 天干同步
+        StateManager.update({ currentStem: data.stem });
+        console.log('[LocalPVPManager] 天干已同步:', data.stem.name);
+        break;
+
+      case 'stem_generated':
+        // 天干生成（主机权威）
+        console.log('[LocalPVPManager] 收到主机天干生成:', data.stem.name);
+        StateManager.update({ currentStem: data.stem });
+        EventBus.emit('game:stem-generated', { stem: data.stem });
+        break;
+
+      case 'initiative':
+        // 先手判定
+        console.log('[LocalPVPManager] 收到先手判定:', data.firstPlayer);
+
+        // 只设置 currentPlayer，不设置 currentStem
+        // currentStem 会在动画完成后（anim:initiative-finished）才设置
+        StateManager.update({ currentPlayer: data.firstPlayer }, true);
+
+        // 保存初始天干，等待动画完成后再设置
+        if (data.firstStem) {
+          this._pendingFirstStem = data.firstStem;
+        }
+
+        // 触发先手判定完成事件
+        // BoardAnimation 会在收到此事件后 1200ms 触发 anim:initiative-finished
+        EventBus.emit('game:initiative-completed', {
+          winner: data.firstPlayer,
+          isHost: this.isHost
+        });
+        break;
+
+      default:
+        console.warn('[LocalPVPManager] 未知消息类型:', type);
+    }
+  },
+
+  /**
+   * 发送操作到对手
+   * @param {Object} action - 操作对象
+   * @returns {Promise<void>}
+   */
+  sendAction(action) {
+    return new Promise((resolve) => {
+      if (!this.isEnabled || !this.channel) {
+        resolve();
+        return;
+      }
+
+      this._broadcast({
+        type: 'action',
+        role: this.myRole,
+        data: action,
+        timestamp: Date.now()
+      });
+      resolve();
+    });
+  },
+
+  /**
+   * 发送回合切换通知
+   * @param {string} nextPlayer - 下个玩家
+   * @returns {Promise<void>}
+   */
+  sendTurnEndNotification(nextPlayer) {
+    return new Promise((resolve) => {
+      if (!this.isEnabled || !this.channel) {
+        resolve();
+        return;
+      }
+
+    const state = StateManager.getState();
+
+    this._broadcast({
+      type: 'turn_end',
+      role: this.myRole,
+      data: {
+        turnNumber: state.turnCount,
+        nextPlayer: nextPlayer
+      },
+      timestamp: Date.now()
+    });
+
+    console.log('[LocalPVPManager] 回合切换通知已发送:', {
+      当前回合: state.turnCount,
+      下个玩家: nextPlayer
+    });
+
+    resolve();
+  });
+  },
+
+  /**
+   * 发送天干同步
+   * @param {Object} stem - 天干
+   */
+  syncStem(stem) {
+    if (!this.isEnabled || !this.channel) return;
+
+    this._broadcast({
+      type: 'stem',
+      role: this.myRole,
+      data: { stem },
+      timestamp: Date.now()
+    });
+  },
+
+  /**
+   * 发送先手判定
+   * @param {string} firstPlayer - 先手玩家
+   * @param {Object} firstStem - 初始天干
+   */
+  syncInitiative(firstPlayer, firstStem) {
+    if (!this.isEnabled || !this.channel) return;
+
+    console.log('[LocalPVPManager] 发送先手判定:', firstPlayer, firstStem ? '初始天干:' + firstStem.name : '');
+
+    this._broadcast({
+      type: 'initiative',
+      role: this.myRole,
+      data: { firstPlayer, firstStem },
+      timestamp: Date.now()
+    });
+  },
+
+  /**
+   * 发送游戏结束
+   * @param {Object} data - 游戏结束数据
+   */
+  syncGameEnd(data) {
+    if (!this.isEnabled || !this.channel) return;
+
+    this._broadcast({
+      type: 'game_end',
+      role: this.myRole,
+      data: data,
+      timestamp: Date.now()
+    });
+  },
+
+  /**
+   * 发送天干生成（主机权威）
+   * @param {Object} stem - 天干
+   * @param {number} seed - 随机种子
+   */
+  sendStemGenerated(stem, seed) {
+    if (!this.isEnabled || !this.channel) return;
+
+    this._broadcast({
+      type: 'stem_generated',
+      role: this.myRole,
+      data: { stem, seed },
+      timestamp: Date.now()
+    });
+
+    console.log('[LocalPVPManager] 发送天干生成:', stem.name, 'seed:', seed);
+  },
+
+  /**
+   * 发送回合切换同步（主机权威）
+   * @param {string} nextPlayer - 下个玩家
+   */
+  sendTurnSync(nextPlayer) {
+    if (!this.isEnabled || !this.channel) return;
+
+    const state = StateManager.getState();
+
+    this._broadcast({
+      type: 'turn_sync',
+      role: this.myRole,
+      data: {
+        turnNumber: state.turnCount,
+        nextPlayer: nextPlayer
+      },
+      timestamp: Date.now()
+    });
+
+    console.log('[LocalPVPManager] 发送回合切换同步:', {
+      当前回合: state.turnCount,
+      下个玩家: nextPlayer
+    });
+  },
+
+  /**
+   * 请求操作确认（客户端发送）
+   * @param {Object} action - 操作对象
+   * @returns {Promise<void>}
+   */
+  requestActionConfirmation(action) {
+    return new Promise((resolve) => {
+      if (!this.isEnabled || !this.channel) {
+        resolve();
+        return;
+      }
+
+      this._broadcast({
+        type: 'action_request',
+        role: this.myRole,
+        data: action,
+        timestamp: Date.now()
+      });
+
+      console.log('[LocalPVPManager] 请求操作确认:', action.type);
+      resolve();
+    });
+  },
+
+  /**
+   * 发送操作确认（主机权威）
+   * @param {Object} action - 操作对象
+   * @returns {Promise<void>}
+   */
+  sendActionConfirmed(action) {
+    return new Promise((resolve) => {
+      if (!this.isEnabled || !this.channel) {
+        resolve();
+        return;
+      }
+
+      this._broadcast({
+        type: 'action_confirmed',
+        role: this.myRole,
+        data: action,
+        timestamp: Date.now()
+      });
+
+      console.log('[LocalPVPManager] 发送操作确认:', action.type);
+      resolve();
+    });
+  },
+
+  /**
+   * 广播消息
+   * @private
+   */
+  _broadcast(message) {
+    if (this.channel) {
+      this.channel.postMessage(message);
+    }
+  },
+
+  /**
+   * 检查是否启用
+   * @returns {boolean}
+   */
+  isActive() {
+    return this.isEnabled;
+  },
+
+  /**
+   * 获取我的角色
+   * @returns {string|null}
+   */
+  getMyRole() {
+    return this.myRole;
+  },
+
+  /**
+   * 清理资源
+   */
+  cleanup() {
+    if (this.channel) {
+      this.channel.close();
+      this.channel = null;
+    }
+
+    this.isEnabled = false;
+    this.myRole = null;
+    this.isHost = false;
+
+    // 重置权威执行器
+    AuthorityExecutor.reset();
+
+    console.log('[LocalPVPManager] 资源已清理');
+  }
+};
+
+export default LocalPVPManager;

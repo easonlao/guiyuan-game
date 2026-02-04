@@ -129,7 +129,9 @@ const LeaderboardManager = {
 
       // 生成唯一的玩家标识（使用 localStorage 的 ID）
       const uniquePlayerId = getCurrentUserId() || `guest_${Date.now()}`;
-      const playerName = playerId === 'P1' ? '本尊' : '对家';
+      // 优先使用用户输入的昵称，如果没有则使用默认名称
+      const userNickname = localStorage.getItem('playerNickname')?.trim();
+      const playerName = userNickname || (playerId === 'P1' ? '本尊' : '对家');
 
       // 查询是否已有记录
       const existing = await query('player_scores', {
