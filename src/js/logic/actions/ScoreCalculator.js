@@ -50,27 +50,14 @@ const ScoreCalculator = {
       // 组合显示原因
       const combinedReason = this._getCombinedReason(actionType, stateName);
 
-      // 分别记录统计（通过多次调用 addScore）
-      // 记录行为分
-      if (actionScore > 0) {
-        StateManager.addScore(playerId, this._applyRarityBonus(actionScore, actionType), actionName, `ACTION_${actionType}`);
-      }
-
-      // 记录状态分
-      if (stateScore > 0 && stateName) {
-        StateManager.addScore(playerId, this._applyRarityBonus(stateScore, actionType), stateName, `STATE_${actionType}`);
-      }
-
-      // 更新总分（使用组合原因，actionType 保持原值）
-      // 注意：这里会重复加分，所以需要调整
-      // 实际上我们应该只调用一次 addScore 来更新总分
-      // 让我重新设计...
-
-      // 简化方案：只调用一次 addScore，但在 StateManager 中拆分统计
-      // 使用特殊的 reason 格式：动作·状态
+      // 统一调用：只调用一次 addScore，避免重复加分
+      // 统计拆分由 StateManager._recordScoreByReason() 内部处理
+      // reason 格式：动作·状态（如 "破·破阴点亮"）
       StateManager.addScore(playerId, finalScore, combinedReason, actionType);
 
-      console.log(`[Score] ${actionType}: 行为${actionScore} + 状态${stateScore} + 稀有${(finalScore - totalScore).toFixed(1)} = ${finalScore} - ${combinedReason}`);
+      // 日志显示：使用 Math.round 避免浮点精度问题
+      const rarityBonus = finalScore - totalScore;
+      console.log(`[Score] ${actionType}: 行为${actionScore} + 状态${stateScore} + 稀有${rarityBonus} = ${finalScore} - ${combinedReason}`);
     }
   },
 

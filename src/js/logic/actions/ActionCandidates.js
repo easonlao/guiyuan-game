@@ -41,26 +41,27 @@ const ActionCandidates = {
     if (yinState < 1) {
       actions.push({
         type: 'CONVERT',
+        executorId: playerId,
         target: { playerId, elementIndex, isYang: false }
       });
     }
 
     const minusCands = this.getMinusCandidates(opponentId, keEl);
     if (minusCands.length > 0) {
-      actions.push({ type: 'ATK', target: minusCands[0] });
+      actions.push({ type: 'ATK', executorId: playerId, target: minusCands[0] });
     }
 
     if (hasUnity) {
       const oppKeNode = StateManager.getNodeState(opponentId, keEl);
       if (!(oppKeNode.yang === -1 && oppKeNode.yin === -1)) {
-        actions.push({ type: 'BURST_ATK', targetEl: keEl });
+        actions.push({ type: 'BURST_ATK', executorId: playerId, targetEl: keEl });
       }
     }
 
     if (hasUnity) {
       const myShengNode = StateManager.getNodeState(playerId, shengEl);
       if (!(myShengNode.yang === 2 && myShengNode.yin === 2)) {
-        actions.push({ type: 'BURST', targetEl: shengEl });
+        actions.push({ type: 'BURST', executorId: playerId, targetEl: shengEl });
       }
     }
   },
@@ -69,72 +70,87 @@ const ActionCandidates = {
     if (yangState < 1) {
       actions.push({
         type: 'CONVERT',
+        executorId: playerId,
         target: { playerId, elementIndex, isYang: true }
       });
     }
 
     const plusCands = this.getPlusCandidates(playerId, shengEl);
     if (plusCands.length > 0) {
-      actions.push({ type: 'TRANS', target: plusCands[0] });
+      actions.push({ type: 'TRANS', executorId: playerId, target: plusCands[0] });
     }
 
     if (hasUnity) {
       const myShengNode = StateManager.getNodeState(playerId, shengEl);
       if (!(myShengNode.yang === 2 && myShengNode.yin === 2)) {
-        actions.push({ type: 'BURST', targetEl: shengEl });
+        actions.push({ type: 'BURST', executorId: playerId, targetEl: shengEl });
       }
     }
 
     if (hasUnity) {
       const oppKeNode = StateManager.getNodeState(opponentId, keEl);
       if (!(oppKeNode.yang === -1 && oppKeNode.yin === -1)) {
-        actions.push({ type: 'BURST_ATK', targetEl: keEl });
+        actions.push({ type: 'BURST_ATK', executorId: playerId, targetEl: keEl });
       }
     }
   },
 
   /**
-   * 获取加法候选目标（优先级：道损 > 虚空 > 点亮 > 加持）
+   * 获取加法候选目标（优先级：阴干 > 阳干）
+   * 遵循阴干优先规则：阴干=2时才转向阳干
    */
   getPlusCandidates(playerId, elementIndex) {
     const nodeState = StateManager.getNodeState(playerId, elementIndex);
     const candidates = [];
 
-    if (nodeState.yang === -1) {
-      candidates.push({ playerId, elementIndex, isYang: true, priority: 1 });
-    }
-    if (nodeState.yin === -1) {
-      candidates.push({ playerId, elementIndex, isYang: false, priority: 1 });
-    }
-    if (nodeState.yin > -1 && nodeState.yin < 2) {
-      const priority = nodeState.yin === 0 ? 2 : 3;
+    // 优先阴干：阴干<2时返回阴干候选
+    if (nodeState.yin < 2) {
+      let priority;
+      if (nodeState.yin === -1) priority = 1;      // 修复道损
+      else if (nodeState.yin === 0) priority = 2; // 点亮虚空
+      else priority = 3;                          // 增加加持
       candidates.push({ playerId, elementIndex, isYang: false, priority });
     }
-    if (nodeState.yin === 2 && nodeState.yang > -1 && nodeState.yang < 2) {
-      const priority = nodeState.yang === 0 ? 2 : 3;
+
+    // 阴干=2时，转向阳干
+    if (nodeState.yin === 2 && nodeState.yang < 2) {
+      let priority;
+      if (nodeState.yang === -1) priority = 1;    // 修复道损
+      else if (nodeState.yang === 0) priority = 2;  // 点亮虚空
+      else priority = 3;                           // 增加加持
       candidates.push({ playerId, elementIndex, isYang: true, priority });
     }
 
-    return candidates.sort((a, b) => a.priority - b.priority);
+    return candidates;
   },
 
   /**
-   * 获取减法候选目标（优先级：点亮 > 加持 > 虚空）
+   * 获取减法候选目标（优先级：阴干 > 阳干）
+   * 遵循阴干优先规则：阴干=-1时才转向阳干
    */
   getMinusCandidates(playerId, elementIndex) {
     const nodeState = StateManager.getNodeState(playerId, elementIndex);
     const candidates = [];
 
+    // 优先阴干：阴干>-1时返回阴干候选
     if (nodeState.yin > -1) {
-      const priority = nodeState.yin === 1 ? 1 : (nodeState.yin === 2 ? 2 : 3);
+      let priority;
+      if (nodeState.yin === 1) priority = 1;      // 破点亮
+      else if (nodeState.yin === 2) priority = 2; // 削弱加持
+      else priority = 3;                          // 破虚空
       candidates.push({ playerId, elementIndex, isYang: false, priority });
     }
+
+    // 阴干=-1时，转向阳干
     if (nodeState.yin === -1 && nodeState.yang > -1) {
-      const priority = nodeState.yang === 1 ? 1 : (nodeState.yang === 2 ? 2 : 3);
+      let priority;
+      if (nodeState.yang === 1) priority = 1;     // 破点亮
+      else if (nodeState.yang === 2) priority = 2; // 削弱加持
+      else priority = 3;                           // 破虚空
       candidates.push({ playerId, elementIndex, isYang: true, priority });
     }
 
-    return candidates.sort((a, b) => a.priority - b.priority);
+    return candidates;
   }
 };
 

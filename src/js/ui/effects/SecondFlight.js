@@ -25,8 +25,18 @@ const SecondFlight = {
     this._animatingNodes = animatingNodes;
     this._updateNodeStyle = updateNodeStyle;
     const { playerId: targetPlayerId, elementIndex: targetElementIndex } = targetInfo;
+
+    console.log('[SecondFlight] ========== playSecondFlight ==========');
+    console.log('[SecondFlight] stem:', stem);
+    console.log('[SecondFlight] startNode:', startNode);
+    console.log('[SecondFlight] targetInfo:', targetInfo);
+    console.log('[SecondFlight] actionType:', actionType);
+
     const targetStarEl = document.getElementById(`${targetPlayerId.toLowerCase()}-star`);
     const targetNode = targetStarEl?.querySelector(`.node[data-index="${targetElementIndex}"]`);
+
+    console.log('[SecondFlight] targetStarEl:', targetStarEl);
+    console.log('[SecondFlight] targetNode:', targetNode);
 
     if (!targetNode) return;
 

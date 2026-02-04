@@ -26,6 +26,7 @@ const FlyAnimation = {
   handleFlyAction(data, flushPendingState, animatingNodes, updateNodeStyle) {
     console.log('[FlyAnimation] ========== handleFlyAction ==========');
     console.log('[FlyAnimation] data:', data);
+    console.log('[FlyAnimation] secondaryTarget:', data.secondaryTarget);
     const { stem, playerId, actionType, secondaryTarget } = data;
     const starEl = document.getElementById(`${playerId.toLowerCase()}-star`);
     const container = starEl?.querySelector('.pentagram-container');

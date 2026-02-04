@@ -118,6 +118,9 @@ const AchievementOverlay = {
       clearTimeout(this._activeTimeout);
       this._activeTimeout = null;
     }
+
+    // 发出过场完成事件，以便后续操作（如显示最终惩罚）
+    EventBus.emit('achievement:overlay-hidden');
   },
 
   /**
