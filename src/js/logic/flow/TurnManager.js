@@ -1,9 +1,9 @@
 // ============================================
-// 回合管理器（权威服务器架构）
+// 回合管理器（简化PVP架构）
 // ============================================
 // 职责：
 // - 管理回合开始和结束
-// - 控制回合切换（通过服务器）
+// - 控制回合切换（乐观更新）
 // - 检测游戏结束条件
 // - 处理胜利/平局判定
 // ============================================
@@ -12,25 +12,10 @@ import EventBus from '../../bus/EventBus.js';
 import StateManager from '../../state/StateManager.js';
 import { GAME_EVENTS } from '../../types/events.js';
 import { POINTS_CONFIG } from '../../config/game-config.js';
-import CommandSender from '../../network/CommandSender.js';
-import GameCommand from '../../network/GameCommand.js';
-import { getCurrentUserId } from '../../network/supabaseClient.js';
-import AuthorityExecutor from '../../network/AuthorityExecutor.js';
+import SimplifiedPVPManager from '../../network/SimplifiedPVPManager.js';
 import PassiveEffects from '../../ui/effects/PassiveEffects.js';
 
 const TurnManager = {
-  // 当前会话ID（用于权威服务器）
-  currentSessionId: null,
-
-  /**
-   * 设置会话信息
-   * @param {string} sessionId - 会话ID
-   */
-  setSession(sessionId) {
-    this.currentSessionId = sessionId;
-    console.log('[TurnManager] 设置会话:', { sessionId });
-  },
-
   /**
    * 开始新回合
    */
@@ -110,155 +95,31 @@ const TurnManager = {
   },
 
   /**
-   * 请求结束回合（权威服务器架构）
-   * 计算回合效果并发送命令给服务器
+   * 结束回合（简化PVP - 乐观更新）
    * @returns {Promise<Object>} { success, error }
    */
-  async requestTurnEnd() {
-    console.log('[TurnManager] ====== 请求结束回合 ======');
+  async endTurn() {
+    console.log('[TurnManager] ====== 结束回合 ======');
 
-    // 2. 获取当前状态
     const state = StateManager.getState();
-    const myPlayerId = getCurrentUserId();
-    let myRole = StateManager.getMyRole();
-
-    // ⚠️ 备用方案：如果 StateManager 的 myRole 未设置，尝试从 AuthorityExecutor 获取
-    if (!myRole && state.gameMode === 0) {
-      myRole = AuthorityExecutor.myRole;
-      if (myRole) {
-        console.log('[TurnManager] 从 AuthorityExecutor 获取 myRole:', myRole);
-        // 同步到 StateManager
-        StateManager.setMyRole(myRole);
-      }
-    }
-
-    // ⚠️ 调试：输出详细信息
-    console.log('[TurnManager] 回合检查:', {
-      gameMode: state.gameMode,
-      currentPlayer: state.currentPlayer,
-      myRole: myRole,
-      myPlayerId: myPlayerId,
-      turnCount: state.turnCount,
-      comparison: state.currentPlayer === myRole,
-      authorityExecutorRole: AuthorityExecutor.myRole
-    });
-
-    // ⚠️ 检查：只有当前回合的玩家才能结束回合（PVP模式）
-    if (state.gameMode === 0) {
-      if (!myRole) {
-        console.warn('[TurnManager] myRole 未设置，无法验证回合。允许继续（可能是初始化问题）');
-        // 在PVP模式下，如果没有myRole，可能是初始化问题，允许继续
-      } else if (state.currentPlayer !== myRole) {
-        console.warn('[TurnManager] ✗ 不是当前回合，无法结束回合');
-        console.warn('[TurnManager]   当前回合玩家:', state.currentPlayer);
-        console.warn('[TurnManager]   我的角色:', myRole);
-        console.warn('[TurnManager]   比较结果:', state.currentPlayer, '!==', myRole);
-        return { success: false, error: `Not your turn: current is ${state.currentPlayer}` };
-      } else {
-        console.log('[TurnManager] ✓ 回合检查通过，当前玩家:', state.currentPlayer, '我的角色:', myRole);
-      }
-    }
 
     // 1. 计算回合结算效果（等待动画完成）
     await this._calculatePassiveEffects();
 
-    // 2. 计算下一回合状态（准备发送给服务器）
-    const nextPlayer = state.currentPlayer === 'P1' ? 'P2' : 'P1';
-    // 回合计数已在 startTurn() 中增加，这里直接使用当前值
-    const nextTurnCount = state.turnCount;
+    // 2. 立即切换回合（不等待服务器）
+    StateManager.switchPlayer();
+    console.log('[TurnManager] 回合已切换到:', state.currentPlayer);
 
-    // 生成下一个回合的天干（确保同步）
-    const { STEMS_LIST } = await import('../../config/game-config.js');
-    const nextStem = STEMS_LIST[Math.floor(Math.random() * 10)];
-    console.log('[TurnManager] 生成下一回合天干:', nextStem.name);
-
-    // 4. 准备回合信息（不发送完整 nodeStates/players）
-    // ⚠️ 只发送回合信息，避免覆盖本地状态（如强化/强破效果）
-    const finalState = {
-      turnCount: nextTurnCount,
-      currentPlayer: nextPlayer,
-      currentStem: nextStem
-      // 不再包含：
-      // - nodeStates: state.nodeStates
-      // - players: state.players
-    };
-
-    // 5. 创建回合结束命令
-    const command = GameCommand.createTurnEnd({
-      sessionId: this.currentSessionId,
-      playerId: myPlayerId,
-      turnNumber: state.turnCount,
-      finalState: finalState
-    });
-
-    console.log('[TurnManager] 发送回合结束命令:', GameCommand.getSummary(command));
-    console.log('[TurnManager] 命令详情:', {
-      sessionId: this.currentSessionId,
-      playerId: myPlayerId,
-      myRole: myRole,
-      turnNumber: state.turnCount,
-      nextTurnNumber: nextTurnCount,
-      currentPlayer: state.currentPlayer,
-      nextPlayer: nextPlayer,
-      currentStem: state.currentStem?.name,
-      nextStem: nextStem.name
-    });
-
-    // 6. 发送命令给服务器
-    const result = await CommandSender.sendCommand(command);
-
-    if (result.success) {
-      console.log('[TurnManager] ✓ 回合结束命令已发送');
-      // 不立即切换回合，等待服务器确认
-      return { success: true };
-    } else {
-      console.error('[TurnManager] ✗ 回合结束命令发送失败:', result.error);
-      return { success: false, error: result.error };
+    // 3. 异步通知对手（仅PVP模式）
+    if (state.gameMode === 0) {
+      SimplifiedPVPManager.sendTurnEndNotification().catch(err => {
+        console.warn('[TurnManager] 回合切换通知失败:', err);
+      });
     }
-  },
 
-  /**
-   * 应用回合切换（收到服务器确认后调用）
-   * @param {Object} newState - 服务器发送的新状态
-   */
-  applyTurnSwitch(newState) {
-    console.log('[TurnManager] ====== 应用回合切换 ======');
-    console.log('[TurnManager] 新回合:', newState.turnCount);
-    console.log('[TurnManager] 当前玩家:', newState.currentPlayer);
-
-    // 静默应用状态（已在 AuthorityExecutor 中应用）
-    // 这里只需要触发下一回合开始
-    EventBus.emit('game:next-turn', {
-      fromServer: true,
-      newPlayer: newState.currentPlayer
-    });
-
-    console.log('[TurnManager] ✓ 回合切换完成');
-  },
-
-  /**
-   * 结束回合（兼容旧代码，内部调用 requestTurnEnd）
-   * @deprecated 使用 requestTurnEnd 代替
-   */
-  async endTurn() {
-    console.log('[TurnManager] endTurn called (兼容模式)');
-
-    // 检查是否是 PvP 模式
-    const state = StateManager.getState();
-    const isPvP = (state.gameMode === 0);
-
-    if (isPvP && this.currentSessionId) {
-      // PvP 模式：通过服务器
-      return await this.requestTurnEnd();
-    } else {
-      // 单机模式：直接切换
-      this._calculatePassiveEffects();
-      // turnCount 已在 startTurn() 中增加，这里不再重复增加
-      StateManager.switchPlayer();
-      console.log('[TurnManager] emitting game:next-turn');
-      EventBus.emit('game:next-turn');
-      return { success: true };
-    }
+    // 4. 触发下一回合开始
+    EventBus.emit('game:next-turn');
+    return { success: true };
   },
 
   /**

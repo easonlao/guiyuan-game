@@ -7,9 +7,7 @@ import { GAME_EVENTS, UI_EVENTS, ANIMATION_EVENTS, INPUT_EVENTS, PLAYER_EVENTS, 
 
 import { supabase, getCurrentUserId } from './js/network/supabaseClient.js';
 import RoomManager from './js/network/RoomManager.js';
-import CommandSender from './js/network/CommandSender.js';
-import AuthorityExecutor from './js/network/AuthorityExecutor.js';
-import StateSnapshotManager from './js/network/StateSnapshotManager.js';
+import SimplifiedPVPManager from './js/network/SimplifiedPVPManager.js';
 import ReconnectionManager from './js/network/ReconnectionManager.js';
 import LeaderboardManager from './js/network/LeaderboardManager.js';
 import GameEngine from './js/logic/GameEngine.js';
@@ -132,9 +130,7 @@ function initNetwork() {
 
   RoomManager.init();
   LeaderboardManager.init();
-  CommandSender.init();
-  AuthorityExecutor.init();
-  StateSnapshotManager.init();
+  SimplifiedPVPManager.init();
   ReconnectionManager.init();
 
   if (window.PVP_DEBUG) console.log('[Main] ✓ 网络层已初始化');

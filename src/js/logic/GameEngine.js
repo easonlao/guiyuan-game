@@ -1,21 +1,16 @@
 // ============================================
-// 游戏引擎核心控制器（权威服务器架构）
+// 游戏引擎核心控制器（简化PVP架构）
 // ============================================
 // 职责：
 // - 协调各模块协作
 // - 管理游戏会话状态
 // - 处理动画与逻辑的时序同步
 // - 驱动游戏主流程
-// - 发送操作命令到服务器
 // ============================================
 
 import EventBus from '../bus/EventBus.js';
 import StateManager from '../state/StateManager.js';
-import SyncManager from '../network/SyncManager.js';
-import CommandSender from '../network/CommandSender.js';
-import AuthorityExecutor from '../network/AuthorityExecutor.js';
-import GameCommand, { ActionType, CommandType } from '../network/GameCommand.js';
-import { getCurrentUserId } from '../network/supabaseClient.js';
+import SimplifiedPVPManager from '../network/SimplifiedPVPManager.js';
 import { GAME_EVENTS } from '../types/events.js';
 import { STEMS_LIST, STEMS_MAP } from '../config/game-config.js';
 
@@ -48,10 +43,7 @@ const GameEngine = {
     EventBus.on('ui:impact-stage1', this.resolveStage1.bind(this));
     EventBus.on('ui:impact-final', this.resolveFinal.bind(this));
 
-    // 权威服务器事件
-    EventBus.on('COMMAND:execute', this.executeCommand.bind(this));
-
-    // 保留旧的同步事件（兼容过渡期）
+    // PVP同步事件
     EventBus.on('sync:opponent-action', this.handleOpponentAction.bind(this));
     EventBus.on('sync:stem', this.handleSyncedStem.bind(this));
   },
@@ -77,10 +69,10 @@ const GameEngine = {
       return;
     }
 
-    // PvP 模式下，如果启用了旧同步，只有当前回合玩家生成天干
-    if (SyncManager.isEnabled) {
-      const isMyTurn = (state.currentPlayer === SyncManager.myRole);
-      
+    // PvP 模式下，只有当前回合玩家生成天干
+    if (SimplifiedPVPManager.isEnabled) {
+      const isMyTurn = (state.currentPlayer === SimplifiedPVPManager.myRole);
+
       if (!isMyTurn) {
         return;
       }
@@ -90,9 +82,9 @@ const GameEngine = {
     StateManager.update({ currentStem: stem });
     EventBus.emit('game:stem-generated', { stem });
 
-    // 旧同步逻辑（如果仍在使用）
-    if (SyncManager.isEnabled) {
-      SyncManager.syncStem(stem);
+    // PvP模式下同步天干
+    if (SimplifiedPVPManager.isEnabled) {
+      SimplifiedPVPManager.syncStem(stem);
     }
   },
 
@@ -111,14 +103,13 @@ const GameEngine = {
     const currentState = isYang ? nodeState.yang : nodeState.yin;
 
     // PvP 同步逻辑：非当前回合玩家不执行任何逻辑，等待网络同步
-    // 使用 myRole (P1/P2) 而不是 myPlayerId (完整ID) 进行比较
-    if (SyncManager.isEnabled && playerId !== SyncManager.myRole) {
-      console.log(`[GameEngine] checkStemLogic: 非当前回合玩家，跳过。当前回合: ${playerId}, 我的角色: ${SyncManager.myRole}`);
+    if (SimplifiedPVPManager.isEnabled && playerId !== SimplifiedPVPManager.myRole) {
+      console.log(`[GameEngine] checkStemLogic: 非当前回合玩家，跳过。当前回合: ${playerId}, 我的角色: ${SimplifiedPVPManager.myRole}`);
       return;
     }
 
     if (currentState < 1) {
-      if (SyncManager.isEnabled) {
+      if (SimplifiedPVPManager.isEnabled) {
         // PvP模式下，自动吸纳也视为一种"动作"，需要广播
         EventBus.emit('game:action-selected', {
           type: 'AUTO',
@@ -192,47 +183,20 @@ const GameEngine = {
   },
 
   /**
-   * 处理玩家操作选择（权威服务器架构）
+   * 处理玩家操作选择（简化PVP - 乐观更新）
    * @param {Object} action - 操作对象
    */
   async handleActionSelection(action) {
     const state = StateManager.getState();
-    const isPvP = (state.gameMode === 0);
 
-    // PvP 模式：发送命令给服务器
-    if (isPvP) {
-      await this._sendActionCommand(action);
-    } else {
-      // 单机模式：直接执行
-      this.executeAction(action);
-    }
-  },
+    // 1. 立即执行操作（不等待）
+    this.executeAction(action);
 
-  /**
-   * 发送操作命令给服务器
-   * @private
-   */
-  async _sendActionCommand(action) {
-    const state = StateManager.getState();
-    const currentPlayer = state.currentPlayer;
-    const stem = state.currentStem;
-    const myPlayerId = getCurrentUserId();
-
-    // 创建操作命令
-    const command = GameCommand.createActionMove({
-      sessionId: TurnManager.currentSessionId,
-      playerId: myPlayerId,
-      turnNumber: state.turnCount,
-      action: action,
-      stem: stem
-    });
-
-    // 发送命令
-    const result = await CommandSender.sendCommand(command);
-
-    if (!result.success) {
-      console.error('[GameEngine] 操作命令发送失败:', result.error);
-      // TODO: 显示错误提示
+    // 2. 异步发送到数据库（仅PVP模式）
+    if (state.gameMode === 0) {
+      SimplifiedPVPManager.sendActionToDatabase(action).catch(err => {
+        console.warn('[GameEngine] 操作发送失败:', err);
+      });
     }
   },
 
@@ -293,29 +257,6 @@ const GameEngine = {
       actionType: action.type,
       secondaryTarget: secondTarget
     });
-  },
-
-  /**
-   * 执行命令（权威服务器确认后）
-   * @param {Object} data - 命令数据
-   */
-  executeCommand(data) {
-    const { commandId, command, payload } = data;
-
-    switch (command.commandType) {
-      case CommandType.ACTION_MOVE:
-        // 执行操作
-        this.executeAction(payload.action);
-        break;
-
-      case CommandType.TURN_END:
-        // 回合切换已由 AuthorityExecutor 处理
-        break;
-
-      case CommandType.GAME_END:
-        // 游戏结束已由 AuthorityExecutor 处理
-        break;
-    }
   },
 
   /**
