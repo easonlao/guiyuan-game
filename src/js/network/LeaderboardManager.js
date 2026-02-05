@@ -105,13 +105,13 @@ const LeaderboardManager = {
         const encoder = new TextEncoder();
         const nameBytes = encoder.encode(entry.player_name || '');
         const hasQuestionMarks = (entry.player_name || '').includes('?');
-        const疑似乱码 = hasQuestionMarks || nameBytes.length === 0;
+        const suspectedCorrupted = hasQuestionMarks || nameBytes.length === 0;
 
         console.log('[LeaderboardManager] 玩家数据:', {
           name: entry.player_name,
           name_char_length: (entry.player_name || '').length,
           name_byte_length: nameBytes.length,
-          suspected_corrupted: 疑似乱码,
+          suspected_corrupted: suspectedCorrupted,
           total_score: entry.total_score,
           games_played: entry.games_played,
           wins: entry.wins,
