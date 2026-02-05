@@ -185,6 +185,9 @@ const SimplifiedPVPManager = {
         // 回合切换同步（主机权威计算）
         // 始终更新 currentPlayer（即使玩家相同，也要更新以确保状态同步）
         // 同时清除旧天干
+        const beforeState = StateManager.getState();
+        console.log(`[PVP turn_sync] 收到回合同步: nextPlayer=${data.nextPlayer}, isExtraTurn=${data.isExtraTurn}, 当前currentPlayer=${beforeState.currentPlayer}`);
+
         const syncUpdates = {
           currentPlayer: data.nextPlayer,
           isExtraTurn: data.isExtraTurn || false,
@@ -205,6 +208,8 @@ const SimplifiedPVPManager = {
           });
         }
 
+        const afterState = StateManager.getState();
+        console.log(`[PVP turn_sync] 更新后currentPlayer=${afterState.currentPlayer}`);
         EventBus.emit('game:next-turn');
         break;
 
