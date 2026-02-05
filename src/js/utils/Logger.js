@@ -4,8 +4,7 @@
  */
 class Logger {
   constructor() {
-    // 从环境变量或URL参数获取日志级别
-    this.level = this._getLogLevel();
+    // 先定义日志级别
     this.levels = {
       ERROR: 0,
       WARN: 1,
@@ -13,6 +12,8 @@ class Logger {
       DEBUG: 3,
       TRACE: 4
     };
+    // 然后获取日志级别
+    this.level = this._getLogLevel();
   }
 
   /**
