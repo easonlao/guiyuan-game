@@ -24,7 +24,5 @@ if (typeof window !== 'undefined' && !window.SUPABASE_CONFIG) {
       SUPABASE_ANON_KEY: DEV_CONFIG.SUPABASE_ANON_KEY
     };
     console.log('[DevConfig] Loaded from window globals');
-  } else {
-    console.warn('[DevConfig] No valid configuration found. Please set environment variables or window globals.');
   }
 }

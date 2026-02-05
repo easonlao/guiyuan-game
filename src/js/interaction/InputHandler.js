@@ -16,8 +16,6 @@ const InputHandler = {
    * 初始化
    */
   init() {
-    console.log('[InputHandler] 初始化输入处理器...');
-
     // 初始化动画管理器
     SceneTransition.init();
 
@@ -29,7 +27,6 @@ const InputHandler = {
     const menuButtons = document.getElementById('menuButtons');
     if (title && menuButtons) {
         title.addEventListener('click', (e) => {
-            console.log('[InputHandler] 点击标题，进入菜单');
             e.stopPropagation();
             title.classList.add('hidden');
             // 延迟一点显示按钮
@@ -46,8 +43,6 @@ const InputHandler = {
         if (btn.classList.contains('active')) return;
 
         const mode = parseInt(e.target.dataset.mode);
-        console.log('[InputHandler] 选择模式:', mode);
-
         this._startGame(mode, btn);
       });
     });
@@ -83,12 +78,9 @@ const InputHandler = {
 
     // 2. 监听动画结束，正式开始游戏逻辑
     const onComplete = () => {
-      console.log('[InputHandler] ========== 转场结束，启动游戏引擎 ==========');
-      console.log('[InputHandler] 游戏模式:', mode);
       EventBus.emit('game:start', { mode });
       EventBus.off('anim:transition-complete', onComplete);
     };
-    console.log('[InputHandler] 注册 anim:transition-complete 监听器');
     EventBus.on('anim:transition-complete', onComplete);
   },
 

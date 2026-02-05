@@ -14,8 +14,6 @@ const LeaderboardUI = {
   isOpen: false,
 
   init() {
-    console.log('[LeaderboardUI] 初始化排行榜 UI...');
-
     // 绑定排行榜按钮
     const leaderboardBtn = document.getElementById('leaderboard-btn');
     const closeBtn = document.getElementById('leaderboard-close');
@@ -43,7 +41,7 @@ const LeaderboardUI = {
 
     // 订阅实时排行榜更新
     LeaderboardManager.subscribeToLeaderboard((payload) => {
-      console.log('[LeaderboardUI] 实时更新:', payload);
+      // 实时更新
     });
   },
 
@@ -132,15 +130,6 @@ const LeaderboardUI = {
         ? ((entry.wins || 0) / finalGames * 100).toFixed(1) + '%'
         : '0%';
 
-      // 调试日志
-      console.log('[LeaderboardUI]', entry.player_name, {
-        games_played: entry.games_played,
-        wins: entry.wins,
-        effectiveGames,
-        finalGames,
-        winRate
-      });
-
       row.innerHTML = `
         <td class="${rankClass}">#${rank}</td>
         <td>${this.escapeHtml(entry.player_name || '匿名')}</td>
@@ -157,8 +146,6 @@ const LeaderboardUI = {
       const timestamp = new Date().toLocaleString('zh-CN');
       lastUpdatedEl.textContent = `更新于: ${timestamp}`;
     }
-
-    console.log('[LeaderboardUI] 渲染完成:', data.length, '条记录');
   },
 
   /**
@@ -181,7 +168,6 @@ const LeaderboardUI = {
    * 处理排行榜更新事件
    */
   handleLeaderboardUpdate(data) {
-    console.log('[LeaderboardUI] 排行榜已更新');
     if (this.isOpen) {
       this.renderLeaderboard(data.data);
     }

@@ -34,7 +34,6 @@ const SimplifiedPVPManager = {
    * 初始化
    */
   init() {
-    console.log('[SimplifiedPVPManager] 初始化');
     this._bindEvents();
   },
 
@@ -54,7 +53,6 @@ const SimplifiedPVPManager = {
   _onInitiativeAnimationFinished() {
     // 如果有待设置的初始天干，现在才设置
     if (this._pendingFirstStem) {
-      console.log('[SimplifiedPVPManager] 先手动画完成，设置初始天干:', this._pendingFirstStem.name);
       StateManager.update({ currentStem: this._pendingFirstStem }, true);
       this._pendingFirstStem = null;
     }
@@ -115,7 +113,7 @@ const SimplifiedPVPManager = {
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('[SimplifiedPVPManager] ✓ Broadcast 已连接');
+          // Broadcast 已连接
           // 如果是重连后订阅成功，触发重连成功事件
           if (ReconnectionManager.isReconnecting) {
             EventBus.emit('RECONNECT:channel-restored');
@@ -143,13 +141,11 @@ const SimplifiedPVPManager = {
     switch (type) {
       case 'action':
         // 对手操作（已确认的）
-        console.log('[SimplifiedPVPManager] 收到已确认的操作:', data.type);
         EventBus.emit('sync:opponent-action', data);
         break;
 
       case 'action_request':
         // 操作请求（客户端发送给主机）
-        console.log('[SimplifiedPVPManager] 收到操作请求:', data.type);
         if (this.isHost) {
           EventBus.emit('authority:action-request', data);
         }
@@ -157,13 +153,11 @@ const SimplifiedPVPManager = {
 
       case 'action_confirmed':
         // 操作确认（主机发送给双方）
-        console.log('[SimplifiedPVPManager] 收到操作确认:', data.type);
         EventBus.emit('sync:opponent-action', data);
         break;
 
       case 'skip_turn_request':
         // 跳过回合请求（客户端发送给主机）
-        console.log('[SimplifiedPVPManager] 收到跳过回合请求');
         if (this.isHost) {
           EventBus.emit('authority:skip-turn-request');
         }
@@ -189,8 +183,6 @@ const SimplifiedPVPManager = {
 
       case 'turn_sync':
         // 回合切换同步（主机权威计算）
-        console.log('[SimplifiedPVPManager] 收到回合切换同步，下个玩家:', data.nextPlayer, '额外机会:', data.isExtraTurn);
-
         // 始终更新 currentPlayer（即使玩家相同，也要更新以确保状态同步）
         // 同时清除旧天干
         const syncUpdates = {
@@ -223,14 +215,12 @@ const SimplifiedPVPManager = {
 
       case 'stem_generated':
         // 天干生成（主机权威）
-        console.log('[SimplifiedPVPManager] 收到主机天干生成:', data.stem.name);
         StateManager.update({ currentStem: data.stem });
         EventBus.emit('game:stem-generated', { stem: data.stem });
         break;
 
       case 'initiative':
         // 先手判定
-        console.log('[SimplifiedPVPManager] 收到先手判定:', data.firstPlayer, data.firstStem ? '初始天干:' + data.firstStem.name : '');
 
         // 只设置 currentPlayer，不设置 currentStem
         // currentStem 会在动画完成后（anim:initiative-finished）才设置
@@ -252,20 +242,17 @@ const SimplifiedPVPManager = {
 
       case 'game_end':
         // 游戏结束
-        console.log('[SimplifiedPVPManager] 收到游戏结束消息:', data.winner, data.reason);
         EventBus.emit(GAME_EVENTS.VICTORY, { winner: data.winner, reason: data.reason });
         StateManager.update({ phase: 'GAME_END' });
         break;
 
       case 'state_sync_request':
         // 对手请求状态同步（重连时）
-        console.log('[SimplifiedPVPManager] 对手请求状态同步');
         this._sendStateSyncResponse();
         break;
 
       case 'state_sync_response':
         // 收到状态同步响应
-        console.log('[SimplifiedPVPManager] 收到状态同步响应');
         this._applyStateSync(data.state);
         break;
 
@@ -479,8 +466,6 @@ const SimplifiedPVPManager = {
     };
 
     this._sendToChannel(message);
-
-    console.log('[SimplifiedPVPManager] 发送天干生成:', stem.name, 'seed:', seed);
   },
 
   /**
@@ -507,13 +492,6 @@ const SimplifiedPVPManager = {
     };
 
     this._sendToChannel(message);
-
-    console.log('[SimplifiedPVPManager] 发送回合切换同步:', {
-      当前回合: state.turnCount,
-      下个玩家: nextPlayer,
-      额外机会: isExtraTurn,
-      分数变化: scoreChanges
-    });
   },
 
   /**
@@ -529,8 +507,6 @@ const SimplifiedPVPManager = {
     };
 
     this._sendToChannel(message);
-
-    console.log('[SimplifiedPVPManager] 发送跳过回合请求');
   },
 
   /**
@@ -558,7 +534,6 @@ const SimplifiedPVPManager = {
         payload: message
       });
 
-      console.log('[SimplifiedPVPManager] 请求操作确认:', action.type);
       resolve();
     });
   },
@@ -588,7 +563,6 @@ const SimplifiedPVPManager = {
         payload: message
       });
 
-      console.log('[SimplifiedPVPManager] 发送操作确认:', action.type);
       resolve();
     });
   },
@@ -611,8 +585,6 @@ const SimplifiedPVPManager = {
 
     // 重置权威执行器
     AuthorityExecutor.reset();
-
-    console.log('[SimplifiedPVPManager] 资源已清理');
   }
 };
 

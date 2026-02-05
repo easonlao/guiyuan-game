@@ -11,10 +11,6 @@ import FirstFlight from './FirstFlight.js';
 import SecondFlight from './SecondFlight.js';
 import NodeRenderer from '../board/NodeRenderer.js';
 
-console.log('[FlyAnimation] SecondFlight imported:', SecondFlight);
-console.log('[FlyAnimation] typeof SecondFlight:', typeof SecondFlight);
-console.log('[FlyAnimation] SecondFlight.playSecondaryFlight:', typeof SecondFlight?.playSecondaryFlight);
-
 const FlyAnimation = {
   /**
    * 处理完整的飞行动画序列
@@ -24,21 +20,16 @@ const FlyAnimation = {
    * @param {Function} updateNodeStyle - 更新样式的回调
    */
   handleFlyAction(data, flushPendingState, animatingNodes, updateNodeStyle) {
-    console.log('[FlyAnimation] ========== handleFlyAction ==========');
-    console.log('[FlyAnimation] data:', data);
-    console.log('[FlyAnimation] secondaryTarget:', data.secondaryTarget);
     const { stem, playerId, actionType, secondaryTarget } = data;
     const starEl = document.getElementById(`${playerId.toLowerCase()}-star`);
     const container = starEl?.querySelector('.pentagram-container');
 
-    console.log('[FlyAnimation] starEl:', !!starEl, 'container:', !!container);
     if (!container) {
       console.error('[FlyAnimation] container not found!');
       return;
     }
 
     FirstFlight.handleFirstFlight(stem, playerId, container, () => {
-      console.log('[FlyAnimation] FirstFlight 完成');
       this._onFirstFlightComplete(stem, playerId, actionType, secondaryTarget, flushPendingState, animatingNodes, updateNodeStyle);
     });
   },
