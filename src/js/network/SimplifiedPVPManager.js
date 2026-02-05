@@ -210,11 +210,13 @@ const SimplifiedPVPManager = {
 
       case 'stem':
         // 天干同步
+        console.log('[PVP] 收到stem同步:', data.stem);
         EventBus.emit('sync:stem', data.stem);
         break;
 
       case 'stem_generated':
         // 天干生成（主机权威）
+        console.log('[PVP] 收到stem_generated:', data.stem, 'from:', data.playerId);
         StateManager.update({ currentStem: data.stem });
         EventBus.emit('game:stem-generated', { stem: data.stem });
         break;
