@@ -37,7 +37,6 @@ class SceneTransition {
     this.cacheElements();
     // 监听场景重置事件
     EventBus.on('anim:reset-scene', () => {
-      console.log('[SceneTransition] 重置状态到 HOME');
       this.state = 'HOME';
       this.progress = 0;
       this.orbitAngle = 0;
@@ -79,7 +78,6 @@ class SceneTransition {
   }
 
   startTransition() {
-    console.log('[SceneTransition] 开始转场动画');
     this.progress = 1; // 触发 EXIT 逻辑 (progress -= ...)
     this.state = 'EXIT';
   }
@@ -243,7 +241,6 @@ class SceneTransition {
         }
 
         // 棋盘显现
-        console.log('[SceneTransition] RIPPLE phase, progress:', pEase);
         EventBus.emit('anim:transition-update', { phase: 'RIPPLE', progress: pEase });
 
         if (this.progress >= 1) {

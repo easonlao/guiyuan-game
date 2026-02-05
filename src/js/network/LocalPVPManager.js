@@ -26,7 +26,6 @@ const LocalPVPManager = {
    * 初始化
    */
   init() {
-    console.log('[LocalPVPManager] 初始化');
     this._bindEvents();
   },
 
@@ -46,7 +45,6 @@ const LocalPVPManager = {
   _onInitiativeAnimationFinished() {
     // 如果有待设置的初始天干，现在才设置
     if (this._pendingFirstStem) {
-      console.log('[LocalPVPManager] 先手动画完成，设置初始天干:', this._pendingFirstStem.name);
       StateManager.update({ currentStem: this._pendingFirstStem }, true);
       this._pendingFirstStem = null;
     }
@@ -81,7 +79,6 @@ const LocalPVPManager = {
       timestamp: Date.now()
     });
 
-    console.log('[LocalPVPManager] 本地房间已创建 (P1)');
   },
 
   /**
@@ -113,7 +110,6 @@ const LocalPVPManager = {
       timestamp: Date.now()
     });
 
-    console.log('[LocalPVPManager] 已加入本地房间 (P2)');
 
     // 通知主机可以开始游戏
     return true;
@@ -128,7 +124,6 @@ const LocalPVPManager = {
       this.channel.close();
     }
 
-    console.log('[LocalPVPManager] 订阅 Broadcast Channel:', this.CHANNEL_NAME);
 
     this.channel = new BroadcastChannel(this.CHANNEL_NAME);
 
@@ -140,7 +135,6 @@ const LocalPVPManager = {
         return;
       }
 
-      console.log('[LocalPVPManager] 收到消息:', message.type);
       this._handleMessage(message);
     };
   },
@@ -154,23 +148,19 @@ const LocalPVPManager = {
 
     switch (type) {
       case 'room_created':
-        console.log('[LocalPVPManager] 检测到主机房间');
         break;
 
       case 'player_joined':
-        console.log('[LocalPVPManager] 对手已加入');
         EventBus.emit('game:opponent-connected');
         break;
 
       case 'action':
         // 对手操作（已确认的）
-        console.log('[LocalPVPManager] 收到已确认的操作:', data.type);
         EventBus.emit('sync:opponent-action', data);
         break;
 
       case 'action_request':
         // 操作请求（客户端发送给主机）
-        console.log('[LocalPVPManager] 收到操作请求:', data.type);
         if (this.isHost) {
           EventBus.emit('authority:action-request', data);
         }
@@ -178,13 +168,11 @@ const LocalPVPManager = {
 
       case 'action_confirmed':
         // 操作确认（主机发送给双方）
-        console.log('[LocalPVPManager] 收到操作确认:', data.type);
         EventBus.emit('sync:opponent-action', data);
         break;
 
       case 'turn_end':
         // 对手回合结束
-        console.log('[LocalPVPManager] 对手回合结束，我的角色:', this.myRole, '通知中的下个玩家:', data.nextPlayer);
 
         const currentState = StateManager.getState();
         const turnUpdates = {};
@@ -195,7 +183,6 @@ const LocalPVPManager = {
 
         if (Object.keys(turnUpdates).length > 0) {
           StateManager.update(turnUpdates, true);
-          console.log('[LocalPVPManager] 已更新状态:', turnUpdates);
         }
 
         EventBus.emit('game:next-turn');
@@ -203,7 +190,6 @@ const LocalPVPManager = {
 
       case 'turn_sync':
         // 回合切换同步（主机权威计算）
-        console.log('[LocalPVPManager] 收到回合切换同步，下个玩家:', data.nextPlayer, '额外机会:', data.isExtraTurn);
 
         const syncState = StateManager.getState();
         const syncUpdates = {};
@@ -215,7 +201,6 @@ const LocalPVPManager = {
 
         if (Object.keys(syncUpdates).length > 0) {
           StateManager.update(syncUpdates, true);
-          console.log('[LocalPVPManager] 已同步回合切换:', syncUpdates);
         }
 
         EventBus.emit('game:next-turn');
@@ -224,19 +209,16 @@ const LocalPVPManager = {
       case 'stem':
         // 天干同步
         StateManager.update({ currentStem: data.stem });
-        console.log('[LocalPVPManager] 天干已同步:', data.stem.name);
         break;
 
       case 'stem_generated':
         // 天干生成（主机权威）
-        console.log('[LocalPVPManager] 收到主机天干生成:', data.stem.name);
         StateManager.update({ currentStem: data.stem });
         EventBus.emit('game:stem-generated', { stem: data.stem });
         break;
 
       case 'initiative':
         // 先手判定
-        console.log('[LocalPVPManager] 收到先手判定:', data.firstPlayer);
 
         // 只设置 currentPlayer，不设置 currentStem
         // currentStem 会在动画完成后（anim:initiative-finished）才设置
@@ -306,7 +288,6 @@ const LocalPVPManager = {
       timestamp: Date.now()
     });
 
-    console.log('[LocalPVPManager] 回合切换通知已发送:', {
       当前回合: state.turnCount,
       下个玩家: nextPlayer
     });
@@ -338,7 +319,6 @@ const LocalPVPManager = {
   syncInitiative(firstPlayer, firstStem) {
     if (!this.isEnabled || !this.channel) return;
 
-    console.log('[LocalPVPManager] 发送先手判定:', firstPlayer, firstStem ? '初始天干:' + firstStem.name : '');
 
     this._broadcast({
       type: 'initiative',
@@ -378,7 +358,6 @@ const LocalPVPManager = {
       timestamp: Date.now()
     });
 
-    console.log('[LocalPVPManager] 发送天干生成:', stem.name, 'seed:', seed);
   },
 
   /**
@@ -402,7 +381,6 @@ const LocalPVPManager = {
       timestamp: Date.now()
     });
 
-    console.log('[LocalPVPManager] 发送回合切换同步:', {
       当前回合: state.turnCount,
       下个玩家: nextPlayer,
       额外机会: isExtraTurn
@@ -428,7 +406,6 @@ const LocalPVPManager = {
         timestamp: Date.now()
       });
 
-      console.log('[LocalPVPManager] 请求操作确认:', action.type);
       resolve();
     });
   },
@@ -452,7 +429,6 @@ const LocalPVPManager = {
         timestamp: Date.now()
       });
 
-      console.log('[LocalPVPManager] 发送操作确认:', action.type);
       resolve();
     });
   },
@@ -499,7 +475,6 @@ const LocalPVPManager = {
     // 重置权威执行器
     AuthorityExecutor.reset();
 
-    console.log('[LocalPVPManager] 资源已清理');
   }
 };
 

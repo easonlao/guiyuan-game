@@ -46,7 +46,6 @@ const ReconnectionManager = {
    * 初始化
    */
   init() {
-    console.log('[ReconnectionManager] 初始化断线重连管理器...');
     this._bindEvents();
     this._startConnectionMonitor();
   },
@@ -60,7 +59,6 @@ const ReconnectionManager = {
     EventBus.on('game:session-start', (data) => {
       this.lastSessionId = data.sessionId;
       this.lastRoomCode = data.roomCode;
-      console.log('[ReconnectionManager] 记录会话信息:', data);
     });
 
     // 监听会话结束，清理
@@ -70,20 +68,17 @@ const ReconnectionManager = {
 
     // 监听 Broadcast Channel 错误（来自 SimplifiedPVPManager）
     EventBus.on('RECONNECT:channel-error', (data) => {
-      console.log('[ReconnectionManager] 收到 Channel 错误:', data.error);
       this.handleDisconnect();
     });
 
     // 监听 Broadcast Channel 恢复
     EventBus.on('RECONNECT:channel-restored', () => {
-      console.log('[ReconnectionManager] Broadcast Channel 已恢复');
       this._onChannelRestored();
     });
 
     // 监听状态同步完成
     EventBus.on('pvp:state-synced', () => {
       if (this.isReconnecting) {
-        console.log('[ReconnectionManager] 状态同步完成，重连成功');
         this._onReconnectSuccess();
       }
     });
@@ -96,12 +91,10 @@ const ReconnectionManager = {
   _startConnectionMonitor() {
     // 监听在线/离线事件
     window.addEventListener('online', () => {
-      console.log('[ReconnectionManager] 网络已连接');
       this.attemptReconnect();
     });
 
     window.addEventListener('offline', () => {
-      console.log('[ReconnectionManager] 网络已断开');
       this.handleDisconnect();
     });
 
@@ -136,7 +129,6 @@ const ReconnectionManager = {
 
       // 连接正常
       if (this.reconnectAttempts > 0) {
-        console.log('[ReconnectionManager] 连接已恢复');
         this.reconnectAttempts = 0;
       }
     } catch (error) {
@@ -151,7 +143,6 @@ const ReconnectionManager = {
   handleDisconnect() {
     if (this.isReconnecting) return;
 
-    console.log('[ReconnectionManager] ====== 检测到断线 ======');
 
     // 触发断线事件
     EventBus.emit('RECONNECT:disconnected');
@@ -185,12 +176,10 @@ const ReconnectionManager = {
    */
   async attemptReconnect() {
     if (this.isReconnecting) {
-      console.log('[ReconnectionManager] 重连中，跳过');
       return { success: false, error: 'Already reconnecting' };
     }
 
     if (!this.lastSessionId) {
-      console.log('[ReconnectionManager] 无会话信息，跳过重连');
       return { success: false, error: 'No session info' };
     }
 
@@ -206,8 +195,6 @@ const ReconnectionManager = {
 
     this.reconnectAttempts++;
 
-    console.log('[ReconnectionManager] ====== 尝试重连 ======');
-    console.log('[ReconnectionManager] 尝试次数:', this.reconnectAttempts, '/', this.maxReconnectAttempts);
 
     try {
       // 1. 检查会话是否仍然有效
@@ -221,7 +208,6 @@ const ReconnectionManager = {
         throw new Error('会话已结束');
       }
 
-      console.log('[ReconnectionManager] 会话有效:', session);
 
       // 2. 重新订阅 Realtime Broadcast（这里会触发 RECONNECT:channel-restored 事件）
       SimplifiedPVPManager.initPVPSession(
@@ -271,7 +257,6 @@ const ReconnectionManager = {
 
       // 延迟后重试
       const delay = this._calculateBackoffDelay();
-      console.log('[ReconnectionManager] 将在', delay, 'ms 后重试');
       TimerManager.setTimeout(RECONNECT_DELAY_TIMER, () => {
         this.attemptReconnect();
       }, delay);
@@ -290,7 +275,6 @@ const ReconnectionManager = {
     // 请求对手发送当前状态
     SimplifiedPVPManager.requestStateSync();
 
-    console.log('[ReconnectionManager] ✓ Broadcast 已恢复，等待状态同步...');
 
     // 更新进度
     EventBus.emit('RECONNECT:progress', {
@@ -308,7 +292,6 @@ const ReconnectionManager = {
     this.isReconnecting = false;
     this.reconnectAttempts = 0;
 
-    console.log('[ReconnectionManager] ✓ 重连成功！');
 
     // 触发重连成功事件
     EventBus.emit('RECONNECT:success', {
@@ -359,7 +342,6 @@ const ReconnectionManager = {
           filter: `id=eq.${sessionId}`
         },
         (payload) => {
-          console.log('[ReconnectionManager] 会话状态更新:', payload.new.status);
 
           // 如果会话结束，返回主菜单
           if (payload.new.status === 'finished' || payload.new.status === 'abandoned') {
@@ -368,7 +350,6 @@ const ReconnectionManager = {
         }
       )
       .subscribe((status) => {
-        console.log('[ReconnectionManager] 会话订阅状态:', status);
       });
   },
 
@@ -392,7 +373,6 @@ const ReconnectionManager = {
    * 清理资源
    */
   cleanup() {
-    console.log('[ReconnectionManager] 清理资源...');
 
     // 移除订阅
     if (this.sessionChannel) {

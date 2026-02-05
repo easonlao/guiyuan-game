@@ -28,21 +28,17 @@ const TurnManager = {
    * 开始新回合
    */
   async startTurn() {
-    console.log('[TurnManager] startTurn called');
     const state = StateManager.getState();
-    console.log('[TurnManager] 我的角色:', StateManager.getMyRole(), '当前玩家:', state.currentPlayer, '回合数:', state.turnCount);
 
     // 先增加回合计数
     const newTurnCount = state.turnCount + 1;
     StateManager.update({ turnCount: newTurnCount });
-    console.log('[TurnManager] 回合计数:', state.turnCount, '→', newTurnCount);
 
     if (await this.checkGameEnd()) return;
 
     const currentPlayer = state.currentPlayer;
     const opponentId = currentPlayer === 'P1' ? 'P2' : 'P1';
 
-    console.log('[TurnManager] currentPlayer:', currentPlayer, 'opponentId:', opponentId);
     this._resetBurstBonus(opponentId);
 
     // 检查是否有待显示的结算效果
@@ -56,9 +52,7 @@ const TurnManager = {
     const delay = hasPendingSettlement ? 1000 : 0;
 
     if (delay > 0) {
-      console.log('[TurnManager] 有结算效果，延迟', delay, 'ms');
     } else {
-      console.log('[TurnManager] 无结算效果，立即生成天干');
     }
 
     setTimeout(() => {
@@ -67,7 +61,6 @@ const TurnManager = {
 
       // 如果已经有同步过来的天干，则直接触发生成事件，播放动画
       if (latestState.currentStem) {
-        console.log('[TurnManager] 使用已同步的天干:', latestState.currentStem.name);
         EventBus.emit('game:stem-generated', { stem: latestState.currentStem });
         return;
       }
@@ -76,18 +69,15 @@ const TurnManager = {
       if (latestState.gameMode === 0) {
         // 主机：生成天干（无论谁的回合）
         if (AuthorityExecutor.isHost()) {
-          console.log('[TurnManager] 主机生成天干，当前回合玩家:', latestState.currentPlayer);
           EventBus.emit('game:generate-stem');
         } else {
           // 客户端：等待主机的天干同步
-          console.log('[TurnManager] 客户端等待主机天干同步，当前回合玩家:', latestState.currentPlayer);
         }
         return;
       }
 
       // 单机模式（玩家 VS 天道）：每回合都生成天干
       // P1 是玩家，P2 是天道 AI，但每回合都需要天干
-      console.log('[TurnManager] 单机模式，生成天干，当前回合玩家:', latestState.currentPlayer);
       EventBus.emit('game:generate-stem');
     }, delay);
   },
@@ -127,7 +117,6 @@ const TurnManager = {
    * @returns {Promise<Object>} { success, error }
    */
   async endTurn() {
-    console.log('[TurnManager] ====== 结束回合 ======');
 
     const state = StateManager.getState();
     const beforePlayer = state.currentPlayer;
@@ -150,7 +139,6 @@ const TurnManager = {
         }
 
         const { nextPlayer, nextIsExtraTurn } = result;
-        console.log('[TurnManager] 主机计算下个玩家:', beforePlayer, '→', nextPlayer, '额外机会:', nextIsExtraTurn);
 
         // 使用计算出的 nextPlayer 和 nextIsExtraTurn 切换玩家
         StateManager.switchPlayer(nextPlayer, nextIsExtraTurn);
@@ -167,7 +155,6 @@ const TurnManager = {
 
       // 客户端：跳过被动效果计算，等待主机的 turn_sync 消息
       // 主机会在 turn_sync 中包含分数变化，客户端在收到消息后应用
-      console.log('[TurnManager] 客户端等待主机回合切换同步（分数变化将由主机同步）');
       return { success: true };
     }
 
@@ -179,14 +166,12 @@ const TurnManager = {
     }
 
     const { nextPlayer, nextIsExtraTurn } = result;
-    console.log('[TurnManager] 单机模式切换回合:', beforePlayer, '→', nextPlayer, '额外机会:', nextIsExtraTurn);
 
     // 使用计算出的 nextPlayer 和 nextIsExtraTurn 切换玩家
     StateManager.switchPlayer(nextPlayer, nextIsExtraTurn);
 
     // 获取切换后的状态
     const afterState = StateManager.getState();
-    console.log('[TurnManager] 回合切换完成:', beforePlayer, '→', afterState.currentPlayer);
 
     // 触发下一回合开始
     EventBus.emit('game:next-turn');
@@ -228,7 +213,6 @@ const TurnManager = {
 
     // 如果没有结算效果，直接返回空数组
     if (!hasEffects) {
-      console.log('[TurnManager] 没有结算效果，跳过动画');
       return [];
     }
 
@@ -239,7 +223,6 @@ const TurnManager = {
     });
 
     // 动画完成后，再触发分数变化
-    console.log('[TurnManager] 动画完成，开始计分...');
     const scoreChanges = [];
 
     // 天道分红（正向）
@@ -330,7 +313,6 @@ const TurnManager = {
 
     // 如果是全点亮胜利，显示五行归元过场
     if (reason === '所有天干点亮') {
-      console.log('[TurnManager] 触发五行归元过场');
       EventBus.emit('achievement:show-full-unity', winnerId);
       // 等待过场动画完成
       await this._waitForOverlayHidden();
@@ -357,7 +339,6 @@ const TurnManager = {
     AIController.endGame(winner);
 
     // 显示局终过场
-    console.log('[TurnManager] 触发局终过场');
     EventBus.emit('achievement:show-turn-limit', winner);
     // 等待过场动画完成
     await this._waitForOverlayHidden();
@@ -375,7 +356,6 @@ const TurnManager = {
     return new Promise((resolve) => {
       const handler = () => {
         EventBus.off('achievement:overlay-hidden', handler);
-        console.log('[TurnManager] 过场动画完成，继续执行');
         resolve();
       };
       EventBus.on('achievement:overlay-hidden', handler);
@@ -405,11 +385,9 @@ const TurnManager = {
     });
 
     // 先播放动画，等待动画完成
-    console.log('[TurnManager] 播放最终惩罚动画...');
     await PassiveEffects.playFinalPenalty(result);
 
     // 动画完成后，再触发分数变化
-    console.log('[TurnManager] 动画完成，开始计分...');
     ['P1', 'P2'].forEach(playerId => {
       const { damageCount } = result[playerId];
 

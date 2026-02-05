@@ -92,7 +92,6 @@ const ScoreEffects = {
   },
 
   init() {
-    console.log('[ScoreEffects] 初始化得分特效系统');
     EventBus.on(GAME_EVENTS.SCORE_CHANGE, this.showScoreChange.bind(this));
   },
 
