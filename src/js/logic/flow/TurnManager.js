@@ -131,6 +131,7 @@ const TurnManager = {
 
     const state = StateManager.getState();
     const beforePlayer = state.currentPlayer;
+    const isExtraTurn = state.isExtraTurn || false;
 
     // 1. 计算回合结算效果（等待动画完成）
     await this._calculatePassiveEffects();
@@ -141,21 +142,21 @@ const TurnManager = {
 
       // 主机：计算下个回合并广播
       if (AuthorityExecutor.isHost()) {
-        const result = AuthorityExecutor.calculateNextPlayer(beforePlayer);
+        const result = AuthorityExecutor.calculateNextPlayer(beforePlayer, isExtraTurn);
         if (!result) {
           console.error('[TurnManager] 权威执行器未能计算下个回合');
           return { success: false, error: 'Failed to calculate next player' };
         }
 
-        const { nextPlayer } = result;
-        console.log('[TurnManager] 主机计算下个玩家:', beforePlayer, '→', nextPlayer);
+        const { nextPlayer, nextIsExtraTurn } = result;
+        console.log('[TurnManager] 主机计算下个玩家:', beforePlayer, '→', nextPlayer, '额外机会:', nextIsExtraTurn);
 
-        // 使用计算出的 nextPlayer 切换玩家
-        StateManager.switchPlayer(nextPlayer);
+        // 使用计算出的 nextPlayer 和 nextIsExtraTurn 切换玩家
+        StateManager.switchPlayer(nextPlayer, nextIsExtraTurn);
 
         // 广播回合切换同步
         if (pvpManager.sendTurnSync) {
-          pvpManager.sendTurnSync(nextPlayer);
+          pvpManager.sendTurnSync(nextPlayer, nextIsExtraTurn);
         }
 
         // 触发下一回合开始
@@ -169,17 +170,17 @@ const TurnManager = {
     }
 
     // 3. 单机模式：使用 AuthorityExecutor 计算下个玩家（支持强化额外机会）
-    const result = AuthorityExecutor.calculateNextPlayer(beforePlayer);
+    const result = AuthorityExecutor.calculateNextPlayer(beforePlayer, isExtraTurn);
     if (!result) {
       console.error('[TurnManager] 无法计算下个回合');
       return { success: false, error: 'Failed to calculate next player' };
     }
 
-    const { nextPlayer } = result;
-    console.log('[TurnManager] 单机模式切换回合:', beforePlayer, '→', nextPlayer);
+    const { nextPlayer, nextIsExtraTurn } = result;
+    console.log('[TurnManager] 单机模式切换回合:', beforePlayer, '→', nextPlayer, '额外机会:', nextIsExtraTurn);
 
-    // 使用计算出的 nextPlayer 切换玩家
-    StateManager.switchPlayer(nextPlayer);
+    // 使用计算出的 nextPlayer 和 nextIsExtraTurn 切换玩家
+    StateManager.switchPlayer(nextPlayer, nextIsExtraTurn);
 
     // 获取切换后的状态
     const afterState = StateManager.getState();

@@ -8,6 +8,7 @@
 // ============================================
 
 import StateManager from '../../state/StateManager.js';
+import AuthorityExecutor from '../AuthorityExecutor.js';
 import { RULES } from '../../config/game-config.js';
 
 const ActionCandidates = {

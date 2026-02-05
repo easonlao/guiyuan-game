@@ -192,13 +192,14 @@ const SimplifiedPVPManager = {
 
       case 'turn_sync':
         // 回合切换同步（主机权威计算）
-        console.log('[SimplifiedPVPManager] 收到回合切换同步，下个玩家:', data.nextPlayer);
+        console.log('[SimplifiedPVPManager] 收到回合切换同步，下个玩家:', data.nextPlayer, '额外机会:', data.isExtraTurn);
 
         const syncState = StateManager.getState();
         const syncUpdates = {};
         if (data.nextPlayer && data.nextPlayer !== syncState.currentPlayer) {
           syncUpdates.currentPlayer = data.nextPlayer;
         }
+        syncUpdates.isExtraTurn = data.isExtraTurn || false;
         syncUpdates.currentStem = null;
 
         if (Object.keys(syncUpdates).length > 0) {
@@ -485,8 +486,9 @@ const SimplifiedPVPManager = {
   /**
    * 发送回合切换同步（主机权威）
    * @param {string} nextPlayer - 下个玩家
+   * @param {boolean} isExtraTurn - 是否是额外机会回合
    */
-  sendTurnSync(nextPlayer) {
+  sendTurnSync(nextPlayer, isExtraTurn = false) {
     if (!this.isEnabled || !this.channel) return;
 
     const state = StateManager.getState();
@@ -496,7 +498,8 @@ const SimplifiedPVPManager = {
       playerId: this.myPlayerId,
       data: {
         turnNumber: state.turnCount,
-        nextPlayer: nextPlayer
+        nextPlayer: nextPlayer,
+        isExtraTurn: isExtraTurn
       },
       timestamp: Date.now()
     };
@@ -509,7 +512,8 @@ const SimplifiedPVPManager = {
 
     console.log('[SimplifiedPVPManager] 发送回合切换同步:', {
       当前回合: state.turnCount,
-      下个玩家: nextPlayer
+      下个玩家: nextPlayer,
+      额外机会: isExtraTurn
     });
   },
 
