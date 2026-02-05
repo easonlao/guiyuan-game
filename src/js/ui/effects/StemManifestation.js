@@ -20,8 +20,6 @@ const StemManifestation = {
    * @param {Object} animatingNodes - 动画中的节点映射
    */
   triggerManifestation(stemEl, stem, playerId, animatingNodes) {
-    console.log('[StemManifestation] 触发天干显示', { stem: stem.name, playerId });
-
     stemEl.style.transition = 'all 0.1s ease-in';
     stemEl.style.transform = 'translate(-50%, -50%) scale(0.1)';
 
@@ -49,13 +47,6 @@ const StemManifestation = {
     stemEl.style.transition = 'all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.5)';
     stemEl.style.transform = 'translate(-50%, -50%) scale(1.3)';
     stemEl.style.opacity = '1';
-
-    console.log('[StemManifestation] stemEl 最终状态:', {
-      innerText: stemEl.innerText,
-      color: stemEl.style.color,
-      transform: stemEl.style.transform,
-      opacity: stemEl.style.opacity
-    });
   },
 
   /**
@@ -69,7 +60,6 @@ const StemManifestation = {
     const nodeKey = `${playerId}-${stem.element}`;
     if (animatingNodes[nodeKey]) {
       delete animatingNodes[nodeKey];
-      console.log('[StemManifestation] 清理干支动画 lock:', nodeKey);
     }
   },
 
@@ -87,15 +77,9 @@ const StemManifestation = {
 
       // 只有当前回合玩家才触发检查请求
       if (playerId !== currentPlayer) {
-        console.log('[StemManifestation] 非当前回合玩家，跳过检查请求', {
-          stem: stem.name,
-          playerId,
-          currentPlayer
-        });
         return;
       }
 
-      console.log('[StemManifestation] 发送 ui:request-stem-check 事件');
       EventBus.emit('ui:request-stem-check', { stem, playerId });
     }, GAME_CONFIG.STEM_MANIFEST_DURATION);
   }

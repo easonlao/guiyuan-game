@@ -22,10 +22,8 @@ const StemAnimation = {
     const container = document.getElementById(starId)?.querySelector('.pentagram-container');
     const stemEl = document.getElementById(`${playerId.toLowerCase()}-center-stem`);
 
-    console.log('[StemAnimation] 开始干支动画', { playerId, stem: stem.name, starId, container: !!container, stemEl: !!stemEl });
-
     if (!container || !stemEl) {
-      console.warn('[StemAnimation] 干支动画元素未找到', { starId, container: !!container, stemEl: !!stemEl });
+      console.warn('[StemAnimation] 干支动画元素未找到', { starId });
       return;
     }
 
@@ -78,13 +76,6 @@ const StemAnimation = {
 
     // 4. 再次强制重排，确保新样式生效
     void stemEl.offsetWidth;
-
-    console.log('[StemAnimation] 天干元素已重置:', {
-      visibility: stemEl.style.visibility,
-      opacity: stemEl.style.opacity,
-      display: stemEl.style.display,
-      transform: stemEl.style.transform
-    });
   }
 };
 
