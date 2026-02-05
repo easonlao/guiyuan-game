@@ -132,7 +132,7 @@ const LeaderboardManager = {
   },
 
   /**
-   * 提交或更新分数（参考 SnakeGame submitScore）
+   * 提交或更新分数
    * @param {string} playerId - 玩家 ID (P1/P2)
    * @param {number} score - 本次得分
    * @param {Object} gameData - 游戏数据
@@ -145,8 +145,6 @@ const LeaderboardManager = {
         throw new Error('无效的玩家 ID 或分数');
       }
 
-      // 生成唯一的玩家标识（使用 localStorage 的 ID）
-      const uniquePlayerId = getCurrentUserId() || `guest_${Date.now()}`;
       // 检查用户是否输入了昵称，如果没有昵称则不统计排行榜
       const userNickname = localStorage.getItem('playerNickname')?.trim();
       if (!userNickname) {
@@ -154,14 +152,15 @@ const LeaderboardManager = {
       }
       const playerName = userNickname;
 
-      // 查询是否已有记录
+      // 基于昵称查询记录
       const existing = await query('player_scores', {
-        match: { player_id: uniquePlayerId }
+        match: { player_name: playerName }
       });
 
       const timestamp = new Date().toISOString();
 
       if (existing && existing.length > 0) {
+        // 更新现有记录（使用第一个匹配的昵称记录）
         const current = existing[0];
         const newGamesPlayed = (current.games_played || 0) + 1;
         const newTotalScore = (current.total_score || 0) + score;
@@ -176,11 +175,10 @@ const LeaderboardManager = {
           last_played_at: timestamp
         };
 
-        await update('player_scores', updateData, { match: { player_id: uniquePlayerId } });
+        await update('player_scores', updateData, { match: { player_name: playerName } });
       } else {
-        // 新玩家，插入记录
+        // 新昵称，插入记录
         const playerData = {
-          player_id: uniquePlayerId,
           player_name: playerName,
           total_score: score,
           games_played: 1,
@@ -232,20 +230,23 @@ const LeaderboardManager = {
   },
 
   /**
-   * 获取玩家排名（参考 SnakeGame getPlayerRank）
-   * @param {string} playerId - 玩家 ID
+   * 获取玩家排名（基于昵称）
    * @returns {Promise<Object>} 排名信息
    */
-  async getPlayerRank(playerId) {
+  async getPlayerRank() {
     try {
-      const uniquePlayerId = getCurrentUserId();
+      const userNickname = localStorage.getItem('playerNickname')?.trim();
+      if (!userNickname) {
+        return { found: false, message: '未设置昵称' };
+      }
+
       const { data } = await this.getLeaderboard();
 
       if (!data) {
         return { found: false };
       }
 
-      const playerIndex = data.findIndex(player => player.player_id === uniquePlayerId);
+      const playerIndex = data.findIndex(player => player.player_name === userNickname);
 
       if (playerIndex === -1) {
         return { found: false };
