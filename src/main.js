@@ -5,6 +5,7 @@ import StateManager from './js/state/StateManager.js';
 import UIStateManager from './js/state/ui-state.js';
 import { GAME_EVENTS, UI_EVENTS, ANIMATION_EVENTS, INPUT_EVENTS, PLAYER_EVENTS, LEADERBOARD_EVENTS } from './js/types/events.js';
 import { DIMENSIONS } from './js/config/game-config.js';
+import PerformanceMonitor from './js/utils/PerformanceMonitor.js';
 
 import { supabase, getCurrentUserId } from './js/network/supabaseClient.js';
 import RoomManager from './js/network/RoomManager.js';
@@ -31,6 +32,9 @@ function initApp() {
   // 只在 PVP 调试模式下显示初始化日志
   if (window.PVP_DEBUG) {
     console.log('[Main] 初始化归元弈应用...');
+    // 启动性能监控
+    PerformanceMonitor.start();
+    window.PerformanceMonitor = PerformanceMonitor;
   }
 
   initUtils();
