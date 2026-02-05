@@ -20,7 +20,6 @@ const LeaderboardManager = {
   realtimeSubscription: null,
 
   init() {
-    console.log('[LeaderboardManager] 初始化排行榜管理器...');
 
     // 监听游戏胜利事件
     EventBus.on(GAME_EVENTS.VICTORY, this.handleGameEnd.bind(this));
@@ -45,7 +44,6 @@ const LeaderboardManager = {
     const player2Score = state.players.P2.score;
     const currentUserId = getCurrentUserId();
 
-    console.log('[LeaderboardManager] 游戏结束，更新排行榜:', { winner, reason, player1Score, player2Score, gameMode: state.gameMode });
 
     // 根据游戏模式决定如何记录分数
     if (state.gameMode === 1) {
@@ -75,7 +73,6 @@ const LeaderboardManager = {
    */
   async getLeaderboard(limit = 100) {
     if (this.isLoading) {
-      console.log('[LeaderboardManager] 排行榜加载中...');
       return { success: false, message: '加载中' };
     }
 
@@ -107,7 +104,6 @@ const LeaderboardManager = {
         const hasQuestionMarks = (entry.player_name || '').includes('?');
         const suspectedCorrupted = hasQuestionMarks || nameBytes.length === 0;
 
-        console.log('[LeaderboardManager] 玩家数据:', {
           name: entry.player_name,
           name_char_length: (entry.player_name || '').length,
           name_byte_length: nameBytes.length,
@@ -128,7 +124,6 @@ const LeaderboardManager = {
 
       this.lastUpdated = new Date();
 
-      console.log('[LeaderboardManager] 排行榜获取成功:', this.leaderboard.length, '条记录');
 
       return { success: true, data: this.leaderboard };
     } catch (error) {
@@ -172,7 +167,6 @@ const LeaderboardManager = {
       // 检查用户是否输入了昵称，如果没有昵称则不统计排行榜
       const userNickname = localStorage.getItem('playerNickname')?.trim();
       if (!userNickname) {
-        console.log('[LeaderboardManager] 用户未输入昵称，不统计排行榜');
         return { success: false, skipped: true, message: '未设置昵称，不计入排行榜' };
       }
       const playerName = userNickname;
@@ -180,7 +174,6 @@ const LeaderboardManager = {
       // 调试：输出昵称的 UTF-8 字节长度
       const encoder = new TextEncoder();
       const nameBytes = encoder.encode(playerName);
-      console.log('[LeaderboardManager] 昵称编码检查:', {
         nickname: playerName,
         charLength: playerName.length,
         byteLength: nameBytes.length,
@@ -210,7 +203,6 @@ const LeaderboardManager = {
         };
 
         await update('player_scores', updateData, { match: { player_id: uniquePlayerId } });
-        console.log('[LeaderboardManager] 更新玩家分数:', uniquePlayerId, updateData);
       } else {
         // 新玩家，插入记录
         const playerData = {
@@ -226,7 +218,6 @@ const LeaderboardManager = {
         };
 
         await insert('player_scores', playerData);
-        console.log('[LeaderboardManager] 新玩家记录:', uniquePlayerId);
       }
 
       return { success: true, updated: true };
@@ -317,14 +308,12 @@ const LeaderboardManager = {
         schema: 'public',
         table: 'player_scores'
       }, (payload) => {
-        console.log('[LeaderboardManager] 实时更新:', payload);
         callback(payload);
         // 自动刷新本地排行榜
         this.fetchLeaderboard();
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('[LeaderboardManager] 已订阅排行榜实时更新');
         }
       });
 
@@ -338,7 +327,6 @@ const LeaderboardManager = {
     if (this.realtimeSubscription) {
       supabase.removeChannel(this.realtimeSubscription);
       this.realtimeSubscription = null;
-      console.log('[LeaderboardManager] 已取消排行榜订阅');
     }
   },
 
