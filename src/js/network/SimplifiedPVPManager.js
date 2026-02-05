@@ -10,10 +10,11 @@
 // ============================================
 
 import EventBus from '../bus/EventBus.js';
-import { supabase, insert } from './supabaseClient.js';
+import { supabase } from './supabaseClient.js';
 import StateManager from '../state/StateManager.js';
 import { getCurrentUserId } from './supabaseClient.js';
 import AuthorityExecutor from '../logic/AuthorityExecutor.js';
+import ReconnectionManager from './ReconnectionManager.js';
 
 const SimplifiedPVPManager = {
   // 会话信息
@@ -124,8 +125,19 @@ const SimplifiedPVPManager = {
         console.log('[SimplifiedPVPManager] Broadcast 频道状态:', status);
         if (status === 'SUBSCRIBED') {
           console.log('[SimplifiedPVPManager] ✓ Broadcast 已连接');
+          // 如果是重连后订阅成功，触发重连成功事件
+          if (ReconnectionManager.isReconnecting) {
+            EventBus.emit('RECONNECT:channel-restored');
+          }
         } else if (status === 'CHANNEL_ERROR') {
           console.error('[SimplifiedPVPManager] ✗ Broadcast 频道错误');
+          EventBus.emit('RECONNECT:channel-error', { error: 'Channel error' });
+        } else if (status === 'TIMED_OUT') {
+          console.error('[SimplifiedPVPManager] ✗ Broadcast 频道超时');
+          EventBus.emit('RECONNECT:channel-error', { error: 'Channel timeout' });
+        } else if (status === 'CLOSED') {
+          console.warn('[SimplifiedPVPManager] ✗ Broadcast 频道已关闭');
+          EventBus.emit('RECONNECT:channel-error', { error: 'Channel closed' });
         }
       });
   },

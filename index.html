@@ -138,6 +138,22 @@
         <button class="menu-btn waiting-cancel-btn" id="waiting-cancel-btn">取消</button>
       </div>
     </div>
+
+    <!-- 重连遮罩层 -->
+    <div id="reconnection-overlay" style="display: none;">
+      <div class="reconnection-content">
+        <h2 class="reconnection-title" id="reconnect-title">网络连接已断开</h2>
+        <p class="reconnection-message" id="reconnect-message">正在尝试重连...</p>
+        <div class="reconnection-progress" id="reconnect-progress">
+          <p class="reconnection-attempt" id="reconnect-attempt">重连尝试: 1 / 10</p>
+          <div class="reconnection-spinner"></div>
+        </div>
+        <div class="reconnection-failed-info" id="reconnect-failed-info" style="display: none;">
+          <p>无法重新连接到服务器</p>
+        </div>
+        <button class="menu-btn reconnect-back-btn" id="reconnect-back-btn" style="display: none;">返回主菜单</button>
+      </div>
+    </div>
   </div>
   <script>
     // 捕获所有错误并显示
