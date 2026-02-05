@@ -14,6 +14,7 @@ import { GAME_EVENTS } from '../../types/events.js';
 import { POINTS_CONFIG } from '../../config/game-config.js';
 import SimplifiedPVPManager from '../../network/SimplifiedPVPManager.js';
 import AuthorityExecutor from '../AuthorityExecutor.js';
+import AIController from '../ai/AIController.js';
 
 // 获取 PVP 管理器（在线模式）
 function getPVPManager() {
@@ -288,6 +289,9 @@ const TurnManager = {
   async handleVictory(winnerId, reason) {
     console.log(`[TurnManager] 游戏结束: ${winnerId} 获胜 (${reason})`);
 
+    // 记录 AI 游戏数据
+    AIController.endGame(winnerId);
+
     // 如果是全点亮胜利，显示五行归元过场
     if (reason === '所有天干点亮') {
       console.log('[TurnManager] 触发五行归元过场');
@@ -312,6 +316,9 @@ const TurnManager = {
     }
 
     console.log(`[TurnManager] 游戏结束: 回合上限, 胜者 ${winner}`);
+
+    // 记录 AI 游戏数据
+    AIController.endGame(winner);
 
     // 显示局终过场
     console.log('[TurnManager] 触发局终过场');
