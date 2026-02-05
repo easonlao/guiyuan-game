@@ -93,8 +93,14 @@ const VictoryOverlay = {
    * 隐藏胜利弹窗
    */
   hideVictory() {
+    console.log('[VictoryOverlay] hideVictory 被调用');
     const victoryPopup = document.getElementById('victory-popup');
-    if (victoryPopup) victoryPopup.style.display = 'none';
+    if (victoryPopup) {
+      victoryPopup.style.display = 'none';
+      console.log('[VictoryOverlay] 胜利弹窗已隐藏');
+    } else {
+      console.warn('[VictoryOverlay] victory-popup 元素未找到');
+    }
   }
 };
 

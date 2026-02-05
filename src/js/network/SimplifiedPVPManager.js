@@ -250,7 +250,12 @@ const SimplifiedPVPManager = {
       case 'game_end':
         // 游戏结束 - 先播放过场动画，然后显示胜利界面
         console.log('[PVP] 收到game_end:', data);
-        this._handleGameEnd(data.winner, data.reason);
+        this._handleGameEnd(data.winner, data.reason).catch((error) => {
+          console.error('[PVP] game_end处理错误:', error);
+          // 确保即使出错也能显示胜利界面
+          EventBus.emit(GAME_EVENTS.VICTORY, { winner: data.winner, reason: data.reason });
+          StateManager.update({ phase: 'GAME_END' });
+        });
         break;
 
       case 'state_sync_request':
@@ -586,21 +591,29 @@ const SimplifiedPVPManager = {
   async _handleGameEnd(winner, reason) {
     console.log('[PVP] _handleGameEnd: winner=', winner, 'reason=', reason);
 
-    // 如果是全点亮胜利，显示五行归元过场
-    if (reason === '所有天干点亮') {
-      EventBus.emit('achievement:show-full-unity', winner);
-      // 等待过场动画完成
-      await this._waitForOverlayHidden();
-    } else if (reason === '回合上限') {
-      // 显示局终过场
-      EventBus.emit('achievement:show-turn-limit', winner);
-      // 等待过场动画完成
-      await this._waitForOverlayHidden();
-    }
+    try {
+      // 如果是全点亮胜利，显示五行归元过场
+      if (reason === '所有天干点亮') {
+        EventBus.emit('achievement:show-full-unity', winner);
+        // 等待过场动画完成
+        await this._waitForOverlayHidden();
+      } else if (reason === '回合上限') {
+        // 显示局终过场
+        EventBus.emit('achievement:show-turn-limit', winner);
+        // 等待过场动画完成
+        await this._waitForOverlayHidden();
+      }
 
-    // 动画完成后，显示胜利界面
-    EventBus.emit(GAME_EVENTS.VICTORY, { winner, reason });
-    StateManager.update({ phase: 'GAME_END' });
+      // 动画完成后，显示胜利界面
+      EventBus.emit(GAME_EVENTS.VICTORY, { winner, reason });
+      StateManager.update({ phase: 'GAME_END' });
+      console.log('[PVP] _handleGameEnd 完成');
+    } catch (error) {
+      console.error('[PVP] _handleGameEnd 错误:', error);
+      // 即使出错也要显示胜利界面，确保用户能看到游戏结束
+      EventBus.emit(GAME_EVENTS.VICTORY, { winner, reason });
+      StateManager.update({ phase: 'GAME_END' });
+    }
   },
 
   /**

@@ -58,9 +58,18 @@ const Renderer = {
     const backBtn = document.getElementById('victory-back-btn');
     if (backBtn) {
       backBtn.addEventListener('click', () => {
-        VictoryOverlay.hideVictory();
-        EventBus.emit('game:return-to-menu');
+        console.log('[Renderer] 返回按钮被点击');
+        try {
+          VictoryOverlay.hideVictory();
+          console.log('[Renderer] VictoryOverlay.hideVictory() 已调用');
+          EventBus.emit('game:return-to-menu');
+          console.log('[Renderer] game:return-to-menu 事件已发出');
+        } catch (error) {
+          console.error('[Renderer] 返回按钮处理错误:', error);
+        }
       });
+    } else {
+      console.warn('[Renderer] victory-back-btn 元素未找到');
     }
 
     const cancelBtn = document.getElementById('waiting-cancel-btn');
