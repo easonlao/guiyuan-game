@@ -413,6 +413,12 @@ const GameEngine = {
     const { type, action, stem, playerId, isYang } = this.activeSession;
 
     if (type === 'AUTO_ABSORB') {
+      // 防御：stem为null时无法执行
+      if (!stem) {
+        console.error('[GameEngine] resolveStage1: stem为null，无法执行AUTO_ABSORB');
+        this.activeSession = null;
+        return;
+      }
       ActionResolver.applyPlus(playerId, stem.element, isYang, 'AUTO', false);
       this.activeSession = null;
 
@@ -421,6 +427,12 @@ const GameEngine = {
       TurnManager.endTurn();
     } else if (type === 'OPPONENT_ACTION' && action?.type === 'AUTO') {
       // 对手的 AUTO 动作：统一在这里执行逻辑
+      // 防御：stem为null时无法执行
+      if (!stem) {
+        console.error('[GameEngine] resolveStage1: stem为null，无法执行OPPONENT_AUTO');
+        this.activeSession = null;
+        return;
+      }
       const autoYang = (STEMS_MAP[stem.element].yang === stem.name);
       ActionResolver.applyPlus(playerId, stem.element, autoYang, 'AUTO', false);
       this.activeSession = null;
@@ -460,6 +472,13 @@ const GameEngine = {
     const sessionStem = this.activeSession?.stem;
     const state = StateManager.getState();
     const stem = sessionStem || state.currentStem;
+
+    // 防御：stem为null时无法执行需要天干信息的操作
+    if (!stem && ['AUTO', 'BURST', 'BURST_ATK'].includes(action.type)) {
+      console.error('[GameEngine] _executeActionLogic: stem为null，无法执行', action.type);
+      return;
+    }
+
     const isYang = stem && state.players[playerId].burst?.yang;
 
     switch (action.type) {
