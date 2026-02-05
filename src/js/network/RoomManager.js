@@ -10,8 +10,7 @@
 
 import EventBus from '../bus/EventBus.js';
 import { supabase, query, insert, update } from './supabaseClient.js';
-import { GAME_EVENTS, PLAYER_EVENTS } from '../types/events.js';
-import StateManager from '../state/StateManager.js';
+import { GAME_EVENTS } from '../types/events.js';
 import TimerManager from '../utils/TimerManager.js';
 import { TIMING } from '../config/game-config.js';
 
@@ -49,10 +48,7 @@ const RoomManager = {
         player1_id: playerId,
         player2_id: null,
         status: 'waiting',
-        game_mode: 0,
-        current_turn: 0,
-        current_player: 'P1',
-        current_state: { phase: 'INITIATIVE' }
+        game_mode: 0
       });
 
       if (!roomData || !roomData[0]) {
@@ -185,27 +181,10 @@ const RoomManager = {
   handleRoomUpdate(room) {
     if (!room) return;
 
-    const currentState = StateManager.getState();
-    const isGameStarted = currentState.phase === 'INITIATIVE' || currentState.phase === 'PLAYING';
-
-    // 如果游戏已经进入 INITIATIVE 或 PLAYING 阶段，忽略旧的状态更新
-    // 防止 Realtime 订阅收到旧的更新覆盖正确的 current_player
-    if (isGameStarted && room.current_player && currentState.currentPlayer) {
-      // 检查 current_player 是否与当前状态一致
-      if (room.current_player !== currentState.currentPlayer) {
-        log('忽略旧的状态更新', {
-          db_player: room.current_player,
-          local_player: currentState.currentPlayer
-        });
-        return;
-      }
-    }
-
     log('处理房间更新', {
       myRole: this.currentUserId === room.player1_id ? 'P1' : 'P2',
       player2_id: room.player2_id,
-      status: room.status,
-      current_player: room.current_player
+      status: room.status
     });
 
     if (this.currentUserId === room.player1_id && room.player2_id && !this.hasOpponentJoined) {
