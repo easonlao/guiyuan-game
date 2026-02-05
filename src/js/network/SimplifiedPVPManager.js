@@ -216,7 +216,23 @@ const SimplifiedPVPManager = {
       case 'stem':
         // 天干同步
         console.log('[PVP] 收到stem同步:', data.stem);
-        EventBus.emit('sync:stem', data.stem);
+        if (data.stem === null) {
+          // 主机清除 stem，客户端需要播放跳过动画来清除随机干支显示
+          const state = StateManager.getState();
+          const stem = state.currentStem;
+          const playerId = state.currentPlayer;
+          if (stem && playerId) {
+            // 清除 stem 状态
+            StateManager.update({ currentStem: null });
+            // 播放跳过动画
+            import('../ui/effects/PassiveEffects.js').then(({ default: PassiveEffects }) => {
+              PassiveEffects.playSkip({ stem, playerId });
+              EventBus.emit('game:skip-turn', { stem, playerId });
+            });
+          }
+        } else {
+          EventBus.emit('sync:stem', data.stem);
+        }
         break;
 
       case 'stem_generated':
