@@ -243,9 +243,9 @@ const SimplifiedPVPManager = {
         break;
 
       case 'game_end':
-        // 游戏结束
-        EventBus.emit(GAME_EVENTS.VICTORY, { winner: data.winner, reason: data.reason });
-        StateManager.update({ phase: 'GAME_END' });
+        // 游戏结束 - 先播放过场动画，然后显示胜利界面
+        console.log('[PVP] 收到game_end:', data);
+        this._handleGameEnd(data.winner, data.reason);
         break;
 
       case 'state_sync_request':
@@ -572,6 +572,47 @@ const SimplifiedPVPManager = {
   /**
    * 清理资源
    */
+  /**
+   * 处理游戏结束（客户端）
+   * @param {string} winner - 胜利者
+   * @param {string} reason - 结束原因
+   * @private
+   */
+  async _handleGameEnd(winner, reason) {
+    console.log('[PVP] _handleGameEnd: winner=', winner, 'reason=', reason);
+
+    // 如果是全点亮胜利，显示五行归元过场
+    if (reason === '所有天干点亮') {
+      EventBus.emit('achievement:show-full-unity', winner);
+      // 等待过场动画完成
+      await this._waitForOverlayHidden();
+    } else if (reason === '回合上限') {
+      // 显示局终过场
+      EventBus.emit('achievement:show-turn-limit', winner);
+      // 等待过场动画完成
+      await this._waitForOverlayHidden();
+    }
+
+    // 动画完成后，显示胜利界面
+    EventBus.emit(GAME_EVENTS.VICTORY, { winner, reason });
+    StateManager.update({ phase: 'GAME_END' });
+  },
+
+  /**
+   * 等待过场动画完成
+   * @returns {Promise<void>}
+   * @private
+   */
+  _waitForOverlayHidden() {
+    return new Promise((resolve) => {
+      const handler = () => {
+        EventBus.off('achievement:overlay-hidden', handler);
+        resolve();
+      };
+      EventBus.on('achievement:overlay-hidden', handler);
+    });
+  },
+
   cleanup() {
     if (this.channel) {
       supabase.removeChannel(this.channel);
