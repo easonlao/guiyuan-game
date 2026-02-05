@@ -232,7 +232,11 @@ const GameEngine = {
         return; // 等待主机的 turn_sync 消息
       }
 
-      // 主机：播放跳过动画，延迟后调用 endTurn（会广播 turn_sync）
+      // 主机：先广播清除 stem，然后播放跳过动画，延迟后调用 endTurn（会广播 turn_sync）
+      // 广播清除 stem，确保客户端也能清除随机干支显示
+      if (pvpManager.syncStem) {
+        pvpManager.syncStem(null);
+      }
       PassiveEffects.playSkip({ stem, playerId });
       EventBus.emit('game:skip-turn', { stem, playerId });
       setTimeout(() => TurnManager.endTurn(), 1200);
