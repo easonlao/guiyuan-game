@@ -11,6 +11,11 @@ import EventBus from '../bus/EventBus.js';
 import { supabase, query } from './supabaseClient.js';
 import SimplifiedPVPManager from './SimplifiedPVPManager.js';
 import StateManager from '../state/StateManager.js';
+import TimerManager from '../utils/TimerManager.js';
+
+const RECONNECT_MONITOR_TIMER = 'reconnect-monitor';
+const RECONNECT_DELAY_TIMER = 'reconnect-delay';
+const CHANNEL_WAIT_TIMER = 'channel-wait';
 
 const ReconnectionManager = {
   // 重连状态
@@ -97,9 +102,17 @@ const ReconnectionManager = {
     });
 
     // 定期检查连接状态（每10秒）
-    setInterval(() => {
+    TimerManager.setInterval(RECONNECT_MONITOR_TIMER, () => {
       this._checkConnection();
     }, 10000);
+  },
+
+  /**
+   * 停止连接监控
+   * @private
+   */
+  _stopConnectionMonitor() {
+    TimerManager.clearInterval(RECONNECT_MONITOR_TIMER);
   },
 
   /**
@@ -141,7 +154,7 @@ const ReconnectionManager = {
 
     // 如果有活动会话，尝试重连
     if (this.lastSessionId) {
-      setTimeout(() => {
+      TimerManager.setTimeout(RECONNECT_DELAY_TIMER, () => {
         this.attemptReconnect();
       }, this.reconnectDelay);
     }
@@ -202,7 +215,7 @@ const ReconnectionManager = {
       this._subscribeToSession(this.lastSessionId);
 
       // 等待 Channel 恢复（最多等待5秒）
-      setTimeout(() => {
+      TimerManager.setTimeout(CHANNEL_WAIT_TIMER, () => {
         if (this._waitingForChannelRestore) {
           console.warn('[ReconnectionManager] Channel 恢复超时，继续重连流程');
           this._onChannelRestored();
@@ -238,7 +251,7 @@ const ReconnectionManager = {
       }
 
       // 延迟后重试
-      setTimeout(() => {
+      TimerManager.setTimeout(RECONNECT_DELAY_TIMER, () => {
         this.attemptReconnect();
       }, this.reconnectDelay);
 
@@ -365,6 +378,11 @@ const ReconnectionManager = {
       supabase.removeChannel(this.sessionChannel);
       this.sessionChannel = null;
     }
+
+    // 清理所有定时器
+    this._stopConnectionMonitor();
+    TimerManager.clearTimeout(RECONNECT_DELAY_TIMER);
+    TimerManager.clearTimeout(CHANNEL_WAIT_TIMER);
 
     // 重置状态
     this.isReconnecting = false;

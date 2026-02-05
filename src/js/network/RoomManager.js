@@ -12,17 +12,19 @@ import EventBus from '../bus/EventBus.js';
 import { supabase, query, insert, update } from './supabaseClient.js';
 import { GAME_EVENTS, PLAYER_EVENTS } from '../types/events.js';
 import StateManager from '../state/StateManager.js';
+import TimerManager from '../utils/TimerManager.js';
 
 // PVP 调试日志函数
 const log = (...args) => window.PVP_DEBUG && console.log('[RoomManager]', ...args);
 const logError = (...args) => console.error('[RoomManager]', ...args);
+
+const ROOM_POLL_TIMER = 'room-poll';
 
 const RoomManager = {
   currentRoomCode: null,
   currentRoomId: null,
   currentUserId: null,
   roomChannel: null,
-  pollInterval: null,
   hasOpponentJoined: false,
 
   init() {
@@ -124,10 +126,9 @@ const RoomManager = {
     if (this.roomChannel) {
       supabase.removeChannel(this.roomChannel);
     }
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
-    }
+
+    // 停止之前的轮询
+    this._stopPolling();
 
     log('订阅 Realtime 频道', { roomId });
 
@@ -155,8 +156,12 @@ const RoomManager = {
         }
       });
 
+    this._startPolling(roomId);
+  },
+
+  _startPolling(roomId) {
     log('启动轮询检测 (2秒间隔)');
-    this.pollInterval = setInterval(async () => {
+    TimerManager.setInterval(ROOM_POLL_TIMER, async () => {
       try {
         const rooms = await query('game_sessions', {
           match: { id: roomId }
@@ -170,6 +175,10 @@ const RoomManager = {
         logError('轮询检测失败:', error.message);
       }
     }, 2000);
+  },
+
+  _stopPolling() {
+    TimerManager.clearInterval(ROOM_POLL_TIMER);
   },
 
   handleRoomUpdate(room) {
@@ -202,19 +211,13 @@ const RoomManager = {
       log('✓ 对手 (P2) 已加入!');
       this.hasOpponentJoined = true;
 
-      if (this.pollInterval) {
-        clearInterval(this.pollInterval);
-        this.pollInterval = null;
-      }
+      this._stopPolling();
       EventBus.emit('game:player-joined', { playerId: 'P2' });
     }
 
     if (room.status === 'playing' && this.currentUserId === room.player2_id) {
       log('✓ 游戏状态: playing');
-      if (this.pollInterval) {
-        clearInterval(this.pollInterval);
-        this.pollInterval = null;
-      }
+      this._stopPolling();
       EventBus.emit('game:player-joined', { playerId: 'P1' });
     }
   },
@@ -224,10 +227,7 @@ const RoomManager = {
       supabase.removeChannel(this.roomChannel);
       this.roomChannel = null;
     }
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
-    }
+    this._stopPolling();
   },
 
   handlePlayerJoined(data) {

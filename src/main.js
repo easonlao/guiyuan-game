@@ -21,6 +21,7 @@ import ScoreEffects from './js/ui/ScoreEffects.js';
 import AchievementOverlay from './js/ui/overlays/AchievementOverlay.js';
 import WaitingOverlay from './js/ui/overlays/WaitingOverlay.js';
 import ReconnectionOverlay from './js/ui/overlays/ReconnectionOverlay.js';
+import TimerManager from './js/utils/TimerManager.js';
 
 function initApp() {
   // 首先初始化 PVP 调试系统
@@ -41,6 +42,9 @@ function initApp() {
   // 监听返回主菜单事件
   EventBus.on('game:return-to-menu', () => {
     if (window.PVP_DEBUG) console.log('[Main] 返回主菜单');
+
+    // 清理定时器
+    TimerManager.clearAll();
 
     StateManager.reset();
     AchievementOverlay.reset();
@@ -141,6 +145,12 @@ function initGameEngine() {
   if (window.PVP_DEBUG) console.log('[Main] 初始化游戏引擎');
   GameEngine.init();
   GameSequence.init();
+
+  // 暴露到 window 用于调试
+  window.GameEngine = GameEngine;
+  window.StateManager = StateManager;
+  window.EventBus = EventBus;
+  if (window.PVP_DEBUG) console.log('[Main] ✓ GameEngine 已暴露到 window.GameEngine');
 }
 
 function initUI() {
@@ -168,6 +178,15 @@ function initAnimations() {
   if (window.PVP_DEBUG) console.log('[Main] 初始化动画系统');
   ParticleSystem.init();
 }
+
+// 添加清理函数
+function cleanup() {
+  if (window.PVP_DEBUG) console.log('[Main] 清理应用资源');
+  TimerManager.clearAll();
+}
+
+// 监听页面卸载
+window.addEventListener('beforeunload', cleanup);
 
 // 检查 URL 参数中的房间码
 function checkURLParams() {
