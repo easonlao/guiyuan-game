@@ -10,6 +10,7 @@
 import EventBus from '../bus/EventBus.js';
 import { GAME_EVENTS } from '../types/events.js';
 import { POINTS_CONFIG } from '../config/game-config.js';
+import { deepMerge, updatePath as updatePathUtil, shallowCopy } from './ImmutableState.js';
 
 // 稀有度概率配置
 const ACTION_PROBABILITY = {
@@ -118,14 +119,14 @@ function initNodeStates() {
 // 填充初始节点状态
 initialState.nodeStates = initNodeStates();
 
-let state = JSON.parse(JSON.stringify(initialState));
+let state = shallowCopy(initialState);
 
 const StateManager = {
   /**
    * 获取当前状态（返回副本）
    */
   getState() {
-    return JSON.parse(JSON.stringify(state));
+    return shallowCopy(state);
   },
 
   /**
@@ -144,30 +145,38 @@ const StateManager = {
    * @param {boolean} silent - 是否静默更新（不触发事件）
    */
   update(updates, silent = false) {
-    const oldState = JSON.parse(JSON.stringify(state));
+    const oldState = state;
 
-    // 深度合并（简单版，仅支持一层对象合并，对于 players 和 nodeStates 需要特殊处理）
-    // 实际生产中建议使用 immer 或 lodash.merge
-    state = { ...state, ...updates };
-
-    // 特殊处理嵌套对象更新
-    if (updates.players) {
-        state.players = { ...oldState.players, ...updates.players };
-    }
-    if (updates.nodeStates) {
-        state.nodeStates = { ...oldState.nodeStates, ...updates.nodeStates };
-    }
-
-    // 确保 actionScores 不会丢失
-    if (!state.actionScores) {
-      state.actionScores = oldState.actionScores;
-    }
+    // 使用高效的不可变更新
+    state = deepMerge(state, updates);
 
     if (!silent) {
       EventBus.emit(GAME_EVENTS.STATE_CHANGED, {
         old: oldState,
         new: state,
         updates
+      });
+    }
+
+    return state;
+  },
+
+  /**
+   * 更新嵌套路径（使用点分隔的路径）
+   * @param {string} path - 点分隔的路径（如 'players.P1.score'）
+   * @param {*} value - 新值
+   * @param {boolean} silent - 是否静默更新
+   */
+  updatePath(path, value, silent = false) {
+    const oldState = state;
+    state = updatePathUtil(state, path, value);
+
+    if (!silent) {
+      EventBus.emit(GAME_EVENTS.STATE_CHANGED, {
+        old: oldState,
+        new: state,
+        path,
+        value
       });
     }
 
@@ -420,7 +429,7 @@ const StateManager = {
    * 重置游戏
    */
   reset() {
-    state = JSON.parse(JSON.stringify(initialState));
+    state = shallowCopy(initialState);
     // 重新生成新的节点状态引用
     state.nodeStates = initNodeStates();
 
