@@ -345,13 +345,6 @@ const GameEngine = {
     const currentPlayer = action.executorId || state.currentPlayer;
     const opponentId = currentPlayer === 'P1' ? 'P2' : 'P1';
 
-      action,
-      currentPlayer,
-      opponentId,
-      actionType: action.type,
-      stateCurrentPlayer: state.currentPlayer
-    });
-
     // 处理自动吸纳的特殊情况
     if (action.type === 'AUTO') {
       this.activeSession = {
@@ -420,12 +413,6 @@ const GameEngine = {
   async resolveStage1() {
     if (!this.activeSession) return;
     const { type, action, stem, playerId, isYang } = this.activeSession;
-
-      type,
-      actionType: action?.type,
-      playerId,
-      turnCount: StateManager.getState().turnCount
-    });
 
     if (type === 'AUTO_ABSORB') {
       ActionResolver.applyPlus(playerId, stem.element, isYang, 'AUTO', false);
@@ -548,12 +535,6 @@ const GameEngine = {
 
     const opponentId = playerId; // 执行操作的玩家
     const myPlayerId = opponentId === 'P1' ? 'P2' : 'P1'; // 我是另一个玩家
-
-      opponentId,
-      myPlayerId,
-      actionType: action.type,
-      stateCurrentPlayer: state.currentPlayer
-    });
 
     // 确定次要目标
     const secondTarget = this._determineSecondTarget(action, opponentId, myPlayerId);
