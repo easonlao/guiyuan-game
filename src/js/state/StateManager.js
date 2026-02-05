@@ -1,6 +1,11 @@
 // ============================================
 // 状态管理系统
 // ============================================
+// @file 状态管理器
+// @description 管理游戏全局状态，提供不可变状态更新
+// @author 归元奕团队
+// @created 2026-01-01
+//
 // 职责：
 // - 管理游戏状态（不可变数据）
 // - 提供状态查询和更新接口
@@ -11,6 +16,37 @@ import EventBus from '../bus/EventBus.js';
 import { GAME_EVENTS } from '../types/events.js';
 import { POINTS_CONFIG } from '../config/game-config.js';
 import { deepMerge, updatePath as updatePathUtil, shallowCopy } from './ImmutableState.js';
+
+/**
+ * @typedef {Object} GameState
+ * @property {string} phase - 当前游戏阶段 ('HOME'|'INITIATIVE'|'STEM_GENERATION'|'DECISION'|'GAME_END')
+ * @property {string|null} myRole - 当前玩家的角色 ('P1'|'P2'|null)
+ * @property {number} gameMode - 游戏模式 (0: PvP, 1: PvAI, 2: AIvAI)
+ * @property {number} turnCount - 当前回合数
+ * @property {number} maxTurns - 最大回合数
+ * @property {string} currentPlayer - 当前玩家 ('P1'|'P2')
+ * @property {boolean} isExtraTurn - 是否是额外机会回合
+ * @property {Object} players - 玩家状态
+ * @property {Object} nodeStates - 节点状态存储
+ * @property {Object|null} currentStem - 当前生成的天干
+ * @property {Object} turnScoreChanges - 本回合积分变化
+ * @property {Object|null} lastAction - 上一步操作记录
+ * @property {boolean} pendingSettlement - 是否有待显示的结算效果
+ * @property {Object} actionStats - 行为统计
+ * @property {Object} actionScores - 行为得分统计
+ * @property {Object} stateStats - 状态统计
+ * @property {Object} stateScores - 状态得分统计
+ * @property {Object} passiveStats - 被动统计
+ * @property {Object} passiveScores - 被动得分统计
+ */
+
+/**
+ * @typedef {Object} PlayerState
+ * @property {string} id - 玩家ID ('P1'|'P2')
+ * @property {number} score - 当前分数
+ * @property {boolean} burstBonus - 是否有额外机会
+ * @property {string} type - 玩家类型 ('HUMAN'|'AI')
+ */
 
 // 稀有度概率配置
 const ACTION_PROBABILITY = {
@@ -124,6 +160,7 @@ let state = shallowCopy(initialState);
 const StateManager = {
   /**
    * 获取当前状态（返回副本）
+   * @returns {GameState} 当前游戏状态的只读副本
    */
   getState() {
     return shallowCopy(state);
@@ -141,8 +178,10 @@ const StateManager = {
 
   /**
    * 更新状态
-   * @param {Object} updates - 要更新的字段
-   * @param {boolean} silent - 是否静默更新（不触发事件）
+   * @param {Partial<GameState>} updates - 状态更新
+   * @param {boolean} [silent=false] - 是否静默更新（不触发事件）
+   * @returns {GameState} 更新后的状态
+   * @fires GAME_EVENTS.STATE_CHANGED
    */
   update(updates, silent = false) {
     const oldState = state;
@@ -165,7 +204,9 @@ const StateManager = {
    * 更新嵌套路径（使用点分隔的路径）
    * @param {string} path - 点分隔的路径（如 'players.P1.score'）
    * @param {*} value - 新值
-   * @param {boolean} silent - 是否静默更新
+   * @param {boolean} [silent=false] - 是否静默更新
+   * @returns {GameState} 更新后的状态
+   * @fires GAME_EVENTS.STATE_CHANGED
    */
   updatePath(path, value, silent = false) {
     const oldState = state;
