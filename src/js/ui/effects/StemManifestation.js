@@ -47,6 +47,7 @@ const StemManifestation = {
     stemEl.style.transition = 'all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.5)';
     stemEl.style.transform = 'translate(-50%, -50%) scale(1.3)';
     stemEl.style.opacity = '1';
+    stemEl.style.visibility = 'visible';  // 确保天干可见
   },
 
   /**
