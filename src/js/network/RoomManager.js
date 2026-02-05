@@ -35,11 +35,37 @@ const RoomManager = {
     EventBus.on('game:player-joined', this.handlePlayerJoined.bind(this));
   },
 
+  /**
+   * 清理旧的等待中房间
+   * @private
+   */
+  async _cleanupOldRooms() {
+    try {
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
+      await supabase
+        .from('game_sessions')
+        .delete()
+        .lt('created_at', thirtyMinutesAgo)
+        .eq('status', 'waiting');
+
+      log('✓ 清理旧房间完成');
+    } catch (error) {
+      // 静默失败，不影响主流程
+      log('清理旧房间失败（忽略）:', error.message);
+    }
+  },
+
   async handleCreateRoom({ playerId }) {
     try {
       log('创建房间', { playerId });
       this.currentUserId = playerId;
       this.hasOpponentJoined = false;
+
+      // 概率性清理旧房间（约 20% 的创建操作触发）
+      if (Math.random() < 0.2) {
+        await this._cleanupOldRooms();
+      }
 
       const roomCode = this.generateRoomCode();
 
