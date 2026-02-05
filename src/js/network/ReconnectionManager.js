@@ -12,6 +12,7 @@ import { supabase, query } from './supabaseClient.js';
 import SimplifiedPVPManager from './SimplifiedPVPManager.js';
 import StateManager from '../state/StateManager.js';
 import TimerManager from '../utils/TimerManager.js';
+import { TIMING, RULES_CONFIG } from '../config/game-config.js';
 
 const RECONNECT_MONITOR_TIMER = 'reconnect-monitor';
 const RECONNECT_DELAY_TIMER = 'reconnect-delay';
@@ -21,11 +22,11 @@ const ReconnectionManager = {
   // 重连状态
   isReconnecting: false,
   reconnectAttempts: 0,
-  maxReconnectAttempts: 10,  // 增加到10次
+  maxReconnectAttempts: RULES_CONFIG.RECONNECTION.MAX_RETRIES,
 
-  // 指数退避配置
-  baseReconnectDelay: 1000, // 1秒基准延迟
-  maxReconnectDelay: 30000, // 30秒最大延迟
+  // 指数退避配置（使用配置）
+  baseReconnectDelay: RULES_CONFIG.RECONNECTION.BASE_DELAY,
+  maxReconnectDelay: RULES_CONFIG.RECONNECTION.MAX_DELAY,
 
   // 会话信息（用于重连）
   lastSessionId: null,
@@ -104,10 +105,10 @@ const ReconnectionManager = {
       this.handleDisconnect();
     });
 
-    // 定期检查连接状态（每10秒）
+    // 定期检查连接状态
     TimerManager.setInterval(RECONNECT_MONITOR_TIMER, () => {
       this._checkConnection();
-    }, 10000);
+    }, TIMING.POLLING.RECONNECT_MONITOR);
   },
 
   /**
@@ -173,8 +174,8 @@ const ReconnectionManager = {
       this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts),
       this.maxReconnectDelay
     );
-    // 添加随机抖动（±25%）
-    const jitter = delay * 0.25 * (Math.random() * 2 - 1);
+    // 添加随机抖动（使用配置的抖动比例）
+    const jitter = delay * RULES_CONFIG.RECONNECTION.JITTER_RATIO * (Math.random() * 2 - 1);
     return Math.round(delay + jitter);
   },
 

@@ -13,6 +13,7 @@ import { supabase, query, insert, update } from './supabaseClient.js';
 import { GAME_EVENTS, PLAYER_EVENTS } from '../types/events.js';
 import StateManager from '../state/StateManager.js';
 import TimerManager from '../utils/TimerManager.js';
+import { TIMING } from '../config/game-config.js';
 
 // PVP 调试日志函数
 const log = (...args) => window.PVP_DEBUG && console.log('[RoomManager]', ...args);
@@ -160,7 +161,7 @@ const RoomManager = {
   },
 
   _startPolling(roomId) {
-    log('启动轮询检测 (2秒间隔)');
+    log('启动轮询检测');
     TimerManager.setInterval(ROOM_POLL_TIMER, async () => {
       try {
         const rooms = await query('game_sessions', {
@@ -174,7 +175,7 @@ const RoomManager = {
       } catch (error) {
         logError('轮询检测失败:', error.message);
       }
-    }, 2000);
+    }, TIMING.POLLING.ROOM);
   },
 
   _stopPolling() {
