@@ -195,18 +195,16 @@ const SimplifiedPVPManager = {
         // 回合切换同步（主机权威计算）
         console.log('[SimplifiedPVPManager] 收到回合切换同步，下个玩家:', data.nextPlayer, '额外机会:', data.isExtraTurn);
 
-        const syncState = StateManager.getState();
-        const syncUpdates = {};
-        if (data.nextPlayer && data.nextPlayer !== syncState.currentPlayer) {
-          syncUpdates.currentPlayer = data.nextPlayer;
-        }
-        syncUpdates.isExtraTurn = data.isExtraTurn || false;
-        syncUpdates.currentStem = null;
+        // 始终更新 currentPlayer（即使玩家相同，也要更新以确保状态同步）
+        // 同时清除旧天干
+        const syncUpdates = {
+          currentPlayer: data.nextPlayer,
+          isExtraTurn: data.isExtraTurn || false,
+          currentStem: null
+        };
 
-        if (Object.keys(syncUpdates).length > 0) {
-          StateManager.update(syncUpdates, true);
-          console.log('[SimplifiedPVPManager] 已同步回合切换:', syncUpdates);
-        }
+        StateManager.update(syncUpdates, true);
+        console.log('[SimplifiedPVPManager] 已同步回合切换:', syncUpdates);
 
         EventBus.emit('game:next-turn');
         break;

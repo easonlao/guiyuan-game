@@ -401,12 +401,12 @@ const StateManager = {
       nextPlayer = state.currentPlayer === 'P1' ? 'P2' : 'P1';
     }
 
-    // 重置回合临时数据
+    // 重置回合临时数据（包括清除旧天干）
     const updates = {
       currentPlayer: nextPlayer,
       isExtraTurn: isExtraTurn,
       turnScoreChanges: { P1: 0, P2: 0 },
-      currentStem: null
+      currentStem: null  // 清除旧天干，准备下一回合
     };
 
     // 如果切换回来的玩家还有 burstBonus (重置逻辑在业务层控制，这里只是状态容器)
