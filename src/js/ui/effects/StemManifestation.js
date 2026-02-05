@@ -8,6 +8,7 @@
 // ============================================
 
 import EventBus from '../../bus/EventBus.js';
+import StateManager from '../../state/StateManager.js';
 import { GAME_CONFIG } from '../../config/game-config.js';
 
 const StemManifestation = {
@@ -80,6 +81,20 @@ const StemManifestation = {
    */
   _emitCheckRequest(stem, playerId) {
     setTimeout(() => {
+      // 获取最新的状态，确保 playerId 是当前回合玩家
+      const state = StateManager.getState();
+      const currentPlayer = state.currentPlayer;
+
+      // 只有当前回合玩家才触发检查请求
+      if (playerId !== currentPlayer) {
+        console.log('[StemManifestation] 非当前回合玩家，跳过检查请求', {
+          stem: stem.name,
+          playerId,
+          currentPlayer
+        });
+        return;
+      }
+
       console.log('[StemManifestation] 发送 ui:request-stem-check 事件');
       EventBus.emit('ui:request-stem-check', { stem, playerId });
     }, GAME_CONFIG.STEM_MANIFEST_DURATION);
