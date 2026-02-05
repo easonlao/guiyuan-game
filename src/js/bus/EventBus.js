@@ -9,7 +9,7 @@
 
 const EventBus = {
   events: {},
-  log: true, // 开发环境开启事件日志
+  log: false, // 默认关闭事件日志，需要时可手动开启
 
   /**
    * 订阅事件

@@ -111,8 +111,6 @@ export function initPVPDebug() {
     }
   };
 
-  originalConsole.log('%c🎮 PVP 日志系统已加载', 'color: #4a90e2; font-weight: bold;');
-  originalConsole.log('%c使用 window.PVP_DEBUG = true 开启 PVP 专用模式', 'color: #888;');
 }
 
 /**
