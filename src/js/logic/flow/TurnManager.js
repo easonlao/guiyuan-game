@@ -300,6 +300,15 @@ const TurnManager = {
     // 记录 AI 游戏数据
     AIController.endGame(winnerId);
 
+    // PVP 模式下，广播游戏结束消息给对手
+    const state = StateManager.getState();
+    if (state.gameMode === 0) {
+      const pvpManager = getPVPManager();
+      if (pvpManager.syncGameEnd) {
+        pvpManager.syncGameEnd({ winner: winnerId, reason });
+      }
+    }
+
     // 如果是全点亮胜利，显示五行归元过场
     if (reason === '所有天干点亮') {
       console.log('[TurnManager] 触发五行归元过场');
