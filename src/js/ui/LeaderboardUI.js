@@ -125,12 +125,28 @@ const LeaderboardUI = {
       else if (rank === 3) rankClass = 'rank-3';
       else if (rank <= 10) rankClass = 'rank-top10';
 
+      // 计算胜率（使用与平均分相同的容错逻辑）
+      const effectiveGames = entry._effectiveGames || (entry.games_played || 0);
+      const finalGames = effectiveGames > 0 ? effectiveGames : (entry.wins || 1);
+      const winRate = finalGames > 0
+        ? ((entry.wins || 0) / finalGames * 100).toFixed(1) + '%'
+        : '0%';
+
+      // 调试日志
+      console.log('[LeaderboardUI]', entry.player_name, {
+        games_played: entry.games_played,
+        wins: entry.wins,
+        effectiveGames,
+        finalGames,
+        winRate
+      });
+
       row.innerHTML = `
         <td class="${rankClass}">#${rank}</td>
         <td>${this.escapeHtml(entry.player_name || '匿名')}</td>
         <td class="${rankClass}">${entry.best_score || 0}</td>
-        <td>${entry.total_score || 0}</td>
-        <td>${entry.wins || 0}</td>
+        <td>${entry.avg_score || 0}</td>
+        <td>${winRate}</td>
       `;
 
       tbody.appendChild(row);

@@ -45,11 +45,18 @@ const LeaderboardManager = {
     const player2Score = state.players.P2.score;
     const currentUserId = getCurrentUserId();
 
-    console.log('[LeaderboardManager] 游戏结束，更新排行榜:', { winner, reason, player1Score, player2Score });
+    console.log('[LeaderboardManager] 游戏结束，更新排行榜:', { winner, reason, player1Score, player2Score, gameMode: state.gameMode });
 
-    // 提交双方玩家分数
-    await this.submitScore('P1', player1Score, { winner, reason, gameMode: state.gameMode });
-    await this.submitScore('P2', player2Score, { winner, reason, gameMode: state.gameMode });
+    // 根据游戏模式决定如何记录分数
+    if (state.gameMode === 1) {
+      // 玩家 VS AI 模式：只记录 P1 的分数（避免重复记录）
+      await this.submitScore('P1', player1Score, { winner, reason, gameMode: state.gameMode });
+    } else if (state.gameMode === 0) {
+      // 玩家 VS 玩家模式：记录双方分数
+      await this.submitScore('P1', player1Score, { winner, reason, gameMode: state.gameMode });
+      await this.submitScore('P2', player2Score, { winner, reason, gameMode: state.gameMode });
+    }
+    // gameMode === 2 (天道运转) 暂不支持排行榜
 
     // 刷新排行榜
     await this.fetchLeaderboard();
@@ -85,7 +92,32 @@ const LeaderboardManager = {
         throw new Error('获取排行榜失败');
       }
 
-      this.leaderboard = data;
+      // 在前端计算平均分并排序
+      // 对旧数据做容错处理：如果 games_played 为空或0，使用 wins 作为最小场次
+      this.leaderboard = data.map(entry => {
+        const gamesPlayed = entry.games_played || 0;
+        const effectiveGames = gamesPlayed > 0 ? gamesPlayed : (entry.wins || 1);
+        const avgScore = effectiveGames > 0
+          ? Math.round((entry.total_score || 0) / effectiveGames)
+          : 0;
+
+        // 调试日志：输出原始数据
+        console.log('[LeaderboardManager] 玩家数据:', {
+          name: entry.player_name,
+          total_score: entry.total_score,
+          games_played: entry.games_played,
+          wins: entry.wins,
+          effectiveGames,
+          avg_score: avgScore
+        });
+
+        return {
+          ...entry,
+          avg_score: avgScore,
+          _effectiveGames: effectiveGames  // 保存有效场次供 UI 使用
+        };
+      }).sort((a, b) => b.avg_score - a.avg_score);
+
       this.lastUpdated = new Date();
 
       console.log('[LeaderboardManager] 排行榜获取成功:', this.leaderboard.length, '条记录');
@@ -129,9 +161,13 @@ const LeaderboardManager = {
 
       // 生成唯一的玩家标识（使用 localStorage 的 ID）
       const uniquePlayerId = getCurrentUserId() || `guest_${Date.now()}`;
-      // 优先使用用户输入的昵称，如果没有则使用默认名称
+      // 检查用户是否输入了昵称，如果没有昵称则不统计排行榜
       const userNickname = localStorage.getItem('playerNickname')?.trim();
-      const playerName = userNickname || (playerId === 'P1' ? '本尊' : '对家');
+      if (!userNickname) {
+        console.log('[LeaderboardManager] 用户未输入昵称，不统计排行榜');
+        return { success: false, skipped: true, message: '未设置昵称，不计入排行榜' };
+      }
+      const playerName = userNickname;
 
       // 查询是否已有记录
       const existing = await query('player_scores', {
@@ -139,49 +175,39 @@ const LeaderboardManager = {
       });
 
       const timestamp = new Date().toISOString();
-      const playerData = {
-        player_id: uniquePlayerId,
-        player_name: playerName,
-        total_score: score,
-        games_played: 1,
-        wins: gameData.winner === playerId ? 1 : 0,
-        last_played_at: timestamp,
-        game_mode: gameData.gameMode || 1
-      };
-
-      let result;
 
       if (existing && existing.length > 0) {
         const current = existing[0];
+        const newGamesPlayed = (current.games_played || 0) + 1;
+        const newTotalScore = (current.total_score || 0) + score;
+        const newWins = (current.wins || 0) + (gameData.winner === playerId ? 1 : 0);
+        const newBestScore = Math.max(current.best_score || 0, score);
 
-        // 只在新分数更高时更新（参考 SnakeGame 逻辑）
-        if (score > (current.best_score || 0)) {
-          result = await update('player_scores', {
-            ...playerData,
-            total_score: (current.total_score || 0) + score,
-            games_played: (current.games_played || 0) + 1,
-            wins: (current.wins || 0) + (gameData.winner === playerId ? 1 : 0),
-            best_score: score
-          }, { match: { player_id: uniquePlayerId } });
+        const updateData = {
+          total_score: newTotalScore,
+          games_played: newGamesPlayed,
+          wins: newWins,
+          best_score: newBestScore,
+          last_played_at: timestamp
+        };
 
-          console.log('[LeaderboardManager] 更新玩家分数:', uniquePlayerId, score);
-        } else {
-          // 分数不是最高，但仍累加总局分和游戏场次
-          result = await update('player_scores', {
-            total_score: (current.total_score || 0) + score,
-            games_played: (current.games_played || 0) + 1,
-            wins: (current.wins || 0) + (gameData.winner === playerId ? 1 : 0),
-            last_played_at: timestamp
-          }, { match: { player_id: uniquePlayerId } });
-
-          console.log('[LeaderboardManager] 累加玩家分数:', uniquePlayerId);
-        }
+        await update('player_scores', updateData, { match: { player_id: uniquePlayerId } });
+        console.log('[LeaderboardManager] 更新玩家分数:', uniquePlayerId, updateData);
       } else {
         // 新玩家，插入记录
-        playerData.best_score = score;
-        playerData.created_at = timestamp;
-        result = await insert('player_scores', playerData);
+        const playerData = {
+          player_id: uniquePlayerId,
+          player_name: playerName,
+          total_score: score,
+          games_played: 1,
+          wins: gameData.winner === playerId ? 1 : 0,
+          best_score: score,
+          last_played_at: timestamp,
+          game_mode: gameData.gameMode || 1,
+          created_at: timestamp
+        };
 
+        await insert('player_scores', playerData);
         console.log('[LeaderboardManager] 新玩家记录:', uniquePlayerId);
       }
 
@@ -206,11 +232,12 @@ const LeaderboardManager = {
         return { qualifies: true, rank: (data?.length || 0) + 1 };
       }
 
-      const lowestScore = data[data.length - 1].total_score;
+      // 使用平均分比较（前端已计算）
+      const lowestScore = data[data.length - 1].avg_score;
       const qualifies = score > lowestScore;
 
       if (qualifies) {
-        const rank = data.findIndex(entry => score > entry.total_score) + 1;
+        const rank = data.findIndex(entry => score > entry.avg_score) + 1;
         return { qualifies: true, rank: rank || data.length + 1 };
       }
 
@@ -244,7 +271,7 @@ const LeaderboardManager = {
       return {
         found: true,
         rank: playerIndex + 1,
-        score: data[playerIndex].total_score,
+        avgScore: data[playerIndex].avg_score,
         bestScore: data[playerIndex].best_score,
         totalPlayers: data.length
       };
