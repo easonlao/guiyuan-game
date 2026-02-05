@@ -4,6 +4,7 @@ import EventBus from './js/bus/EventBus.js';
 import StateManager from './js/state/StateManager.js';
 import UIStateManager from './js/state/ui-state.js';
 import { GAME_EVENTS, UI_EVENTS, ANIMATION_EVENTS, INPUT_EVENTS, PLAYER_EVENTS, LEADERBOARD_EVENTS } from './js/types/events.js';
+import { DIMENSIONS } from './js/config/game-config.js';
 
 import { supabase, getCurrentUserId } from './js/network/supabaseClient.js';
 import RoomManager from './js/network/RoomManager.js';
@@ -150,14 +151,20 @@ function initGameEngine() {
   window.GameEngine = GameEngine;
   window.StateManager = StateManager;
   window.EventBus = EventBus;
-  if (window.PVP_DEBUG) console.log('[Main] ✓ GameEngine 已暴露到 window.GameEngine');
+  window.TimerManager = TimerManager;
+  if (window.PVP_DEBUG) console.log('[Main] ✓ 调试工具已暴露到 window');
 }
 
 function initUI() {
   if (window.PVP_DEBUG) console.log('[Main] 初始化UI层');
 
   const vh = window.innerHeight;
-  const size = Math.floor(Math.min(vh * 0.06, 60));
+  const size = Math.floor(
+    Math.min(
+      vh * DIMENSIONS.VIEWPORT.STEM_SIZE_RATIO,
+      DIMENSIONS.VIEWPORT.STEM_SIZE_MAX
+    )
+  );
   document.documentElement.style.setProperty('--stem-size', `${size}px`);
 
   Renderer.init();

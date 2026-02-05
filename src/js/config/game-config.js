@@ -94,6 +94,106 @@ export const GAME_CONFIG = {
   STEM_MANIFEST_DURATION: 500  // 天干显示持续时间
 };
 
+// ============================================
+// 系统配置常量（集中管理魔法数字）
+// ============================================
+
+// 时间配置（毫秒）
+export const TIMING = {
+  // 动画持续时间
+  ANIMATION: {
+    SHORT: 300,
+    MEDIUM: 600,
+    LONG: 1200,
+    EXTRA_LONG: 2500
+  },
+
+  // 网络轮询间隔
+  POLLING: {
+    ROOM: 2000,
+    RECONNECT_MONITOR: 10000
+  },
+
+  // 延迟时间
+  DELAY: {
+    URL_CHECK: 500,
+    STATE_SYNC: 100,
+    TURN_SUMMARY: 2000
+  }
+};
+
+// UI尺寸配置
+export const DIMENSIONS = {
+  // 节点尺寸
+  NODE: {
+    STEM_RADIUS: 50,
+    STEM_SPACING: 72, // 天干间隔角度 (360/5)
+    CENTER_SIZE: 60
+  },
+
+  // 视口相关
+  VIEWPORT: {
+    STEM_SIZE_RATIO: 0.06,
+    STEM_SIZE_MAX: 60
+  }
+};
+
+// 颜色配置
+export const COLORS = {
+  // 玩家颜色
+  P1: {
+    PRIMARY: '#ff6b6b',
+    SECONDARY: '#ee5a5a'
+  },
+  P2: {
+    PRIMARY: '#4ecdc4',
+    SECONDARY: '#3dbdb5'
+  },
+
+  // 元素颜色（与 ELEMENTS_DATA 对应）
+  ELEMENTS: {
+    WOOD: '#2dcc70',
+    FIRE: '#ff6b6b',
+    EARTH: '#f4a460',
+    METAL: '#e6ebf0',
+    WATER: '#4a90e2'
+  },
+
+  // UI颜色
+  UI: {
+    SUCCESS: '#52c41a',
+    WARNING: '#faad14',
+    ERROR: '#f5222d',
+    INFO: '#1890ff'
+  }
+};
+
+// 游戏规则配置
+export const RULES_CONFIG = {
+  // 重连配置
+  RECONNECTION: {
+    MAX_RETRIES: 10,
+    BASE_DELAY: 1000,
+    MAX_DELAY: 30000,
+    JITTER_RATIO: 0.25
+  },
+
+  // PVP同步
+  PVP: {
+    STATE_SYNC_INTERVAL: 100,
+    TIMEOUT: 10000
+  },
+
+  // AI配置
+  AI: {
+    THINKING_TIME: {
+      MIN: 800,
+      MAX: 1500
+    },
+    EXPLORATION_DEPTH: 3
+  }
+};
+
 // 操作类型名称映射
 export const ACTION_NAMES = {
   'CONVERT': '调息',
