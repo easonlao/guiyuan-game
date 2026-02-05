@@ -22,6 +22,12 @@ const ActionResolver = {
   applyBurst(playerId, stemElement, targetElement) {
     let executedCount = 0;
 
+    // 调试：记录BURST操作前的状态
+    const myRole = StateManager.getMyRole();
+    const stemState = StateManager.getNodeState(playerId, stemElement);
+    const targetState = StateManager.getNodeState(playerId, targetElement);
+    console.log(`[BURST ${myRole}] 开始: playerId=${playerId}, stem=${stemElement}(阴${stemState.yin}阳${stemState.yang}), target=${targetElement}(阴${targetState.yin}阳${targetState.yang})`);
+
     // 第1步：消耗自身本命的阴（合一状态）
     const step1 = this.applyMinus(playerId, stemElement, false, 'BURST', false);
     if (!step1) return { success: false, executedCount: 0 };
@@ -33,14 +39,20 @@ const ActionResolver = {
 
     // 第2次：优先阴干（阴干<2时选择阴干，否则选择阳干）
     let isYang2 = !(nodeState.yin < 2);
+    console.log(`[BURST ${myRole}] 第2次: 阴=${nodeState.yin}, 选择阳=${isYang2}`);
     const step2 = this.applyPlus(playerId, targetElement, isYang2, 'BURST', true);
     if (step2) executedCount++;
 
     // 第3次：重新获取状态后再判断
     const updatedNodeState = StateManager.getNodeState(playerId, targetElement);
     let isYang3 = !(updatedNodeState.yin < 2);
+    console.log(`[BURST ${myRole}] 第3次: 阴=${updatedNodeState.yin}, 选择阳=${isYang3}`);
     const step3 = this.applyPlus(playerId, targetElement, isYang3, 'BURST', true);
     if (step3) executedCount++;
+
+    // 调试：记录最终状态
+    const finalTargetState = StateManager.getNodeState(playerId, targetElement);
+    console.log(`[BURST ${myRole}] 完成: target=${targetElement}(阴${finalTargetState.yin}阳${finalTargetState.yang}), executed=${executedCount}`);
 
     return { success: executedCount > 0, executedCount };
   },
