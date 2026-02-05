@@ -16,7 +16,7 @@ const ReconnectionManager = {
   // 重连状态
   isReconnecting: false,
   reconnectAttempts: 0,
-  maxReconnectAttempts: 5,
+  maxReconnectAttempts: 10,  // 增加到10次
   reconnectDelay: 2000, // 2秒
 
   // 会话信息（用于重连）
@@ -29,6 +29,9 @@ const ReconnectionManager = {
   // 回调
   onStateRestored: null,
   onReconnectFailed: null,
+
+  // Channel 恢复等待标志
+  _waitingForChannelRestore: false,
 
   /**
    * 初始化
@@ -54,6 +57,26 @@ const ReconnectionManager = {
     // 监听会话结束，清理
     EventBus.on('game:return-to-menu', () => {
       this.cleanup();
+    });
+
+    // 监听 Broadcast Channel 错误（来自 SimplifiedPVPManager）
+    EventBus.on('RECONNECT:channel-error', (data) => {
+      console.log('[ReconnectionManager] 收到 Channel 错误:', data.error);
+      this.handleDisconnect();
+    });
+
+    // 监听 Broadcast Channel 恢复
+    EventBus.on('RECONNECT:channel-restored', () => {
+      console.log('[ReconnectionManager] Broadcast Channel 已恢复');
+      this._onChannelRestored();
+    });
+
+    // 监听状态同步完成
+    EventBus.on('pvp:state-synced', () => {
+      if (this.isReconnecting) {
+        console.log('[ReconnectionManager] 状态同步完成，重连成功');
+        this._onReconnectSuccess();
+      }
     });
   },
 
@@ -140,10 +163,19 @@ const ReconnectionManager = {
     }
 
     this.isReconnecting = true;
+    this._waitingForChannelRestore = true;
+
+    // 更新重连进度
+    EventBus.emit('RECONNECT:progress', {
+      attempt: this.reconnectAttempts + 1,
+      maxAttempts: this.maxReconnectAttempts,
+      message: '正在重连...'
+    });
+
     this.reconnectAttempts++;
 
     console.log('[ReconnectionManager] ====== 尝试重连 ======');
-    console.log('[ReconnectionManager] 尝试次数:', this.reconnectAttempts);
+    console.log('[ReconnectionManager] 尝试次数:', this.reconnectAttempts, '/', this.maxReconnectAttempts);
 
     try {
       // 1. 检查会话是否仍然有效
@@ -159,35 +191,30 @@ const ReconnectionManager = {
 
       console.log('[ReconnectionManager] 会话有效:', session);
 
-      // 2. 重新订阅 Realtime Broadcast
+      // 2. 重新订阅 Realtime Broadcast（这里会触发 RECONNECT:channel-restored 事件）
       SimplifiedPVPManager.initPVPSession(
         this.lastSessionId,
         this.lastSessionId,
         StateManager.getMyRole()
       );
 
-      // 3. 请求对手发送当前状态
-      SimplifiedPVPManager.requestStateSync();
-
-      // 4. 订阅会话更新
+      // 3. 订阅会话更新
       this._subscribeToSession(this.lastSessionId);
 
-      // 重连成功
-      this.isReconnecting = false;
-      this.reconnectAttempts = 0;
-
-      console.log('[ReconnectionManager] ✓ 重连成功，等待对手状态...');
-
-      // 触发重连成功事件
-      EventBus.emit('RECONNECT:success', {
-        sessionId: this.lastSessionId
-      });
+      // 等待 Channel 恢复（最多等待5秒）
+      setTimeout(() => {
+        if (this._waitingForChannelRestore) {
+          console.warn('[ReconnectionManager] Channel 恢复超时，继续重连流程');
+          this._onChannelRestored();
+        }
+      }, 5000);
 
       return { success: true };
     } catch (error) {
       console.error('[ReconnectionManager] 重连失败:', error);
 
       this.isReconnecting = false;
+      this._waitingForChannelRestore = false;
 
       // 检查是否超过最大尝试次数
       if (this.reconnectAttempts >= this.maxReconnectAttempts) {
@@ -213,10 +240,46 @@ const ReconnectionManager = {
       // 延迟后重试
       setTimeout(() => {
         this.attemptReconnect();
-      }, this.reconnectDelay * this.reconnectAttempts);
+      }, this.reconnectDelay);
 
       return { success: false, error: error.message };
     }
+  },
+
+  /**
+   * Channel 恢复后的处理
+   * @private
+   */
+  _onChannelRestored() {
+    this._waitingForChannelRestore = false;
+
+    // 请求对手发送当前状态
+    SimplifiedPVPManager.requestStateSync();
+
+    console.log('[ReconnectionManager] ✓ Broadcast 已恢复，等待状态同步...');
+
+    // 更新进度
+    EventBus.emit('RECONNECT:progress', {
+      attempt: this.reconnectAttempts,
+      maxAttempts: this.maxReconnectAttempts,
+      message: '正在同步游戏状态...'
+    });
+  },
+
+  /**
+   * 重连成功
+   * @private
+   */
+  _onReconnectSuccess() {
+    this.isReconnecting = false;
+    this.reconnectAttempts = 0;
+
+    console.log('[ReconnectionManager] ✓ 重连成功！');
+
+    // 触发重连成功事件
+    EventBus.emit('RECONNECT:success', {
+      sessionId: this.lastSessionId
+    });
   },
 
   /**
@@ -306,6 +369,7 @@ const ReconnectionManager = {
     // 重置状态
     this.isReconnecting = false;
     this.reconnectAttempts = 0;
+    this._waitingForChannelRestore = false;
     this.lastSessionId = null;
     this.lastRoomCode = null;
     this.onStateRestored = null;

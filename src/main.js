@@ -20,6 +20,7 @@ import LeaderboardUI from './js/ui/LeaderboardUI.js';
 import ScoreEffects from './js/ui/ScoreEffects.js';
 import AchievementOverlay from './js/ui/overlays/AchievementOverlay.js';
 import WaitingOverlay from './js/ui/overlays/WaitingOverlay.js';
+import ReconnectionOverlay from './js/ui/overlays/ReconnectionOverlay.js';
 
 function initApp() {
   // 首先初始化 PVP 调试系统
@@ -155,6 +156,7 @@ function initUI() {
   ScoreEffects.init();
   AchievementOverlay.init();
   WaitingOverlay.init();
+  ReconnectionOverlay.init();
 }
 
 function initInput() {
