@@ -15,6 +15,7 @@ import StateManager from '../state/StateManager.js';
 import { getCurrentUserId } from './supabaseClient.js';
 import AuthorityExecutor from '../logic/AuthorityExecutor.js';
 import ReconnectionManager from './ReconnectionManager.js';
+import { GAME_EVENTS } from '../types/events.js';
 
 const SimplifiedPVPManager = {
   // 会话信息
@@ -242,6 +243,13 @@ const SimplifiedPVPManager = {
           winner: data.firstPlayer,
           isHost: isHost
         });
+        break;
+
+      case 'game_end':
+        // 游戏结束
+        console.log('[SimplifiedPVPManager] 收到游戏结束消息:', data.winner, data.reason);
+        EventBus.emit(GAME_EVENTS.VICTORY, { winner: data.winner, reason: data.reason });
+        StateManager.update({ phase: 'GAME_END' });
         break;
 
       case 'state_sync_request':
