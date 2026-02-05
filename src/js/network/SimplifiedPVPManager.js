@@ -16,6 +16,7 @@ import { getCurrentUserId } from './supabaseClient.js';
 import AuthorityExecutor from '../logic/AuthorityExecutor.js';
 import ReconnectionManager from './ReconnectionManager.js';
 import { GAME_EVENTS } from '../types/events.js';
+import ErrorHandler, { NetworkError } from '../utils/ErrorHandler.js';
 
 const SimplifiedPVPManager = {
   // 会话信息
@@ -171,6 +172,14 @@ const SimplifiedPVPManager = {
         EventBus.emit('sync:opponent-action', data);
         break;
 
+      case 'skip_turn_request':
+        // 跳过回合请求（客户端发送给主机）
+        console.log('[SimplifiedPVPManager] 收到跳过回合请求');
+        if (this.isHost) {
+          EventBus.emit('authority:skip-turn-request');
+        }
+        break;
+
       case 'turn_end':
         // 对手回合结束 - 使用消息中的 nextPlayer 更新本地状态
         const currentState = StateManager.getState();
@@ -309,11 +318,35 @@ const SimplifiedPVPManager = {
       timestamp: Date.now()
     };
 
-    this.channel.send({
-      type: 'broadcast',
-      event: 'game_move',
-      payload: message
-    });
+    this._sendToChannel(message);
+  },
+
+  /**
+   * 统一的发送方法，带错误处理
+   * @private
+   */
+  _sendToChannel(message) {
+    if (!this.channel) {
+      console.warn('[SimplifiedPVPManager] 频道未初始化，无法发送消息');
+      return;
+    }
+
+    try {
+      this.channel.send({
+        type: 'broadcast',
+        event: 'game_move',
+        payload: message
+      });
+    } catch (error) {
+      ErrorHandler.handleError(
+        new NetworkError('发送数据到对手失败', {
+          originalError: error,
+          recipient: this.peerId,
+          messageType: message.type
+        }),
+        { source: 'SimplifiedPVPManager._sendToChannel' }
+      );
+    }
   },
 
   /**
@@ -336,11 +369,7 @@ const SimplifiedPVPManager = {
       timestamp: Date.now()
     };
 
-    this.channel.send({
-      type: 'broadcast',
-      event: 'game_move',
-      payload: message
-    });
+    this._sendToChannel(message);
 
     console.log('[SimplifiedPVPManager] 回合切换通知已发送:', {
       当前回合: state.turnCount,
@@ -362,11 +391,7 @@ const SimplifiedPVPManager = {
       timestamp: Date.now()
     };
 
-    this.channel.send({
-      type: 'broadcast',
-      event: 'game_move',
-      payload: message
-    });
+    this._sendToChannel(message);
   },
 
   /**
@@ -386,11 +411,7 @@ const SimplifiedPVPManager = {
       timestamp: Date.now()
     };
 
-    this.channel.send({
-      type: 'broadcast',
-      event: 'game_move',
-      payload: message
-    });
+    this._sendToChannel(message);
   },
 
   /**
@@ -407,11 +428,7 @@ const SimplifiedPVPManager = {
       timestamp: Date.now()
     };
 
-    this.channel.send({
-      type: 'broadcast',
-      event: 'game_move',
-      payload: message
-    });
+    this._sendToChannel(message);
   },
 
   /**
@@ -438,11 +455,7 @@ const SimplifiedPVPManager = {
       timestamp: Date.now()
     };
 
-    this.channel.send({
-      type: 'broadcast',
-      event: 'game_move',
-      payload: message
-    });
+    this._sendToChannel(message);
 
     console.log('[SimplifiedPVPManager] 状态同步响应已发送');
   },
@@ -471,11 +484,7 @@ const SimplifiedPVPManager = {
       timestamp: Date.now()
     };
 
-    this.channel.send({
-      type: 'broadcast',
-      event: 'game_move',
-      payload: message
-    });
+    this._sendToChannel(message);
   },
 
   /**
@@ -493,11 +502,7 @@ const SimplifiedPVPManager = {
       timestamp: Date.now()
     };
 
-    this.channel.send({
-      type: 'broadcast',
-      event: 'game_move',
-      payload: message
-    });
+    this._sendToChannel(message);
 
     console.log('[SimplifiedPVPManager] 发送天干生成:', stem.name, 'seed:', seed);
   },
@@ -525,11 +530,7 @@ const SimplifiedPVPManager = {
       timestamp: Date.now()
     };
 
-    this.channel.send({
-      type: 'broadcast',
-      event: 'game_move',
-      payload: message
-    });
+    this._sendToChannel(message);
 
     console.log('[SimplifiedPVPManager] 发送回合切换同步:', {
       当前回合: state.turnCount,
@@ -537,6 +538,23 @@ const SimplifiedPVPManager = {
       额外机会: isExtraTurn,
       分数变化: scoreChanges
     });
+  },
+
+  /**
+   * 请求跳过回合（客户端发送）
+   */
+  requestSkipTurn() {
+    if (!this.isEnabled || !this.channel) return;
+
+    const message = {
+      type: 'skip_turn_request',
+      playerId: this.myPlayerId,
+      timestamp: Date.now()
+    };
+
+    this._sendToChannel(message);
+
+    console.log('[SimplifiedPVPManager] 发送跳过回合请求');
   },
 
   /**

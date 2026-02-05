@@ -22,7 +22,10 @@ const ReconnectionManager = {
   isReconnecting: false,
   reconnectAttempts: 0,
   maxReconnectAttempts: 10,  // 增加到10次
-  reconnectDelay: 2000, // 2秒
+
+  // 指数退避配置
+  baseReconnectDelay: 1000, // 1秒基准延迟
+  maxReconnectDelay: 30000, // 30秒最大延迟
 
   // 会话信息（用于重连）
   lastSessionId: null,
@@ -154,10 +157,25 @@ const ReconnectionManager = {
 
     // 如果有活动会话，尝试重连
     if (this.lastSessionId) {
+      const delay = this._calculateBackoffDelay();
       TimerManager.setTimeout(RECONNECT_DELAY_TIMER, () => {
         this.attemptReconnect();
-      }, this.reconnectDelay);
+      }, delay);
     }
+  },
+
+  /**
+   * 计算退避延迟（指数退避）
+   * @private
+   */
+  _calculateBackoffDelay() {
+    const delay = Math.min(
+      this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts),
+      this.maxReconnectDelay
+    );
+    // 添加随机抖动（±25%）
+    const jitter = delay * 0.25 * (Math.random() * 2 - 1);
+    return Math.round(delay + jitter);
   },
 
   /**
@@ -251,9 +269,11 @@ const ReconnectionManager = {
       }
 
       // 延迟后重试
+      const delay = this._calculateBackoffDelay();
+      console.log('[ReconnectionManager] 将在', delay, 'ms 后重试');
       TimerManager.setTimeout(RECONNECT_DELAY_TIMER, () => {
         this.attemptReconnect();
-      }, this.reconnectDelay);
+      }, delay);
 
       return { success: false, error: error.message };
     }
