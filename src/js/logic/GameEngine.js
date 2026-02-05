@@ -14,6 +14,7 @@ import SimplifiedPVPManager from '../network/SimplifiedPVPManager.js';
 import { GAME_EVENTS } from '../types/events.js';
 import { STEMS_LIST, STEMS_MAP } from '../config/game-config.js';
 import AuthorityExecutor from './AuthorityExecutor.js';
+import AIController from './ai/AIController.js';
 
 // 获取 PVP 管理器（在线模式）
 function getPVPManager() {
@@ -25,7 +26,6 @@ import TurnManager from './flow/TurnManager.js';
 import ActionCandidates from './actions/ActionCandidates.js';
 import ActionResolver from './actions/ActionResolver.js';
 import PassiveEffects from '../ui/effects/PassiveEffects.js';
-import AIController from './ai/AIController.js';
 
 const GameEngine = {
   activeSession: null,
@@ -59,6 +59,8 @@ const GameEngine = {
   },
 
   startNewGame(data) {
+    // 初始化 AI 数据收集
+    AIController.init(data.mode);
     GameSequence.startNewGame(data);
   },
 
@@ -467,7 +469,9 @@ const GameEngine = {
     // ⚠️ 修复：立即调用 requestTurnEnd，不延迟
     // 让 TurnManager 内部处理时序，避免竞态条件
     if (isBurstAction && hasBurstBonus) {
+      // 清除 currentStem，确保额外行动时生成新的随机干支
       StateManager.update({
+        currentStem: null,
         players: {
           ...currentState.players,
           [playerId]: {
