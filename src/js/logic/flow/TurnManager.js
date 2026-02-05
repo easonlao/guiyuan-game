@@ -134,7 +134,9 @@ const TurnManager = {
       if (AuthorityExecutor.isHost()) {
         // 1. 主机计算回合结算效果（等待动画完成）
         // 返回分数变化列表，用于 PVP 同步
+        console.log(`[TurnManager endTurn] 主机开始计算回合结算效果`);
         const scoreChanges = await this._calculatePassiveEffects();
+        console.log(`[TurnManager endTurn] 主机计算完成，scoreChanges数量=${scoreChanges.length}`, scoreChanges);
 
         const result = AuthorityExecutor.calculateNextPlayer(beforePlayer, isExtraTurn);
         if (!result) {

@@ -198,6 +198,7 @@ const SimplifiedPVPManager = {
 
         // 应用分数变化（天道分红、道损亏损等回合结算效果）
         if (data.scoreChanges && Array.isArray(data.scoreChanges)) {
+          console.log(`[PVP turn_sync] 收到 ${data.scoreChanges.length} 条分数变化:`, data.scoreChanges);
           data.scoreChanges.forEach(change => {
             StateManager.addScore(
               change.playerId,
@@ -206,6 +207,8 @@ const SimplifiedPVPManager = {
               change.actionType
             );
           });
+        } else {
+          console.log(`[PVP turn_sync] 没有分数变化数据`);
         }
 
         const afterState = StateManager.getState();
@@ -519,6 +522,7 @@ const SimplifiedPVPManager = {
       timestamp: Date.now()
     };
 
+    console.log(`[PVP sendTurnSync] 发送回合同步: nextPlayer=${nextPlayer}, scoreChanges数量=${scoreChanges.length}`, scoreChanges);
     this._sendToChannel(message);
   },
 
