@@ -93,13 +93,15 @@ const AuthorityExecutor = {
   },
 
   /**
-   * 计算下个回合（只有主机）
+   * 计算下个回合（主机和单机模式）
    * @param {string} currentPlayer - 当前玩家
    * @returns {Object} { nextPlayer }
    */
   calculateNextPlayer(currentPlayer) {
-    if (!this._isHost) {
-      console.warn('[AuthorityExecutor] 非主机，无法计算下个回合');
+    // 单机模式和 PvP 主机都可以计算下个玩家
+    // 只有 PvP 客户端才不能调用此方法
+    if (!this._isHost && typeof window !== 'undefined' && window.SimplifiedPVPManager && window.SimplifiedPVPManager.isEnabled) {
+      console.warn('[AuthorityExecutor] PvP 客户端，无法计算下个回合');
       return null;
     }
 

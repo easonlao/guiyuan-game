@@ -150,8 +150,8 @@ const TurnManager = {
         const { nextPlayer } = result;
         console.log('[TurnManager] 主机计算下个玩家:', beforePlayer, '→', nextPlayer);
 
-        // 切换回合
-        StateManager.switchPlayer();
+        // 使用计算出的 nextPlayer 切换玩家
+        StateManager.switchPlayer(nextPlayer);
 
         // 广播回合切换同步
         if (pvpManager.sendTurnSync) {
@@ -178,7 +178,8 @@ const TurnManager = {
     const { nextPlayer } = result;
     console.log('[TurnManager] 单机模式切换回合:', beforePlayer, '→', nextPlayer);
 
-    StateManager.switchPlayer();
+    // 使用计算出的 nextPlayer 切换玩家
+    StateManager.switchPlayer(nextPlayer);
 
     // 获取切换后的状态
     const afterState = StateManager.getState();

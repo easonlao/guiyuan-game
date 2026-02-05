@@ -391,10 +391,14 @@ const StateManager = {
 
   /**
    * 切换玩家
+   * @param {string} [nextPlayer] - 可选的下一个玩家，如果不提供则自动切换
    */
-  switchPlayer() {
-    const nextPlayer = state.currentPlayer === 'P1' ? 'P2' : 'P1';
-    
+  switchPlayer(nextPlayer) {
+    // 如果没有提供 nextPlayer，则自动切换
+    if (nextPlayer === undefined) {
+      nextPlayer = state.currentPlayer === 'P1' ? 'P2' : 'P1';
+    }
+
     // 重置回合临时数据
     const updates = {
       currentPlayer: nextPlayer,
