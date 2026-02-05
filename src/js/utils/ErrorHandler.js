@@ -3,6 +3,9 @@
  * 提供全局错误捕获、分类、记录和用户友好提示
  */
 import EventBus from '../bus/EventBus.js';
+import Logger from './Logger.js';
+
+const logger = Logger.createModuleLogger('ErrorHandler');
 
 class ErrorHandler {
   constructor() {
@@ -49,7 +52,7 @@ class ErrorHandler {
       try {
         callback(error, context);
       } catch (callbackError) {
-        console.error('[ErrorHandler] Error in error callback:', callbackError);
+        logger.error('Error in error callback:', callbackError);
       }
     });
 
@@ -81,12 +84,8 @@ class ErrorHandler {
       context
     };
 
-    // PVP调试模式下输出详细信息
-    if (window.PVP_DEBUG) {
-      console.error('[ErrorHandler]', logData);
-    } else {
-      console.error('[ErrorHandler]', error.name, error.message);
-    }
+    // 使用 Logger 记录错误（自动根据日志级别输出）
+    logger.debug('Error captured:', logData);
 
     // 可以在这里添加远程日志上报
     // this.reportToRemote(logData);
