@@ -28,11 +28,18 @@ const ActionResolver = {
     executedCount++;
 
     // 第2-3步：强化自身生属性2次
-    // applyPlus 会自动按优先级选择（先阴干，后阳干）
-    const step2 = this.applyPlus(playerId, targetElement, undefined, 'BURST', true);
+    // 明确计算isYang值，确保P1和P2使用相同的选择逻辑
+    const nodeState = StateManager.getNodeState(playerId, targetElement);
+
+    // 第2次：优先阴干（阴干<2时选择阴干，否则选择阳干）
+    let isYang2 = !(nodeState.yin < 2);
+    const step2 = this.applyPlus(playerId, targetElement, isYang2, 'BURST', true);
     if (step2) executedCount++;
 
-    const step3 = this.applyPlus(playerId, targetElement, undefined, 'BURST', true);
+    // 第3次：重新获取状态后再判断
+    const updatedNodeState = StateManager.getNodeState(playerId, targetElement);
+    let isYang3 = !(updatedNodeState.yin < 2);
+    const step3 = this.applyPlus(playerId, targetElement, isYang3, 'BURST', true);
     if (step3) executedCount++;
 
     return { success: executedCount > 0, executedCount };
@@ -57,11 +64,18 @@ const ActionResolver = {
     executedCount++;
 
     // 第2-3步：攻击对方克属性2次
-    // applyMinus 会自动按优先级选择（先阴干，后阳干）
-    const step2 = this.applyMinus(opponentId, targetElement, undefined, 'BURST_ATK', true);
+    // 明确计算isYang值，确保P1和P2使用相同的选择逻辑
+    const nodeState = StateManager.getNodeState(opponentId, targetElement);
+
+    // 第2次：优先阴干（阴干>-1时选择阴干，否则选择阳干）
+    let isYang2 = !(nodeState.yin > -1);
+    const step2 = this.applyMinus(opponentId, targetElement, isYang2, 'BURST_ATK', true);
     if (step2) executedCount++;
 
-    const step3 = this.applyMinus(opponentId, targetElement, undefined, 'BURST_ATK', true);
+    // 第3次：重新获取状态后再判断
+    const updatedNodeState = StateManager.getNodeState(opponentId, targetElement);
+    let isYang3 = !(updatedNodeState.yin > -1);
+    const step3 = this.applyMinus(opponentId, targetElement, isYang3, 'BURST_ATK', true);
     if (step3) executedCount++;
 
     return { success: executedCount > 0, executedCount };
