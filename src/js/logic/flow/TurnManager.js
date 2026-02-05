@@ -217,7 +217,6 @@ const TurnManager = {
     }
 
     // 播放当前回合玩家的动画
-    console.log(`[TurnManager] 播放回合结算动画 (${currentPlayer})`);
     await PassiveEffects.playTurnSettlement({
       [currentPlayer]: { unityCount, damageCount }
     });
@@ -247,7 +246,6 @@ const TurnManager = {
         reason: `道损亏损(${damageCount})`,
         actionType: 'DAMAGE_PENALTY'
       });
-      console.log(`[TurnManager] ${currentPlayer} 道损亏损: ${damageCount}个, ${penalty}分`);
     }
 
     return scoreChanges;
@@ -297,8 +295,6 @@ const TurnManager = {
    * @param {string} reason - 胜利原因
    */
   async handleVictory(winnerId, reason) {
-    console.log(`[TurnManager] 游戏结束: ${winnerId} 获胜 (${reason})`);
-
     // 记录 AI 游戏数据
     AIController.endGame(winnerId);
 
@@ -332,8 +328,6 @@ const TurnManager = {
     if (state.players.P1.score === state.players.P2.score) {
       winner = 'DRAW';
     }
-
-    console.log(`[TurnManager] 游戏结束: 回合上限, 胜者 ${winner}`);
 
     // 记录 AI 游戏数据
     AIController.endGame(winner);
@@ -394,7 +388,6 @@ const TurnManager = {
       if (damageCount > 0) {
         const penalty = damageCount * FINAL_PENALTY_PER_DAMAGE;
         StateManager.addScore(playerId, penalty, `最终道损惩罚(${damageCount})`, 'FINAL_PENALTY');
-        console.log(`[TurnManager] ${playerId} 最终道损惩罚: ${damageCount}个, ${penalty}分`);
       }
     });
   }

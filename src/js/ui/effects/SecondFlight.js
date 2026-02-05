@@ -26,17 +26,8 @@ const SecondFlight = {
     this._updateNodeStyle = updateNodeStyle;
     const { playerId: targetPlayerId, elementIndex: targetElementIndex } = targetInfo;
 
-    console.log('[SecondFlight] ========== playSecondFlight ==========');
-    console.log('[SecondFlight] stem:', stem);
-    console.log('[SecondFlight] startNode:', startNode);
-    console.log('[SecondFlight] targetInfo:', targetInfo);
-    console.log('[SecondFlight] actionType:', actionType);
-
     const targetStarEl = document.getElementById(`${targetPlayerId.toLowerCase()}-star`);
     const targetNode = targetStarEl?.querySelector(`.node[data-index="${targetElementIndex}"]`);
-
-    console.log('[SecondFlight] targetStarEl:', targetStarEl);
-    console.log('[SecondFlight] targetNode:', targetNode);
 
     if (!targetNode) return;
 
@@ -165,8 +156,6 @@ const SecondFlight = {
    * @private
    */
   _onFlightComplete(projectile, targetNode, targetPlayerId, targetElementIndex, actionType, isSameNode, deltaX, deltaY) {
-    console.log('[SecondFlight] ========== _onFlightComplete ==========');
-    console.log('[SecondFlight] 发送 ui:impact-final 事件');
     EventBus.emit('ui:impact-final');
     ExplosionEffects.playExplosion(projectile, isSameNode, deltaX, deltaY);
 

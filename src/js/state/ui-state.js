@@ -46,11 +46,6 @@ const UIStateManager = {
     const oldState = { ...uiState };
     uiState = { ...uiState, ...updates };
 
-    console.log('[UIStateManager] UI 状态更新:', {
-      from: oldState,
-      to: uiState
-    });
-
     // 触发 UI 更新事件
     EventBus.emit('ui:state-changed', {
       old: oldState,
