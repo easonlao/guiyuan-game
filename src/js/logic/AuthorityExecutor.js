@@ -139,6 +139,14 @@ const AuthorityExecutor = {
    * 确认操作（只有主机）
    * @param {Object} action - 操作对象
    * @returns {Object} { confirmed, action }
+   *
+   * 注意：操作验证功能为未来增强项
+   * 可能的验证内容：
+   * - 验证操作是否在当前玩家回合
+   * - 验证操作参数是否合法
+   * - 验证节点状态是否允许该操作
+   *
+   * 当前版本：所有验证由 GameEngine 处理
    */
   confirmAction(action) {
     if (!this._isHost) {
@@ -146,7 +154,7 @@ const AuthorityExecutor = {
       return { confirmed: false, action: null };
     }
 
-    // TODO: 添加操作验证逻辑
+    // 当前版本直接确认，具体验证在 GameEngine 中进行
     console.log('[AUTHORITY] Host confirmed action:', action.type);
 
     return { confirmed: true, action };
