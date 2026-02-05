@@ -86,13 +86,6 @@ const SimplifiedPVPManager = {
     // 同步 myRole 到 StateManager
     StateManager.setMyRole(role);
 
-      roomId,
-      sessionId,
-      role,
-      isHost: this.isHost,
-      myPlayerId: this.myPlayerId
-    });
-
     // 订阅 Broadcast 频道
     this._subscribeToBroadcast(roomId);
   },
@@ -362,10 +355,6 @@ const SimplifiedPVPManager = {
     };
 
     this._sendToChannel(message);
-
-      当前回合: state.turnCount,
-      下个玩家: nextPlayer
-    });
   },
 
   /**
