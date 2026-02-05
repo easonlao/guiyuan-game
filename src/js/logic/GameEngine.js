@@ -81,6 +81,9 @@ const GameEngine = {
   },
 
   startTurn() {
+    const state = StateManager.getState();
+    const myRole = StateManager.getMyRole();
+    console.log(`[GameEngine startTurn ${myRole}] currentPlayer=${state.currentPlayer}, phase=${state.phase}`);
     TurnManager.startTurn();
   },
 

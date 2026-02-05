@@ -29,6 +29,8 @@ const TurnManager = {
    */
   async startTurn() {
     const state = StateManager.getState();
+    const myRole = StateManager.getMyRole();
+    console.log(`[TurnManager startTurn ${myRole}] 开始回合: currentPlayer=${state.currentPlayer}, turnCount=${state.turnCount}→${state.turnCount + 1}`);
 
     // 先增加回合计数
     const newTurnCount = state.turnCount + 1;
@@ -38,6 +40,8 @@ const TurnManager = {
 
     const currentPlayer = state.currentPlayer;
     const opponentId = currentPlayer === 'P1' ? 'P2' : 'P1';
+
+    console.log(`[TurnManager startTurn ${myRole}] currentPlayer=${currentPlayer}, opponentId=${opponentId}`);
 
     this._resetBurstBonus(opponentId);
 
