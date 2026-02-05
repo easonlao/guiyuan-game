@@ -31,6 +31,17 @@ const GameEngine = {
   activeSession: null,
   _initialized: false,
 
+  // 调试方法：强制触发跳过动画（测试用）
+  debugForceSkip() {
+    console.log('[GameEngine DEBUG] 强制触发跳过动画');
+    const state = StateManager.getState();
+    if (!state.currentStem) {
+      console.error('[GameEngine DEBUG] 没有当前天干');
+      return;
+    }
+    this._playSkipAnimation(state.currentStem, state.currentPlayer);
+  },
+
   init() {
     if (this._initialized) {
       return;
@@ -56,6 +67,7 @@ const GameEngine = {
 
     // 主机权威事件
     EventBus.on('authority:action-request', this.handleAuthorityActionRequest.bind(this));
+    EventBus.on('authority:skip-turn-request', this.handleSkipTurnRequest.bind(this));
   },
 
   startNewGame(data) {
@@ -206,9 +218,61 @@ const GameEngine = {
     // 清理 activeSession，避免影响后续操作
     this.activeSession = null;
 
+    // PVP 模式下的主机权威处理
+    const state = StateManager.getState();
+    if (state.gameMode === 0) {
+      const pvpManager = getPVPManager();
+
+      // 客户端：通知主机跳过，等待主机的 turn_sync 消息
+      if (!AuthorityExecutor.isHost()) {
+        console.log('[GameEngine] 客户端通知主机跳过回合');
+        if (pvpManager.requestSkipTurn) {
+          pvpManager.requestSkipTurn();
+        }
+        // 播放跳过动画（视觉效果）
+        PassiveEffects.playSkip({ stem, playerId });
+        EventBus.emit('game:skip-turn', { stem, playerId });
+        return; // 等待主机的 turn_sync 消息
+      }
+
+      // 主机：播放跳过动画，延迟后调用 endTurn（会广播 turn_sync）
+      console.log('[GameEngine] 主机处理跳过回合');
+      PassiveEffects.playSkip({ stem, playerId });
+      EventBus.emit('game:skip-turn', { stem, playerId });
+      setTimeout(() => TurnManager.endTurn(), 1200);
+      return;
+    }
+
+    // 单机模式：直接播放动画并结束回合
+    PassiveEffects.playSkip({ stem, playerId });
+    EventBus.emit('game:skip-turn', { stem, playerId });
+    setTimeout(() => TurnManager.endTurn(), 1200);
+  },
+
+  /**
+   * 处理客户端的跳过回合请求（主机权威）
+   */
+  handleSkipTurnRequest() {
+    console.log('[GameEngine] 主机收到客户端跳过回合请求');
+
+    // 获取当前状态
+    const state = StateManager.getState();
+    const stem = state.currentStem;
+    const playerId = state.currentPlayer;
+
+    if (!stem) {
+      console.error('[GameEngine] 跳过回合时没有天干');
+      return;
+    }
+
+    // 清理 activeSession
+    this.activeSession = null;
+
     // 播放跳过动画
     PassiveEffects.playSkip({ stem, playerId });
     EventBus.emit('game:skip-turn', { stem, playerId });
+
+    // 延迟后调用 endTurn（主机会广播 turn_sync）
     setTimeout(() => TurnManager.endTurn(), 1200);
   },
 
