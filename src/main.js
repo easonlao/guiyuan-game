@@ -29,12 +29,14 @@ function initApp() {
   // 首先初始化 PVP 调试系统
   initPVPDebug();
 
-  // 只在 PVP 调试模式下显示初始化日志
+  // 暴露性能监控工具（始终可用，但只在调试模式下启动）
+  window.PerformanceMonitor = PerformanceMonitor;
+
+  // 只在 PVP 调试模式下显示初始化日志和启动监控
   if (window.PVP_DEBUG) {
     console.log('[Main] 初始化归元弈应用...');
     // 启动性能监控
     PerformanceMonitor.start();
-    window.PerformanceMonitor = PerformanceMonitor;
   }
 
   initUtils();
