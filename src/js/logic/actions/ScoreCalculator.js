@@ -54,10 +54,6 @@ const ScoreCalculator = {
       // 统计拆分由 StateManager._recordScoreByReason() 内部处理
       // reason 格式：动作·状态（如 "破·破阴点亮"）
       StateManager.addScore(playerId, finalScore, combinedReason, actionType);
-
-      // 日志显示：使用 Math.round 避免浮点精度问题
-      const rarityBonus = finalScore - totalScore;
-      console.log(`[Score] ${actionType}: 行为${actionScore} + 状态${stateScore} + 稀有${rarityBonus} = ${finalScore} - ${combinedReason}`);
     }
   },
 

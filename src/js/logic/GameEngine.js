@@ -143,7 +143,6 @@ const GameEngine = {
     const pvpManager = getPVPManager();
     const myRole = pvpManager.getMyRole?.() || pvpManager.myRole;
     if (pvpManager.isEnabled && playerId !== myRole) {
-      console.log(`[GameEngine] checkStemLogic: 非当前回合玩家，跳过。当前回合: ${playerId}, 我的角色: ${myRole}`);
       return;
     }
 
@@ -188,7 +187,6 @@ const GameEngine = {
     if (state.gameMode === 0) {
       const myRole = StateManager.getMyRole();
       if (myRole !== playerId) {
-        console.log(`[GameEngine] 不是${playerId}的回合，跳过决策显示`);
         return;
       }
     }

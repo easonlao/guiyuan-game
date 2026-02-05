@@ -16,7 +16,6 @@ const NodeRenderer = {
    */
   handleNodeChange(data, animatingNodes, updateNodeStyle) {
     const { playerId, elementIndex, isYang, fullState } = data;
-    console.log('[NodeRenderer] handleNodeChange:', { playerId, elementIndex, isYang, fullState });
     const key = `${playerId}-${elementIndex}`;
     const starEl = document.getElementById(`${playerId.toLowerCase()}-star`);
     if (!starEl) return;

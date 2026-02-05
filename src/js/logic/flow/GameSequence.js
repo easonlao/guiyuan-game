@@ -40,7 +40,6 @@ const GameSequence = {
   _onInitiativeAnimationFinished() {
     // 如果有待设置的初始天干，现在才设置
     if (this._pendingFirstStem) {
-      console.log('[GameSequence] 先手动画完成，设置初始天干:', this._pendingFirstStem.name);
       StateManager.update({ currentStem: this._pendingFirstStem });
       this._pendingFirstStem = null;
     }
@@ -56,7 +55,6 @@ const GameSequence = {
     // 只有房主（P1）在检测到 P2 加入时，才启动游戏序列
     // 必须同时满足：我是 P1，且有房间 ID，事件是关于 P2 加入的
     if (this.myRole === 'P1' && this.currentRoomId && this.myPlayerId && data.playerId === 'P2') {
-      console.log('[GameSequence] ✓ P2 已加入，房主启动游戏序列');
       if (!this._isStarting) {
          this._startGameSequence();
       }
@@ -83,12 +81,10 @@ const GameSequence = {
       // PVP 模式：恢复已有角色
       if (this.myRole) {
         StateManager.setMyRole(this.myRole);
-        console.log('[GameSequence] 恢复 myRole:', this.myRole);
       }
     } else {
       // 单机模式（玩家 VS 天道）：玩家控制 P1
       StateManager.setMyRole('P1');
-      console.log('[GameSequence] 单机模式，设置 myRole: P1');
     }
 
     // 如果是从等待界面返回的，说明已经在房间中，直接开始游戏序列
@@ -98,7 +94,6 @@ const GameSequence = {
     }
 
     if (data.mode === 0 && !data.skipRoom) {
-      console.log('[GameSequence] PvP 模式，开始房间设置');
       this._handlePvPRoomSetup(data);
       return; // 等待房间设置完成后，在各自的函数中处理后续流程
     }
@@ -156,7 +151,6 @@ const GameSequence = {
       });
 
       // P1（房主）创建房间后，等待对手加入
-      console.log('[GameSequence] ✓ P1 房间创建成功，等待对手加入');
       this._isStarting = false;
     } else {
       EventBus.emit('game:room-error', { error: result.error });
@@ -196,7 +190,6 @@ const GameSequence = {
       });
 
       // P2 加入后也启动游戏序列（触发先手动画）
-      console.log('[GameSequence] ✓ P2 加入房间，启动游戏序列');
       this._startGameSequence();
     } else {
       EventBus.emit('game:room-error', { error: result.error });
@@ -217,7 +210,6 @@ const GameSequence = {
     }
 
     StateManager.update({ phase: 'INITIATIVE' });
-    console.log('[GameSequence] 启动先手判定阶段');
 
     setTimeout(async () => {
       // 双方都触发先手动画开始
@@ -242,8 +234,6 @@ const GameSequence = {
             const firstStem = result.firstStem;
             isFirstPlayer = true;
 
-            console.log('[GameSequence] 主机判定先手:', currentPlayer, '初始天干:', firstStem.name);
-
             // 只设置 currentPlayer，不设置 currentStem
             // currentStem 会在动画完成后（anim:initiative-finished）才设置
             StateManager.update({ currentPlayer });
@@ -256,7 +246,6 @@ const GameSequence = {
             if (pvpManager.syncInitiative) {
               pvpManager.syncInitiative(currentPlayer, firstStem);
             }
-            console.log('[GameSequence] ✓ 先手判定已发送');
 
             // 触发先手判定完成事件（停止动画）
             EventBus.emit('game:initiative-completed', {

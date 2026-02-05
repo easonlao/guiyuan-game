@@ -17,8 +17,6 @@ const PassiveEffects = {
    */
   playSkip(data) {
     const { stem, playerId } = data;
-    console.log('[PassiveEffects] 播放跳过动画（四散消失）', { stem, playerId });
-
     // 获取天干元素（使用当前玩家的中心天干）
     const stemEl = document.getElementById(`${playerId.toLowerCase()}-center-stem`);
     if (!stemEl) {
@@ -101,8 +99,6 @@ const PassiveEffects = {
    * @returns {Promise<void>} 动画完成的 Promise
    */
   playTurnSettlement(result) {
-    console.log('[PassiveEffects] 播放回合结算动画', result);
-
     const animationPromises = [];
 
     // 只处理 result 中存在的玩家
@@ -121,9 +117,7 @@ const PassiveEffects = {
     });
 
     // 等待所有动画完成
-    return Promise.all(animationPromises).then(() => {
-      console.log('[PassiveEffects] 回合结算动画完成');
-    });
+    return Promise.all(animationPromises);
   },
 
 
@@ -288,8 +282,6 @@ const PassiveEffects = {
    * @returns {Promise<void>} 动画完成的 Promise
    */
   playFinalPenalty(result) {
-    console.log('[PassiveEffects] 播放最终惩罚动画', result);
-
     const animationPromises = [];
 
     ['P1', 'P2'].forEach(playerId => {
@@ -299,9 +291,7 @@ const PassiveEffects = {
       }
     });
 
-    return Promise.all(animationPromises).then(() => {
-      console.log('[PassiveEffects] 最终惩罚动画完成');
-    });
+    return Promise.all(animationPromises);
   },
 
   /**

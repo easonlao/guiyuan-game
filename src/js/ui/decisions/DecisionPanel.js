@@ -37,7 +37,6 @@ const DecisionPanel = {
         const nodeKey = `${playerId}-${stem.element}`;
         if (animatingNodes[nodeKey]) {
           delete animatingNodes[nodeKey];
-          console.log('[DecisionPanel] 清理干支动画 lock:', nodeKey);
         }
       });
     }
