@@ -449,12 +449,16 @@ const GameEngine = {
         // 强破：原子性执行 - 消耗自身阳1点，攻击对方克属性2次
         const tElAtk = action.targetEl;
         ActionResolver.applyBurstAtk(playerId, stem.element, opponentId, tElAtk);
+        // 设置标志：下回合保持当前玩家（额外机会）
+        AuthorityExecutor.setLastBurstAction(playerId);
         break;
 
       case 'BURST':
         // 强化：原子性执行 - 消耗自身阴1点，强化自身生属性2次
         const tElBst = action.targetEl;
         ActionResolver.applyBurst(playerId, stem.element, tElBst);
+        // 设置标志：下回合保持当前玩家（额外机会）
+        AuthorityExecutor.setLastBurstAction(playerId);
         break;
     }
   },
@@ -464,29 +468,8 @@ const GameEngine = {
    * @private
    */
   async _handlePostAction(playerId, actionType) {
-    const isBurstAction = (actionType === 'BURST' || actionType === 'BURST_ATK');
-    const currentState = StateManager.getState();
-    const hasBurstBonus = currentState.players[playerId].burstBonus;
-
-    // ⚠️ 修复：立即调用 requestTurnEnd，不延迟
-    // 让 TurnManager 内部处理时序，避免竞态条件
-    if (isBurstAction && hasBurstBonus) {
-      // 清除 currentStem，确保额外行动时生成新的随机干支
-      StateManager.update({
-        currentStem: null,
-        players: {
-          ...currentState.players,
-          [playerId]: {
-            ...currentState.players[playerId],
-            burstBonus: false
-          }
-        }
-      });
-      setTimeout(() => this.startTurn(), 1000);
-    } else {
-      // ⚠️ 使用 endTurn() 自动检测单机/PVP模式
-      TurnManager.endTurn();
-    }
+    // 强化/强破后，回合正常结束，通过标志影响下一回合玩家
+    TurnManager.endTurn();
   },
 
   /**

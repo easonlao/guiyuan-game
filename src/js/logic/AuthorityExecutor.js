@@ -12,6 +12,8 @@ import { STEMS_LIST } from '../config/game-config.js';
 const AuthorityExecutor = {
   // 当前玩家是否是主机
   _isHost: false,
+  // 上一回合是否执行了强化/强破
+  _lastBurstPlayer: null,
 
   /**
    * 初始化
@@ -33,6 +35,7 @@ const AuthorityExecutor = {
    */
   reset() {
     this._isHost = false;
+    this._lastBurstPlayer = null;
     console.log('[AuthorityExecutor] 重置');
   },
 
@@ -42,6 +45,15 @@ const AuthorityExecutor = {
    */
   isHost() {
     return this._isHost;
+  },
+
+  /**
+   * 设置上一回合的强化/强破玩家
+   * @param {string} playerId - 玩家ID
+   */
+  setLastBurstAction(playerId) {
+    this._lastBurstPlayer = playerId;
+    console.log('[AUTHORITY] 设置强化玩家:', playerId, '下回合保持当前玩家');
   },
 
   /**
@@ -91,9 +103,20 @@ const AuthorityExecutor = {
       return null;
     }
 
-    const nextPlayer = currentPlayer === 'P1' ? 'P2' : 'P1';
+    let nextPlayer;
 
-    console.log('[AUTHORITY] Host calculated next player:', currentPlayer, '→', nextPlayer);
+    // 检查是否刚执行了强化/强破
+    if (this._lastBurstPlayer === currentPlayer) {
+      // 强化/强破后，下一回合还是同一个玩家（额外机会）
+      nextPlayer = currentPlayer;
+      // 清除标志，确保下次正常切换
+      this._lastBurstPlayer = null;
+      console.log('[AUTHORITY] 强化额外行动:', currentPlayer, '→', nextPlayer);
+    } else {
+      // 正常切换玩家
+      nextPlayer = currentPlayer === 'P1' ? 'P2' : 'P1';
+      console.log('[AUTHORITY] 正常切换玩家:', currentPlayer, '→', nextPlayer);
+    }
 
     return { nextPlayer };
   },
