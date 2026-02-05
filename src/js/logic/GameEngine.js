@@ -418,8 +418,10 @@ const GameEngine = {
    * @private
    */
   _executeActionLogic(action, playerId, opponentId) {
+    // 优先使用 activeSession 中保存的 stem，回退到 state.currentStem
+    const sessionStem = this.activeSession?.stem;
     const state = StateManager.getState();
-    const stem = state.currentStem;
+    const stem = sessionStem || state.currentStem;
     const isYang = stem && state.players[playerId].burst?.yang;
 
     switch (action.type) {
