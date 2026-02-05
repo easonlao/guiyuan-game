@@ -206,6 +206,19 @@ const SimplifiedPVPManager = {
         StateManager.update(syncUpdates, true);
         console.log('[SimplifiedPVPManager] 已同步回合切换:', syncUpdates);
 
+        // 应用分数变化（天道分红、道损亏损等回合结算效果）
+        if (data.scoreChanges && Array.isArray(data.scoreChanges)) {
+          console.log('[SimplifiedPVPManager] 应用分数变化:', data.scoreChanges);
+          data.scoreChanges.forEach(change => {
+            StateManager.addScore(
+              change.playerId,
+              change.amount,
+              change.reason,
+              change.actionType
+            );
+          });
+        }
+
         EventBus.emit('game:next-turn');
         break;
 
@@ -493,8 +506,9 @@ const SimplifiedPVPManager = {
    * 发送回合切换同步（主机权威）
    * @param {string} nextPlayer - 下个玩家
    * @param {boolean} isExtraTurn - 是否是额外机会回合
+   * @param {Array} scoreChanges - 分数变化列表 [{ playerId, amount, reason, actionType }]
    */
-  sendTurnSync(nextPlayer, isExtraTurn = false) {
+  sendTurnSync(nextPlayer, isExtraTurn = false, scoreChanges = []) {
     if (!this.isEnabled || !this.channel) return;
 
     const state = StateManager.getState();
@@ -505,7 +519,8 @@ const SimplifiedPVPManager = {
       data: {
         turnNumber: state.turnCount,
         nextPlayer: nextPlayer,
-        isExtraTurn: isExtraTurn
+        isExtraTurn: isExtraTurn,
+        scoreChanges: scoreChanges
       },
       timestamp: Date.now()
     };
@@ -519,7 +534,8 @@ const SimplifiedPVPManager = {
     console.log('[SimplifiedPVPManager] 发送回合切换同步:', {
       当前回合: state.turnCount,
       下个玩家: nextPlayer,
-      额外机会: isExtraTurn
+      额外机会: isExtraTurn,
+      分数变化: scoreChanges
     });
   },
 

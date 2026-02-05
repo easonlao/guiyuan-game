@@ -133,15 +133,16 @@ const TurnManager = {
     const beforePlayer = state.currentPlayer;
     const isExtraTurn = state.isExtraTurn || false;
 
-    // 1. 计算回合结算效果（等待动画完成）
-    await this._calculatePassiveEffects();
-
-    // 2. PVP 模式下的主机权威回合切换
+    // PVP 模式下的主机权威回合切换
     if (state.gameMode === 0) {
       const pvpManager = getPVPManager();
 
       // 主机：计算下个回合并广播
       if (AuthorityExecutor.isHost()) {
+        // 1. 主机计算回合结算效果（等待动画完成）
+        // 返回分数变化列表，用于 PVP 同步
+        const scoreChanges = await this._calculatePassiveEffects();
+
         const result = AuthorityExecutor.calculateNextPlayer(beforePlayer, isExtraTurn);
         if (!result) {
           console.error('[TurnManager] 权威执行器未能计算下个回合');
@@ -154,9 +155,9 @@ const TurnManager = {
         // 使用计算出的 nextPlayer 和 nextIsExtraTurn 切换玩家
         StateManager.switchPlayer(nextPlayer, nextIsExtraTurn);
 
-        // 广播回合切换同步
+        // 广播回合切换同步（包含分数变化）
         if (pvpManager.sendTurnSync) {
-          pvpManager.sendTurnSync(nextPlayer, nextIsExtraTurn);
+          pvpManager.sendTurnSync(nextPlayer, nextIsExtraTurn, scoreChanges);
         }
 
         // 触发下一回合开始
@@ -164,8 +165,9 @@ const TurnManager = {
         return { success: true };
       }
 
-      // 客户端：等待主机的 turn_sync 消息
-      console.log('[TurnManager] 客户端等待主机回合切换同步');
+      // 客户端：跳过被动效果计算，等待主机的 turn_sync 消息
+      // 主机会在 turn_sync 中包含分数变化，客户端在收到消息后应用
+      console.log('[TurnManager] 客户端等待主机回合切换同步（分数变化将由主机同步）');
       return { success: true };
     }
 
@@ -195,6 +197,7 @@ const TurnManager = {
    * 计算回合结算的持续效果（加分和扣分）
    * - 天道分红：加持状态每回合加分
    * - 道损亏损：道损状态每回合扣分
+   * @returns {Promise<Array>} 分数变化列表 [{ playerId, amount, reason, actionType }]
    * @private
    */
   async _calculatePassiveEffects() {
@@ -223,10 +226,10 @@ const TurnManager = {
     // 设置标志，告诉 startTurn 是否需要延迟
     StateManager.update({ pendingSettlement: hasEffects }, true);
 
-    // 如果没有结算效果，直接返回
+    // 如果没有结算效果，直接返回空数组
     if (!hasEffects) {
       console.log('[TurnManager] 没有结算效果，跳过动画');
-      return;
+      return [];
     }
 
     // 播放当前回合玩家的动画
@@ -237,18 +240,34 @@ const TurnManager = {
 
     // 动画完成后，再触发分数变化
     console.log('[TurnManager] 动画完成，开始计分...');
+    const scoreChanges = [];
+
     // 天道分红（正向）
     if (unityCount > 0) {
       const points = unityCount * POINTS_CONFIG.PASSIVE.UNITY_DIVIDEND;
       StateManager.addScore(currentPlayer, points, `天道分红(${unityCount})`, 'DIVIDEND');
+      scoreChanges.push({
+        playerId: currentPlayer,
+        amount: points,
+        reason: `天道分红(${unityCount})`,
+        actionType: 'DIVIDEND'
+      });
     }
 
     // 道损亏损（负向，每回合持续扣分）
     if (damageCount > 0) {
       const penalty = damageCount * POINTS_CONFIG.PASSIVE.DAMAGE_PENALTY;
       StateManager.addScore(currentPlayer, penalty, `道损亏损(${damageCount})`, 'DAMAGE_PENALTY');
+      scoreChanges.push({
+        playerId: currentPlayer,
+        amount: penalty,
+        reason: `道损亏损(${damageCount})`,
+        actionType: 'DAMAGE_PENALTY'
+      });
       console.log(`[TurnManager] ${currentPlayer} 道损亏损: ${damageCount}个, ${penalty}分`);
     }
+
+    return scoreChanges;
   },
 
   /**
