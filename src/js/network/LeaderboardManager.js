@@ -101,9 +101,17 @@ const LeaderboardManager = {
           ? Math.round((entry.total_score || 0) / effectiveGames)
           : 0;
 
-        // 调试日志：输出原始数据
+        // 调试日志：输出原始数据和编码信息
+        const encoder = new TextEncoder();
+        const nameBytes = encoder.encode(entry.player_name || '');
+        const hasQuestionMarks = (entry.player_name || '').includes('?');
+        const疑似乱码 = hasQuestionMarks || nameBytes.length === 0;
+
         console.log('[LeaderboardManager] 玩家数据:', {
           name: entry.player_name,
+          name_char_length: (entry.player_name || '').length,
+          name_byte_length: nameBytes.length,
+          suspected_corrupted: 疑似乱码,
           total_score: entry.total_score,
           games_played: entry.games_played,
           wins: entry.wins,
@@ -168,6 +176,16 @@ const LeaderboardManager = {
         return { success: false, skipped: true, message: '未设置昵称，不计入排行榜' };
       }
       const playerName = userNickname;
+
+      // 调试：输出昵称的 UTF-8 字节长度
+      const encoder = new TextEncoder();
+      const nameBytes = encoder.encode(playerName);
+      console.log('[LeaderboardManager] 昵称编码检查:', {
+        nickname: playerName,
+        charLength: playerName.length,
+        byteLength: nameBytes.length,
+        bytes: Array.from(nameBytes).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      });
 
       // 查询是否已有记录
       const existing = await query('player_scores', {
