@@ -12,8 +12,8 @@ import { STEMS_LIST } from '../config/game-config.js';
 const AuthorityExecutor = {
   // 当前玩家是否是主机
   _isHost: false,
-  // 上一回合是否执行了强化/强破
-  _lastBurstPlayer: null,
+  // 上一回合是否执行了强化/强破（触发额外机会）
+  _burstExtraPlayer: null,
 
   /**
    * 初始化
@@ -35,7 +35,7 @@ const AuthorityExecutor = {
    */
   reset() {
     this._isHost = false;
-    this._lastBurstPlayer = null;
+    this._burstExtraPlayer = null;
     console.log('[AuthorityExecutor] 重置');
   },
 
@@ -48,12 +48,18 @@ const AuthorityExecutor = {
   },
 
   /**
-   * 设置上一回合的强化/强破玩家
+   * 设置强化/强破玩家（触发额外机会）
    * @param {string} playerId - 玩家ID
+   * @param {boolean} isExtraTurn - 是否是额外机会回合中执行的
    */
-  setLastBurstAction(playerId) {
-    this._lastBurstPlayer = playerId;
-    console.log('[AUTHORITY] 设置强化玩家:', playerId, '下回合保持当前玩家');
+  setLastBurstAction(playerId, isExtraTurn = false) {
+    // 只有非额外机会回合中执行的强化/强破才给予额外机会
+    if (!isExtraTurn) {
+      this._burstExtraPlayer = playerId;
+      console.log('[AUTHORITY] 设置强化玩家:', playerId, '下回合保持当前玩家');
+    } else {
+      console.log('[AUTHORITY] 额外机会回合中的强化/强破，不再给予额外机会');
+    }
   },
 
   /**
@@ -95,9 +101,10 @@ const AuthorityExecutor = {
   /**
    * 计算下个回合（主机和单机模式）
    * @param {string} currentPlayer - 当前玩家
-   * @returns {Object} { nextPlayer }
+   * @param {boolean} isExtraTurn - 当前是否是额外机会回合
+   * @returns {Object} { nextPlayer, nextIsExtraTurn }
    */
-  calculateNextPlayer(currentPlayer) {
+  calculateNextPlayer(currentPlayer, isExtraTurn = false) {
     // 单机模式和 PvP 主机都可以计算下个玩家
     // 只有 PvP 客户端才不能调用此方法
     if (!this._isHost && typeof window !== 'undefined' && window.SimplifiedPVPManager && window.SimplifiedPVPManager.isEnabled) {
@@ -106,13 +113,18 @@ const AuthorityExecutor = {
     }
 
     let nextPlayer;
+    let nextIsExtraTurn = false;
 
-    // 检查是否刚执行了强化/强破
-    if (this._lastBurstPlayer === currentPlayer) {
-      // 强化/强破后，下一回合还是同一个玩家（额外机会）
+    if (isExtraTurn) {
+      // 当前是额外机会回合，下回合正常切换玩家
+      nextPlayer = currentPlayer === 'P1' ? 'P2' : 'P1';
+      console.log('[AUTHORITY] 额外机会结束，正常切换玩家:', currentPlayer, '→', nextPlayer);
+    } else if (this._burstExtraPlayer === currentPlayer) {
+      // 上回合执行了强化/强破，这回合是额外机会
       nextPlayer = currentPlayer;
-      // 清除标志，确保下次正常切换
-      this._lastBurstPlayer = null;
+      nextIsExtraTurn = true;
+      // 清除标志（但下一回合会检查 isExtraTurn，所以不会再次给予额外机会）
+      this._burstExtraPlayer = null;
       console.log('[AUTHORITY] 强化额外行动:', currentPlayer, '→', nextPlayer);
     } else {
       // 正常切换玩家
@@ -120,7 +132,7 @@ const AuthorityExecutor = {
       console.log('[AUTHORITY] 正常切换玩家:', currentPlayer, '→', nextPlayer);
     }
 
-    return { nextPlayer };
+    return { nextPlayer, nextIsExtraTurn };
   },
 
   /**

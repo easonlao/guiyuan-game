@@ -31,6 +31,7 @@ const initialState = {
   turnCount: 0,
   maxTurns: 60,
   currentPlayer: 'P1', // 'P1' 或 'P2'
+  isExtraTurn: false, // 当前是否是额外机会回合（强化/强破后）
 
   // 玩家状态
   players: {
@@ -392,8 +393,9 @@ const StateManager = {
   /**
    * 切换玩家
    * @param {string} [nextPlayer] - 可选的下一个玩家，如果不提供则自动切换
+   * @param {boolean} [isExtraTurn] - 是否是额外机会回合
    */
-  switchPlayer(nextPlayer) {
+  switchPlayer(nextPlayer, isExtraTurn = false) {
     // 如果没有提供 nextPlayer，则自动切换
     if (nextPlayer === undefined) {
       nextPlayer = state.currentPlayer === 'P1' ? 'P2' : 'P1';
@@ -402,6 +404,7 @@ const StateManager = {
     // 重置回合临时数据
     const updates = {
       currentPlayer: nextPlayer,
+      isExtraTurn: isExtraTurn,
       turnScoreChanges: { P1: 0, P2: 0 },
       currentStem: null
     };

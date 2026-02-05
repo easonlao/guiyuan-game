@@ -450,7 +450,9 @@ const GameEngine = {
         const tElAtk = action.targetEl;
         ActionResolver.applyBurstAtk(playerId, stem.element, opponentId, tElAtk);
         // 设置标志：下回合保持当前玩家（额外机会）
-        AuthorityExecutor.setLastBurstAction(playerId);
+        // 只有非额外机会回合中的强化/强破才给予额外机会
+        const stateForBurstAtk = StateManager.getState();
+        AuthorityExecutor.setLastBurstAction(playerId, stateForBurstAtk.isExtraTurn);
         break;
 
       case 'BURST':
@@ -458,7 +460,9 @@ const GameEngine = {
         const tElBst = action.targetEl;
         ActionResolver.applyBurst(playerId, stem.element, tElBst);
         // 设置标志：下回合保持当前玩家（额外机会）
-        AuthorityExecutor.setLastBurstAction(playerId);
+        // 只有非额外机会回合中的强化/强破才给予额外机会
+        const stateForBurst = StateManager.getState();
+        AuthorityExecutor.setLastBurstAction(playerId, stateForBurst.isExtraTurn);
         break;
     }
   },
