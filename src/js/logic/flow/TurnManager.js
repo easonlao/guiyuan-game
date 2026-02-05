@@ -168,8 +168,14 @@ const TurnManager = {
       return { success: true };
     }
 
-    // 3. 单机模式：直接切换回合
-    const nextPlayer = beforePlayer === 'P1' ? 'P2' : 'P1';
+    // 3. 单机模式：使用 AuthorityExecutor 计算下个玩家（支持强化额外机会）
+    const result = AuthorityExecutor.calculateNextPlayer(beforePlayer);
+    if (!result) {
+      console.error('[TurnManager] 无法计算下个回合');
+      return { success: false, error: 'Failed to calculate next player' };
+    }
+
+    const { nextPlayer } = result;
     console.log('[TurnManager] 单机模式切换回合:', beforePlayer, '→', nextPlayer);
 
     StateManager.switchPlayer();
