@@ -8,10 +8,12 @@
 // ============================================
 
 import { createClient } from '@supabase/supabase-js';
+import { loadEnvConfig } from '../config/env.js';
 
-// Supabase 配置
-const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || 'https://solyclwajueobffjucjb.supabase.co';
-const supabaseKey = import.meta.env?.VITE_SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvbHljbHdhanVlb2JmZmp1Y2piIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0MDg0NjgsImV4cCI6MjA4NDk4NDQ2OH0.-DhJrL0nttPnkRxvuHHlURFl2lxyiFQb4POCJezpZrE';
+// 从环境配置加载 Supabase 凭据
+const config = loadEnvConfig();
+const supabaseUrl = config.SUPABASE_URL;
+const supabaseKey = config.SUPABASE_ANON_KEY;
 
 // PVP 调试日志函数
 const log = (...args) => window.PVP_DEBUG && console.log('[Supabase]', ...args);
