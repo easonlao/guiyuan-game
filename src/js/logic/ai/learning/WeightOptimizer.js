@@ -1,12 +1,18 @@
 // ============================================
 // 权重优化器
 // ============================================
+// @status 部分实现 - 数据分析已完成，动态权重应用待实现
+// @priority 低 - 当前使用固定权重已满足游戏需求
+//
 // 职责：
 // - 分析收集的游戏数据
 // - 计算动作的实际效果
 // - 对比预期价值与实际收益
 // - 生成权重调整建议
 // - 支持 A/B 测试
+//
+// 注意：applyWeights() 方法需要修改 ActionValueCalculator.js 支持动态权重，
+//       这是一个较大的架构变更，当前版本使用固定权重配置。
 // ============================================
 
 import GameRecorder from './GameRecorder.js';
@@ -287,13 +293,22 @@ const WeightOptimizer = {
   },
 
   /**
-   * 应用新权重配置
+   * 应用新权重配置（未实现）
    * @param {Object} newWeights - 新的权重配置
+   * @returns {boolean} 是否成功应用
+   *
+   * 注意：此功能需要以下架构变更：
+   * 1. 修改 ActionValueCalculator.js 支持动态权重配置
+   * 2. 实现权重热加载机制
+   * 3. 添加权重验证逻辑
+   *
+   * 当前版本使用固定权重配置（CURRENT_WEIGHTS），
+   * 已满足游戏平衡性需求。
    */
   applyWeights: function(newWeights) {
-    console.log('[WeightOptimizer] 应用新权重配置:', newWeights);
-    // TODO: 实现权重应用逻辑
-    // 这需要修改 ActionValueCalculator.js 来支持动态权重
+    console.warn('[WeightOptimizer] 动态权重应用功能未实现');
+    console.log('[WeightOptimizer] 当前使用固定权重配置:', CURRENT_WEIGHTS);
+    return false;
   },
 
   /**
