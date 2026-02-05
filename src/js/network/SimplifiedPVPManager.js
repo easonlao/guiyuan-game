@@ -86,7 +86,6 @@ const SimplifiedPVPManager = {
     // 同步 myRole 到 StateManager
     StateManager.setMyRole(role);
 
-    console.log('[SimplifiedPVPManager] PVP会话已初始化:', {
       roomId,
       sessionId,
       role,
@@ -107,7 +106,6 @@ const SimplifiedPVPManager = {
       supabase.removeChannel(this.channel);
     }
 
-    console.log('[SimplifiedPVPManager] 订阅 Broadcast 频道:', roomId);
 
     this.channel = supabase.channel(`room:${roomId}`);
 
@@ -120,11 +118,9 @@ const SimplifiedPVPManager = {
           return;
         }
 
-        console.log('[SimplifiedPVPManager] 收到对手消息:', message.type);
         this._handleOpponentMessage(message);
       })
       .subscribe((status) => {
-        console.log('[SimplifiedPVPManager] Broadcast 频道状态:', status);
         if (status === 'SUBSCRIBED') {
           console.log('[SimplifiedPVPManager] ✓ Broadcast 已连接');
           // 如果是重连后订阅成功，触发重连成功事件
@@ -183,7 +179,6 @@ const SimplifiedPVPManager = {
       case 'turn_end':
         // 对手回合结束 - 使用消息中的 nextPlayer 更新本地状态
         const currentState = StateManager.getState();
-        console.log('[SimplifiedPVPManager] 对手回合结束，我的角色:', this.myRole, '当前玩家:', currentState.currentPlayer, '通知中的下个玩家:', data.nextPlayer);
 
         // 一次性更新 currentPlayer 和 currentStem，避免多次更新导致状态不一致
         const turnUpdates = {};
@@ -194,7 +189,6 @@ const SimplifiedPVPManager = {
 
         if (Object.keys(turnUpdates).length > 0) {
           StateManager.update(turnUpdates, true);
-          console.log('[SimplifiedPVPManager] 已更新状态:', turnUpdates);
         }
 
         EventBus.emit('game:next-turn');
@@ -213,11 +207,9 @@ const SimplifiedPVPManager = {
         };
 
         StateManager.update(syncUpdates, true);
-        console.log('[SimplifiedPVPManager] 已同步回合切换:', syncUpdates);
 
         // 应用分数变化（天道分红、道损亏损等回合结算效果）
         if (data.scoreChanges && Array.isArray(data.scoreChanges)) {
-          console.log('[SimplifiedPVPManager] 应用分数变化:', data.scoreChanges);
           data.scoreChanges.forEach(change => {
             StateManager.addScore(
               change.playerId,
@@ -371,7 +363,6 @@ const SimplifiedPVPManager = {
 
     this._sendToChannel(message);
 
-    console.log('[SimplifiedPVPManager] 回合切换通知已发送:', {
       当前回合: state.turnCount,
       下个玩家: nextPlayer
     });
@@ -402,7 +393,6 @@ const SimplifiedPVPManager = {
   syncInitiative(firstPlayer, firstStem) {
     if (!this.isEnabled || !this.channel) return;
 
-    console.log('[SimplifiedPVPManager] 发送先手判定:', firstPlayer, firstStem ? '初始天干:' + firstStem.name : '');
 
     const message = {
       type: 'initiative',
@@ -420,7 +410,6 @@ const SimplifiedPVPManager = {
   requestStateSync() {
     if (!this.isEnabled || !this.channel) return;
 
-    console.log('[SimplifiedPVPManager] 请求状态同步');
 
     const message = {
       type: 'state_sync_request',
@@ -457,7 +446,6 @@ const SimplifiedPVPManager = {
 
     this._sendToChannel(message);
 
-    console.log('[SimplifiedPVPManager] 状态同步响应已发送');
   },
 
   /**
@@ -465,7 +453,6 @@ const SimplifiedPVPManager = {
    * @private
    */
   _applyStateSync(state) {
-    console.log('[SimplifiedPVPManager] 应用状态同步:', state);
     StateManager.update(state, true);
     EventBus.emit('pvp:state-synced', state);
   },

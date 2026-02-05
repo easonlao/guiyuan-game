@@ -18,7 +18,6 @@ const AchievementOverlay = {
   _isShowing: false, // 标记是否正在显示过场
 
   init() {
-    console.log('[AchievementOverlay] 初始化成就过场系统');
     this._createOverlay();
     this._bindEvents();
   },
@@ -42,20 +41,13 @@ const AchievementOverlay = {
     document.getElementById('app').appendChild(overlay);
     this._overlay = overlay;
     this._title = document.getElementById('achievement-title');
-
-    console.log('[AchievementOverlay] 过场容器已创建', {
-      overlay: !!overlay,
-      title: !!this._title
-    });
   },
 
   _bindEvents() {
     EventBus.on('achievement:show-full-unity', (data) => {
-      console.log('[AchievementOverlay] 收到 achievement:show-full-unity 事件', data);
       this.showFullUnity(data);
     });
     EventBus.on('achievement:show-turn-limit', (data) => {
-      console.log('[AchievementOverlay] 收到 achievement:show-turn-limit 事件', data);
       this.showTurnLimit(data);
     });
     // VICTORY 事件不再自动隐藏过场，让过场自然结束
@@ -91,8 +83,6 @@ const AchievementOverlay = {
    * @private
    */
   _show(duration) {
-    console.log('[AchievementOverlay] 显示过场画面');
-
     // 清除之前的定时器
     if (this._activeTimeout) {
       clearTimeout(this._activeTimeout);
@@ -111,7 +101,6 @@ const AchievementOverlay = {
    * 隐藏过场画面
    */
   hide() {
-    console.log('[AchievementOverlay] 隐藏过场画面');
     this._overlay.classList.remove('active');
 
     if (this._activeTimeout) {

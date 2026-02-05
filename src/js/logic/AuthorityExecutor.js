@@ -19,7 +19,6 @@ const AuthorityExecutor = {
    * 初始化
    */
   init() {
-    console.log('[AuthorityExecutor] 初始化');
   },
 
   /**
@@ -27,7 +26,6 @@ const AuthorityExecutor = {
    */
   setAsHost() {
     this._isHost = true;
-    console.log('[AuthorityExecutor] 设置为主机');
   },
 
   /**
@@ -36,7 +34,6 @@ const AuthorityExecutor = {
   reset() {
     this._isHost = false;
     this._burstExtraPlayer = null;
-    console.log('[AuthorityExecutor] 重置');
   },
 
   /**
@@ -56,9 +53,7 @@ const AuthorityExecutor = {
     // 只有非额外机会回合中执行的强化/强破才给予额外机会
     if (!isExtraTurn) {
       this._burstExtraPlayer = playerId;
-      console.log('[AUTHORITY] 设置强化玩家:', playerId, '下回合保持当前玩家');
     } else {
-      console.log('[AUTHORITY] 额外机会回合中的强化/强破，不再给予额外机会');
     }
   },
 
@@ -75,7 +70,6 @@ const AuthorityExecutor = {
     const seed = Math.floor(Math.random() * STEMS_LIST.length);
     const stem = STEMS_LIST[seed];
 
-    console.log('[AUTHORITY] Host generated stem:', stem.name, 'seed:', seed);
     return { stem, seed };
   },
 
@@ -93,7 +87,6 @@ const AuthorityExecutor = {
     const firstStemIndex = Math.floor(Math.random() * STEMS_LIST.length);
     const firstStem = STEMS_LIST[firstStemIndex];
 
-    console.log('[AUTHORITY] Host determined initiative:', firstPlayer, 'firstStem:', firstStem.name);
 
     return { firstPlayer, firstStem };
   },
@@ -118,18 +111,15 @@ const AuthorityExecutor = {
     if (isExtraTurn) {
       // 当前是额外机会回合，下回合正常切换玩家
       nextPlayer = currentPlayer === 'P1' ? 'P2' : 'P1';
-      console.log('[AUTHORITY] 额外机会结束，正常切换玩家:', currentPlayer, '→', nextPlayer);
     } else if (this._burstExtraPlayer === currentPlayer) {
       // 上回合执行了强化/强破，这回合是额外机会
       nextPlayer = currentPlayer;
       nextIsExtraTurn = true;
       // 清除标志（但下一回合会检查 isExtraTurn，所以不会再次给予额外机会）
       this._burstExtraPlayer = null;
-      console.log('[AUTHORITY] 强化额外行动:', currentPlayer, '→', nextPlayer);
     } else {
       // 正常切换玩家
       nextPlayer = currentPlayer === 'P1' ? 'P2' : 'P1';
-      console.log('[AUTHORITY] 正常切换玩家:', currentPlayer, '→', nextPlayer);
     }
 
     return { nextPlayer, nextIsExtraTurn };
@@ -155,7 +145,6 @@ const AuthorityExecutor = {
     }
 
     // 当前版本直接确认，具体验证在 GameEngine 中进行
-    console.log('[AUTHORITY] Host confirmed action:', action.type);
 
     return { confirmed: true, action };
   }

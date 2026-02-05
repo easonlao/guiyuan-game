@@ -33,10 +33,9 @@ const GameEngine = {
 
   // 调试方法：强制触发跳过动画（测试用）
   debugForceSkip() {
-    console.log('[GameEngine DEBUG] 强制触发跳过动画');
     const state = StateManager.getState();
     if (!state.currentStem) {
-      console.error('[GameEngine DEBUG] 没有当前天干');
+      console.error('[GameEngine] 没有当前天干');
       return;
     }
     this._playSkipAnimation(state.currentStem, state.currentPlayer);
@@ -98,7 +97,6 @@ const GameEngine = {
     if (pvpManager.isEnabled) {
       // 只有主机才能生成天干
       if (!AuthorityExecutor.isHost()) {
-        console.log('[GameEngine] 非主机，等待主机天干同步');
         return;
       }
 
@@ -130,7 +128,6 @@ const GameEngine = {
     // 只更新状态，不触发事件
     // TurnManager.startTurn() 会检测到 currentStem 并触发 game:stem-generated
     StateManager.update({ currentStem: stem });
-    console.log('[GameEngine] handleSyncedStem: 已更新 currentStem:', stem.name);
   },
 
   /**
@@ -225,7 +222,6 @@ const GameEngine = {
 
       // 客户端：通知主机跳过，等待主机的 turn_sync 消息
       if (!AuthorityExecutor.isHost()) {
-        console.log('[GameEngine] 客户端通知主机跳过回合');
         if (pvpManager.requestSkipTurn) {
           pvpManager.requestSkipTurn();
         }
@@ -236,7 +232,6 @@ const GameEngine = {
       }
 
       // 主机：播放跳过动画，延迟后调用 endTurn（会广播 turn_sync）
-      console.log('[GameEngine] 主机处理跳过回合');
       PassiveEffects.playSkip({ stem, playerId });
       EventBus.emit('game:skip-turn', { stem, playerId });
       setTimeout(() => TurnManager.endTurn(), 1200);
@@ -253,7 +248,6 @@ const GameEngine = {
    * 处理客户端的跳过回合请求（主机权威）
    */
   handleSkipTurnRequest() {
-    console.log('[GameEngine] 主机收到客户端跳过回合请求');
 
     // 获取当前状态
     const state = StateManager.getState();
@@ -281,7 +275,6 @@ const GameEngine = {
    * @param {Object} action - 操作对象
    */
   async handleAuthorityActionRequest(action) {
-    console.log('[GameEngine] 主机收到操作请求:', action.type);
 
     // 主机确认操作
     const result = AuthorityExecutor.confirmAction(action);
@@ -313,7 +306,6 @@ const GameEngine = {
 
       // 客户端：发送操作请求到主机
       if (!AuthorityExecutor.isHost()) {
-        console.log('[GameEngine] 客户端请求操作确认:', action.type);
         if (pvpManager.requestActionConfirmation) {
           await pvpManager.requestActionConfirmation(action);
         }
@@ -353,7 +345,6 @@ const GameEngine = {
     const currentPlayer = action.executorId || state.currentPlayer;
     const opponentId = currentPlayer === 'P1' ? 'P2' : 'P1';
 
-    console.log('[GameEngine] executeAction:', {
       action,
       currentPlayer,
       opponentId,
@@ -430,7 +421,6 @@ const GameEngine = {
     if (!this.activeSession) return;
     const { type, action, stem, playerId, isYang } = this.activeSession;
 
-    console.log('[GameEngine] resolveStage1:', {
       type,
       actionType: action?.type,
       playerId,
@@ -452,7 +442,6 @@ const GameEngine = {
 
       // ⚠️ 对于对手的 AUTO 动作，需要等待对手的 TURN_END 命令
       // 不要在这里调用 TurnManager.endTurn()
-      console.log('[GameEngine] 对手 AUTO 动作完成，等待 TURN_END 命令');
     }
     // 注意：BURST_ATK（强破）和 BURST（强化）的第一阶段不需要执行状态变更
     // 它们的实际效果在 resolveFinal 的 _executeActionLogic 中处理
@@ -560,7 +549,6 @@ const GameEngine = {
     const opponentId = playerId; // 执行操作的玩家
     const myPlayerId = opponentId === 'P1' ? 'P2' : 'P1'; // 我是另一个玩家
 
-    console.log('[GameEngine] handleOpponentAction:', {
       opponentId,
       myPlayerId,
       actionType: action.type,

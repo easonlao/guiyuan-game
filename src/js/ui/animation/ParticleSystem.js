@@ -17,7 +17,6 @@ const ParticleSystem = {
    * 初始化
    */
   init() {
-    console.log('[ParticleSystem] 初始化粒子系统...');
     EventBus.on(ANIMATION_EVENTS.PARTICLE_BURST, this.burst.bind(this));
     EventBus.on(ANIMATION_EVENTS.PARTICLE_FLOW, this.flow.bind(this));
     EventBus.on(ANIMATION_EVENTS.PARTICLE_SPIRAL, this.spiral.bind(this));
@@ -29,8 +28,6 @@ const ParticleSystem = {
    */
   burst(data) {
     const { origin, count = 20, spread = 100, color } = data;
-
-    console.log('[ParticleSystem] 粒子爆发:', { origin, count, color });
 
     for (let i = 0; i < count; i++) {
       const particle = this.createParticle(origin, color);
@@ -57,8 +54,6 @@ const ParticleSystem = {
   flow(data) {
     const { from, to, count = 10, color } = data;
 
-    console.log('[ParticleSystem] 能量流转:', { from, to, count, color });
-
     for (let i = 0; i < count; i++) {
       const particle = this.createParticle(from, color);
       const progress = i / (count - 1);
@@ -83,8 +78,6 @@ const ParticleSystem = {
    */
   spiral(data) {
     const { center, target, count = 50, color } = data;
-
-    console.log('[ParticleSystem] 螺旋汇聚:', { center, target, count, color });
 
     for (let i = 0; i < count; i++) {
       const particle = this.createParticle(center, color);

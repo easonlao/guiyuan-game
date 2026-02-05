@@ -32,7 +32,6 @@ const AIController = {
   init(gameMode) {
     GameRecorder.initGame(gameMode);
     StatsCollector.init();
-    console.log('[AIController] 初始化完成，数据收集', this.dataCollectionEnabled ? '启用' : '禁用');
   },
 
   /**
