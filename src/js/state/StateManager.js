@@ -230,11 +230,15 @@ const StateManager = {
   updateNodeState(playerId, elementIndex, isYang, newState) {
     const key = `${playerId}-${elementIndex}`;
     const currentNodeState = state.nodeStates[key] || { yang: 0, yin: 0 };
-    
+
     const updatedNodeState = {
       ...currentNodeState,
       [isYang ? 'yang' : 'yin']: newState
     };
+
+    // 调试：记录状态更新
+    const myRole = this.getMyRole();
+    console.log(`[StateManager ${myRole}] updateNodeState: ${key} ${isYang?'阳':'阴'} ${currentNodeState[isYang?'yang':'yin']}→${newState}`);
 
     const updates = {
       nodeStates: {
@@ -244,7 +248,7 @@ const StateManager = {
     };
 
     this.update(updates);
-    
+
     // 触发特定节点的更新事件，方便渲染器只更新该节点
     EventBus.emit('game:node-changed', {
       playerId,
