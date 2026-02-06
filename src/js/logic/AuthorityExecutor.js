@@ -147,6 +147,14 @@ const AuthorityExecutor = {
     // 当前版本直接确认，具体验证在 GameEngine 中进行
 
     return { confirmed: true, action };
+  },
+
+  /**
+   * 清理资源
+   */
+  cleanup() {
+    this._isHost = false;
+    this._burstExtraPlayer = null;
   }
 };
 

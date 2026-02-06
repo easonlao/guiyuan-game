@@ -24,7 +24,7 @@ const SimplifiedPVPManager = {
   currentRoomId: null,
   myPlayerId: null,
   myRole: null, // 'P1' or 'P2'
-  isHost: false, // 是否为主机
+  // isHost: false, // ❌ 移除：不再维护自己的 isHost 状态，统一使用 AuthorityExecutor.isHost()
   isEnabled: false,
 
   // Broadcast 频道
@@ -74,8 +74,8 @@ const SimplifiedPVPManager = {
     this.isEnabled = true;
 
     // 设置主机状态：P1 是主机，P2 是客户端
-    this.isHost = (role === 'P1');
-    if (this.isHost) {
+    // ✅ 只调用 AuthorityExecutor，不再维护自己的 isHost
+    if (role === 'P1') {
       AuthorityExecutor.setAsHost();
     } else {
       AuthorityExecutor.reset();
@@ -146,7 +146,8 @@ const SimplifiedPVPManager = {
 
       case 'action_request':
         // 操作请求（客户端发送给主机）
-        if (this.isHost) {
+        // ✅ 改为调用 AuthorityExecutor
+        if (AuthorityExecutor.isHost()) {
           EventBus.emit('authority:action-request', data);
         }
         break;
@@ -158,7 +159,8 @@ const SimplifiedPVPManager = {
 
       case 'skip_turn_request':
         // 跳过回合请求（客户端发送给主机）
-        if (this.isHost) {
+        // ✅ 改为调用 AuthorityExecutor
+        if (AuthorityExecutor.isHost()) {
           EventBus.emit('authority:skip-turn-request');
         }
         break;
@@ -259,7 +261,8 @@ const SimplifiedPVPManager = {
 
         // 触发先手判定完成事件
         // BoardAnimation 会在收到此事件后 1200ms 触发 anim:initiative-finished
-        const isHost = (this.myRole === 'P1');
+        // ✅ 统一使用 AuthorityExecutor，保持代码意图纯粹
+        const isHost = AuthorityExecutor.isHost();
         EventBus.emit('game:initiative-completed', {
           winner: data.firstPlayer,
           isHost: isHost
@@ -661,7 +664,7 @@ const SimplifiedPVPManager = {
     this.currentRoomId = null;
     this.myPlayerId = null;
     this.myRole = null;
-    this.isHost = false;
+    // this.isHost = false; // ❌ 移除：不再维护自己的 isHost 状态
     this.isEnabled = false;
 
     // 重置权威执行器
