@@ -30,6 +30,7 @@ import PassiveEffects from '../ui/effects/PassiveEffects.js';
 const GameEngine = {
   activeSession: null,
   _initialized: false,
+  _eventHandlers: null, // 保存事件处理器引用，用于清理
 
   // 调试方法：强制触发跳过动画（测试用）
   debugForceSkip() {
@@ -51,22 +52,35 @@ const GameEngine = {
   },
 
   _bindEvents() {
-    EventBus.on('game:start', this.startNewGame.bind(this));
-    EventBus.on('game:action-selected', this.handleActionSelection.bind(this));
-    EventBus.on('game:next-turn', this.startTurn.bind(this));
-    EventBus.on('game:generate-stem', this.generateStem.bind(this));
-    EventBus.on('anim:initiative-finished', this.onInitiativeFinished.bind(this));
-    EventBus.on('ui:request-stem-check', this.checkStemLogic.bind(this));
-    EventBus.on('ui:impact-stage1', this.resolveStage1.bind(this));
-    EventBus.on('ui:impact-final', this.resolveFinal.bind(this));
+    // 保存处理器引用，以便后续清理
+    this._eventHandlers = {
+      onStart: this.startNewGame.bind(this),
+      onActionSelected: this.handleActionSelection.bind(this),
+      onNextTurn: this.startTurn.bind(this),
+      onGenerateStem: this.generateStem.bind(this),
+      onInitiativeFinished: this.onInitiativeFinished.bind(this),
+      onRequestStemCheck: this.checkStemLogic.bind(this),
+      onImpactStage1: this.resolveStage1.bind(this),
+      onImpactFinal: this.resolveFinal.bind(this),
+      onOpponentAction: this.handleOpponentAction.bind(this),
+      onSyncedStem: this.handleSyncedStem.bind(this),
+      onAuthorityActionRequest: this.handleAuthorityActionRequest.bind(this),
+      onSkipTurnRequest: this.handleSkipTurnRequest.bind(this),
+    };
 
-    // PVP同步事件
-    EventBus.on('sync:opponent-action', this.handleOpponentAction.bind(this));
-    EventBus.on('sync:stem', this.handleSyncedStem.bind(this));
-
-    // 主机权威事件
-    EventBus.on('authority:action-request', this.handleAuthorityActionRequest.bind(this));
-    EventBus.on('authority:skip-turn-request', this.handleSkipTurnRequest.bind(this));
+    // 使用保存的引用绑定事件
+    EventBus.on('game:start', this._eventHandlers.onStart);
+    EventBus.on('game:action-selected', this._eventHandlers.onActionSelected);
+    EventBus.on('game:next-turn', this._eventHandlers.onNextTurn);
+    EventBus.on('game:generate-stem', this._eventHandlers.onGenerateStem);
+    EventBus.on('anim:initiative-finished', this._eventHandlers.onInitiativeFinished);
+    EventBus.on('ui:request-stem-check', this._eventHandlers.onRequestStemCheck);
+    EventBus.on('ui:impact-stage1', this._eventHandlers.onImpactStage1);
+    EventBus.on('ui:impact-final', this._eventHandlers.onImpactFinal);
+    EventBus.on('sync:opponent-action', this._eventHandlers.onOpponentAction);
+    EventBus.on('sync:stem', this._eventHandlers.onSyncedStem);
+    EventBus.on('authority:action-request', this._eventHandlers.onAuthorityActionRequest);
+    EventBus.on('authority:skip-turn-request', this._eventHandlers.onSkipTurnRequest);
   },
 
   startNewGame(data) {
@@ -591,6 +605,36 @@ const GameEngine = {
     // 而是通过动画回调 resolveStage1() 和 resolveFinal() 来执行
     // AUTO 动作在 resolveStage1() 中执行
     // 其他动作在 resolveFinal() 中执行
+  },
+
+  /**
+   * 清理资源
+   */
+  cleanup() {
+    // 移除所有事件监听器
+    if (this._eventHandlers) {
+      EventBus.off('game:start', this._eventHandlers.onStart);
+      EventBus.off('game:action-selected', this._eventHandlers.onActionSelected);
+      EventBus.off('game:next-turn', this._eventHandlers.onNextTurn);
+      EventBus.off('game:generate-stem', this._eventHandlers.onGenerateStem);
+      EventBus.off('anim:initiative-finished', this._eventHandlers.onInitiativeFinished);
+      EventBus.off('ui:request-stem-check', this._eventHandlers.onRequestStemCheck);
+      EventBus.off('ui:impact-stage1', this._eventHandlers.onImpactStage1);
+      EventBus.off('ui:impact-final', this._eventHandlers.onImpactFinal);
+      EventBus.off('sync:opponent-action', this._eventHandlers.onOpponentAction);
+      EventBus.off('sync:stem', this._eventHandlers.onSyncedStem);
+      EventBus.off('authority:action-request', this._eventHandlers.onAuthorityActionRequest);
+      EventBus.off('authority:skip-turn-request', this._eventHandlers.onSkipTurnRequest);
+    }
+
+    // 重置内部状态
+    this.activeSession = null;
+    this._eventHandlers = null;
+    this._initialized = false;
+
+    // 清理依赖模块
+    AuthorityExecutor.cleanup();
+    TurnManager.cleanup();
   }
 };
 

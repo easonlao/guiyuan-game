@@ -24,6 +24,8 @@ function getPVPManager() {
 import PassiveEffects from '../../ui/effects/PassiveEffects.js';
 
 const TurnManager = {
+  _turnTimer: null, // 记录当前的 timer ID，用于 cleanup
+
   /**
    * 开始新回合
    */
@@ -51,15 +53,28 @@ const TurnManager = {
     // 清除标志，以便下一回合能正确判断
     StateManager.update({ pendingSettlement: false }, true);
 
-    // 根据是否有结算效果决定延迟时间
-    // 结算动画约800ms，加上适当的视觉缓冲时间
-    const delay = hasPendingSettlement ? 1000 : 0;
-
-    if (delay > 0) {
-    } else {
+    // 清除之前的定时器（防止重复设置）
+    if (this._turnTimer) {
+      clearTimeout(this._turnTimer);
+      this._turnTimer = null;
     }
 
-    setTimeout(() => {
+    // 【角色职责分离】PVP 客户端：即时状态检查后直接返回（不设置 setTimeout）
+    if (state.gameMode === 0 && !AuthorityExecutor.isHost()) {
+      if (state.currentStem) {
+        // 网络包已到达，直接触发渲染
+        EventBus.emit('game:stem-generated', { stem: state.currentStem });
+      }
+      // 客户端：等待网络消息，不设置定时器兜底
+      return;
+    }
+
+    // 单机模式或PVP主机：设置定时器延迟生成
+    const delay = hasPendingSettlement ? 1000 : 0;
+
+    this._turnTimer = setTimeout(() => {
+      this._turnTimer = null; // 执行后清除引用
+
       // 获取最新状态（可能在延迟期间已通过 sync:stem 更新）
       const latestState = StateManager.getState();
 
@@ -396,6 +411,17 @@ const TurnManager = {
         StateManager.addScore(playerId, penalty, `最终道损惩罚(${damageCount})`, 'FINAL_PENALTY');
       }
     });
+  },
+
+  /**
+   * 清理资源
+   */
+  cleanup() {
+    // 清除待执行的定时器
+    if (this._turnTimer) {
+      clearTimeout(this._turnTimer);
+      this._turnTimer = null;
+    }
   }
 };
 
