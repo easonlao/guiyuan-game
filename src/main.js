@@ -50,6 +50,9 @@ function initApp() {
   EventBus.on('game:return-to-menu', () => {
     if (window.PVP_DEBUG) console.log('[Main] 返回主菜单');
 
+    // 清理核心游戏引擎（移除事件监听器、重置状态）
+    GameEngine.cleanup();
+
     // 清理定时器
     TimerManager.clearAll();
 
