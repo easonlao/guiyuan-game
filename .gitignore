@@ -17,6 +17,9 @@ dist-ssr/
 .scratch/
 .pi/
 
+# Regenerable codegraph index
+.codegraph/
+
 # Logs
 logs/
 *.log
