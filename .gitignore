@@ -14,6 +14,8 @@ dist-ssr/
 # Project-Brain and Claude data (local only)
 .keeper/
 .claude/
+.scratch/
+.pi/
 
 # Logs
 logs/
