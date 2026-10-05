@@ -2,15 +2,7 @@
 
 ## Observed facts
 
-- Revision: 175084f533f0262e6c6d081c8c88cd3aad63d6e5; working-tree snapshot: M package.json
-?? docs/crossover-confirmation.md
-?? docs/strategy-evaluation.md
-?? reports/
-?? scripts/headless-strategy-evaluation.js
-?? src/js/logic/headless/CrossoverConfirmation.js
-?? src/js/logic/headless/StrategyEvaluation.js
-?? tests/crossover-confirmation.test.js
-?? tests/strategy-evaluation.test.js.
+- Revision: 4219bb4f078a32e46cb452135b1e6475130f094f; working-tree status: ; source SHA-256: c9651d044f4128e7e8032fd60a35f2f30b44f553778e3381deec65808f849cf7.
 - Planned / completed / failed / budget-skipped runs: 1800 / 1800 / 0 / 0.
 - Frozen positions: reachable-balanced-turn-7 (balanced, baseline-reachable, sha256 e1b2d200049530433e781bc93366c0c6d15c7042484c2abe2e46504f8b88c769); reachable-extra-opportunity-turn-11 (extra-action-semantics, baseline-reachable, sha256 326057f86e1388cb4f0ec19a26f54b7d9d69b62d190a626068c457f160e08d3d); reachable-trailing-needs-disruption-turn-14 (trailing-needs-disruption, baseline-reachable, sha256 00c3013fc0e044fc6eb107c43aeb2a876731844de44893e772d5dce0535110a3); reachable-near-turn-limit-turn-19 (near-turn-limit, baseline-reachable, sha256 1d1feba4040717b4a05ab3a52efc186027acd8bbc95015a6f61c00eaf093ad89).
 - Scoring selections: formal-baseline=formal-baseline@1; no-self-cost-reward=experimental@1; burst-action-score-once=experimental@1; disable-rarity-bonus=experimental@1; combined=experimental@1.
