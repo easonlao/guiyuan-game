@@ -348,12 +348,16 @@ describe('fixed-position continuation public API', () => {
     expect(result.firstActions.map(branch => branch.action.type)).toEqual(['CONVERT', 'TRANS']);
     expect(result.pairing).toMatchObject({ seeds: [2, 5], commonSeedPolicy: 'same-seed-for-every-first-action' });
     expect(result.firstActions[0].samples.map(sample => sample.outcome)).toEqual(['loss', 'win']);
+    expect(result.firstActions[0].samples.map(sample => sample.value)).toEqual([0, 1]);
     expect(result.firstActions[1].samples.map(sample => sample.outcome)).toEqual(['win', 'loss']);
+    expect(result.firstActions[1].samples.map(sample => sample.value)).toEqual([1, 0]);
+    expect(result.firstActions[0].summary.outcomeValue.mean).toBe(0.5);
+    expect(result.firstActions[1].summary.outcomeValue.mean).toBe(0.5);
     expect(result.firstActions[0].summary.winDrawLoss.counts).toEqual({ wins: 1, draws: 0, losses: 1 });
     expect(result.firstActions[1].summary.winDrawLoss.proportions).toEqual({ wins: 0.5, draws: 0, losses: 0.5 });
     expect(result.firstActions[1].pairedDifferenceToReference.meanDifference).toBe(0);
-    expect(result.firstActions[1].pairedDifferenceToReference.sampleStandardDeviation).toBeCloseTo(Math.sqrt(8));
-    expect(result.firstActions[1].pairedDifferenceToReference.normalApprox95.low).toBeCloseTo(-3.919927969);
+    expect(result.firstActions[1].pairedDifferenceToReference.sampleStandardDeviation).toBeCloseTo(Math.sqrt(2));
+    expect(result.firstActions[1].pairedDifferenceToReference.normalApprox95.low).toBeCloseTo(-1.9599639845);
     expect(result.firstActions[0].samples[0].replay.finalState.nodeStates)
       .not.toEqual(result.firstActions[1].samples[0].replay.finalState.nodeStates);
     expect(position.state).toEqual(reachableFixedPositions[0].state);
@@ -386,5 +390,32 @@ describe('fixed-position continuation public API', () => {
       const commonStemCount = Math.min(firstBranchStems.length, secondBranchStems.length);
       expect(firstBranchStems.slice(0, commonStemCount)).toEqual(secondBranchStems.slice(0, commonStemCount));
     }
+  });
+
+  it('uses draw as the midpoint in outcome and paired-difference statistics', () => {
+    const state = structuredClone(reachableFixedPositions[0].state);
+    state.maxTurns = state.turnCount + 1;
+    state.players.P1.score = 100;
+    state.players.P2.score = 437;
+    const position = freezeDiagnosticFixedPosition({
+      id: 'draw-versus-loss-at-limit',
+      description: 'Equal final scores on the turn limit produce a draw.',
+      state
+    });
+    const result = compareFixedPositionContinuations({
+      position,
+      strategies: { P1: 'build-priority', P2: 'attack-priority' },
+      seeds: [1],
+      scoringConfig: {}
+    });
+
+    expect(result.firstActions.map(branch => branch.samples[0])).toMatchObject([
+      { outcome: 'draw', value: 0.5, terminalResult: { winner: 'DRAW' } },
+      { outcome: 'loss', value: 0, terminalResult: { winner: 'P2' } }
+    ]);
+    expect(result.firstActions[0].summary.winDrawLoss.counts).toEqual({ wins: 0, draws: 1, losses: 0 });
+    expect(result.firstActions[0].summary.outcomeValue.mean).toBe(0.5);
+    expect(result.firstActions[1].summary.outcomeValue.mean).toBe(0);
+    expect(result.firstActions[1].pairedDifferenceToReference.meanDifference).toBe(-0.5);
   });
 });

@@ -346,7 +346,7 @@ function summarizePairedDifference(samples, referenceSamples, seeds) {
     sampleStandardDeviation: stats.sampleStandardDeviation,
     standardError: stats.standardError,
     normalApprox95: stats.normalApprox95,
-    method: 'same-seed paired difference in terminal win value (win=+1, draw=0, loss=-1)'
+    method: 'same-seed paired difference in terminal outcome value (win=1, draw=0.5, loss=0)'
   };
 }
 
@@ -368,9 +368,9 @@ function makeReplayRecord(match, initialState, scoringConfigInput) {
 }
 
 function actionOutcome(terminalResult, playerId) {
-  if (terminalResult.winner === 'DRAW') return { outcome: 'draw', value: 0 };
+  if (terminalResult.winner === 'DRAW') return { outcome: 'draw', value: 0.5 };
   if (terminalResult.winner === playerId) return { outcome: 'win', value: 1 };
-  return { outcome: 'loss', value: -1 };
+  return { outcome: 'loss', value: 0 };
 }
 
 function errorRecord(error, match) {
