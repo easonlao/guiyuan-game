@@ -12,6 +12,7 @@ import EventBus from '../../bus/EventBus.js';
 import StateManager from '../../state/StateManager.js';
 import { GAME_EVENTS } from '../../types/events.js';
 import { POINTS_CONFIG } from '../../config/game-config.js';
+import { calculatePassiveEffects, decideTerminal, decideTurnStart } from './TurnRules.js';
 import SimplifiedPVPManager from '../../network/SimplifiedPVPManager.js';
 import AuthorityExecutor from '../AuthorityExecutor.js';
 import AIController from '../ai/AIController.js';
@@ -32,20 +33,22 @@ const TurnManager = {
   async startTurn() {
     const state = StateManager.getState();
     const myRole = StateManager.getMyRole();
-    console.log(`[TurnManager startTurn ${myRole}] 开始回合: currentPlayer=${state.currentPlayer}, turnCount=${state.turnCount}→${state.turnCount + 1}`);
+    const turnStart = decideTurnStart(state);
+    console.log(`[TurnManager startTurn ${myRole}] 开始回合: currentPlayer=${state.currentPlayer}, turnCount=${state.turnCount}→${turnStart.turnCount}`);
 
-    // 先增加回合计数
-    const newTurnCount = state.turnCount + 1;
-    StateManager.update({ turnCount: newTurnCount });
+    // 先增加回合计数，再使用该回合开始时的终局决策。
+    StateManager.update({ turnCount: turnStart.turnCount });
 
-    if (await this.checkGameEnd()) return;
+    if (turnStart.terminal) {
+      await this._handleTerminalDecision(turnStart.terminal);
+      return;
+    }
 
-    const currentPlayer = state.currentPlayer;
-    const opponentId = currentPlayer === 'P1' ? 'P2' : 'P1';
+    console.log(`[TurnManager startTurn ${myRole}] currentPlayer=${state.currentPlayer}, opponentId=${turnStart.opponentId}`);
 
-    console.log(`[TurnManager startTurn ${myRole}] currentPlayer=${currentPlayer}, opponentId=${opponentId}`);
-
-    this._resetBurstBonus(opponentId);
+    if (turnStart.resetOpponentBurstBonus) {
+      this._resetBurstBonus(turnStart.opponentId);
+    }
 
     // 检查是否有待显示的结算效果
     const hasPendingSettlement = state.pendingSettlement;
@@ -208,65 +211,22 @@ const TurnManager = {
    */
   async _calculatePassiveEffects() {
     const state = StateManager.getState();
-    const currentPlayer = state.currentPlayer; // 当前回合玩家
+    const { playerId, unityCount, damageCount, scoreChanges } = calculatePassiveEffects(state, POINTS_CONFIG);
 
-    let unityCount = 0;    // 归一状态数量
-    let damageCount = 0;   // 道损状态数量
+    // Set pendingSettlement silently before waiting for animation, as before.
+    StateManager.update({ pendingSettlement: scoreChanges.length > 0 }, true);
 
-    // 只统计当前回合玩家的状态
-    for (let i = 0; i < 5; i++) {
-      const nodeState = StateManager.getNodeState(currentPlayer, i);
-      // 统计归一状态 (yang=2 且 yin=2)
-      if (nodeState.yang === 2 && nodeState.yin === 2) {
-        unityCount++;
-      }
-      // 统计道损状态 (yang=-1 且 yin=-1，两个都是-1才算道损)
-      if (nodeState.yang === -1 && nodeState.yin === -1) {
-        damageCount++;
-      }
+    if (scoreChanges.length === 0) {
+      return scoreChanges;
     }
 
-    // 检查是否有结算效果
-    const hasEffects = (unityCount > 0 || damageCount > 0);
-
-    // 设置标志，告诉 startTurn 是否需要延迟
-    StateManager.update({ pendingSettlement: hasEffects }, true);
-
-    // 如果没有结算效果，直接返回空数组
-    if (!hasEffects) {
-      return [];
-    }
-
-    // 播放当前回合玩家的动画
     await PassiveEffects.playTurnSettlement({
-      [currentPlayer]: { unityCount, damageCount }
+      [playerId]: { unityCount, damageCount }
     });
 
-    // 动画完成后，再触发分数变化
-    const scoreChanges = [];
-
-    // 天道分红（正向）
-    if (unityCount > 0) {
-      const points = unityCount * POINTS_CONFIG.PASSIVE.UNITY_DIVIDEND;
-      StateManager.addScore(currentPlayer, points, `天道分红(${unityCount})`, 'DIVIDEND');
-      scoreChanges.push({
-        playerId: currentPlayer,
-        amount: points,
-        reason: `天道分红(${unityCount})`,
-        actionType: 'DIVIDEND'
-      });
-    }
-
-    // 道损亏损（负向，每回合持续扣分）
-    if (damageCount > 0) {
-      const penalty = damageCount * POINTS_CONFIG.PASSIVE.DAMAGE_PENALTY;
-      StateManager.addScore(currentPlayer, penalty, `道损亏损(${damageCount})`, 'DAMAGE_PENALTY');
-      scoreChanges.push({
-        playerId: currentPlayer,
-        amount: penalty,
-        reason: `道损亏损(${damageCount})`,
-        actionType: 'DAMAGE_PENALTY'
-      });
+    // Apply the already-calculated records only after the animation completes.
+    for (const change of scoreChanges) {
+      StateManager.addScore(change.playerId, change.amount, change.reason, change.actionType);
     }
 
     return scoreChanges;
@@ -277,37 +237,19 @@ const TurnManager = {
    * @returns {Promise<boolean>} - 是否结束
    */
   async checkGameEnd() {
-    const state = StateManager.getState();
+    const decision = decideTerminal(StateManager.getState());
+    if (!decision) return false;
 
-    for (const playerId of ['P1', 'P2']) {
-      if (this._checkAllLit(playerId)) {
-        await this.handleVictory(playerId, '所有天干点亮');
-        return true;
-      }
-    }
-
-    if (state.turnCount >= state.maxTurns) {
-      await this.handleDrawOrPointsDecision();
-      return true;
-    }
-
-    return false;
+    await this._handleTerminalDecision(decision);
+    return true;
   },
 
-  /**
-   * 检查玩家是否所有节点都已点亮
-   * @param {string} playerId - 玩家ID
-   * @returns {boolean}
-   * @private
-   */
-  _checkAllLit(playerId) {
-    for (let i = 0; i < 5; i++) {
-      const nodeState = StateManager.getNodeState(playerId, i);
-      if (nodeState.yang < 1 || nodeState.yin < 1) {
-        return false;
-      }
+  async _handleTerminalDecision(decision) {
+    if (decision.reason === '回合上限') {
+      await this.handleDrawOrPointsDecision(decision.winner);
+      return;
     }
-    return true;
+    await this.handleVictory(decision.winner, decision.reason);
   },
 
   /**
@@ -342,12 +284,11 @@ const TurnManager = {
   /**
    * 处理平局或按分数判定胜负
    */
-  async handleDrawOrPointsDecision() {
+  async handleDrawOrPointsDecision(winner) {
     const state = StateManager.getState();
-    let winner = state.players.P1.score > state.players.P2.score ? 'P1' : 'P2';
-
-    if (state.players.P1.score === state.players.P2.score) {
-      winner = 'DRAW';
+    if (winner === undefined) {
+      winner = state.players.P1.score > state.players.P2.score ? 'P1' : 'P2';
+      if (state.players.P1.score === state.players.P2.score) winner = 'DRAW';
     }
 
     // 记录 AI 游戏数据
