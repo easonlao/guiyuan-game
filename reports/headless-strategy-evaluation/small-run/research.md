@@ -1,0 +1,64 @@
+# Headless strategy evaluation
+
+## Observed facts
+
+- Revision: 175084f533f0262e6c6d081c8c88cd3aad63d6e5; working-tree snapshot: M package.json
+?? docs/crossover-confirmation.md
+?? docs/strategy-evaluation.md
+?? reports/
+?? scripts/headless-strategy-evaluation.js
+?? src/js/logic/headless/CrossoverConfirmation.js
+?? src/js/logic/headless/StrategyEvaluation.js
+?? tests/crossover-confirmation.test.js
+?? tests/strategy-evaluation.test.js.
+- Planned / completed / failed / budget-skipped runs: 1800 / 1800 / 0 / 0.
+- Frozen positions: reachable-balanced-turn-7 (balanced, baseline-reachable, sha256 e1b2d200049530433e781bc93366c0c6d15c7042484c2abe2e46504f8b88c769); reachable-extra-opportunity-turn-11 (extra-action-semantics, baseline-reachable, sha256 326057f86e1388cb4f0ec19a26f54b7d9d69b62d190a626068c457f160e08d3d); reachable-trailing-needs-disruption-turn-14 (trailing-needs-disruption, baseline-reachable, sha256 00c3013fc0e044fc6eb107c43aeb2a876731844de44893e772d5dce0535110a3); reachable-near-turn-limit-turn-19 (near-turn-limit, baseline-reachable, sha256 1d1feba4040717b4a05ab3a52efc186027acd8bbc95015a6f61c00eaf093ad89).
+- Scoring selections: formal-baseline=formal-baseline@1; no-self-cost-reward=experimental@1; burst-action-score-once=experimental@1; disable-rarity-bonus=experimental@1; combined=experimental@1.
+- Fixed-position reports: 45; paired batch comparison reports: 5; repeated formal-baseline controls retained: 180.
+- Human-review cases selected from actual records: 3.
+- formal-baseline: paired terminal-value deltas (selection − formal baseline) by ordered strategy assignment: build-priority vs build-priority 0.000 [0.000, 0.000], seed clusters 2/2; build-priority vs attack-priority 0.000 [0.000, 0.000], seed clusters 2/2; build-priority vs situation-responsive 0.000 [0.000, 0.000], seed clusters 2/2; attack-priority vs build-priority 0.000 [0.000, 0.000], seed clusters 2/2; attack-priority vs attack-priority 0.000 [0.000, 0.000], seed clusters 2/2; attack-priority vs situation-responsive 0.000 [0.000, 0.000], seed clusters 2/2; situation-responsive vs build-priority 0.000 [0.000, 0.000], seed clusters 2/2; situation-responsive vs attack-priority 0.000 [0.000, 0.000], seed clusters 2/2; situation-responsive vs situation-responsive 0.000 [0.000, 0.000], seed clusters 2/2.
+- formal-baseline: no lower candidate point estimate observed; these small paired estimates do not establish absence of a real decline.
+- formal-baseline baseline: matches 36/36; actions AUTO 324, CONVERT 36, BURST 24, BURST_ATK 6, ATK 6; mean opportunities 11; unity wins 0; turn-limit settlements 36; repeated-board matches 0; progress/destruction amount 408/48.
+- formal-baseline experiment: matches 36/36; actions AUTO 324, CONVERT 36, BURST 24, BURST_ATK 6, ATK 6; mean opportunities 11; unity wins 0; turn-limit settlements 36; repeated-board matches 0; progress/destruction amount 408/48.
+- no-self-cost-reward: paired terminal-value deltas (selection − formal baseline) by ordered strategy assignment: build-priority vs build-priority 0.000 [0.000, 0.000], seed clusters 2/2; build-priority vs attack-priority 0.000 [0.000, 0.000], seed clusters 2/2; build-priority vs situation-responsive 0.000 [0.000, 0.000], seed clusters 2/2; attack-priority vs build-priority 0.000 [0.000, 0.000], seed clusters 2/2; attack-priority vs attack-priority 0.000 [0.000, 0.000], seed clusters 2/2; attack-priority vs situation-responsive 0.000 [0.000, 0.000], seed clusters 2/2; situation-responsive vs build-priority 0.000 [0.000, 0.000], seed clusters 2/2; situation-responsive vs attack-priority 0.000 [0.000, 0.000], seed clusters 2/2; situation-responsive vs situation-responsive 0.000 [0.000, 0.000], seed clusters 2/2.
+- no-self-cost-reward: no lower candidate point estimate observed; these small paired estimates do not establish absence of a real decline.
+- no-self-cost-reward baseline: matches 36/36; actions AUTO 324, CONVERT 36, BURST 24, BURST_ATK 6, ATK 6; mean opportunities 11; unity wins 0; turn-limit settlements 36; repeated-board matches 0; progress/destruction amount 408/48.
+- no-self-cost-reward experiment: matches 36/36; actions AUTO 324, CONVERT 36, BURST 24, BURST_ATK 6, ATK 6; mean opportunities 11; unity wins 0; turn-limit settlements 36; repeated-board matches 0; progress/destruction amount 408/48.
+- burst-action-score-once: paired terminal-value deltas (selection − formal baseline) by ordered strategy assignment: build-priority vs build-priority 0.000 [0.000, 0.000], seed clusters 2/2; build-priority vs attack-priority 0.000 [0.000, 0.000], seed clusters 2/2; build-priority vs situation-responsive 0.000 [0.000, 0.000], seed clusters 2/2; attack-priority vs build-priority 0.000 [0.000, 0.000], seed clusters 2/2; attack-priority vs attack-priority 0.000 [0.000, 0.000], seed clusters 2/2; attack-priority vs situation-responsive 0.000 [0.000, 0.000], seed clusters 2/2; situation-responsive vs build-priority 0.000 [0.000, 0.000], seed clusters 2/2; situation-responsive vs attack-priority 0.000 [0.000, 0.000], seed clusters 2/2; situation-responsive vs situation-responsive 0.000 [0.000, 0.000], seed clusters 2/2.
+- burst-action-score-once: no lower candidate point estimate observed; these small paired estimates do not establish absence of a real decline.
+- burst-action-score-once baseline: matches 36/36; actions AUTO 324, CONVERT 36, BURST 24, BURST_ATK 6, ATK 6; mean opportunities 11; unity wins 0; turn-limit settlements 36; repeated-board matches 0; progress/destruction amount 408/48.
+- burst-action-score-once experiment: matches 36/36; actions AUTO 324, CONVERT 36, BURST 24, BURST_ATK 6, ATK 6; mean opportunities 11; unity wins 0; turn-limit settlements 36; repeated-board matches 0; progress/destruction amount 408/48.
+- disable-rarity-bonus: paired terminal-value deltas (selection − formal baseline) by ordered strategy assignment: build-priority vs build-priority 0.000 [0.000, 0.000], seed clusters 2/2; build-priority vs attack-priority 0.000 [0.000, 0.000], seed clusters 2/2; build-priority vs situation-responsive 0.000 [0.000, 0.000], seed clusters 2/2; attack-priority vs build-priority 0.000 [0.000, 0.000], seed clusters 2/2; attack-priority vs attack-priority 0.000 [0.000, 0.000], seed clusters 2/2; attack-priority vs situation-responsive 0.000 [0.000, 0.000], seed clusters 2/2; situation-responsive vs build-priority 0.000 [0.000, 0.000], seed clusters 2/2; situation-responsive vs attack-priority 0.000 [0.000, 0.000], seed clusters 2/2; situation-responsive vs situation-responsive 0.000 [0.000, 0.000], seed clusters 2/2.
+- disable-rarity-bonus: no lower candidate point estimate observed; these small paired estimates do not establish absence of a real decline.
+- disable-rarity-bonus baseline: matches 36/36; actions AUTO 324, CONVERT 36, BURST 24, BURST_ATK 6, ATK 6; mean opportunities 11; unity wins 0; turn-limit settlements 36; repeated-board matches 0; progress/destruction amount 408/48.
+- disable-rarity-bonus experiment: matches 36/36; actions AUTO 324, CONVERT 36, BURST 24, BURST_ATK 6, ATK 6; mean opportunities 11; unity wins 0; turn-limit settlements 36; repeated-board matches 0; progress/destruction amount 408/48.
+- combined: paired terminal-value deltas (selection − formal baseline) by ordered strategy assignment: build-priority vs build-priority 0.000 [0.000, 0.000], seed clusters 2/2; build-priority vs attack-priority 0.000 [0.000, 0.000], seed clusters 2/2; build-priority vs situation-responsive 0.000 [0.000, 0.000], seed clusters 2/2; attack-priority vs build-priority 0.000 [0.000, 0.000], seed clusters 2/2; attack-priority vs attack-priority 0.000 [0.000, 0.000], seed clusters 2/2; attack-priority vs situation-responsive 0.000 [0.000, 0.000], seed clusters 2/2; situation-responsive vs build-priority 0.000 [0.000, 0.000], seed clusters 2/2; situation-responsive vs attack-priority 0.000 [0.000, 0.000], seed clusters 2/2; situation-responsive vs situation-responsive 0.000 [0.000, 0.000], seed clusters 2/2.
+- combined: no lower candidate point estimate observed; these small paired estimates do not establish absence of a real decline.
+- combined baseline: matches 36/36; actions AUTO 324, CONVERT 36, BURST 24, BURST_ATK 6, ATK 6; mean opportunities 11; unity wins 0; turn-limit settlements 36; repeated-board matches 0; progress/destruction amount 408/48.
+- combined experiment: matches 36/36; actions AUTO 324, CONVERT 36, BURST 24, BURST_ATK 6, ATK 6; mean opportunities 11; unity wins 0; turn-limit settlements 36; repeated-board matches 0; progress/destruction amount 408/48.
+- formal-baseline fixed-position discovery classifications: {"uncertainty-insufficient":36}; independent confirmations: 0.
+- no-self-cost-reward fixed-position discovery classifications: {"uncertainty-insufficient":36}; independent confirmations: 0.
+- burst-action-score-once fixed-position discovery classifications: {"uncertainty-insufficient":36}; independent confirmations: 0.
+- disable-rarity-bonus fixed-position discovery classifications: {"uncertainty-insufficient":36}; independent confirmations: 0.
+- combined fixed-position discovery classifications: {"uncertainty-insufficient":36}; independent confirmations: 0.
+
+## Limited inference
+
+- Outcomes are conditional on the finite frozen checkpoint set, the stated public continuation policies, paired seeds, and the formal win/draw/loss value scale. They do not identify globally optimal actions or establish general player advantage.
+- A confirmed reversal supports a conditional trade-off only in the tested states and policy range. Action frequency, close scores, and longer matches are descriptive diagnostics, not standalone evidence of better play.
+- Crossover search examines multiple positions and action pairs, so exploration results are selected estimates; only declared discovery qualifications are checked on disjoint confirmation seeds.
+- The report retains failures and budget skips rather than converting them to draws. No automatic formal-scoring change follows from these findings.
+
+## Human questions
+
+- Case 1: public-policy-action-disagreement at reachable-extra-opportunity-turn-11; exact actions [{"type":"CONVERT","executorId":"P2","target":{"playerId":"P2","elementIndex":3,"isYang":false}},{"type":"ATK","executorId":"P2","target":{"playerId":"P1","elementIndex":0,"isYang":false,"priority":3}}]. These named public policies choose different legal first actions on the same frozen checkpoint. Evidence limit: One checkpoint and fixed policy definitions do not predict human choices or prove that players understand the trade-off.
+- Case 2: public-policy-action-disagreement at reachable-trailing-needs-disruption-turn-14; exact actions [{"type":"CONVERT","executorId":"P1","target":{"playerId":"P1","elementIndex":0,"isYang":false}},{"type":"ATK","executorId":"P1","target":{"playerId":"P2","elementIndex":2,"isYang":false,"priority":1}}]. These named public policies choose different legal first actions on the same frozen checkpoint. Evidence limit: One checkpoint and fixed policy definitions do not predict human choices or prove that players understand the trade-off.
+- Case 3: public-policy-action-disagreement at reachable-near-turn-limit-turn-19; exact actions [{"type":"CONVERT","executorId":"P2","target":{"playerId":"P2","elementIndex":3,"isYang":false}},{"type":"ATK","executorId":"P2","target":{"playerId":"P1","elementIndex":0,"isYang":false,"priority":1}}]. These named public policies choose different legal first actions on the same frozen checkpoint. Evidence limit: One checkpoint and fixed policy definitions do not predict human choices or prove that players understand the trade-off.
+
+For each actual case, ask:
+
+1. Did anticipating this opponent change which first action you chose?
+2. Did a correct read of the opponent create a meaningful advantage?
+3. After attacking, did you still have a useful way to make progress?
+
+No scoring selection is automatically adopted.

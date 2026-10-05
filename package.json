@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "headless:compare": "node scripts/headless-batch-comparison.js"
+    "headless:compare": "node scripts/headless-batch-comparison.js",
+    "headless:evaluate": "node scripts/headless-strategy-evaluation.js"
   },
   "devDependencies": {
     "agent-browser": "^0.38.2",
