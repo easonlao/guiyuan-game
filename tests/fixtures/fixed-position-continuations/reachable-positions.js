@@ -48,3 +48,14 @@ export const reachableFixedPositions = Object.freeze(FIXTURES.map(({ stateSha256
   }
   return position;
 }));
+
+export const reachableBurstPosition = extractReachableFixedPosition(baselineMatch, {
+  id: 'reachable-burst-opportunity-turn-10',
+  classification: 'has-burst-opportunity',
+  opportunity: 10,
+  playerId: 'P2'
+});
+const burstDigest = createHash('sha256').update(JSON.stringify(reachableBurstPosition.state)).digest('hex');
+if (burstDigest !== 'e4571a29162fba0b036537222c9809289d3f0b792b4451202dc1eb8b5e1e12d7') {
+  throw new Error('frozen burst fixed-position fixture drifted: reachable-burst-opportunity-turn-10');
+}

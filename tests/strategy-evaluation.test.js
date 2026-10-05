@@ -170,6 +170,29 @@ describe('strategy evaluation study public API', () => {
     });
     expect(report.humanCases.some(item => item.kind === 'public-policy-action-disagreement')).toBe(true);
     expect(report.revision).toEqual({ commit: 'fixture-commit', workingTree: 'fixture-snapshot' });
+    expect(report.theoreticalStateSpace).toMatchObject({
+      singlePlayer: { theoreticalCombinations: 1048576, reducedEquivalenceClasses: 209728 },
+      twoPlayers: { theoreticalCombinations: 1099511627776 }
+    });
+    expect(report.positionAnalyses.length).toBeGreaterThan(0);
+    expect(report.positionAnalyses[0]).toMatchObject({
+      positionId: expect.any(String),
+      stateStructure: expect.any(Object),
+      situation: expect.any(Object),
+      tradeoffTable: expect.any(Object)
+    });
+    expect(report.tournament).toMatchObject({
+      evaluationType: 'full-strategy-tournament',
+      switchingAnalysis: expect.any(Object)
+    });
+    expect(report.turnOrderDiagnostics).toBeDefined();
+
+    expect(report.researchMarkdown).toContain('# 现行规则的状态、行动取舍与策略收益评价');
+    expect(report.researchMarkdown).toContain('### 问题一：哪些状态下建设、破坏、调息各有价值？');
+    expect(report.researchMarkdown).toContain('### 问题二：强化类是否挤压其他选择，额外行动贡献多少？');
+    expect(report.researchMarkdown).toContain('### 问题三：局势切换是否提高获胜机会？');
+    expect(report.researchMarkdown).toContain('### 问题四：现行计分强化已有优势还是补偿真实代价？');
+    expect(report.researchMarkdown).toContain('### 问题五：哪些问题仍不能判断？');
     expect(report.researchMarkdown).toContain('## Observed facts');
     expect(report.researchMarkdown).toContain('## Limited inference');
     expect(report.researchMarkdown).toContain('## Human questions');

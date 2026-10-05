@@ -1,6 +1,2391 @@
 {
   "schemaVersion": 1,
   "status": "complete",
+  "theoreticalStateSpace": {
+    "schemaVersion": 1,
+    "singlePlayer": {
+      "nodeCount": 5,
+      "sidesPerNode": 2,
+      "totalStateBits": 10,
+      "statesPerSide": 4,
+      "stateValues": [
+        -1,
+        0,
+        1,
+        2
+      ],
+      "theoreticalCombinations": 1048576,
+      "symmetryGroup": "Z5-cyclic-permutation",
+      "reducedEquivalenceClasses": 209728,
+      "notes": "单方理论棋盘组合为 4^10 = 1,048,576。依五行生克相生的循环同构性，Z5 循环群去重后等价类为 209,728。"
+    },
+    "twoPlayers": {
+      "totalStateBits": 20,
+      "theoreticalCombinations": 1099511627776,
+      "notes": "双方理论棋盘组合为 4^20 = 1,099,511,627,776。"
+    },
+    "inferenceBoundary": "状态组合分析不等于对所有完整游戏状态穷举续局。保留完整节点位置、阴阳与生克关系，不按点亮数量合并局面；不可达状态不用于推断正式游戏表现。"
+  },
+  "positionAnalyses": [
+    {
+      "positionId": "reachable-balanced-turn-7",
+      "classification": "balanced",
+      "stateStructure": {
+        "schemaVersion": 1,
+        "turnCount": 7,
+        "maxTurns": 20,
+        "currentPlayer": "P1",
+        "currentStem": {
+          "name": "癸",
+          "color": "#4a90e2",
+          "element": 4
+        },
+        "isExtraTurn": false,
+        "pendingBurstPlayer": null,
+        "scores": {
+          "P1": 300,
+          "P2": 300
+        },
+        "scoreDifference": 0,
+        "nodeStates": {
+          "P1-0": {
+            "yang": 1,
+            "yin": 0
+          },
+          "P1-1": {
+            "yang": 0,
+            "yin": 1
+          },
+          "P1-2": {
+            "yang": 0,
+            "yin": 0
+          },
+          "P1-3": {
+            "yang": 0,
+            "yin": 0
+          },
+          "P1-4": {
+            "yang": 0,
+            "yin": 1
+          },
+          "P2-0": {
+            "yang": 1,
+            "yin": 0
+          },
+          "P2-1": {
+            "yang": 0,
+            "yin": 0
+          },
+          "P2-2": {
+            "yang": 0,
+            "yin": 1
+          },
+          "P2-3": {
+            "yang": 1,
+            "yin": 0
+          },
+          "P2-4": {
+            "yang": 0,
+            "yin": 0
+          }
+        },
+        "P1": {
+          "litSideCount": 3,
+          "damagedSideCount": 0,
+          "voidSideCount": 7,
+          "boostedSideCount": 0,
+          "unityNodeCount": 0,
+          "harmonyNodeCount": 0,
+          "nearUnityThreat": false
+        },
+        "P2": {
+          "litSideCount": 3,
+          "damagedSideCount": 0,
+          "voidSideCount": 7,
+          "boostedSideCount": 0,
+          "unityNodeCount": 0,
+          "harmonyNodeCount": 0,
+          "nearUnityThreat": false
+        }
+      },
+      "situation": {
+        "positionId": "reachable-balanced-turn-7",
+        "source": "baseline-reachable",
+        "classification": "balanced",
+        "stage": "early",
+        "scoreStatus": "tied",
+        "scoreDifference": 0,
+        "threatLevel": "normal",
+        "hasBurstOpportunity": false,
+        "primaryContextTag": "early;score-tied",
+        "analysis": {
+          "schemaVersion": 1,
+          "turnCount": 7,
+          "maxTurns": 20,
+          "currentPlayer": "P1",
+          "currentStem": {
+            "name": "癸",
+            "color": "#4a90e2",
+            "element": 4
+          },
+          "isExtraTurn": false,
+          "pendingBurstPlayer": null,
+          "scores": {
+            "P1": 300,
+            "P2": 300
+          },
+          "scoreDifference": 0,
+          "nodeStates": {
+            "P1-0": {
+              "yang": 1,
+              "yin": 0
+            },
+            "P1-1": {
+              "yang": 0,
+              "yin": 1
+            },
+            "P1-2": {
+              "yang": 0,
+              "yin": 0
+            },
+            "P1-3": {
+              "yang": 0,
+              "yin": 0
+            },
+            "P1-4": {
+              "yang": 0,
+              "yin": 1
+            },
+            "P2-0": {
+              "yang": 1,
+              "yin": 0
+            },
+            "P2-1": {
+              "yang": 0,
+              "yin": 0
+            },
+            "P2-2": {
+              "yang": 0,
+              "yin": 1
+            },
+            "P2-3": {
+              "yang": 1,
+              "yin": 0
+            },
+            "P2-4": {
+              "yang": 0,
+              "yin": 0
+            }
+          },
+          "P1": {
+            "litSideCount": 3,
+            "damagedSideCount": 0,
+            "voidSideCount": 7,
+            "boostedSideCount": 0,
+            "unityNodeCount": 0,
+            "harmonyNodeCount": 0,
+            "nearUnityThreat": false
+          },
+          "P2": {
+            "litSideCount": 3,
+            "damagedSideCount": 0,
+            "voidSideCount": 7,
+            "boostedSideCount": 0,
+            "unityNodeCount": 0,
+            "harmonyNodeCount": 0,
+            "nearUnityThreat": false
+          }
+        }
+      },
+      "tradeoffTable": {
+        "positionId": "reachable-balanced-turn-7",
+        "classification": "balanced",
+        "turnCount": 7,
+        "maxTurns": 20,
+        "currentPlayer": "P1",
+        "stem": {
+          "name": "癸",
+          "color": "#4a90e2",
+          "element": 4
+        },
+        "context": {
+          "remainingTurns": 13,
+          "scoreDifference": 0,
+          "isExtraTurn": false,
+          "pendingBurstPlayer": null,
+          "opponentLitSides": 3
+        },
+        "isForcedDecision": false,
+        "actions": [
+          {
+            "action": {
+              "type": "CONVERT",
+              "executorId": "P1",
+              "target": {
+                "playerId": "P1",
+                "elementIndex": 4,
+                "isYang": true
+              }
+            },
+            "immediateEffect": {
+              "actionType": "CONVERT",
+              "executorId": "P1",
+              "opponentId": "P2",
+              "progress": {
+                "nodesChanged": 1,
+                "damageRepaired": 0,
+                "newLitSides": 1
+              },
+              "disruption": {
+                "nodesDisrupted": 0,
+                "damageInflicted": 0,
+                "litSidesDestroyed": 0
+              },
+              "selfCost": {
+                "costPoints": 0,
+                "sidesReduced": 0
+              },
+              "immediateScoreDelta": 337,
+              "opponentScoreDelta": 0,
+              "turnOrder": {
+                "grantsExtraAction": false,
+                "nextPlayer": "P2",
+                "nextIsExtraTurn": false
+              },
+              "tags": [
+                "develop-progress",
+                "light-new-side",
+                "score-delta"
+              ]
+            },
+            "potentialUtility": "调息平衡：转移天干能量至本节点另一侧，促进归一",
+            "tags": [
+              "develop-progress",
+              "light-new-side",
+              "score-delta"
+            ]
+          },
+          {
+            "action": {
+              "type": "TRANS",
+              "executorId": "P1",
+              "target": {
+                "playerId": "P1",
+                "elementIndex": 0,
+                "isYang": false,
+                "priority": 2
+              }
+            },
+            "immediateEffect": {
+              "actionType": "TRANS",
+              "executorId": "P1",
+              "opponentId": "P2",
+              "progress": {
+                "nodesChanged": 1,
+                "damageRepaired": 0,
+                "newLitSides": 1
+              },
+              "disruption": {
+                "nodesDisrupted": 0,
+                "damageInflicted": 0,
+                "litSidesDestroyed": 0
+              },
+              "selfCost": {
+                "costPoints": 0,
+                "sidesReduced": 0
+              },
+              "immediateScoreDelta": 278,
+              "opponentScoreDelta": 0,
+              "turnOrder": {
+                "grantsExtraAction": false,
+                "nextPlayer": "P2",
+                "nextIsExtraTurn": false
+              },
+              "tags": [
+                "develop-progress",
+                "light-new-side",
+                "score-delta"
+              ]
+            },
+            "potentialUtility": "化生推进：顺五行相生强化下游节点，加速点亮",
+            "tags": [
+              "develop-progress",
+              "light-new-side",
+              "score-delta"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "positionId": "reachable-extra-opportunity-turn-11",
+      "classification": "extra-action-semantics",
+      "stateStructure": {
+        "schemaVersion": 1,
+        "turnCount": 11,
+        "maxTurns": 20,
+        "currentPlayer": "P2",
+        "currentStem": {
+          "name": "庚",
+          "color": "#e6ebf0",
+          "element": 3
+        },
+        "isExtraTurn": true,
+        "pendingBurstPlayer": null,
+        "scores": {
+          "P1": 737,
+          "P2": 1810
+        },
+        "scoreDifference": -1073,
+        "nodeStates": {
+          "P1-0": {
+            "yang": 1,
+            "yin": 0
+          },
+          "P1-1": {
+            "yang": 0,
+            "yin": 1
+          },
+          "P1-2": {
+            "yang": 1,
+            "yin": 0
+          },
+          "P1-3": {
+            "yang": 0,
+            "yin": 0
+          },
+          "P1-4": {
+            "yang": 1,
+            "yin": -1
+          },
+          "P2-0": {
+            "yang": 1,
+            "yin": 0
+          },
+          "P2-1": {
+            "yang": 0,
+            "yin": 0
+          },
+          "P2-2": {
+            "yang": 0,
+            "yin": 1
+          },
+          "P2-3": {
+            "yang": 1,
+            "yin": 0
+          },
+          "P2-4": {
+            "yang": 0,
+            "yin": 0
+          }
+        },
+        "P1": {
+          "litSideCount": 4,
+          "damagedSideCount": 1,
+          "voidSideCount": 5,
+          "boostedSideCount": 0,
+          "unityNodeCount": 0,
+          "harmonyNodeCount": 0,
+          "nearUnityThreat": false
+        },
+        "P2": {
+          "litSideCount": 3,
+          "damagedSideCount": 0,
+          "voidSideCount": 7,
+          "boostedSideCount": 0,
+          "unityNodeCount": 0,
+          "harmonyNodeCount": 0,
+          "nearUnityThreat": false
+        }
+      },
+      "situation": {
+        "positionId": "reachable-extra-opportunity-turn-11",
+        "source": "baseline-reachable",
+        "classification": "extra-action-semantics",
+        "stage": "mid",
+        "scoreStatus": "leading",
+        "scoreDifference": 1073,
+        "threatLevel": "normal",
+        "hasBurstOpportunity": false,
+        "primaryContextTag": "mid;score-leading;extra-turn",
+        "analysis": {
+          "schemaVersion": 1,
+          "turnCount": 11,
+          "maxTurns": 20,
+          "currentPlayer": "P2",
+          "currentStem": {
+            "name": "庚",
+            "color": "#e6ebf0",
+            "element": 3
+          },
+          "isExtraTurn": true,
+          "pendingBurstPlayer": null,
+          "scores": {
+            "P1": 737,
+            "P2": 1810
+          },
+          "scoreDifference": -1073,
+          "nodeStates": {
+            "P1-0": {
+              "yang": 1,
+              "yin": 0
+            },
+            "P1-1": {
+              "yang": 0,
+              "yin": 1
+            },
+            "P1-2": {
+              "yang": 1,
+              "yin": 0
+            },
+            "P1-3": {
+              "yang": 0,
+              "yin": 0
+            },
+            "P1-4": {
+              "yang": 1,
+              "yin": -1
+            },
+            "P2-0": {
+              "yang": 1,
+              "yin": 0
+            },
+            "P2-1": {
+              "yang": 0,
+              "yin": 0
+            },
+            "P2-2": {
+              "yang": 0,
+              "yin": 1
+            },
+            "P2-3": {
+              "yang": 1,
+              "yin": 0
+            },
+            "P2-4": {
+              "yang": 0,
+              "yin": 0
+            }
+          },
+          "P1": {
+            "litSideCount": 4,
+            "damagedSideCount": 1,
+            "voidSideCount": 5,
+            "boostedSideCount": 0,
+            "unityNodeCount": 0,
+            "harmonyNodeCount": 0,
+            "nearUnityThreat": false
+          },
+          "P2": {
+            "litSideCount": 3,
+            "damagedSideCount": 0,
+            "voidSideCount": 7,
+            "boostedSideCount": 0,
+            "unityNodeCount": 0,
+            "harmonyNodeCount": 0,
+            "nearUnityThreat": false
+          }
+        }
+      },
+      "tradeoffTable": {
+        "positionId": "reachable-extra-opportunity-turn-11",
+        "classification": "extra-action-semantics",
+        "turnCount": 11,
+        "maxTurns": 20,
+        "currentPlayer": "P2",
+        "stem": {
+          "name": "庚",
+          "color": "#e6ebf0",
+          "element": 3
+        },
+        "context": {
+          "remainingTurns": 9,
+          "scoreDifference": 1073,
+          "isExtraTurn": true,
+          "pendingBurstPlayer": null,
+          "opponentLitSides": 4
+        },
+        "isForcedDecision": false,
+        "actions": [
+          {
+            "action": {
+              "type": "CONVERT",
+              "executorId": "P2",
+              "target": {
+                "playerId": "P2",
+                "elementIndex": 3,
+                "isYang": false
+              }
+            },
+            "immediateEffect": {
+              "actionType": "CONVERT",
+              "executorId": "P2",
+              "opponentId": "P1",
+              "progress": {
+                "nodesChanged": 1,
+                "damageRepaired": 0,
+                "newLitSides": 1
+              },
+              "disruption": {
+                "nodesDisrupted": 0,
+                "damageInflicted": 0,
+                "litSidesDestroyed": 0
+              },
+              "selfCost": {
+                "costPoints": 0,
+                "sidesReduced": 0
+              },
+              "immediateScoreDelta": 337,
+              "opponentScoreDelta": 0,
+              "turnOrder": {
+                "grantsExtraAction": false,
+                "nextPlayer": "P1",
+                "nextIsExtraTurn": false
+              },
+              "tags": [
+                "develop-progress",
+                "light-new-side",
+                "score-delta"
+              ]
+            },
+            "potentialUtility": "调息平衡：转移天干能量至本节点另一侧，促进归一",
+            "tags": [
+              "develop-progress",
+              "light-new-side",
+              "score-delta"
+            ]
+          },
+          {
+            "action": {
+              "type": "ATK",
+              "executorId": "P2",
+              "target": {
+                "playerId": "P1",
+                "elementIndex": 0,
+                "isYang": false,
+                "priority": 3
+              }
+            },
+            "immediateEffect": {
+              "actionType": "ATK",
+              "executorId": "P2",
+              "opponentId": "P1",
+              "progress": {
+                "nodesChanged": 0,
+                "damageRepaired": 0,
+                "newLitSides": 0
+              },
+              "disruption": {
+                "nodesDisrupted": 1,
+                "damageInflicted": 1,
+                "litSidesDestroyed": 0
+              },
+              "selfCost": {
+                "costPoints": 0,
+                "sidesReduced": 0
+              },
+              "immediateScoreDelta": 241,
+              "opponentScoreDelta": 0,
+              "turnOrder": {
+                "grantsExtraAction": false,
+                "nextPlayer": "P1",
+                "nextIsExtraTurn": false
+              },
+              "tags": [
+                "disrupt-opponent",
+                "inflict-damage",
+                "score-delta"
+              ]
+            },
+            "potentialUtility": "直接破防：顺五行相克压制对手节点，阻断对手归一",
+            "tags": [
+              "disrupt-opponent",
+              "inflict-damage",
+              "score-delta"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "positionId": "reachable-trailing-needs-disruption-turn-14",
+      "classification": "trailing-needs-disruption",
+      "stateStructure": {
+        "schemaVersion": 1,
+        "turnCount": 14,
+        "maxTurns": 20,
+        "currentPlayer": "P1",
+        "currentStem": {
+          "name": "甲",
+          "color": "#2dcc70",
+          "element": 0
+        },
+        "isExtraTurn": false,
+        "pendingBurstPlayer": null,
+        "scores": {
+          "P1": 837,
+          "P2": 2151
+        },
+        "scoreDifference": -1314,
+        "nodeStates": {
+          "P1-0": {
+            "yang": 1,
+            "yin": -1
+          },
+          "P1-1": {
+            "yang": 0,
+            "yin": 1
+          },
+          "P1-2": {
+            "yang": 1,
+            "yin": 0
+          },
+          "P1-3": {
+            "yang": 0,
+            "yin": 1
+          },
+          "P1-4": {
+            "yang": 1,
+            "yin": -1
+          },
+          "P2-0": {
+            "yang": 1,
+            "yin": 0
+          },
+          "P2-1": {
+            "yang": 0,
+            "yin": 0
+          },
+          "P2-2": {
+            "yang": 0,
+            "yin": 1
+          },
+          "P2-3": {
+            "yang": 1,
+            "yin": 0
+          },
+          "P2-4": {
+            "yang": 0,
+            "yin": 1
+          }
+        },
+        "P1": {
+          "litSideCount": 5,
+          "damagedSideCount": 2,
+          "voidSideCount": 3,
+          "boostedSideCount": 0,
+          "unityNodeCount": 0,
+          "harmonyNodeCount": 0,
+          "nearUnityThreat": false
+        },
+        "P2": {
+          "litSideCount": 4,
+          "damagedSideCount": 0,
+          "voidSideCount": 6,
+          "boostedSideCount": 0,
+          "unityNodeCount": 0,
+          "harmonyNodeCount": 0,
+          "nearUnityThreat": false
+        }
+      },
+      "situation": {
+        "positionId": "reachable-trailing-needs-disruption-turn-14",
+        "source": "baseline-reachable",
+        "classification": "trailing-needs-disruption",
+        "stage": "mid",
+        "scoreStatus": "trailing",
+        "scoreDifference": -1314,
+        "threatLevel": "normal",
+        "hasBurstOpportunity": false,
+        "primaryContextTag": "mid;score-trailing",
+        "analysis": {
+          "schemaVersion": 1,
+          "turnCount": 14,
+          "maxTurns": 20,
+          "currentPlayer": "P1",
+          "currentStem": {
+            "name": "甲",
+            "color": "#2dcc70",
+            "element": 0
+          },
+          "isExtraTurn": false,
+          "pendingBurstPlayer": null,
+          "scores": {
+            "P1": 837,
+            "P2": 2151
+          },
+          "scoreDifference": -1314,
+          "nodeStates": {
+            "P1-0": {
+              "yang": 1,
+              "yin": -1
+            },
+            "P1-1": {
+              "yang": 0,
+              "yin": 1
+            },
+            "P1-2": {
+              "yang": 1,
+              "yin": 0
+            },
+            "P1-3": {
+              "yang": 0,
+              "yin": 1
+            },
+            "P1-4": {
+              "yang": 1,
+              "yin": -1
+            },
+            "P2-0": {
+              "yang": 1,
+              "yin": 0
+            },
+            "P2-1": {
+              "yang": 0,
+              "yin": 0
+            },
+            "P2-2": {
+              "yang": 0,
+              "yin": 1
+            },
+            "P2-3": {
+              "yang": 1,
+              "yin": 0
+            },
+            "P2-4": {
+              "yang": 0,
+              "yin": 1
+            }
+          },
+          "P1": {
+            "litSideCount": 5,
+            "damagedSideCount": 2,
+            "voidSideCount": 3,
+            "boostedSideCount": 0,
+            "unityNodeCount": 0,
+            "harmonyNodeCount": 0,
+            "nearUnityThreat": false
+          },
+          "P2": {
+            "litSideCount": 4,
+            "damagedSideCount": 0,
+            "voidSideCount": 6,
+            "boostedSideCount": 0,
+            "unityNodeCount": 0,
+            "harmonyNodeCount": 0,
+            "nearUnityThreat": false
+          }
+        }
+      },
+      "tradeoffTable": {
+        "positionId": "reachable-trailing-needs-disruption-turn-14",
+        "classification": "trailing-needs-disruption",
+        "turnCount": 14,
+        "maxTurns": 20,
+        "currentPlayer": "P1",
+        "stem": {
+          "name": "甲",
+          "color": "#2dcc70",
+          "element": 0
+        },
+        "context": {
+          "remainingTurns": 6,
+          "scoreDifference": -1314,
+          "isExtraTurn": false,
+          "pendingBurstPlayer": null,
+          "opponentLitSides": 4
+        },
+        "isForcedDecision": false,
+        "actions": [
+          {
+            "action": {
+              "type": "CONVERT",
+              "executorId": "P1",
+              "target": {
+                "playerId": "P1",
+                "elementIndex": 0,
+                "isYang": false
+              }
+            },
+            "immediateEffect": {
+              "actionType": "CONVERT",
+              "executorId": "P1",
+              "opponentId": "P2",
+              "progress": {
+                "nodesChanged": 1,
+                "damageRepaired": 1,
+                "newLitSides": 0
+              },
+              "disruption": {
+                "nodesDisrupted": 0,
+                "damageInflicted": 0,
+                "litSidesDestroyed": 0
+              },
+              "selfCost": {
+                "costPoints": 0,
+                "sidesReduced": 0
+              },
+              "immediateScoreDelta": 562,
+              "opponentScoreDelta": 0,
+              "turnOrder": {
+                "grantsExtraAction": false,
+                "nextPlayer": "P2",
+                "nextIsExtraTurn": false
+              },
+              "tags": [
+                "develop-progress",
+                "repair-damage",
+                "score-delta"
+              ]
+            },
+            "potentialUtility": "调息平衡：转移天干能量至本节点另一侧，促进归一",
+            "tags": [
+              "develop-progress",
+              "repair-damage",
+              "score-delta"
+            ]
+          },
+          {
+            "action": {
+              "type": "ATK",
+              "executorId": "P1",
+              "target": {
+                "playerId": "P2",
+                "elementIndex": 2,
+                "isYang": false,
+                "priority": 1
+              }
+            },
+            "immediateEffect": {
+              "actionType": "ATK",
+              "executorId": "P1",
+              "opponentId": "P2",
+              "progress": {
+                "nodesChanged": 0,
+                "damageRepaired": 0,
+                "newLitSides": 0
+              },
+              "disruption": {
+                "nodesDisrupted": 1,
+                "damageInflicted": 0,
+                "litSidesDestroyed": 1
+              },
+              "selfCost": {
+                "costPoints": 0,
+                "sidesReduced": 0
+              },
+              "immediateScoreDelta": 172,
+              "opponentScoreDelta": 0,
+              "turnOrder": {
+                "grantsExtraAction": false,
+                "nextPlayer": "P2",
+                "nextIsExtraTurn": false
+              },
+              "tags": [
+                "disrupt-opponent",
+                "destroy-lit-side",
+                "score-delta"
+              ]
+            },
+            "potentialUtility": "直接破防：顺五行相克压制对手节点，阻断对手归一",
+            "tags": [
+              "disrupt-opponent",
+              "destroy-lit-side",
+              "score-delta"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "positionId": "reachable-near-turn-limit-turn-19",
+      "classification": "near-turn-limit",
+      "stateStructure": {
+        "schemaVersion": 1,
+        "turnCount": 19,
+        "maxTurns": 20,
+        "currentPlayer": "P2",
+        "currentStem": {
+          "name": "庚",
+          "color": "#e6ebf0",
+          "element": 3
+        },
+        "isExtraTurn": false,
+        "pendingBurstPlayer": null,
+        "scores": {
+          "P1": 2061,
+          "P2": 2729
+        },
+        "scoreDifference": -668,
+        "nodeStates": {
+          "P1-0": {
+            "yang": 1,
+            "yin": 1
+          },
+          "P1-1": {
+            "yang": 0,
+            "yin": 1
+          },
+          "P1-2": {
+            "yang": 1,
+            "yin": -1
+          },
+          "P1-3": {
+            "yang": 0,
+            "yin": 1
+          },
+          "P1-4": {
+            "yang": 1,
+            "yin": 0
+          },
+          "P2-0": {
+            "yang": 1,
+            "yin": 0
+          },
+          "P2-1": {
+            "yang": 0,
+            "yin": 0
+          },
+          "P2-2": {
+            "yang": 0,
+            "yin": 1
+          },
+          "P2-3": {
+            "yang": 1,
+            "yin": 0
+          },
+          "P2-4": {
+            "yang": 1,
+            "yin": 1
+          }
+        },
+        "P1": {
+          "litSideCount": 6,
+          "damagedSideCount": 1,
+          "voidSideCount": 3,
+          "boostedSideCount": 0,
+          "unityNodeCount": 1,
+          "harmonyNodeCount": 0,
+          "nearUnityThreat": false
+        },
+        "P2": {
+          "litSideCount": 5,
+          "damagedSideCount": 0,
+          "voidSideCount": 5,
+          "boostedSideCount": 0,
+          "unityNodeCount": 1,
+          "harmonyNodeCount": 0,
+          "nearUnityThreat": false
+        }
+      },
+      "situation": {
+        "positionId": "reachable-near-turn-limit-turn-19",
+        "source": "baseline-reachable",
+        "classification": "near-turn-limit",
+        "stage": "near-limit",
+        "scoreStatus": "leading",
+        "scoreDifference": 668,
+        "threatLevel": "normal",
+        "hasBurstOpportunity": true,
+        "primaryContextTag": "near-limit;score-leading;has-unity-nodes",
+        "analysis": {
+          "schemaVersion": 1,
+          "turnCount": 19,
+          "maxTurns": 20,
+          "currentPlayer": "P2",
+          "currentStem": {
+            "name": "庚",
+            "color": "#e6ebf0",
+            "element": 3
+          },
+          "isExtraTurn": false,
+          "pendingBurstPlayer": null,
+          "scores": {
+            "P1": 2061,
+            "P2": 2729
+          },
+          "scoreDifference": -668,
+          "nodeStates": {
+            "P1-0": {
+              "yang": 1,
+              "yin": 1
+            },
+            "P1-1": {
+              "yang": 0,
+              "yin": 1
+            },
+            "P1-2": {
+              "yang": 1,
+              "yin": -1
+            },
+            "P1-3": {
+              "yang": 0,
+              "yin": 1
+            },
+            "P1-4": {
+              "yang": 1,
+              "yin": 0
+            },
+            "P2-0": {
+              "yang": 1,
+              "yin": 0
+            },
+            "P2-1": {
+              "yang": 0,
+              "yin": 0
+            },
+            "P2-2": {
+              "yang": 0,
+              "yin": 1
+            },
+            "P2-3": {
+              "yang": 1,
+              "yin": 0
+            },
+            "P2-4": {
+              "yang": 1,
+              "yin": 1
+            }
+          },
+          "P1": {
+            "litSideCount": 6,
+            "damagedSideCount": 1,
+            "voidSideCount": 3,
+            "boostedSideCount": 0,
+            "unityNodeCount": 1,
+            "harmonyNodeCount": 0,
+            "nearUnityThreat": false
+          },
+          "P2": {
+            "litSideCount": 5,
+            "damagedSideCount": 0,
+            "voidSideCount": 5,
+            "boostedSideCount": 0,
+            "unityNodeCount": 1,
+            "harmonyNodeCount": 0,
+            "nearUnityThreat": false
+          }
+        }
+      },
+      "tradeoffTable": {
+        "positionId": "reachable-near-turn-limit-turn-19",
+        "classification": "near-turn-limit",
+        "turnCount": 19,
+        "maxTurns": 20,
+        "currentPlayer": "P2",
+        "stem": {
+          "name": "庚",
+          "color": "#e6ebf0",
+          "element": 3
+        },
+        "context": {
+          "remainingTurns": 1,
+          "scoreDifference": 668,
+          "isExtraTurn": false,
+          "pendingBurstPlayer": null,
+          "opponentLitSides": 6
+        },
+        "isForcedDecision": false,
+        "actions": [
+          {
+            "action": {
+              "type": "CONVERT",
+              "executorId": "P2",
+              "target": {
+                "playerId": "P2",
+                "elementIndex": 3,
+                "isYang": false
+              }
+            },
+            "immediateEffect": {
+              "actionType": "CONVERT",
+              "executorId": "P2",
+              "opponentId": "P1",
+              "progress": {
+                "nodesChanged": 1,
+                "damageRepaired": 0,
+                "newLitSides": 1
+              },
+              "disruption": {
+                "nodesDisrupted": 0,
+                "damageInflicted": 0,
+                "litSidesDestroyed": 0
+              },
+              "selfCost": {
+                "costPoints": 0,
+                "sidesReduced": 0
+              },
+              "immediateScoreDelta": 337,
+              "opponentScoreDelta": 0,
+              "turnOrder": {
+                "grantsExtraAction": false,
+                "nextPlayer": "P1",
+                "nextIsExtraTurn": false
+              },
+              "tags": [
+                "develop-progress",
+                "light-new-side",
+                "score-delta"
+              ]
+            },
+            "potentialUtility": "调息平衡：转移天干能量至本节点另一侧，促进归一",
+            "tags": [
+              "develop-progress",
+              "light-new-side",
+              "score-delta"
+            ]
+          },
+          {
+            "action": {
+              "type": "ATK",
+              "executorId": "P2",
+              "target": {
+                "playerId": "P1",
+                "elementIndex": 0,
+                "isYang": false,
+                "priority": 1
+              }
+            },
+            "immediateEffect": {
+              "actionType": "ATK",
+              "executorId": "P2",
+              "opponentId": "P1",
+              "progress": {
+                "nodesChanged": 0,
+                "damageRepaired": 0,
+                "newLitSides": 0
+              },
+              "disruption": {
+                "nodesDisrupted": 1,
+                "damageInflicted": 0,
+                "litSidesDestroyed": 1
+              },
+              "selfCost": {
+                "costPoints": 0,
+                "sidesReduced": 0
+              },
+              "immediateScoreDelta": 172,
+              "opponentScoreDelta": 0,
+              "turnOrder": {
+                "grantsExtraAction": false,
+                "nextPlayer": "P1",
+                "nextIsExtraTurn": false
+              },
+              "tags": [
+                "disrupt-opponent",
+                "destroy-lit-side",
+                "score-delta"
+              ]
+            },
+            "potentialUtility": "直接破防：顺五行相克压制对手节点，阻断对手归一",
+            "tags": [
+              "disrupt-opponent",
+              "destroy-lit-side",
+              "score-delta"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "tournament": {
+    "schemaVersion": 1,
+    "evaluationType": "full-strategy-tournament",
+    "strategies": [
+      "build-priority",
+      "attack-priority",
+      "situation-responsive",
+      "fixed-build",
+      "fixed-attack"
+    ],
+    "seeds": [
+      202603,
+      202604
+    ],
+    "maxTurns": 12,
+    "matchups": [
+      {
+        "P1": "build-priority",
+        "P2": "build-priority",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2353
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 2353,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "build-priority",
+        "P2": "attack-priority",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2196
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 2353,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "build-priority",
+        "P2": "situation-responsive",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2353
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 2353,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "build-priority",
+        "P2": "fixed-build",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2353
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 2353,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "build-priority",
+        "P2": "fixed-attack",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2196
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 2353,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "attack-priority",
+        "P2": "build-priority",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2353
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 672,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "attack-priority",
+        "P2": "attack-priority",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2196
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 672,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "attack-priority",
+        "P2": "situation-responsive",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2353
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 672,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "attack-priority",
+        "P2": "fixed-build",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2353
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 672,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "attack-priority",
+        "P2": "fixed-attack",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2196
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 672,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "situation-responsive",
+        "P2": "build-priority",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2353
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 2353,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "situation-responsive",
+        "P2": "attack-priority",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2196
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 2353,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "situation-responsive",
+        "P2": "situation-responsive",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2353
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 2353,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "situation-responsive",
+        "P2": "fixed-build",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2353
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 2353,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "situation-responsive",
+        "P2": "fixed-attack",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2196
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 2353,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "fixed-build",
+        "P2": "build-priority",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2353
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 2353,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "fixed-build",
+        "P2": "attack-priority",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2196
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 2353,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "fixed-build",
+        "P2": "situation-responsive",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2353
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 2353,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "fixed-build",
+        "P2": "fixed-build",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2353
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 2353,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "fixed-build",
+        "P2": "fixed-attack",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2196
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 2353,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "fixed-attack",
+        "P2": "build-priority",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2353
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 672,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "fixed-attack",
+        "P2": "attack-priority",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2196
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 672,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "fixed-attack",
+        "P2": "situation-responsive",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2353
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 672,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "fixed-attack",
+        "P2": "fixed-build",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2353
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 672,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      },
+      {
+        "P1": "fixed-attack",
+        "P2": "fixed-attack",
+        "totalMatches": 2,
+        "p1Wins": 1,
+        "p2Wins": 1,
+        "draws": 0,
+        "lightingWins": 0,
+        "turnLimitWins": 2,
+        "p1WinRate": 0.5,
+        "p2WinRate": 0.5,
+        "drawRate": 0,
+        "matches": [
+          {
+            "seed": 202603,
+            "winner": "P2",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 500,
+              "P2": 2196
+            },
+            "consumedStemCount": 11
+          },
+          {
+            "seed": 202604,
+            "winner": "P1",
+            "reason": "回合上限",
+            "finalScore": {
+              "P1": 672,
+              "P2": 500
+            },
+            "consumedStemCount": 11
+          }
+        ]
+      }
+    ],
+    "strategySummaries": {
+      "build-priority": {
+        "strategyId": "build-priority",
+        "matchesPlayed": 20,
+        "wins": 10,
+        "draws": 0,
+        "losses": 10,
+        "totalOutcomeValue": 10,
+        "meanOutcomeValue": 0.5,
+        "victoryTypes": {
+          "lighting": 0,
+          "turnLimit": 10
+        },
+        "roles": {
+          "asP1": {
+            "matches": 10,
+            "wins": 5,
+            "draws": 0,
+            "losses": 5,
+            "value": 5
+          },
+          "asP2": {
+            "matches": 10,
+            "wins": 5,
+            "draws": 0,
+            "losses": 5,
+            "value": 5
+          }
+        }
+      },
+      "attack-priority": {
+        "strategyId": "attack-priority",
+        "matchesPlayed": 20,
+        "wins": 10,
+        "draws": 0,
+        "losses": 10,
+        "totalOutcomeValue": 10,
+        "meanOutcomeValue": 0.5,
+        "victoryTypes": {
+          "lighting": 0,
+          "turnLimit": 10
+        },
+        "roles": {
+          "asP1": {
+            "matches": 10,
+            "wins": 5,
+            "draws": 0,
+            "losses": 5,
+            "value": 5
+          },
+          "asP2": {
+            "matches": 10,
+            "wins": 5,
+            "draws": 0,
+            "losses": 5,
+            "value": 5
+          }
+        }
+      },
+      "situation-responsive": {
+        "strategyId": "situation-responsive",
+        "matchesPlayed": 20,
+        "wins": 10,
+        "draws": 0,
+        "losses": 10,
+        "totalOutcomeValue": 10,
+        "meanOutcomeValue": 0.5,
+        "victoryTypes": {
+          "lighting": 0,
+          "turnLimit": 10
+        },
+        "roles": {
+          "asP1": {
+            "matches": 10,
+            "wins": 5,
+            "draws": 0,
+            "losses": 5,
+            "value": 5
+          },
+          "asP2": {
+            "matches": 10,
+            "wins": 5,
+            "draws": 0,
+            "losses": 5,
+            "value": 5
+          }
+        }
+      },
+      "fixed-build": {
+        "strategyId": "fixed-build",
+        "matchesPlayed": 20,
+        "wins": 10,
+        "draws": 0,
+        "losses": 10,
+        "totalOutcomeValue": 10,
+        "meanOutcomeValue": 0.5,
+        "victoryTypes": {
+          "lighting": 0,
+          "turnLimit": 10
+        },
+        "roles": {
+          "asP1": {
+            "matches": 10,
+            "wins": 5,
+            "draws": 0,
+            "losses": 5,
+            "value": 5
+          },
+          "asP2": {
+            "matches": 10,
+            "wins": 5,
+            "draws": 0,
+            "losses": 5,
+            "value": 5
+          }
+        }
+      },
+      "fixed-attack": {
+        "strategyId": "fixed-attack",
+        "matchesPlayed": 20,
+        "wins": 10,
+        "draws": 0,
+        "losses": 10,
+        "totalOutcomeValue": 10,
+        "meanOutcomeValue": 0.5,
+        "victoryTypes": {
+          "lighting": 0,
+          "turnLimit": 10
+        },
+        "roles": {
+          "asP1": {
+            "matches": 10,
+            "wins": 5,
+            "draws": 0,
+            "losses": 5,
+            "value": 5
+          },
+          "asP2": {
+            "matches": 10,
+            "wins": 5,
+            "draws": 0,
+            "losses": 5,
+            "value": 5
+          }
+        }
+      }
+    },
+    "switchingAnalysis": {
+      "situationResponsiveValue": 0.5,
+      "fixedBuildValue": 0.5,
+      "fixedAttackValue": 0.5,
+      "switchingAdvantageOverFixedBuild": 0,
+      "switchingAdvantageOverFixedAttack": 0,
+      "interpretation": "局势切换与固定对照表现相近。"
+    },
+    "inferenceBoundary": "该对阵结果受限于固定的五种公共策略和配置的随机种子；策略切换收益只在包含两类固定对手的混合对阵中成立，不外推为人类最优玩法。"
+  },
+  "turnOrderDiagnostics": [
+    {
+      "schemaVersion": 1,
+      "variant": "diagnostic-no-extra-action",
+      "ruleIdentity": "diagnostic-control-only-isolated-from-formal-rules",
+      "positionId": "reachable-burst-opportunity-turn-10",
+      "classification": "has-burst-opportunity",
+      "turnCount": 10,
+      "currentPlayer": "P2",
+      "seeds": [
+        202603,
+        202604
+      ],
+      "formalComparison": {
+        "actions": [
+          {
+            "action": {
+              "type": "TRANS",
+              "executorId": "P2",
+              "target": {
+                "playerId": "P2",
+                "elementIndex": 3,
+                "isYang": false,
+                "priority": 2
+              }
+            },
+            "values": [
+              1,
+              0
+            ],
+            "meanValue": 0.5
+          },
+          {
+            "action": {
+              "type": "BURST",
+              "executorId": "P2",
+              "targetEl": 3
+            },
+            "values": [
+              1,
+              1
+            ],
+            "meanValue": 1
+          },
+          {
+            "action": {
+              "type": "BURST_ATK",
+              "executorId": "P2",
+              "targetEl": 4
+            },
+            "values": [
+              1,
+              1
+            ],
+            "meanValue": 1
+          }
+        ]
+      },
+      "diagnosticComparison": {
+        "actions": [
+          {
+            "action": {
+              "type": "TRANS",
+              "executorId": "P2",
+              "target": {
+                "playerId": "P2",
+                "elementIndex": 3,
+                "isYang": false,
+                "priority": 2
+              }
+            },
+            "values": [
+              1,
+              0
+            ],
+            "meanValue": 0.5
+          },
+          {
+            "action": {
+              "type": "BURST",
+              "executorId": "P2",
+              "targetEl": 3
+            },
+            "values": [
+              0,
+              0
+            ],
+            "meanValue": 0
+          },
+          {
+            "action": {
+              "type": "BURST_ATK",
+              "executorId": "P2",
+              "targetEl": 4
+            },
+            "values": [
+              1,
+              0
+            ],
+            "meanValue": 0.5
+          }
+        ]
+      },
+      "turnOrderContributions": [
+        {
+          "action": {
+            "type": "TRANS",
+            "executorId": "P2",
+            "target": {
+              "playerId": "P2",
+              "elementIndex": 3,
+              "isYang": false,
+              "priority": 2
+            }
+          },
+          "isBurst": false,
+          "formalValue": 0.5,
+          "diagnosticValue": 0.5,
+          "turnOrderValueDelta": 0,
+          "interpretation": "该动作为非强化类动作，无额外行动次序加成。"
+        },
+        {
+          "action": {
+            "type": "BURST",
+            "executorId": "P2",
+            "targetEl": 3
+          },
+          "isBurst": true,
+          "formalValue": 1,
+          "diagnosticValue": 0,
+          "turnOrderValueDelta": 1,
+          "interpretation": "强化获得的额外行动提供了 +1.000 的净胜势价值提升。"
+        },
+        {
+          "action": {
+            "type": "BURST_ATK",
+            "executorId": "P2",
+            "targetEl": 4
+          },
+          "isBurst": true,
+          "formalValue": 1,
+          "diagnosticValue": 0.5,
+          "turnOrderValueDelta": 0.5,
+          "interpretation": "强化获得的额外行动提供了 +0.500 的净胜势价值提升。"
+        }
+      ],
+      "inferenceBoundary": "该对照仅用于定量分离强化动作中「额外行动次序」与「棋盘节点改动」的独立影响；诊断结果严格与正式游戏规则隔离。"
+    }
+  ],
   "plan": {
     "seed": 202603,
     "discoverySeeds": [
@@ -460,8 +2845,8 @@
     "fixedPositionLimitations": "Frozen checkpoints keep their recorded maxTurns; --max-turns controls paired initial-state batch comparisons only."
   },
   "revision": {
-    "commit": "4219bb4f078a32e46cb452135b1e6475130f094f",
-    "workingTree": "",
+    "commit": "8ae6aed3322c829cce18acbb455bc6f5adb77d5b",
+    "workingTree": "M AGENTS.md\n M reports/headless-strategy-evaluation/small-run/research.md\n M scripts/headless-strategy-evaluation.js\n M src/js/logic/headless/StrategyEvaluation.js\n M tests/fixtures/fixed-position-continuations/reachable-positions.js\n M tests/strategy-evaluation.test.js\n?? .agents/\n?? src/js/logic/headless/ActionTradeoffAnalysis.js\n?? src/js/logic/headless/StateStructureAnalysis.js\n?? src/js/logic/headless/StrategyTournament.js\n?? src/js/logic/headless/TurnOrderDiagnostic.js\n?? tests/action-tradeoff-analysis.test.js\n?? tests/state-structure-analysis.test.js\n?? tests/strategy-tournament.test.js\n?? tests/turn-order-diagnostic.test.js",
     "sourceManifest": [
       {
         "path": "package-lock.json",
@@ -477,7 +2862,7 @@
       },
       {
         "path": "scripts/headless-strategy-evaluation.js",
-        "sha256": "dd2a2c89382cc0b65e260ebaa2c4505e35ad8713d28e703d623e45b2c22756f4"
+        "sha256": "46113da49e2e36fab8ac7017b7adb0963d50b88b8e460bcf01db8cdde7786523"
       },
       {
         "path": "src/js/bus/EventBus.js",
@@ -568,6 +2953,10 @@
         "sha256": "c4ab9a13627ed54216eed53c5e1b2d958d34da792322a3cb7f367fb4ea7205fa"
       },
       {
+        "path": "src/js/logic/headless/ActionTradeoffAnalysis.js",
+        "sha256": "a18d6228f2030d6ed8ae5b383093e61b2ffcdcb3d9519d2d358be2d44eca4bab"
+      },
+      {
         "path": "src/js/logic/headless/BatchComparison.js",
         "sha256": "34e686592f77a54ad025c94b49c85c00112a0615187c9c4bf093d93192eb32d3"
       },
@@ -604,8 +2993,20 @@
         "sha256": "bd97796df26e94b5187b97b3a4cfd5afe57813e42520d14e42489de9e3ef7bee"
       },
       {
+        "path": "src/js/logic/headless/StateStructureAnalysis.js",
+        "sha256": "d35c3b566ff4c941846f8073dd1698458f5b7309b22e9bf982c4b00e6a2e1581"
+      },
+      {
         "path": "src/js/logic/headless/StrategyEvaluation.js",
-        "sha256": "ccae9d6e4eeba32e96f536e5ae52bd302aede1fc4cb790bf6e3e407808755c65"
+        "sha256": "b93c4852d96c7024fc7367e1e750f1e0f4f2550fbf007ee9a74773cd566d3c6a"
+      },
+      {
+        "path": "src/js/logic/headless/StrategyTournament.js",
+        "sha256": "5e00b56d917477ae8f252f023fc14525633a3858810ce9d91a62b7b069f48d66"
+      },
+      {
+        "path": "src/js/logic/headless/TurnOrderDiagnostic.js",
+        "sha256": "0d2730a42af50c85a8e789a723aa0668d28ee9726a019f0c5222291c68a4397b"
       },
       {
         "path": "src/js/network/LeaderboardManager.js",
@@ -797,10 +3198,10 @@
       },
       {
         "path": "tests/fixtures/fixed-position-continuations/reachable-positions.js",
-        "sha256": "cd5dc4df548103b399b95f8d71654beb209e9e0b5b155d2eca725d95edc72b08"
+        "sha256": "695fb7d4073575b850011e72713f1b133dbccc37d64b69317fe732ab52e9d0e5"
       }
     ],
-    "sourceSha256": "c9651d044f4128e7e8032fd60a35f2f30b44f553778e3381deec65808f849cf7"
+    "sourceSha256": "6b4fd1f7c087e113441146970796dcf1c187e7ff4b4d1082a8d0c092e0aa5d10"
   },
   "summary": {
     "coverage": {
