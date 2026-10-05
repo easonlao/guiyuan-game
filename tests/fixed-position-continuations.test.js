@@ -341,7 +341,8 @@ describe('fixed-position continuation public API', () => {
       position,
       strategies: { P1: 'build-priority', P2: 'attack-priority' },
       seeds: [2, 5],
-      scoringConfig: {}
+      scoringConfig: {},
+      maxTurns: 20
     });
 
     expect(result.status).toBe('complete');

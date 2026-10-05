@@ -210,7 +210,7 @@ function runCounts(comparisons) {
   }, { attemptedMatchCount: 0, completedMatchCount: 0, failedMatchCount: 0, budgetSkippedMatchCount: 0 });
 }
 
-function phaseComparisons(positions, opponents, strategy, seeds, scoringConfig, maxRuns, alreadyAttempted) {
+function phaseComparisons(positions, opponents, strategy, seeds, scoringConfig, maxRuns, alreadyAttempted, maxTurns) {
   const comparisons = [];
   const comparisonIndexByKey = new Map();
   let attempted = alreadyAttempted;
@@ -222,6 +222,7 @@ function phaseComparisons(positions, opponents, strategy, seeds, scoringConfig, 
         strategies: comparisonStrategies(position, strategy, opponent.strategy),
         seeds,
         scoringConfig,
+        ...(maxTurns !== undefined ? { maxTurns } : {}),
         ...(remaining === undefined ? {} : { maxRuns: remaining })
       });
       const index = comparisons.length;
@@ -321,7 +322,7 @@ const LIMITATIONS = [
 export function evaluateCrossoverConfirmation(input = {}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('input must be an object');
   const criteria = validateCriteria(input.criteria);
-  const { positions, focalStrategy, opponents, discoverySeeds, confirmationSeeds, scoringConfig, maxRuns } = input;
+  const { positions, focalStrategy, opponents, discoverySeeds, confirmationSeeds, scoringConfig, maxRuns, maxTurns } = input;
   if (!Array.isArray(positions) || positions.length === 0) throw new TypeError('positions must be a non-empty array');
   if (!Array.isArray(opponents) || opponents.length !== 2) throw new TypeError('opponents must contain exactly two strategies');
   if (!Object.hasOwn(input, 'scoringConfig')) {
@@ -335,6 +336,9 @@ export function evaluateCrossoverConfirmation(input = {}) {
   }
   if (maxRuns !== undefined && (!Number.isSafeInteger(maxRuns) || maxRuns < 0)) {
     throw new TypeError('maxRuns must be a non-negative safe integer');
+  }
+  if (maxTurns !== undefined && (!Number.isSafeInteger(maxTurns) || maxTurns < 1)) {
+    throw new TypeError('maxTurns must be a positive safe integer');
   }
   const focalIdentity = resolveStrategyIdentity(focalStrategy, 'focalStrategy');
   const opponentIds = new Set();
@@ -370,7 +374,7 @@ export function evaluateCrossoverConfirmation(input = {}) {
   };
 
   const discoveryRun = phaseComparisons(positions, normalizedOpponents, focalStrategy,
-    discoverySeeds, scoringConfigInput, maxRuns, 0);
+    discoverySeeds, scoringConfigInput, maxRuns, 0, maxTurns);
   const discoveryPairs = [];
   for (const position of positions) {
     const referenceComparison = comparisonFor(discoveryRun.comparisons,
@@ -394,7 +398,7 @@ export function evaluateCrossoverConfirmation(input = {}) {
   const selectedPositions = positions.filter(position => selectedPositionIds.has(position.id));
   const discoveryCounts = runCounts(discoveryRun.comparisons);
   const confirmationRun = phaseComparisons(selectedPositions, normalizedOpponents, focalStrategy,
-    confirmationSeeds, scoringConfigInput, maxRuns, discoveryCounts.attemptedMatchCount);
+    confirmationSeeds, scoringConfigInput, maxRuns, discoveryCounts.attemptedMatchCount, maxTurns);
 
   const confirmationPairs = discoveryPairs.map(discoveryPair => {
     const pair = {

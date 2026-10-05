@@ -391,7 +391,7 @@ function errorRecord(error, match) {
  */
 export function compareFixedPositionContinuations(input = {}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('input must be an object');
-  const { position, strategies, seeds, scoringConfig, maxRuns } = input;
+  const { position, strategies, seeds, scoringConfig, maxRuns, maxTurns } = input;
   assertFixedPosition(position);
   if (!Object.hasOwn(input, 'scoringConfig')) {
     throw new TypeError('scoringConfig is required; pass {} to select the formal baseline explicitly');
@@ -400,6 +400,10 @@ export function compareFixedPositionContinuations(input = {}) {
   if (maxRuns !== undefined && (!Number.isSafeInteger(maxRuns) || maxRuns < 0)) {
     throw new TypeError('maxRuns must be a non-negative safe integer');
   }
+  if (maxTurns !== undefined && (!Number.isSafeInteger(maxTurns) || maxTurns < 1)) {
+    throw new TypeError('maxTurns must be a positive safe integer');
+  }
+  const continuationMaxTurns = maxTurns ?? (position.state?.maxTurns === 20 ? 60 : (position.state?.maxTurns ?? 60));
   if (!strategies || typeof strategies !== 'object' || Array.isArray(strategies)
     || PLAYER_IDS.some(playerId => !Object.hasOwn(strategies, playerId))) {
     throw new TypeError('strategies must provide P1 and P2 definitions');
@@ -461,15 +465,17 @@ export function compareFixedPositionContinuations(input = {}) {
       }
       attemptedMatchCount++;
       let match;
+      const continuationInitialState = clone(position.state);
+      continuationInitialState.maxTurns = continuationMaxTurns;
       try {
         match = runSeededMatch({
-          initialState: clone(position.state),
+          initialState: continuationInitialState,
           seed,
           strategies: createBranchStrategies(),
           scoringConfig: clone(scoringConfig)
         });
         if (!sameValue(match.scoringConfig, expectedScoringConfig)) {
-          const replay = makeReplayRecord(match, position.state, scoringConfigInput);
+          const replay = makeReplayRecord(match, continuationInitialState, scoringConfigInput);
           const failure = {
             candidateIndex,
             action: clone(action),
@@ -486,7 +492,7 @@ export function compareFixedPositionContinuations(input = {}) {
           failures.push(failure);
           return failure;
         }
-        const replay = makeReplayRecord(match, position.state, scoringConfigInput);
+        const replay = makeReplayRecord(match, continuationInitialState, scoringConfigInput);
         const { outcome, value } = actionOutcome(match.terminalResult, position.currentPlayer);
         completedMatchCount++;
         return {

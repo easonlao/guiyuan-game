@@ -390,10 +390,29 @@ function buildResearchMarkdown(study) {
 export function runStrategyEvaluationStudy(options = {}) {
   const positions = options.positions;
   if (!Array.isArray(positions) || positions.length === 0) throw new TypeError('positions must be a non-empty frozen-position collection');
-  const discoverySamples = options.discoverySamples ?? options.samples ?? 2;
-  const confirmationSamples = options.confirmationSamples ?? options.samples ?? 2;
+
+  if (Array.isArray(options.maxTurns)) {
+    if (options.maxTurns.length === 0) throw new TypeError('maxTurns array must not be empty');
+    for (const mt of options.maxTurns) {
+      if (!Number.isSafeInteger(mt) || mt < 1) throw new TypeError('maxTurns elements must be positive safe integers');
+    }
+    const sweep = options.maxTurns.map(turns => runStrategyEvaluationStudy({ ...options, maxTurns: turns }));
+    const primary = sweep.find(s => s.plan.maxTurns === 60) ?? sweep[sweep.length - 1];
+    return {
+      ...primary,
+      sweep: sweep.map(s => ({
+        maxTurns: s.plan.maxTurns,
+        summary: s.machineSummary?.summary ?? s.summary,
+        tournament: s.tournament,
+        batchSummaries: s.machineSummary?.batchSummaries
+      }))
+    };
+  }
+
+  const discoverySamples = options.discoverySamples ?? options.samples ?? options.seeds ?? 200;
+  const confirmationSamples = options.confirmationSamples ?? options.samples ?? options.seeds ?? 200;
   const seed = options.seed ?? 202603;
-  const maxTurns = options.maxTurns ?? 12;
+  const maxTurns = options.maxTurns ?? 60;
   if (!Number.isSafeInteger(discoverySamples) || discoverySamples < 1) throw new TypeError('discoverySamples must be a positive safe integer');
   if (!Number.isSafeInteger(confirmationSamples) || confirmationSamples < 1) throw new TypeError('confirmationSamples must be a positive safe integer');
   if (!Number.isSafeInteger(maxTurns) || maxTurns < 1) throw new TypeError('maxTurns must be a positive safe integer');
@@ -443,6 +462,7 @@ export function runStrategyEvaluationStudy(options = {}) {
           confirmationSeeds,
           scoringConfig,
           criteria,
+          maxTurns,
           ...(remainingBudget === undefined ? {} : { maxRuns: remainingBudget })
         });
         fixedAttempted += result.summary.attemptedMatchCount;
@@ -542,7 +562,7 @@ export function runStrategyEvaluationStudy(options = {}) {
         maxTurns: position.state.maxTurns,
         provenance: provenanceIdentity(position.provenance)
       })),
-      fixedPositionLimitations: 'Frozen checkpoints keep their recorded maxTurns; --max-turns controls paired initial-state batch comparisons only.'
+      fixedPositionContinuationMaxTurns: maxTurns
     },
     revision: clone(revision),
     batchComparisons,
@@ -555,6 +575,39 @@ export function runStrategyEvaluationStudy(options = {}) {
     })),
     humanCases,
     summary: {
+      maxTurns,
+      totalRuns: batchCoverage.completed + fixedCoverage.completed + (tournament?.totalRuns ?? 0),
+      effectiveSamples: (() => {
+        const set = new Set();
+        for (const comp of batchComparisons) {
+          for (const r of comp.result.results) {
+            if (Array.isArray(r.actionRecords)) {
+              set.add(r.actionRecords.map(a => `${a.playerId}:${a.action?.type}:${a.stem?.name}`).join(';'));
+            }
+          }
+        }
+        if (tournament?.matchups) {
+          for (const matchup of tournament.matchups) {
+            for (const m of matchup.matches) {
+              if (m.actionSequence) set.add(m.actionSequence);
+            }
+          }
+        }
+        for (const evaluation of evaluations) {
+          for (const phase of ['discovery', 'confirmation']) {
+            for (const comp of evaluation.result[phase].comparisons) {
+              for (const branch of comp.firstActions) {
+                for (const s of branch.samples) {
+                  if (s.status === 'completed' && s.replay?.actionRecords) {
+                    set.add(s.replay.actionRecords.map(a => `${a.playerId}:${a.action?.type}:${a.stem?.name}`).join(';'));
+                  }
+                }
+              }
+            }
+          }
+        }
+        return set.size;
+      })(),
       coverage: {
         planned: batchCoverage.planned + fixedCoverage.planned,
         completed: batchCoverage.completed + fixedCoverage.completed,

@@ -48,12 +48,27 @@ function computeOutcomeValue(terminalResult, playerId) {
   return 0.0;
 }
 
+function countLitSides(state, playerId) {
+  let count = 0;
+  for (let element = 0; element < 5; element++) {
+    const node = state?.nodeStates?.[`${playerId}-${element}`] ?? { yang: 0, yin: 0 };
+    if (node.yang >= 1) count++;
+    if (node.yin >= 1) count++;
+  }
+  return count;
+}
+
 /**
  * Run a full pairwise tournament across all registered strategies with starter swaps.
  */
-export function runStrategyTournament({ seeds = [202603], maxTurns = 12, scoringConfig = {} } = {}) {
+export function runStrategyTournament({ seeds = [202603], maxTurns = 60, scoringConfig = {} } = {}) {
   const strategyKeys = Object.keys(TOURNAMENT_STRATEGIES);
   const matchups = [];
+  const allActionSequences = new Set();
+  let totalRuns = 0;
+  let totalStarterWins = 0;
+  let totalLightingWins = 0;
+  let totalTurnLimitWins = 0;
 
   const strategySummaries = Object.fromEntries(strategyKeys.map(key => [
     key,
@@ -67,16 +82,20 @@ export function runStrategyTournament({ seeds = [202603], maxTurns = 12, scoring
       meanOutcomeValue: 0,
       victoryTypes: {
         lighting: 0,
-        turnLimit: 0
+        turnLimit: 0,
+        unity: 0,
+        turnLimitSettlement: 0
       },
       roles: {
         asP1: { matches: 0, wins: 0, draws: 0, losses: 0, value: 0 },
-        asP2: { matches: 0, wins: 0, draws: 0, losses: 0, value: 0 }
+        asP2: { matches: 0, wins: 0, draws: 0, losses: 0, value: 0 },
+        asStarter: { matches: 0, wins: 0, draws: 0, losses: 0, value: 0 },
+        asFollower: { matches: 0, wins: 0, draws: 0, losses: 0, value: 0 }
       }
     }
   ]));
 
-  // Evaluate every ordered matchup (P1 vs P2)
+  // Evaluate every ordered matchup (P1 vs P2) with both starting players
   for (const p1Key of strategyKeys) {
     for (const p2Key of strategyKeys) {
       const p1Strategy = resolveTournamentStrategy(p1Key);
@@ -90,84 +109,131 @@ export function runStrategyTournament({ seeds = [202603], maxTurns = 12, scoring
       const matchDetails = [];
 
       for (const seed of seeds) {
-        const match = runSeededMatch({
-          initialState: createInitialHeadlessState({ maxTurns }),
-          seed,
-          strategies: { P1: p1Strategy, P2: p2Strategy },
-          scoringConfig
-        });
+        for (const startingPlayer of ['P1', 'P2']) {
+          totalRuns++;
+          const match = runSeededMatch({
+            initialState: createInitialHeadlessState({ maxTurns, currentPlayer: startingPlayer }),
+            seed,
+            strategies: { P1: p1Strategy, P2: p2Strategy },
+            scoringConfig
+          });
 
-        const term = match.terminalResult;
-        const valP1 = computeOutcomeValue(term, 'P1');
-        const valP2 = computeOutcomeValue(term, 'P2');
+          const term = match.terminalResult;
+          const valP1 = computeOutcomeValue(term, 'P1');
+          const valP2 = computeOutcomeValue(term, 'P2');
+          const isLighting = term.reason === '所有天干点亮';
+          const terminalCategory = isLighting ? '五行归元' : '回合上限结算';
+          const litSides = {
+            P1: countLitSides(match.finalState, 'P1'),
+            P2: countLitSides(match.finalState, 'P2')
+          };
+          const actionSequence = match.actionRecords.map(r => `${r.playerId}:${r.action.type}:${r.stem.name}`).join(';');
+          allActionSequences.add(actionSequence);
 
-        if (term.winner === 'P1') p1Wins++;
-        else if (term.winner === 'P2') p2Wins++;
-        else draws++;
+          if (term.winner === 'P1') p1Wins++;
+          else if (term.winner === 'P2') p2Wins++;
+          else draws++;
 
-        const isLighting = term.reason === '所有天干点亮';
-        if (isLighting) lightingWins++;
-        else turnLimitWins++;
+          if (term.winner === startingPlayer) totalStarterWins++;
 
-        // Update strategy P1 stats
-        const sumP1 = strategySummaries[p1Key];
-        sumP1.matchesPlayed++;
-        if (term.winner === 'P1') {
-          sumP1.wins++;
-          if (isLighting) sumP1.victoryTypes.lighting++;
-          else sumP1.victoryTypes.turnLimit++;
-        } else if (term.winner === 'DRAW') {
-          sumP1.draws++;
-        } else {
-          sumP1.losses++;
+          if (isLighting) {
+            lightingWins++;
+            totalLightingWins++;
+          } else {
+            turnLimitWins++;
+            totalTurnLimitWins++;
+          }
+
+          const p1IsStarter = startingPlayer === 'P1';
+          // Update strategy P1 stats
+          const sumP1 = strategySummaries[p1Key];
+          sumP1.matchesPlayed++;
+          if (term.winner === 'P1') {
+            sumP1.wins++;
+            if (isLighting) {
+              sumP1.victoryTypes.lighting++;
+              sumP1.victoryTypes.unity++;
+            } else {
+              sumP1.victoryTypes.turnLimit++;
+              sumP1.victoryTypes.turnLimitSettlement++;
+            }
+          } else if (term.winner === 'DRAW') {
+            sumP1.draws++;
+          } else {
+            sumP1.losses++;
+          }
+          sumP1.totalOutcomeValue += valP1;
+          sumP1.roles.asP1.matches++;
+          if (term.winner === 'P1') sumP1.roles.asP1.wins++;
+          else if (term.winner === 'DRAW') sumP1.roles.asP1.draws++;
+          else sumP1.roles.asP1.losses++;
+          sumP1.roles.asP1.value += valP1;
+
+          const p1StarterBucket = p1IsStarter ? sumP1.roles.asStarter : sumP1.roles.asFollower;
+          p1StarterBucket.matches++;
+          if (term.winner === 'P1') p1StarterBucket.wins++;
+          else if (term.winner === 'DRAW') p1StarterBucket.draws++;
+          else p1StarterBucket.losses++;
+          p1StarterBucket.value += valP1;
+
+          // Update strategy P2 stats
+          const sumP2 = strategySummaries[p2Key];
+          sumP2.matchesPlayed++;
+          if (term.winner === 'P2') {
+            sumP2.wins++;
+            if (isLighting) {
+              sumP2.victoryTypes.lighting++;
+              sumP2.victoryTypes.unity++;
+            } else {
+              sumP2.victoryTypes.turnLimit++;
+              sumP2.victoryTypes.turnLimitSettlement++;
+            }
+          } else if (term.winner === 'DRAW') {
+            sumP2.draws++;
+          } else {
+            sumP2.losses++;
+          }
+          sumP2.totalOutcomeValue += valP2;
+          sumP2.roles.asP2.matches++;
+          if (term.winner === 'P2') sumP2.roles.asP2.wins++;
+          else if (term.winner === 'DRAW') sumP2.roles.asP2.draws++;
+          else sumP2.roles.asP2.losses++;
+          sumP2.roles.asP2.value += valP2;
+
+          const p2StarterBucket = !p1IsStarter ? sumP2.roles.asStarter : sumP2.roles.asFollower;
+          p2StarterBucket.matches++;
+          if (term.winner === 'P2') p2StarterBucket.wins++;
+          else if (term.winner === 'DRAW') p2StarterBucket.draws++;
+          else p2StarterBucket.losses++;
+          p2StarterBucket.value += valP2;
+
+          matchDetails.push({
+            seed,
+            startingPlayer,
+            winner: term.winner,
+            reason: term.reason,
+            terminalCategory,
+            litSides,
+            finalScore: { P1: match.finalState.players.P1.score, P2: match.finalState.players.P2.score },
+            consumedStemCount: match.consumedStemCount,
+            actionSequence
+          });
         }
-        sumP1.totalOutcomeValue += valP1;
-        sumP1.roles.asP1.matches++;
-        if (term.winner === 'P1') sumP1.roles.asP1.wins++;
-        else if (term.winner === 'DRAW') sumP1.roles.asP1.draws++;
-        else sumP1.roles.asP1.losses++;
-        sumP1.roles.asP1.value += valP1;
-
-        // Update strategy P2 stats
-        const sumP2 = strategySummaries[p2Key];
-        sumP2.matchesPlayed++;
-        if (term.winner === 'P2') {
-          sumP2.wins++;
-          if (isLighting) sumP2.victoryTypes.lighting++;
-          else sumP2.victoryTypes.turnLimit++;
-        } else if (term.winner === 'DRAW') {
-          sumP2.draws++;
-        } else {
-          sumP2.losses++;
-        }
-        sumP2.totalOutcomeValue += valP2;
-        sumP2.roles.asP2.matches++;
-        if (term.winner === 'P2') sumP2.roles.asP2.wins++;
-        else if (term.winner === 'DRAW') sumP2.roles.asP2.draws++;
-        else sumP2.roles.asP2.losses++;
-        sumP2.roles.asP2.value += valP2;
-
-        matchDetails.push({
-          seed,
-          winner: term.winner,
-          reason: term.reason,
-          finalScore: { P1: match.finalState.players.P1.score, P2: match.finalState.players.P2.score },
-          consumedStemCount: match.consumedStemCount
-        });
       }
 
+      const totalMatches = matchDetails.length;
       matchups.push({
         P1: p1Key,
         P2: p2Key,
-        totalMatches: seeds.length,
+        totalMatches,
         p1Wins,
         p2Wins,
         draws,
         lightingWins,
         turnLimitWins,
-        p1WinRate: p1Wins / seeds.length,
-        p2WinRate: p2Wins / seeds.length,
-        drawRate: draws / seeds.length,
+        p1WinRate: totalMatches > 0 ? p1Wins / totalMatches : 0,
+        p2WinRate: totalMatches > 0 ? p2Wins / totalMatches : 0,
+        drawRate: totalMatches > 0 ? draws / totalMatches : 0,
         matches: matchDetails
       });
     }
@@ -204,6 +270,14 @@ export function runStrategyTournament({ seeds = [202603], maxTurns = 12, scoring
     strategies: strategyKeys,
     seeds: clone(seeds),
     maxTurns,
+    totalRuns,
+    effectiveSamples: allActionSequences.size,
+    uniqueActionSequenceCount: allActionSequences.size,
+    starterWinRate: totalRuns > 0 ? totalStarterWins / totalRuns : 0,
+    terminalDistribution: {
+      '五行归元': totalLightingWins,
+      '回合上限结算': totalTurnLimitWins
+    },
     matchups,
     strategySummaries,
     switchingAnalysis: {
