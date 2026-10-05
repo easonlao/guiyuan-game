@@ -13,10 +13,10 @@ const CONFIGURATION_NAMES = Object.freeze([
 ]);
 const DEFAULTS = Object.freeze({
   samples: null,
-  discoverySamples: 2,
-  confirmationSamples: 2,
+  discoverySamples: 200,
+  confirmationSamples: 200,
   seed: 202603,
-  maxTurns: 12,
+  maxTurns: 60,
   config: 'all',
   out: 'reports/headless-strategy-evaluation/small-run',
   maxRuns: null,
@@ -26,11 +26,12 @@ const DEFAULTS = Object.freeze({
 const USAGE = `Usage: npm run headless:evaluate -- [options]
 
 Options:
+  --seeds <positive integer>            Set discovery and confirmation seed count together (default: 200)
   --samples <positive integer>          Set discovery and confirmation samples together
   --discovery-samples <positive integer> Exploration seed count (default: ${DEFAULTS.discoverySamples})
   --confirmation-samples <positive integer> Independent holdout seed count (default: ${DEFAULTS.confirmationSamples})
   --seed <integer|string>               Base deterministic seed (default: ${DEFAULTS.seed})
-  --max-turns <positive integer>        Turn limit (default: ${DEFAULTS.maxTurns})
+  --max-turns <integer or list>         Turn limit or comma-separated list (default: ${DEFAULTS.maxTurns})
   --config <name|all>                   Selection: ${CONFIGURATION_NAMES.join(', ')} (default: all)
   --max-runs <non-negative integer>     Overall fixed-continuation budget (default: unlimited)
   --minimum-effect <number>             Preregistered minimum value difference (default: ${DEFAULTS.minimumEffect})
@@ -43,6 +44,15 @@ function parsePositiveInteger(value, name) {
   const parsed = Number(value);
   if (!Number.isSafeInteger(parsed) || parsed < 1) throw new TypeError(`--${name} must be a positive safe integer`);
   return parsed;
+}
+
+function parseMaxTurns(value) {
+  if (value.includes(',')) {
+    const items = value.split(',').map(s => s.trim()).filter(Boolean);
+    if (items.length === 0) throw new TypeError('--max-turns must be a positive safe integer or comma-separated list');
+    return items.map(item => parsePositiveInteger(item, 'max-turns'));
+  }
+  return parsePositiveInteger(value, 'max-turns');
 }
 
 function parseNonNegativeInteger(value, name) {
@@ -64,7 +74,7 @@ function parseSeed(value) {
 function parseArguments(args) {
   const options = { ...DEFAULTS, help: false };
   const allowed = new Set([
-    '--samples', '--discovery-samples', '--confirmation-samples', '--seed', '--max-turns',
+    '--seeds', '--samples', '--discovery-samples', '--confirmation-samples', '--seed', '--max-turns',
     '--config', '--max-runs', '--minimum-effect', '--minimum-pairs', '--out'
   ]);
   for (let index = 0; index < args.length; index++) {
@@ -79,6 +89,12 @@ function parseArguments(args) {
     const value = equalsIndex < 0 ? args[++index] : argument.slice(equalsIndex + 1);
     if (value === undefined || value.length === 0 || value.startsWith('--')) throw new TypeError(`${name} requires a value`);
     switch (name) {
+      case '--seeds':
+        options.seeds = parsePositiveInteger(value, 'seeds');
+        options.samples = options.seeds;
+        options.discoverySamples = options.seeds;
+        options.confirmationSamples = options.seeds;
+        break;
       case '--samples':
         options.samples = parsePositiveInteger(value, 'samples');
         options.discoverySamples = options.samples;
@@ -87,7 +103,7 @@ function parseArguments(args) {
       case '--discovery-samples': options.discoverySamples = parsePositiveInteger(value, 'discovery-samples'); break;
       case '--confirmation-samples': options.confirmationSamples = parsePositiveInteger(value, 'confirmation-samples'); break;
       case '--seed': options.seed = parseSeed(value); break;
-      case '--max-turns': options.maxTurns = parsePositiveInteger(value, 'max-turns'); break;
+      case '--max-turns': options.maxTurns = parseMaxTurns(value); break;
       case '--config': options.config = value; break;
       case '--max-runs': options.maxRuns = parseNonNegativeInteger(value, 'max-runs'); break;
       case '--minimum-effect':
