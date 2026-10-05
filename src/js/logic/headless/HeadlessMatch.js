@@ -343,6 +343,7 @@ export function runHeadlessMatch({ initialState, stems, strategies, scoringConfi
         consumedStemCount,
         initialState: reproductionInitialState,
         stems: stemSequence,
+        scoringConfig: matchScoringConfig,
         ...overrides
       };
     };
@@ -436,7 +437,8 @@ export function runHeadlessMatch({ initialState, stems, strategies, scoringConfi
             playerId,
             stem: clone(stem),
             state: deepFreeze(clone(stateManager.getState())),
-            candidates: deepFreeze(clone(availableActions))
+            candidates: deepFreeze(clone(availableActions)),
+            history: deepFreeze(clone(actionRecords))
           });
           currentDetails = getDetails({
             state: strategyContext.state,

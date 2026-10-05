@@ -6,7 +6,7 @@
 
 **Status:** resolved
 
-**Resolution:** `runHeadlessMatch` accepts optional version-1 `scoringConfig` switches and returns an immutable, full points-table snapshot for every match. The named `formal-baseline` is the default; experimental switches are match-local and scoring-only. Details: `docs/experimental-scoring.md`. Focused tests: 16 experimental-scoring tests and the formal scoring/turn-flow/headless characterization tests passed (55 tests total).
+**Resolution:** `runHeadlessMatch` accepts optional version-1 `scoringConfig` switches and returns an immutable, full points-table snapshot for every match. The named `formal-baseline` is the default; experimental switches are match-local and scoring-only. Details: `docs/experimental-scoring.md`. Focused tests: 16 experimental-scoring tests and the formal scoring/turn-flow/headless characterization tests passed (55 tests total). Integration suite: 84 passed; production build passed. No typecheck script is configured.
 
 - [x] 明确命名并保存现有计分基线；默认正式游戏不启用实验配置。
 - [x] 支持独立开关及组合：自损不按攻击状态变化奖励；强化与强破行为分按整次动作而非成功子步骤重复累计；禁用稀有度加成。

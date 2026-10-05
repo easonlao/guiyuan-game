@@ -68,6 +68,8 @@ const cautious = {
 runSeededMatch({ initialState, seed: 'trial-a', strategies: { P1: cautious, P2: 'attack-priority' } });
 ```
 
+The whole match uses one core evaluation and captures scoring configuration once, before any strategy decisions. Strategy failures retain the core's original initial position, accumulated records, trajectory, stem sequence, consumed count, and scoring snapshot; seeded errors additionally include the seed, random version, and strategy identities for reproduction.
+
 The callback receives no strategy labels or match configuration. Its optional `nextTieBreak()` callback reads only that player's tie stream. Keep custom definitions synchronous and side-effect free; their `id` and `version` are recorded in the result. A custom ID cannot reuse a built-in ID, so result identity does not mislabel a replacement implementation as a built-in version.
 
 ## Built-in decision definitions
