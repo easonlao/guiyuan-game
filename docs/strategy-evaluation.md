@@ -30,4 +30,14 @@ The human report separates **observed facts** from **limited inference** and **q
 2. Did a correct read of the opponent create a meaningful advantage?
 3. After attacking, did you still have a useful way to make progress?
 
+## Issue 08 evaluation extensions
+
+In addition to batch comparisons and crossover detection, the evaluation system includes:
+
+- **State structure analysis (`StateStructureAnalysis.js`)**: Calculates the theoretical state space ($4^{10} = 1,048,576$ single-player states, $209,728$ equivalence classes under $\mathbb{Z}_5$ cyclic rotation symmetry; $4^{20} \approx 1.10 \times 10^{12}$ two-player states) without collapsing distinct node positions. Classifies reachable checkpoints into standardized situational dimensions (early/mid/near-limit, score leading/trailing/tied, near-unity threat, extra-turn status).
+- **Action trade-off & intent contracts (`ActionTradeoffAnalysis.js`)**: Generates per-position consequence tables detailing progress, disruption, self-cost, immediate score deltas, and turn-order changes for all legal first actions. Records pre-decision intent declarations and verifies post-decision execution contracts across simple and situation-responsive policies, distinguishing voluntary choices from forced opportunities (e.g. AUTO).
+- **Turn-order diagnostic control (`TurnOrderDiagnostic.js`)**: Quarantines an isolated diagnostic variant that preserves all node modification and scoring effects of burst actions while suppressing the extra-action opportunity. Comparing formal and diagnostic outcomes directly isolates the marginal win-rate contribution of the turn-order advantage.
+- **Full strategy tournament (`StrategyTournament.js`)**: Runs pairwise matchups with first-player swaps among all public strategies and non-switching control baselines (`fixed-build`, `fixed-attack`), reporting lighting vs turn-limit settlement victories and empirically quantifying situation-switching benefits.
+- **Chinese report generation**: Automatically renders findings organized as "问题—证据—边界" (Question — Evidence — Boundary) answering the 5 mandatory evaluation questions, followed by the developer technical appendix for provenance and replay verification.
+
 No scoring selection is automatically adopted by the formal game. No observed crossover, uncertain evidence, or worse experimental results are valid research findings, not evaluation failures.

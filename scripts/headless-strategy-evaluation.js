@@ -204,9 +204,14 @@ async function writeMissingDataReport(outputDirectory, error, options = null, ev
 }
 
 async function runEvaluation(options) {
-  const { reachableFixedPositions } = await import('../tests/fixtures/fixed-position-continuations/reachable-positions.js');
+  const { reachableFixedPositions, reachableBurstPosition } = await import('../tests/fixtures/fixed-position-continuations/reachable-positions.js');
   const { runStrategyEvaluationStudy } = await import('../src/js/logic/headless/StrategyEvaluation.js');
-  return runStrategyEvaluationStudy({ ...options, positions: reachableFixedPositions, revision: currentRevision() });
+  return runStrategyEvaluationStudy({
+    ...options,
+    positions: reachableFixedPositions,
+    burstPosition: reachableBurstPosition,
+    revision: currentRevision()
+  });
 }
 
 async function main(args = process.argv.slice(2)) {
