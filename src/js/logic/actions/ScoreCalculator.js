@@ -53,7 +53,7 @@ const ScoreCalculator = {
       // 统一调用：只调用一次 addScore，避免重复加分
       // 统计拆分由 StateManager._recordScoreByReason() 内部处理
       // reason 格式：动作·状态（如 "破·破阴点亮"）
-      StateManager.addScore(playerId, finalScore, combinedReason, actionType);
+      this.stateManager.addScore(playerId, finalScore, combinedReason, actionType);
     }
   },
 
@@ -145,4 +145,9 @@ const ScoreCalculator = {
   }
 };
 
-export default ScoreCalculator;
+export function createScoreCalculator(stateManager = StateManager) {
+  return Object.assign(Object.create(ScoreCalculator), { stateManager });
+}
+
+const DefaultScoreCalculator = createScoreCalculator();
+export default DefaultScoreCalculator;

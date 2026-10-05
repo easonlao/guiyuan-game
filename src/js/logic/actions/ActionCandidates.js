@@ -8,7 +8,6 @@
 // ============================================
 
 import StateManager from '../../state/StateManager.js';
-import AuthorityExecutor from '../AuthorityExecutor.js';
 import { RULES } from '../../config/game-config.js';
 
 const ActionCandidates = {
@@ -21,7 +20,7 @@ const ActionCandidates = {
    */
   getAvailableActions(playerId, elementIndex, isYang) {
     const actions = [];
-    const currentNodeState = StateManager.getNodeState(playerId, elementIndex);
+    const currentNodeState = this.stateManager.getNodeState(playerId, elementIndex);
     const yangState = currentNodeState.yang;
     const yinState = currentNodeState.yin;
     const hasUnity = (yangState === 1 && yinState === 1);
@@ -53,14 +52,14 @@ const ActionCandidates = {
     }
 
     if (hasUnity) {
-      const oppKeNode = StateManager.getNodeState(opponentId, keEl);
+      const oppKeNode = this.stateManager.getNodeState(opponentId, keEl);
       if (!(oppKeNode.yang === -1 && oppKeNode.yin === -1)) {
         actions.push({ type: 'BURST_ATK', executorId: playerId, targetEl: keEl });
       }
     }
 
     if (hasUnity) {
-      const myShengNode = StateManager.getNodeState(playerId, shengEl);
+      const myShengNode = this.stateManager.getNodeState(playerId, shengEl);
       if (!(myShengNode.yang === 2 && myShengNode.yin === 2)) {
         actions.push({ type: 'BURST', executorId: playerId, targetEl: shengEl });
       }
@@ -82,14 +81,14 @@ const ActionCandidates = {
     }
 
     if (hasUnity) {
-      const myShengNode = StateManager.getNodeState(playerId, shengEl);
+      const myShengNode = this.stateManager.getNodeState(playerId, shengEl);
       if (!(myShengNode.yang === 2 && myShengNode.yin === 2)) {
         actions.push({ type: 'BURST', executorId: playerId, targetEl: shengEl });
       }
     }
 
     if (hasUnity) {
-      const oppKeNode = StateManager.getNodeState(opponentId, keEl);
+      const oppKeNode = this.stateManager.getNodeState(opponentId, keEl);
       if (!(oppKeNode.yang === -1 && oppKeNode.yin === -1)) {
         actions.push({ type: 'BURST_ATK', executorId: playerId, targetEl: keEl });
       }
@@ -101,7 +100,7 @@ const ActionCandidates = {
    * 遵循阴干优先规则：阴干=2时才转向阳干
    */
   getPlusCandidates(playerId, elementIndex) {
-    const nodeState = StateManager.getNodeState(playerId, elementIndex);
+    const nodeState = this.stateManager.getNodeState(playerId, elementIndex);
     const candidates = [];
 
     // 优先阴干：阴干<2时返回阴干候选
@@ -130,7 +129,7 @@ const ActionCandidates = {
    * 遵循阴干优先规则：阴干=-1时才转向阳干
    */
   getMinusCandidates(playerId, elementIndex) {
-    const nodeState = StateManager.getNodeState(playerId, elementIndex);
+    const nodeState = this.stateManager.getNodeState(playerId, elementIndex);
     const candidates = [];
 
     // 优先阴干：阴干>-1时返回阴干候选
@@ -155,4 +154,9 @@ const ActionCandidates = {
   }
 };
 
-export default ActionCandidates;
+export function createActionCandidates(stateManager = StateManager) {
+  return Object.assign(Object.create(ActionCandidates), { stateManager });
+}
+
+const DefaultActionCandidates = createActionCandidates();
+export default DefaultActionCandidates;

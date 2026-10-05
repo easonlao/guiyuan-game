@@ -6,8 +6,8 @@
 // - 执行减法动作（applyMinus）
 // ============================================
 
-import StateManager from '../../state/StateManager.js';
-import ScoreCalculator from './ScoreCalculator.js';
+import DefaultStateManager from '../../state/StateManager.js';
+import DefaultScoreCalculator, { createScoreCalculator } from './ScoreCalculator.js';
 
 const ActionResolver = {
   /**
@@ -23,10 +23,10 @@ const ActionResolver = {
     let executedCount = 0;
 
     // 调试：记录BURST操作前的状态
-    const myRole = StateManager.getMyRole();
-    const stemState = StateManager.getNodeState(playerId, stemElement);
-    const targetState = StateManager.getNodeState(playerId, targetElement);
-    console.log(`[BURST ${myRole}] 开始: playerId=${playerId}, stem=${stemElement}(阴${stemState.yin}阳${stemState.yang}), target=${targetElement}(阴${targetState.yin}阳${targetState.yang})`);
+    const myRole = this.stateManager.getMyRole();
+    const stemState = this.stateManager.getNodeState(playerId, stemElement);
+    const targetState = this.stateManager.getNodeState(playerId, targetElement);
+    this.log(`[BURST ${myRole}] 开始: playerId=${playerId}, stem=${stemElement}(阴${stemState.yin}阳${stemState.yang}), target=${targetElement}(阴${targetState.yin}阳${targetState.yang})`);
 
     // 第1步：消耗自身本命的阴（合一状态）
     const step1 = this.applyMinus(playerId, stemElement, false, 'BURST', false);
@@ -35,24 +35,24 @@ const ActionResolver = {
 
     // 第2-3步：强化自身生属性2次
     // 明确计算isYang值，确保P1和P2使用相同的选择逻辑
-    const nodeState = StateManager.getNodeState(playerId, targetElement);
+    const nodeState = this.stateManager.getNodeState(playerId, targetElement);
 
     // 第2次：优先阴干（阴干<2时选择阴干，否则选择阳干）
     let isYang2 = !(nodeState.yin < 2);
-    console.log(`[BURST ${myRole}] 第2次: 阴=${nodeState.yin}, 选择阳=${isYang2}`);
+    this.log(`[BURST ${myRole}] 第2次: 阴=${nodeState.yin}, 选择阳=${isYang2}`);
     const step2 = this.applyPlus(playerId, targetElement, isYang2, 'BURST', true);
     if (step2) executedCount++;
 
     // 第3次：重新获取状态后再判断
-    const updatedNodeState = StateManager.getNodeState(playerId, targetElement);
+    const updatedNodeState = this.stateManager.getNodeState(playerId, targetElement);
     let isYang3 = !(updatedNodeState.yin < 2);
-    console.log(`[BURST ${myRole}] 第3次: 阴=${updatedNodeState.yin}, 选择阳=${isYang3}`);
+    this.log(`[BURST ${myRole}] 第3次: 阴=${updatedNodeState.yin}, 选择阳=${isYang3}`);
     const step3 = this.applyPlus(playerId, targetElement, isYang3, 'BURST', true);
     if (step3) executedCount++;
 
     // 调试：记录最终状态
-    const finalTargetState = StateManager.getNodeState(playerId, targetElement);
-    console.log(`[BURST ${myRole}] 完成: target=${targetElement}(阴${finalTargetState.yin}阳${finalTargetState.yang}), executed=${executedCount}`);
+    const finalTargetState = this.stateManager.getNodeState(playerId, targetElement);
+    this.log(`[BURST ${myRole}] 完成: target=${targetElement}(阴${finalTargetState.yin}阳${finalTargetState.yang}), executed=${executedCount}`);
 
     return { success: executedCount > 0, executedCount };
   },
@@ -77,7 +77,7 @@ const ActionResolver = {
 
     // 第2-3步：攻击对方克属性2次
     // 明确计算isYang值，确保P1和P2使用相同的选择逻辑
-    const nodeState = StateManager.getNodeState(opponentId, targetElement);
+    const nodeState = this.stateManager.getNodeState(opponentId, targetElement);
 
     // 第2次：优先阴干（阴干>-1时选择阴干，否则选择阳干）
     let isYang2 = !(nodeState.yin > -1);
@@ -85,7 +85,7 @@ const ActionResolver = {
     if (step2) executedCount++;
 
     // 第3次：重新获取状态后再判断
-    const updatedNodeState = StateManager.getNodeState(opponentId, targetElement);
+    const updatedNodeState = this.stateManager.getNodeState(opponentId, targetElement);
     let isYang3 = !(updatedNodeState.yin > -1);
     const step3 = this.applyMinus(opponentId, targetElement, isYang3, 'BURST_ATK', true);
     if (step3) executedCount++;
@@ -106,15 +106,15 @@ const ActionResolver = {
    * @returns {boolean} - 是否成功执行
    */
   applyPlus(playerId, elementIndex, isYang, actionType, isAttack) {
-    const nodeState = StateManager.getNodeState(playerId, elementIndex);
+    const nodeState = this.stateManager.getNodeState(playerId, elementIndex);
 
     // 如果指定了阴阳，按指定执行
     if (isYang !== undefined) {
       const currentVal = isYang ? nodeState.yang : nodeState.yin;
       if (currentVal >= 2) return false;
       const newVal = currentVal + 1;
-      StateManager.updateNodeState(playerId, elementIndex, isYang, newVal);
-      ScoreCalculator.calculateAndApplyScore(playerId, actionType, currentVal, newVal, isYang, isAttack);
+      this.stateManager.updateNodeState(playerId, elementIndex, isYang, newVal);
+      this.scoreCalculator.calculateAndApplyScore(playerId, actionType, currentVal, newVal, isYang, isAttack);
       return true;
     }
 
@@ -122,16 +122,16 @@ const ActionResolver = {
     // 优先阴干：如果阴干<2，增加阴干
     if (nodeState.yin < 2) {
       const newVal = nodeState.yin + 1;
-      StateManager.updateNodeState(playerId, elementIndex, false, newVal);
-      ScoreCalculator.calculateAndApplyScore(playerId, actionType, nodeState.yin, newVal, false, isAttack);
+      this.stateManager.updateNodeState(playerId, elementIndex, false, newVal);
+      this.scoreCalculator.calculateAndApplyScore(playerId, actionType, nodeState.yin, newVal, false, isAttack);
       return true;
     }
 
     // 阴干=2时，转向阳干
     if (nodeState.yang < 2) {
       const newVal = nodeState.yang + 1;
-      StateManager.updateNodeState(playerId, elementIndex, true, newVal);
-      ScoreCalculator.calculateAndApplyScore(playerId, actionType, nodeState.yang, newVal, true, isAttack);
+      this.stateManager.updateNodeState(playerId, elementIndex, true, newVal);
+      this.scoreCalculator.calculateAndApplyScore(playerId, actionType, nodeState.yang, newVal, true, isAttack);
       return true;
     }
 
@@ -152,16 +152,16 @@ const ActionResolver = {
    * @returns {boolean} - 是否成功执行
    */
   applyMinus(playerId, elementIndex, isYang, actionType, isAttack) {
-    const nodeState = StateManager.getNodeState(playerId, elementIndex);
-    const scorerId = StateManager.getState().currentPlayer;
+    const nodeState = this.stateManager.getNodeState(playerId, elementIndex);
+    const scorerId = this.stateManager.getState().currentPlayer;
 
     // 如果指定了阴阳，按指定执行
     if (isYang !== undefined) {
       const currentVal = isYang ? nodeState.yang : nodeState.yin;
       if (currentVal <= -1) return false;
       const newVal = currentVal - 1;
-      StateManager.updateNodeState(playerId, elementIndex, isYang, newVal);
-      ScoreCalculator.calculateAndApplyScore(scorerId, actionType, currentVal, newVal, isYang, isAttack);
+      this.stateManager.updateNodeState(playerId, elementIndex, isYang, newVal);
+      this.scoreCalculator.calculateAndApplyScore(scorerId, actionType, currentVal, newVal, isYang, isAttack);
       return true;
     }
 
@@ -169,16 +169,16 @@ const ActionResolver = {
     // 优先阴干：如果阴干>-1，减少阴干
     if (nodeState.yin > -1) {
       const newVal = nodeState.yin - 1;
-      StateManager.updateNodeState(playerId, elementIndex, false, newVal);
-      ScoreCalculator.calculateAndApplyScore(scorerId, actionType, nodeState.yin, newVal, false, isAttack);
+      this.stateManager.updateNodeState(playerId, elementIndex, false, newVal);
+      this.scoreCalculator.calculateAndApplyScore(scorerId, actionType, nodeState.yin, newVal, false, isAttack);
       return true;
     }
 
     // 阴干=-1时，转向阳干
     if (nodeState.yang > -1) {
       const newVal = nodeState.yang - 1;
-      StateManager.updateNodeState(playerId, elementIndex, true, newVal);
-      ScoreCalculator.calculateAndApplyScore(scorerId, actionType, nodeState.yang, newVal, true, isAttack);
+      this.stateManager.updateNodeState(playerId, elementIndex, true, newVal);
+      this.scoreCalculator.calculateAndApplyScore(scorerId, actionType, nodeState.yang, newVal, true, isAttack);
       return true;
     }
 
@@ -187,4 +187,17 @@ const ActionResolver = {
   }
 };
 
-export default ActionResolver;
+export function createActionResolver(stateManager = DefaultStateManager, scoreCalculator) {
+  const resolvedScoreCalculator = scoreCalculator ?? (
+    stateManager === DefaultStateManager ? DefaultScoreCalculator : createScoreCalculator(stateManager)
+  );
+  const log = stateManager === DefaultStateManager ? (...args) => console.log(...args) : () => {};
+  return Object.assign(Object.create(ActionResolver), {
+    stateManager,
+    scoreCalculator: resolvedScoreCalculator,
+    log
+  });
+}
+
+const DefaultActionResolver = createActionResolver();
+export default DefaultActionResolver;
