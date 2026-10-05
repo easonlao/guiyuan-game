@@ -37,6 +37,10 @@ Additional locked scoring behavior:
 - The PVP client does not calculate passive effects locally; it waits for the host's turn-sync data.
 - The single-player end-turn branch does not perform passive settlement. This difference is intentional in the baseline and is not normalized by the shared extraction. The headless evaluation baseline uses the host settlement semantics.
 
+## Shared action/scoring calculations
+
+`ActionResolver.resolveAction` is the shared dispatch for all six action types used by both the production `GameEngine` adapter and headless evaluation. The formal adapter still owns animation and `AuthorityExecutor` burst-marker orchestration; headless evaluation owns only its isolated pending burst marker. Both `ScoreCalculator` and `StateScoreRecorder` use the same `RarityScoring` probability table and rounding calculation. Existing per-component versus total rounding and each caller's multiplier fallback are preserved.
+
 ## Isolation note
 
 `StateManager.reset()` now creates fresh nested initial state as well as fresh node state. Characterization exposed that its former shallow reset shared nested statistics with the initial template, allowing recorded statistics to survive later resets. This fix is limited to reset construction; `getState()` remains the existing shallow-copy API and is not expanded into the later full snapshot boundary.

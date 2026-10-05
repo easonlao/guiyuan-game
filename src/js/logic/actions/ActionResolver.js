@@ -7,9 +7,46 @@
 // ============================================
 
 import DefaultStateManager from '../../state/StateManager.js';
+import { STEMS_MAP } from '../../config/game-config.js';
 import DefaultScoreCalculator, { createScoreCalculator } from './ScoreCalculator.js';
 
 const ActionResolver = {
+  /**
+   * Route one candidate action to the existing low-level action rules.
+   * Formal and headless callers share this dispatch; orchestration and burst
+   * marker ownership remain with their respective adapters.
+   * @returns {boolean} false when a stem-dependent action has no current stem
+   */
+  resolveAction(action, playerId, opponentId, stem) {
+    if (!action || !action.type) return false;
+    if (['AUTO', 'BURST', 'BURST_ATK'].includes(action.type) && !stem) return false;
+
+    switch (action.type) {
+      case 'AUTO': {
+        const isYang = STEMS_MAP[stem.element].yang === stem.name;
+        this.applyPlus(playerId, stem.element, isYang, 'AUTO', false);
+        return true;
+      }
+      case 'CONVERT':
+        this.applyPlus(action.target.playerId, action.target.elementIndex, action.target.isYang, 'CONVERT', false);
+        return true;
+      case 'ATK':
+        this.applyMinus(action.target.playerId, action.target.elementIndex, action.target.isYang, 'ATK', true);
+        return true;
+      case 'TRANS':
+        this.applyPlus(action.target.playerId, action.target.elementIndex, action.target.isYang, 'TRANS', false);
+        return true;
+      case 'BURST':
+        this.applyBurst(playerId, stem.element, action.targetEl);
+        return true;
+      case 'BURST_ATK':
+        this.applyBurstAtk(playerId, stem.element, opponentId, action.targetEl);
+        return true;
+      default:
+        return false;
+    }
+  },
+
   /**
    * 执行强化动作（BURST）
    * 原子性执行：消耗自身1点，强化生属性2次

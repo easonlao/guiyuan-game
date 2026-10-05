@@ -6,12 +6,14 @@ import { createScoreCalculator } from '../actions/ScoreCalculator.js';
 import {
   calculateNextPlayer,
   calculatePassiveEffects,
+  decideTerminal,
   decideTurnStart
 } from '../flow/TurnRules.js';
 import { createScopedState } from './ScopedState.js';
 
 const PLAYER_IDS = ['P1', 'P2'];
 const SIDES = ['yang', 'yin'];
+const GAME_PHASES = ['HOME', 'INITIATIVE', 'STEM_GENERATION', 'DECISION', 'PLAYING', 'GAME_END'];
 const INITIAL_STATE_SCHEMA = createInitialGameState();
 const FULL_STATE_FIELDS = [
   'phase', 'myRole', 'gameMode', 'turnCount', 'maxTurns', 'currentPlayer',
@@ -20,16 +22,68 @@ const FULL_STATE_FIELDS = [
   'stateScores', 'passiveStats', 'passiveScores', 'pendingBurstPlayer'
 ];
 
-export class HeadlessMatchError extends Error {
-  constructor(code, message) {
-    super(message);
-    this.name = 'HeadlessMatchError';
-    this.code = code;
+function detach(value, seen = new WeakSet()) {
+  try {
+    if (value === null || ['string', 'number', 'boolean', 'undefined', 'bigint'].includes(typeof value)) return value;
+    if (typeof value === 'symbol') return String(value);
+    if (typeof value === 'function') return `[Function ${value.name || 'anonymous'}]`;
+    if (typeof value !== 'object') return String(value);
+    if (seen.has(value)) return '[Circular]';
+
+    const result = Array.isArray(value) ? [] : {};
+    seen.add(value);
+    for (const key of Object.keys(value)) {
+      let nested;
+      try {
+        nested = value[key];
+      } catch {
+        nested = '[Uninspectable property]';
+      }
+      result[key] = detach(nested, seen);
+    }
+    seen.delete(value);
+    return result;
+  } catch {
+    return '[Uninspectable value]';
   }
 }
 
-function fail(code, message) {
-  throw new HeadlessMatchError(code, message);
+function createErrorDetails(details = {}) {
+  return detach({
+    state: null,
+    stem: null,
+    playerId: null,
+    opportunity: null,
+    rejectedSelection: null,
+    candidates: [],
+    priorActionRecords: [],
+    trajectory: [],
+    consumedStemCount: 0,
+    initialState: null,
+    stems: null,
+    ...details
+  });
+}
+
+export class HeadlessMatchError extends Error {
+  constructor(code, message, details) {
+    super(message);
+    this.name = 'HeadlessMatchError';
+    this.code = code;
+    if (details !== undefined) this.details = createErrorDetails(details);
+  }
+}
+
+function fail(code, message, details) {
+  throw new HeadlessMatchError(code, message, details);
+}
+
+function attachErrorDetails(error, context) {
+  if (!(error instanceof HeadlessMatchError)) {
+    return new HeadlessMatchError('INVALID_STATE', 'headless evaluation could not process the supplied state', context);
+  }
+  error.details = createErrorDetails({ ...context, ...(error.details ?? {}) });
+  return error;
 }
 
 function clone(value) {
@@ -52,7 +106,7 @@ function validateFullState(state) {
   for (const field of FULL_STATE_FIELDS) {
     if (!Object.hasOwn(state, field) || state[field] === undefined) fail('INVALID_STATE', `initialState.${field} is required`);
   }
-  if (typeof state.phase !== 'string') fail('INVALID_STATE', 'initialState.phase must be a string');
+  if (!GAME_PHASES.includes(state.phase)) fail('INVALID_STATE', `initialState.phase must be one of ${GAME_PHASES.join(', ')}`);
   if (state.myRole !== null && !PLAYER_IDS.includes(state.myRole)) {
     fail('INVALID_STATE', 'initialState.myRole must be P1, P2, or null');
   }
@@ -116,8 +170,14 @@ function validateFullState(state) {
       }
     }
   }
-  if (state.currentStem !== null && (typeof state.currentStem !== 'object' || Array.isArray(state.currentStem))) {
-    fail('INVALID_STATE', 'initialState.currentStem must be a stem object or null');
+  if (state.currentStem !== null) {
+    if (typeof state.currentStem !== 'object' || Array.isArray(state.currentStem)) {
+      fail('INVALID_STATE', 'initialState.currentStem must be a canonical stem object or null');
+    }
+    const canonicalStem = STEMS_LIST.find(stem => stem.name === state.currentStem.name && stem.element === state.currentStem.element);
+    if (!canonicalStem || !sameValue(state.currentStem, canonicalStem)) {
+      fail('INVALID_STATE', 'initialState.currentStem must match a canonical heavenly stem');
+    }
   }
   if (state.lastAction !== null && (typeof state.lastAction !== 'object' || Array.isArray(state.lastAction))) {
     fail('INVALID_STATE', 'initialState.lastAction must be an action object or null');
@@ -140,62 +200,59 @@ function validateStrategies(strategies) {
   }
 }
 
-function sameValue(left, right) {
+function sameValue(left, right, seen = new WeakMap()) {
   if (left === right) return true;
   if (!left || !right || typeof left !== 'object' || typeof right !== 'object') return false;
   if (Array.isArray(left) !== Array.isArray(right)) return false;
+  let paired = seen.get(left);
+  if (paired?.has(right)) return true;
+  if (!paired) {
+    paired = new WeakSet();
+    seen.set(left, paired);
+  }
+  paired.add(right);
+
   const leftKeys = Object.keys(left).sort();
   const rightKeys = Object.keys(right).sort();
   if (leftKeys.length !== rightKeys.length || leftKeys.some((key, i) => key !== rightKeys[i])) return false;
-  return leftKeys.every(key => sameValue(left[key], right[key]));
+  return leftKeys.every(key => sameValue(left[key], right[key], seen));
 }
 
-function takeStrategyAction(strategy, context, opportunity, playerId) {
+function takeStrategyAction(strategy, context, opportunity, playerId, details) {
+  const errorDetails = { ...details, playerId, opportunity, stem: context.stem, candidates: context.candidates };
   let selected;
   try {
     selected = strategy(context);
   } catch {
-    fail('STRATEGY_FAILED', `strategy ${playerId} failed at opportunity ${opportunity}`);
+    fail('STRATEGY_FAILED', `strategy ${playerId} failed at opportunity ${opportunity}`, errorDetails);
   }
+
   try {
     if (selected && typeof selected.then === 'function') {
-      fail('ASYNC_STRATEGY', `strategy ${playerId} returned a promise at opportunity ${opportunity}`);
+      if (selected instanceof Promise) selected.catch(() => {});
+      fail('ASYNC_STRATEGY', `strategy ${playerId} returned a promise at opportunity ${opportunity}`, {
+        ...errorDetails,
+        rejectedSelection: selected
+      });
     }
+    if (!context.candidates.some(candidate => sameValue(candidate, selected))) {
+      fail('INVALID_ACTION', `strategy ${playerId} selected an action outside the candidate set at opportunity ${opportunity}`, {
+        ...errorDetails,
+        rejectedSelection: selected
+      });
+    }
+    return clone(selected);
   } catch (error) {
     if (error instanceof HeadlessMatchError) throw error;
-    fail('INVALID_ACTION', `strategy ${playerId} returned an invalid value at opportunity ${opportunity}`);
+    fail('INVALID_ACTION', `strategy ${playerId} returned an invalid value at opportunity ${opportunity}`, {
+      ...errorDetails,
+      rejectedSelection: selected
+    });
   }
-  if (!context.candidates.some(candidate => sameValue(candidate, selected))) {
-    fail('INVALID_ACTION', `strategy ${playerId} selected an action outside the candidate set at opportunity ${opportunity}`);
-  }
-  return clone(selected);
 }
 
 function executeAction(resolver, action, playerId, opponentId, stem) {
-  switch (action.type) {
-    case 'AUTO': {
-      const isYang = STEMS_MAP[stem.element].yang === stem.name;
-      resolver.applyPlus(playerId, stem.element, isYang, 'AUTO', false);
-      return;
-    }
-    case 'CONVERT':
-      resolver.applyPlus(action.target.playerId, action.target.elementIndex, action.target.isYang, 'CONVERT', false);
-      return;
-    case 'ATK':
-      resolver.applyMinus(action.target.playerId, action.target.elementIndex, action.target.isYang, 'ATK', true);
-      return;
-    case 'TRANS':
-      resolver.applyPlus(action.target.playerId, action.target.elementIndex, action.target.isYang, 'TRANS', false);
-      return;
-    case 'BURST':
-      resolver.applyBurst(playerId, stem.element, action.targetEl);
-      return;
-    case 'BURST_ATK':
-      resolver.applyBurstAtk(playerId, stem.element, opponentId, action.targetEl);
-      return;
-    default:
-      fail('INVALID_ACTION', `unsupported action type ${String(action.type)}`);
-  }
+  return resolver.resolveAction(action, playerId, opponentId, stem);
 }
 
 function snapshot(trajectory, opportunity, event, state) {
@@ -224,134 +281,234 @@ export function createInitialHeadlessState(overrides = {}) {
  * @throws {HeadlessMatchError} for invalid inputs, strategy failures, or exhausted stems
  */
 export function runHeadlessMatch({ initialState, stems, strategies } = {}) {
-  validateFullState(initialState);
-  const stemSequence = validateStems(stems);
-  validateStrategies(strategies);
-
   let isolatedInitialState;
+  let reproductionInitialState;
+  let stemSequence;
+  const inputDetails = {
+    state: initialState,
+    stem: null,
+    playerId: null,
+    opportunity: null,
+    rejectedSelection: null,
+    candidates: [],
+    priorActionRecords: [],
+    trajectory: [],
+    consumedStemCount: 0,
+    initialState,
+    stems
+  };
   try {
+    inputDetails.stem = initialState?.currentStem ?? null;
+    inputDetails.playerId = initialState?.currentPlayer ?? null;
+    inputDetails.opportunity = initialState?.turnCount ?? null;
+    validateFullState(initialState);
+    stemSequence = validateStems(stems);
+    validateStrategies(strategies);
     isolatedInitialState = clone(initialState);
-  } catch {
-    fail('INVALID_STATE', 'initialState must be structured-cloneable');
+    reproductionInitialState = clone(isolatedInitialState);
+  } catch (error) {
+    throw attachErrorDetails(error, { ...inputDetails, stems: stemSequence ?? stems });
   }
-  const stateManager = createScopedState(isolatedInitialState);
-  const candidates = createActionCandidates(stateManager);
-  const scoreCalculator = createScoreCalculator(stateManager);
-  const resolver = createActionResolver(stateManager, scoreCalculator);
-  const trajectory = [{ opportunity: 0, event: 'match-start', state: clone(stateManager.getState()) }];
-  const actionRecords = [];
+
   let consumedStemCount = 0;
-  let terminalResult = null;
+  const actionRecords = [];
+  const trajectory = [{ opportunity: 0, event: 'match-start', state: clone(isolatedInitialState) }];
+  let stateManager;
+  let currentDetails = { ...inputDetails, stems: stemSequence, trajectory, priorActionRecords: actionRecords };
+  try {
+    stateManager = createScopedState(isolatedInitialState);
+    const candidates = createActionCandidates(stateManager);
+    const scoreCalculator = createScoreCalculator(stateManager);
+    const resolver = createActionResolver(stateManager, scoreCalculator);
 
-  while (!terminalResult) {
-    const state = stateManager.getState();
-    const turnStart = decideTurnStart(state);
-    stateManager.update({ turnCount: turnStart.turnCount });
-    const opportunity = turnStart.turnCount;
+    const getDetails = overrides => {
+      const state = stateManager.getState();
+      return {
+        state,
+        stem: state.currentStem,
+        playerId: state.currentPlayer,
+        opportunity: state.turnCount,
+        rejectedSelection: null,
+        candidates: [],
+        priorActionRecords: actionRecords,
+        trajectory,
+        consumedStemCount,
+        initialState: reproductionInitialState,
+        stems: stemSequence,
+        ...overrides
+      };
+    };
+    currentDetails = getDetails();
 
-    if (turnStart.terminal) {
-      terminalResult = turnStart.terminal;
-      stateManager.update({ phase: 'GAME_END' });
-      snapshot(trajectory, opportunity, 'terminal', stateManager.getState());
-      break;
+    const initialTerminal = decideTerminal(stateManager.getState());
+    if (stateManager.getState().phase === 'GAME_END' && !initialTerminal) {
+      fail('INVALID_STATE', 'initialState.phase is GAME_END but the game is not terminal', getDetails());
+    }
+    if (initialTerminal) {
+      const state = stateManager.getState();
+      snapshot(trajectory, state.turnCount, 'terminal', state);
+      return {
+        trajectory,
+        actionRecords,
+        finalState: clone(state),
+        terminalResult: initialTerminal,
+        consumedStemCount
+      };
     }
 
-    if (turnStart.resetOpponentBurstBonus) {
-      const opponent = stateManager.getState().players[turnStart.opponentId];
-      stateManager.update({
-        players: {
-          ...stateManager.getState().players,
-          [turnStart.opponentId]: { ...opponent, burstBonus: true }
+    let resumeCurrentOpportunity = stateManager.getState().currentStem !== null;
+    if (resumeCurrentOpportunity) {
+      const state = stateManager.getState();
+      if (!['DECISION', 'PLAYING'].includes(state.phase) || state.turnCount < 1 || state.turnCount >= state.maxTurns) {
+        fail('INVALID_STATE', 'initialState.currentStem requires a live, already-started opportunity in DECISION or PLAYING phase', getDetails());
+      }
+    }
+
+    let terminalResult = null;
+    while (!terminalResult) {
+      const state = stateManager.getState();
+      let opportunity;
+      let stem;
+      if (resumeCurrentOpportunity) {
+        // The complete position already includes turn-start work and its stem.
+        // Do not increment the opportunity counter or consume the future sequence.
+        resumeCurrentOpportunity = false;
+        opportunity = state.turnCount;
+        stem = state.currentStem;
+      } else {
+        const turnStart = decideTurnStart(state);
+        stateManager.update({ turnCount: turnStart.turnCount });
+        opportunity = turnStart.turnCount;
+
+        if (turnStart.terminal) {
+          terminalResult = turnStart.terminal;
+          stateManager.update({ phase: 'GAME_END' });
+          snapshot(trajectory, opportunity, 'terminal', stateManager.getState());
+          break;
         }
-      });
-    }
-    stateManager.update({ pendingSettlement: false });
 
-    if (consumedStemCount >= stemSequence.length) {
-      fail('STEMS_EXHAUSTED', `stem sequence ended before opportunity ${opportunity}`);
-    }
-    const stem = stemSequence[consumedStemCount++];
-    const playerId = stateManager.getState().currentPlayer;
-    const opponentId = playerId === 'P1' ? 'P2' : 'P1';
-    stateManager.update({ currentStem: clone(stem) });
-    snapshot(trajectory, opportunity, 'turn-start', stateManager.getState());
+        if (turnStart.resetOpponentBurstBonus) {
+          const opponent = stateManager.getState().players[turnStart.opponentId];
+          stateManager.update({
+            players: {
+              ...stateManager.getState().players,
+              [turnStart.opponentId]: { ...opponent, burstBonus: true }
+            }
+          });
+        }
+        stateManager.update({ pendingSettlement: false });
 
-    const node = stateManager.getNodeState(playerId, stem.element);
-    const isYang = STEMS_MAP[stem.element].yang === stem.name;
-    const currentSideValue = isYang ? node.yang : node.yin;
-    let availableActions;
-    let action;
-    if (currentSideValue < 1) {
-      action = { type: 'AUTO', executorId: playerId, playerId, stem: clone(stem), isYang };
-      availableActions = [clone(action)];
-    } else {
-      availableActions = candidates.getAvailableActions(playerId, stem.element, isYang).actions;
-      action = availableActions.length === 0
-        ? { type: 'SKIP' }
-        : takeStrategyAction(strategies[playerId], deepFreeze({
+        if (consumedStemCount >= stemSequence.length) {
+          currentDetails = getDetails({ opportunity, consumedStemCount });
+          fail('STEMS_EXHAUSTED', `stem sequence ended before opportunity ${opportunity}`, currentDetails);
+        }
+        stem = stemSequence[consumedStemCount++];
+        stateManager.update({ currentStem: clone(stem) });
+      }
+
+      const playerId = stateManager.getState().currentPlayer;
+      const opponentId = playerId === 'P1' ? 'P2' : 'P1';
+      snapshot(trajectory, opportunity, 'turn-start', stateManager.getState());
+
+      const node = stateManager.getNodeState(playerId, stem.element);
+      const isYang = STEMS_MAP[stem.element].yang === stem.name;
+      const currentSideValue = isYang ? node.yang : node.yin;
+      let availableActions;
+      let action;
+      if (currentSideValue < 1) {
+        action = { type: 'AUTO', executorId: playerId, playerId, stem: clone(stem), isYang };
+        availableActions = [clone(action)];
+      } else {
+        availableActions = candidates.getAvailableActions(playerId, stem.element, isYang).actions;
+        if (availableActions.length === 0) {
+          action = { type: 'SKIP' };
+        } else {
+          const strategyContext = deepFreeze({
             playerId,
             stem: clone(stem),
             state: deepFreeze(clone(stateManager.getState())),
             candidates: deepFreeze(clone(availableActions))
-          }), opportunity, playerId);
+          });
+          currentDetails = getDetails({
+            state: strategyContext.state,
+            stem: strategyContext.stem,
+            playerId,
+            opportunity,
+            candidates: strategyContext.candidates,
+            consumedStemCount
+          });
+          action = takeStrategyAction(strategies[playerId], strategyContext, opportunity, playerId, currentDetails);
+        }
+      }
+
+      currentDetails = getDetails({
+        state: clone(stateManager.getState()),
+        stem: clone(stem),
+        playerId,
+        opportunity,
+        candidates: clone(availableActions),
+        consumedStemCount
+      });
+      const stateChangesBefore = stateManager.takeStateChanges();
+      const scoreChangesBefore = stateManager.takeScoreChanges();
+      if (action.type !== 'SKIP') {
+        executeAction(resolver, action, playerId, opponentId, stem);
+      }
+      const actionStateChanges = stateManager.takeStateChanges();
+      const actionScoreChanges = stateManager.takeScoreChanges();
+      stateChangesBefore.push(...actionStateChanges);
+      scoreChangesBefore.push(...actionScoreChanges);
+
+      let burstPlayer = stateManager.getState().pendingBurstPlayer;
+      if (['BURST', 'BURST_ATK'].includes(action.type) && !stateManager.getState().isExtraTurn) {
+        burstPlayer = playerId;
+      }
+      stateManager.update({ pendingBurstPlayer: burstPlayer });
+
+      const passive = calculatePassiveEffects(stateManager.getState(), POINTS_CONFIG);
+      for (const change of passive.scoreChanges) {
+        stateManager.addScore(change.playerId, change.amount, change.reason, change.actionType);
+      }
+      const passiveScoreChanges = stateManager.takeScoreChanges();
+      stateManager.update({ pendingSettlement: passive.scoreChanges.length > 0 });
+
+      const next = calculateNextPlayer(
+        playerId,
+        stateManager.getState().isExtraTurn,
+        stateManager.getState().pendingBurstPlayer
+      );
+      stateManager.update({
+        currentPlayer: next.nextPlayer,
+        isExtraTurn: next.nextIsExtraTurn,
+        pendingBurstPlayer: next.pendingBurstPlayer,
+        currentStem: null,
+        turnScoreChanges: { P1: 0, P2: 0 }
+      });
+
+      actionRecords.push({
+        opportunity,
+        playerId,
+        stem: clone(stem),
+        candidates: clone(availableActions),
+        action: clone(action),
+        stateChanges: stateChangesBefore,
+        scoreChanges: scoreChangesBefore,
+        passiveScoreChanges
+      });
+      snapshot(trajectory, opportunity, 'opportunity-complete', stateManager.getState());
+      currentDetails = getDetails({ opportunity, consumedStemCount });
     }
 
-    const stateChangesBefore = stateManager.takeStateChanges();
-    const scoreChangesBefore = stateManager.takeScoreChanges();
-    if (action.type !== 'SKIP') {
-      executeAction(resolver, action, playerId, opponentId, stem);
-    }
-    const actionStateChanges = stateManager.takeStateChanges();
-    const actionScoreChanges = stateManager.takeScoreChanges();
-    stateChangesBefore.push(...actionStateChanges);
-    scoreChangesBefore.push(...actionScoreChanges);
-
-    let burstPlayer = stateManager.getState().pendingBurstPlayer;
-    if (['BURST', 'BURST_ATK'].includes(action.type) && !stateManager.getState().isExtraTurn) {
-      burstPlayer = playerId;
-    }
-    stateManager.update({ pendingBurstPlayer: burstPlayer });
-
-    const passive = calculatePassiveEffects(stateManager.getState(), POINTS_CONFIG);
-    for (const change of passive.scoreChanges) {
-      stateManager.addScore(change.playerId, change.amount, change.reason, change.actionType);
-    }
-    const passiveScoreChanges = stateManager.takeScoreChanges();
-    stateManager.update({ pendingSettlement: passive.scoreChanges.length > 0 });
-
-    const next = calculateNextPlayer(
-      playerId,
-      stateManager.getState().isExtraTurn,
-      stateManager.getState().pendingBurstPlayer
-    );
-    stateManager.update({
-      currentPlayer: next.nextPlayer,
-      isExtraTurn: next.nextIsExtraTurn,
-      pendingBurstPlayer: next.pendingBurstPlayer,
-      currentStem: null,
-      turnScoreChanges: { P1: 0, P2: 0 }
-    });
-
-    actionRecords.push({
-      opportunity,
-      playerId,
-      stem: clone(stem),
-      candidates: clone(availableActions),
-      action: clone(action),
-      stateChanges: stateChangesBefore,
-      scoreChanges: scoreChangesBefore,
-      passiveScoreChanges
-    });
-    snapshot(trajectory, opportunity, 'opportunity-complete', stateManager.getState());
+    return {
+      trajectory,
+      actionRecords,
+      finalState: clone(stateManager.getState()),
+      terminalResult,
+      consumedStemCount
+    };
+  } catch (error) {
+    throw attachErrorDetails(error, currentDetails);
   }
-
-  return {
-    trajectory,
-    actionRecords,
-    finalState: clone(stateManager.getState()),
-    terminalResult,
-    consumedStemCount
-  };
 }
 
 export default runHeadlessMatch;
