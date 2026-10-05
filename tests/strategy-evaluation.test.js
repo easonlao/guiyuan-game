@@ -1,13 +1,17 @@
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
+import { replaySeededMatch } from '../src/js/logic/headless/SeededMatch.js';
 import { runStrategyEvaluationStudy } from '../src/js/logic/headless/StrategyEvaluation.js';
 import { reachableFixedPositions } from './fixtures/fixed-position-continuations/reachable-positions.js';
 
 const cliPath = new URL('../scripts/headless-strategy-evaluation.js', import.meta.url).pathname;
+const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const criteria = {
   minimumEffect: 0.1,
   minimumPairs: 3,
@@ -58,6 +62,52 @@ describe('crossover evaluation public API', () => {
       discoveryClassification: expect.any(String),
       status: 'not-run'
     });
+  });
+
+  it('counts disjoint typed-seed failures across branches and gives failures precedence over overlapping budget skips', async () => {
+    const { evaluateCrossoverConfirmation } = await import('../src/js/logic/headless/StrategyEvaluation.js');
+    const failingPolicy = {
+      id: 'disjoint-typed-seed-failure-policy',
+      version: 1,
+      decide(context, random) {
+        if (context.state.turnCount === 9 && context.history.length === 2) {
+          const draw = random();
+          const firstAction = context.history[0]?.action?.type;
+          // The deterministic draws select numeric seed 3 on TRANS and string seed "3" on CONVERT.
+          if ((firstAction === 'TRANS' && draw > 0.118 && draw < 0.12)
+            || (firstAction === 'CONVERT' && draw > 0.51 && draw < 0.53)) {
+            throw new Error('seed-conditioned branch failure');
+          }
+        }
+        return context.candidates[0];
+      }
+    };
+    const report = evaluateCrossoverConfirmation({
+      positions: [reachableFixedPositions[0]],
+      focalStrategy: failingPolicy,
+      opponents: [
+        { id: 'build', strategy: 'build-priority' },
+        { id: 'attack', strategy: 'attack-priority' }
+      ],
+      discoverySeeds: [3, 2, '3', 4, 5],
+      confirmationSeeds: [11],
+      scoringConfig: {},
+      criteria,
+      maxRuns: 7
+    });
+
+    expect(report.discovery.pairs[0].opponents[0].counts).toMatchObject({
+      requested: 5,
+      completed: 1,
+      missing: 4,
+      failed: 2,
+      budgetSkipped: 2,
+      actions: {
+        A: { failed: 1, budgetSkipped: 0 },
+        B: { failed: 1, budgetSkipped: 3 }
+      }
+    });
+    expect(report.discovery.pairs[0].opponents[0].missingSeeds).toEqual([3, '3', 4, 5]);
   });
 
   it('accounts for a shared continuation budget and exposes raw replayable comparison results', async () => {
@@ -137,6 +187,71 @@ describe('strategy evaluation CLI', () => {
     expect(result.stdout).toContain('formal-baseline');
     expect(result.stdout).toContain('all');
     expect(result.stderr).toBe('');
+  });
+
+  it('completes a small study from another cwd and verifies its provenance and replay artifact', () => {
+    const workingDirectory = mkdtempSync(join(tmpdir(), 'strategy-evaluation-cwd-'));
+    const outputDirectory = join(workingDirectory, 'artifacts');
+    try {
+      const result = spawnSync(process.execPath, [
+        cliPath, '--config', 'combined', '--samples', '1', '--max-turns', '2', '--seed', '77', '--out', outputDirectory
+      ], { cwd: workingDirectory, encoding: 'utf8' });
+
+      expect(result.status).toBe(0);
+      expect(result.stderr).toBe('');
+      expect(existsSync(join(outputDirectory, 'evaluation.json'))).toBe(true);
+      expect(existsSync(join(outputDirectory, 'evaluation-full.json.gz'))).toBe(true);
+      const summary = JSON.parse(readFileSync(join(outputDirectory, 'evaluation.json'), 'utf8'));
+      const full = JSON.parse(gunzipSync(readFileSync(join(outputDirectory, 'evaluation-full.json.gz'))).toString('utf8'));
+
+      expect(summary).toMatchObject({ status: 'complete', plan: { scoringSelections: [{ id: 'combined' }] } });
+      expect(full.summary.status).toBe('complete');
+      const batch = full.batchComparisons[0].result;
+      expect(batch.plan.configurations.map(configuration => configuration.role)).toEqual(['baseline', 'experiment']);
+      for (const role of ['baseline', 'experiment']) {
+        expect(batch.results.some(match => match.configurationRole === role && match.status === 'completed')).toBe(true);
+      }
+
+      const sample = full.evaluations.flatMap(evaluation => evaluation.result.discovery.comparisons)
+        .flatMap(comparison => comparison.firstActions)
+        .flatMap(branch => branch.samples)
+        .find(candidate => candidate.status === 'completed');
+      expect(sample).toBeDefined();
+      const replay = replaySeededMatch({
+        initialState: sample.replay.initialState,
+        stems: sample.replay.stems,
+        selectedActions: sample.replay.actionRecords,
+        scoringConfig: sample.replay.scoringConfigInput
+      });
+      expect(replay.terminalResult).toEqual(sample.replay.terminalResult);
+      expect(replay.trajectory).toEqual(sample.replay.trajectory);
+
+      const { sourceManifest, sourceSha256 } = full.revision;
+      expect(sourceManifest.length).toBeGreaterThan(0);
+      expect(sourceSha256).toMatch(/^[a-f0-9]{64}$/);
+      const sourcePaths = sourceManifest.map(file => file.path);
+      expect(sourcePaths).toEqual([...sourcePaths].sort());
+      expect(sourcePaths).toEqual(expect.arrayContaining([
+        'src/js/logic/headless/StrategyEvaluation.js',
+        'scripts/headless-strategy-evaluation.js',
+        'tests/fixtures/fixed-position-continuations/reachable-positions.js',
+        'package.json',
+        'package-lock.json'
+      ]));
+      for (const file of sourceManifest) {
+        expect(file.sha256).toMatch(/^[a-f0-9]{64}$/);
+        expect(createHash('sha256').update(readFileSync(join(repositoryRoot, file.path))).digest('hex')).toBe(file.sha256);
+      }
+      expect(createHash('sha256').update(JSON.stringify(sourceManifest)).digest('hex')).toBe(sourceSha256);
+      expect(summary.revision.sourceSha256).toBe(sourceSha256);
+      const research = readFileSync(join(outputDirectory, 'research.md'), 'utf8');
+      expect(research).toContain('working-tree status:');
+      expect(research).toContain(`source SHA-256: ${sourceSha256}`);
+      expect(research).not.toContain('working-tree snapshot');
+      expect(full.revision.commit).toMatch(/^[a-f0-9]{40}$/);
+    } finally {
+      rmSync(workingDirectory, { recursive: true, force: true });
+    }
   });
 
   it('writes a compressed replay artifact and coverage report when a valid budget is exhausted', () => {

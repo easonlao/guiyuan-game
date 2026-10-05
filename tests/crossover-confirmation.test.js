@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { replaySeededMatch } from '../src/js/logic/headless/SeededMatch.js';
+import { createInitialHeadlessState } from '../src/js/logic/headless/HeadlessMatch.js';
+import { freezeDiagnosticFixedPosition } from '../src/js/logic/headless/FixedPositionContinuations.js';
 import { reachableFixedPositions } from './fixtures/fixed-position-continuations/reachable-positions.js';
 import {
   classifyPayoffCrossover,
@@ -174,6 +176,114 @@ describe('crossover confirmation public API', () => {
     expect(formatted).toContain('Discovery-qualified:');
     expect(formatted).toContain('normal 95%');
     expect(formatted).toContain('Limitation:');
+  });
+
+  it('leaves unqualified pairs unrun when another pair selects their position', () => {
+    const state = createInitialHeadlessState({
+      phase: 'DECISION',
+      turnCount: 5,
+      maxTurns: 8,
+      currentPlayer: 'P1',
+      currentStem: { name: '甲', color: '#2dcc70', element: 0 }
+    });
+    state.nodeStates['P1-0'] = { yang: 1, yin: 1 };
+    for (let elementIndex = 0; elementIndex < 5; elementIndex++) {
+      state.nodeStates[`P2-${elementIndex}`] = { yang: 1, yin: 1 };
+    }
+    state.nodeStates['P2-4'].yin = 0;
+    const position = freezeDiagnosticFixedPosition({
+      id: 'three-action-diagnostic',
+      description: 'Three legal first actions expose position-wide confirmation leakage.',
+      state
+    });
+    const focalStrategy = {
+      id: 'diagnostic-focal',
+      version: 1,
+      decide(context) { return context.candidates[0]; }
+    };
+    const opponentStrategy = (id, chooseLastForBurst) => ({
+      id,
+      version: 1,
+      decide(context) {
+        const discoveryAction = context.history[0]?.action?.type;
+        if (discoveryAction === 'ATK' && context.stem.name === '庚') {
+          throw new Error('Leave one discovery sample unavailable for this pair.');
+        }
+        if (discoveryAction === 'BURST') {
+          return chooseLastForBurst ? context.candidates.at(-1) : context.candidates[0];
+        }
+        return chooseLastForBurst ? context.candidates[0] : context.candidates.at(-1);
+      }
+    });
+    const discoverySeeds = [2, 18];
+    const confirmationSeeds = [1, 4, 96];
+    const selectedCriteria = { ...criteria, minimumEffect: 0 };
+    const report = evaluateCrossoverConfirmation({
+      positions: [position],
+      focalStrategy,
+      opponents: [
+        { id: 'opponent-a', strategy: opponentStrategy('diagnostic-opponent-a', true) },
+        { id: 'opponent-b', strategy: opponentStrategy('diagnostic-opponent-b', false) }
+      ],
+      discoverySeeds,
+      confirmationSeeds,
+      scoringConfig: {},
+      criteria: selectedCriteria
+    });
+    const pairForActions = (pairs, actionTypes) => pairs.find(pair =>
+      pair.actions.map(action => action.type).join(',') === actionTypes.join(','));
+    const qualifyingDiscoveryPair = pairForActions(report.discovery.pairs, ['BURST_ATK', 'BURST']);
+    const insufficientDiscoveryPair = pairForActions(report.discovery.pairs, ['ATK', 'BURST']);
+
+    expect(report.discovery.comparisons[0].firstActions).toHaveLength(3);
+    expect(qualifyingDiscoveryPair.classification).toBe('crossover');
+    expect(insufficientDiscoveryPair.classification).toBe('uncertainty-insufficient');
+
+    const confirmationEvidence = report.configuration.opponents.map(opponent => {
+      const strategyId = opponent.strategy.id;
+      const comparison = report.confirmation.comparisons.find(item =>
+        item.continuationStrategyIdentities.P2.id === strategyId);
+      const branchForCandidate = candidateIndex => comparison.firstActions.find(branch =>
+        branch.candidateIndex === candidateIndex);
+      const actionASamples = branchForCandidate(insufficientDiscoveryPair.candidateIndices[0]).samples;
+      const actionBSamples = branchForCandidate(insufficientDiscoveryPair.candidateIndices[1]).samples;
+      return {
+        id: opponent.id,
+        samples: confirmationSeeds.map(seed => ({
+          seed,
+          actionAValue: actionASamples.find(sample => sample.seed === seed)?.value ?? null,
+          actionBValue: actionBSamples.find(sample => sample.seed === seed)?.value ?? null
+        }))
+      };
+    });
+    const holdoutClassification = classifyPayoffCrossover({
+      criteria: selectedCriteria,
+      opponents: confirmationEvidence
+    });
+    expect(holdoutClassification.classification).toBe('crossover');
+    expect(holdoutClassification.orientation).toEqual(insufficientDiscoveryPair.orientation);
+
+    const insufficientConfirmationPair = pairForActions(report.confirmation.pairs, ['ATK', 'BURST']);
+    expect(insufficientConfirmationPair).toMatchObject({
+      status: 'not-run',
+      discoveryClassification: 'uncertainty-insufficient',
+      comparisonIndexes: { 'opponent-a': null, 'opponent-b': null }
+    });
+    expect(report.summary).toMatchObject({
+      discoveryQualifiedPairCount: 1,
+      confirmedPairCount: 1,
+      notConfirmedPairCount: 0,
+      notRunPairCount: 2,
+      plannedMatchCount: 30,
+      attemptedMatchCount: 30,
+      completedMatchCount: 28,
+      failedMatchCount: 2
+    });
+    expect(report.summary.confirmation).toMatchObject({
+      plannedOverheadMatchCount: 6,
+      completedOverheadMatchCount: 6,
+      failedOverheadMatchCount: 0
+    });
   });
 
   it('retains every candidate pair and labels discovery budget skips without dropping raw results', () => {

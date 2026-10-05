@@ -402,7 +402,7 @@ export function evaluateCrossoverConfirmation(input = {}) {
       candidateIndices: clone(discoveryPair.candidateIndices),
       actions: clone(discoveryPair.actions)
     };
-    if (!selectedPositionIds.has(pair.positionId)) {
+    if (discoveryPair.classification !== 'crossover') {
       const classifier = classifyPayoffCrossover({
         criteria,
         opponents: normalizedOpponents.map(opponent => ({ id: opponent.id, samples: [] }))
