@@ -8,6 +8,7 @@
 // ============================================
 
 import { STEMS_LIST } from '../config/game-config.js';
+import { calculateNextPlayer } from './flow/TurnRules.js';
 
 const AuthorityExecutor = {
   // 当前玩家是否是主机
@@ -105,24 +106,13 @@ const AuthorityExecutor = {
       return null;
     }
 
-    let nextPlayer;
-    let nextIsExtraTurn = false;
+    const result = calculateNextPlayer(currentPlayer, isExtraTurn, this._burstExtraPlayer);
+    this._burstExtraPlayer = result.pendingBurstPlayer;
 
-    if (isExtraTurn) {
-      // 当前是额外机会回合，下回合正常切换玩家
-      nextPlayer = currentPlayer === 'P1' ? 'P2' : 'P1';
-    } else if (this._burstExtraPlayer === currentPlayer) {
-      // 上回合执行了强化/强破，这回合是额外机会
-      nextPlayer = currentPlayer;
-      nextIsExtraTurn = true;
-      // 清除标志（但下一回合会检查 isExtraTurn，所以不会再次给予额外机会）
-      this._burstExtraPlayer = null;
-    } else {
-      // 正常切换玩家
-      nextPlayer = currentPlayer === 'P1' ? 'P2' : 'P1';
-    }
-
-    return { nextPlayer, nextIsExtraTurn };
+    return {
+      nextPlayer: result.nextPlayer,
+      nextIsExtraTurn: result.nextIsExtraTurn
+    };
   },
 
   /**

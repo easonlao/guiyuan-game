@@ -155,7 +155,14 @@ function initNodeStates() {
 // 填充初始节点状态
 initialState.nodeStates = initNodeStates();
 
-let state = shallowCopy(initialState);
+function createInitialState() {
+  return {
+    ...deepMerge({}, initialState),
+    nodeStates: initNodeStates()
+  };
+}
+
+let state = createInitialState();
 
 const StateManager = {
   /**
@@ -474,9 +481,7 @@ const StateManager = {
    * 重置游戏
    */
   reset() {
-    state = shallowCopy(initialState);
-    // 重新生成新的节点状态引用
-    state.nodeStates = initNodeStates();
+    state = createInitialState();
 
     EventBus.emit(GAME_EVENTS.STATE_RESET, state);
   },
