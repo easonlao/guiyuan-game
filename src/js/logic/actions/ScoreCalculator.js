@@ -21,29 +21,27 @@ const ScoreCalculator = {
    * @param {boolean} isYang - 是否为阳
    * @param {boolean} isAttack - 是否为攻击行为
    */
+  beginAction() {
+    this.burstBehaviorAwarded = false;
+  },
+
   calculateAndApplyScore(playerId, actionType, beforeState, afterState, isYang, isAttack) {
-    // 1. 计算行为分
-    const actionScore = this._getActionScore(actionType);
-    const actionName = this._getActionName(actionType);
+    const baseActionScore = this._getActionScore(actionType);
+    const awardsBurstBehaviorOnce = this.scoringConfig?.burstActionScoreOnce &&
+      ['BURST', 'BURST_ATK'].includes(actionType);
+    const includeBehaviorScore = !awardsBurstBehaviorOnce || !this.burstBehaviorAwarded;
+    const actionScore = includeBehaviorScore ? baseActionScore : 0;
+    if (awardsBurstBehaviorOnce && baseActionScore > 0) this.burstBehaviorAwarded = true;
 
-    // 2. 计算状态分
-    const stateScore = this._getStateChangeScore(beforeState, afterState, isYang);
+    const stateScore = this._getStateChangeScore(beforeState, afterState, isYang, isAttack, actionType);
     const stateName = this._getStateName(beforeState, afterState, isYang);
-
-    // 3. 总分 = 行为分 + 状态分
     const totalScore = actionScore + stateScore;
 
     if (totalScore !== 0) {
-      // 应用稀有度加成（对总分计算）
       const finalScore = this._applyRarityBonus(totalScore, actionType);
-
-      // 组合显示原因
       const combinedReason = this._getCombinedReason(actionType, stateName);
-
-      // 统一调用：只调用一次 addScore，避免重复加分
-      // 统计拆分由 StateManager._recordScoreByReason() 内部处理
-      // reason 格式：动作·状态（如 "破·破阴点亮"）
-      this.stateManager.addScore(playerId, finalScore, combinedReason, actionType);
+      const scoreBreakdown = this.scoringConfig ? { baseActionScore, actionScore, stateScore } : undefined;
+      this.stateManager.addScore(playerId, finalScore, combinedReason, actionType, scoreBreakdown);
     }
   },
 
@@ -52,7 +50,8 @@ const ScoreCalculator = {
    * @private
    */
   _getActionScore(actionType) {
-    return POINTS_CONFIG.ACTION[actionType] || 0;
+    const pointsConfig = this.scoringConfig?.pointsConfig ?? POINTS_CONFIG;
+    return pointsConfig.ACTION[actionType] || 0;
   },
 
   /**
@@ -75,27 +74,32 @@ const ScoreCalculator = {
    * 获取状态变化分
    * @private
    */
-  _getStateChangeScore(beforeState, afterState, isYang) {
+  _getStateChangeScore(beforeState, afterState, isYang, isAttack, actionType) {
+    const pointsConfig = this.scoringConfig?.pointsConfig ?? POINTS_CONFIG;
+    const isBurstSelfCost = this.scoringConfig?.noSelfCostReward && !isAttack &&
+      afterState < beforeState && ['BURST', 'BURST_ATK'].includes(actionType);
+    if (isBurstSelfCost) return 0;
+
     // 攻击类状态变化
     if (beforeState === 0 && afterState === -1) {
-      return isYang ? POINTS_CONFIG.STATE_CHANGE.CAUSE_DMG.yang : POINTS_CONFIG.STATE_CHANGE.CAUSE_DMG.yin;
+      return isYang ? pointsConfig.STATE_CHANGE.CAUSE_DMG.yang : pointsConfig.STATE_CHANGE.CAUSE_DMG.yin;
     }
     if (beforeState === 1 && afterState === 0) {
-      return isYang ? POINTS_CONFIG.STATE_CHANGE.BREAK_LIGHT.yang : POINTS_CONFIG.STATE_CHANGE.BREAK_LIGHT.yin;
+      return isYang ? pointsConfig.STATE_CHANGE.BREAK_LIGHT.yang : pointsConfig.STATE_CHANGE.BREAK_LIGHT.yin;
     }
     if (beforeState === 2 && afterState === 1) {
-      return POINTS_CONFIG.STATE_CHANGE.WEAKEN;
+      return pointsConfig.STATE_CHANGE.WEAKEN;
     }
 
     // 防御类状态变化
     if (beforeState === -1 && afterState === 0) {
-      return isYang ? POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG.yang : POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG.yin;
+      return isYang ? pointsConfig.STATE_CHANGE.REPAIR_DMG.yang : pointsConfig.STATE_CHANGE.REPAIR_DMG.yin;
     }
     if (beforeState === 0 && afterState === 1) {
-      return POINTS_CONFIG.STATE_CHANGE.LIGHT_UP;
+      return pointsConfig.STATE_CHANGE.LIGHT_UP;
     }
     if (beforeState === 1 && afterState === 2) {
-      return POINTS_CONFIG.STATE_CHANGE.BLESSING;
+      return pointsConfig.STATE_CHANGE.BLESSING;
     }
 
     return 0;
@@ -129,12 +133,14 @@ const ScoreCalculator = {
    * @private
    */
   _applyRarityBonus(score, actionType) {
-    return calculateRarityAdjustedScore(score, actionType, POINTS_CONFIG.RARITY_MULTIPLIER);
+    if (this.scoringConfig?.disableRarityBonus) return score;
+    const multiplier = this.scoringConfig?.pointsConfig?.RARITY_MULTIPLIER ?? POINTS_CONFIG.RARITY_MULTIPLIER;
+    return calculateRarityAdjustedScore(score, actionType, multiplier);
   }
 };
 
-export function createScoreCalculator(stateManager = StateManager) {
-  return Object.assign(Object.create(ScoreCalculator), { stateManager });
+export function createScoreCalculator(stateManager = StateManager, scoringConfig = null) {
+  return Object.assign(Object.create(ScoreCalculator), { stateManager, scoringConfig });
 }
 
 const DefaultScoreCalculator = createScoreCalculator();

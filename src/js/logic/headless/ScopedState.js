@@ -1,6 +1,6 @@
 import { applyScoreChangeToState } from '../../state/StateScoreRecorder.js';
 
-export function createScopedState(initialState) {
+export function createScopedState(initialState, scoringConfig = null) {
   let state = initialState;
   const stateChanges = [];
   const scoreChanges = [];
@@ -36,9 +36,9 @@ export function createScopedState(initialState) {
       stateChanges.push({ playerId, elementIndex, side, before, after: newValue });
     },
 
-    addScore(playerId, amount, reason = '', actionType = null) {
+    addScore(playerId, amount, reason = '', actionType = null, scoreBreakdown = null) {
       if (amount === 0) return;
-      state = applyScoreChangeToState(state, playerId, amount, reason, actionType);
+      state = applyScoreChangeToState(state, playerId, amount, reason, actionType, scoringConfig, scoreBreakdown);
       scoreChanges.push({ playerId, amount, reason, actionType });
     },
 

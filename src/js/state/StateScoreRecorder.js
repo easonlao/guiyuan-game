@@ -9,20 +9,22 @@ function cleanReason(reason) {
   return match ? match[1].trim() : reason;
 }
 
-function rarityAdjustedScore(score, actionType) {
+function rarityAdjustedScore(score, actionType, scoringConfig = null) {
+  if (scoringConfig?.disableRarityBonus) return score;
   return calculateRarityAdjustedScore(
     score,
     actionType,
-    POINTS_CONFIG?.RARITY_MULTIPLIER || 1.5
+    scoringConfig?.pointsConfig?.RARITY_MULTIPLIER || POINTS_CONFIG?.RARITY_MULTIPLIER || 1.5
   );
 }
 
-function actionScore(actionType) {
-  return POINTS_CONFIG?.ACTION?.[actionType] || 0;
+function actionScore(actionType, scoringConfig = null) {
+  const pointsConfig = scoringConfig?.pointsConfig ?? POINTS_CONFIG;
+  return pointsConfig?.ACTION?.[actionType] || 0;
 }
 
-function stateScore(stateName) {
-  const changes = POINTS_CONFIG?.STATE_CHANGE;
+function stateScore(stateName, scoringConfig = null) {
+  const changes = (scoringConfig?.pointsConfig ?? POINTS_CONFIG)?.STATE_CHANGE;
   if (!changes) return 0;
   if (stateName === '点亮') return changes.LIGHT_UP || 0;
   if (stateName === '加持') return changes.BLESSING || 0;
@@ -46,7 +48,7 @@ function recordStat(targetState, playerId, statType, reason, amount) {
 }
 
 /** Record a score using the same public scoring/statistics rules for any isolated state value. */
-export function recordScoreByReason(targetState, playerId, reason, actionType, amount) {
+export function recordScoreByReason(targetState, playerId, reason, actionType, amount, scoringConfig = null, scoreBreakdown = null) {
   const clean = cleanReason(reason);
   if (PASSIVE_ACTIONS.includes(actionType)) {
     recordStat(targetState, playerId, 'passive', clean, amount);
@@ -55,15 +57,16 @@ export function recordScoreByReason(targetState, playerId, reason, actionType, a
 
   if (clean.includes('·')) {
     const [actionName, stateName] = clean.split('·');
-    const behaviorScore = actionScore(actionType);
-    const changedStateScore = stateScore(stateName);
+    const behaviorScore = scoreBreakdown?.baseActionScore ?? actionScore(actionType, scoringConfig);
+    const awardedBehaviorScore = scoreBreakdown?.actionScore ?? behaviorScore;
+    const changedStateScore = scoreBreakdown?.stateScore ?? stateScore(stateName, scoringConfig);
     if (behaviorScore > 0 && targetState.actionStats[playerId][actionName] !== undefined) {
       targetState.actionStats[playerId][actionName]++;
-      targetState.actionScores[playerId][actionName] += rarityAdjustedScore(behaviorScore, actionType);
+      targetState.actionScores[playerId][actionName] += rarityAdjustedScore(awardedBehaviorScore, actionType, scoringConfig);
     }
     if (changedStateScore > 0 && targetState.stateStats[playerId][stateName] !== undefined) {
       targetState.stateStats[playerId][stateName]++;
-      targetState.stateScores[playerId][stateName] += rarityAdjustedScore(changedStateScore, actionType);
+      targetState.stateScores[playerId][stateName] += rarityAdjustedScore(changedStateScore, actionType, scoringConfig);
     }
     return;
   }
@@ -75,7 +78,7 @@ export function recordScoreByReason(targetState, playerId, reason, actionType, a
 }
 
 /** Apply a score and its statistics to a scoped state without emitting global events. */
-export function applyScoreChangeToState(targetState, playerId, amount, reason = '', actionType = null) {
+export function applyScoreChangeToState(targetState, playerId, amount, reason = '', actionType = null, scoringConfig = null, scoreBreakdown = null) {
   if (amount === 0) return targetState;
 
   const currentScore = targetState.players[playerId].score;
@@ -91,6 +94,6 @@ export function applyScoreChangeToState(targetState, playerId, amount, reason = 
       [playerId]: currentTurnChange + amount
     }
   };
-  recordScoreByReason(nextState, playerId, reason, actionType, amount);
+  recordScoreByReason(nextState, playerId, reason, actionType, amount, scoringConfig, scoreBreakdown);
   return nextState;
 }
