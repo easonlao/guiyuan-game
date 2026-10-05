@@ -460,8 +460,347 @@
     "fixedPositionLimitations": "Frozen checkpoints keep their recorded maxTurns; --max-turns controls paired initial-state batch comparisons only."
   },
   "revision": {
-    "commit": "175084f533f0262e6c6d081c8c88cd3aad63d6e5",
-    "workingTree": "M package.json\n?? docs/crossover-confirmation.md\n?? docs/strategy-evaluation.md\n?? reports/\n?? scripts/headless-strategy-evaluation.js\n?? src/js/logic/headless/CrossoverConfirmation.js\n?? src/js/logic/headless/StrategyEvaluation.js\n?? tests/crossover-confirmation.test.js\n?? tests/strategy-evaluation.test.js"
+    "commit": "4219bb4f078a32e46cb452135b1e6475130f094f",
+    "workingTree": "",
+    "sourceManifest": [
+      {
+        "path": "package-lock.json",
+        "sha256": "cc6392b8971f725d94bff390b7a5bc3acbf20eaa798600ec6db7c693089c1774"
+      },
+      {
+        "path": "package.json",
+        "sha256": "1c0e35f92603a4d15f3cf86243311dcc94b48d9f7703fafbcadfebbe7cd2b747"
+      },
+      {
+        "path": "scripts/headless-batch-comparison.js",
+        "sha256": "3f939ec3739630028b8a4d540c49f35a0968d1b608393e4556af6afc7aa08aa7"
+      },
+      {
+        "path": "scripts/headless-strategy-evaluation.js",
+        "sha256": "dd2a2c89382cc0b65e260ebaa2c4505e35ad8713d28e703d623e45b2c22756f4"
+      },
+      {
+        "path": "src/js/bus/EventBus.js",
+        "sha256": "8d679dca557f537fc80cd75f24aa0694b7a6eb254c4dd0e025ee6651dffeb933"
+      },
+      {
+        "path": "src/js/config/dev-config.js",
+        "sha256": "593b47927efdd46e58e094ae01b903363cd1fc317189b13d7df1617b62f56981"
+      },
+      {
+        "path": "src/js/config/env.js",
+        "sha256": "6d2b5fb522e5072f644568319b7386393cdae2ea5a8bc8fa483ad0972a1e2273"
+      },
+      {
+        "path": "src/js/config/game-config.js",
+        "sha256": "90b4511dd91d2b3d5302eafb5e34a1100cc2ce3e65d84c2159daf7b3c8f46d3e"
+      },
+      {
+        "path": "src/js/interaction/InputHandler.js",
+        "sha256": "2bd3a901ba2de4c2f2c63fe62f0c7727949ea33a8c7964425d136e1cf9b390fa"
+      },
+      {
+        "path": "src/js/logic/AuthorityExecutor.js",
+        "sha256": "9a44384d3696d51d9e8d44897a72537d85d3de20c5f84cf0736c35ed25cbb2af"
+      },
+      {
+        "path": "src/js/logic/GameEngine.js",
+        "sha256": "859b2482286a0a87b46e6f875d167a08fb0514969142b1be576c028594db58fd"
+      },
+      {
+        "path": "src/js/logic/actions/ActionCandidates.js",
+        "sha256": "f239bddf728ff067e132b66d907755c13e8f52b0a779dbea4ffa8331a9c18e3b"
+      },
+      {
+        "path": "src/js/logic/actions/ActionResolver.js",
+        "sha256": "bef85383eb6df53cfa12607371d04c73019c5ab2d48b1e437f2638ad2bcfccb7"
+      },
+      {
+        "path": "src/js/logic/actions/RarityScoring.js",
+        "sha256": "712dcc5c2db4b4cd8c4b287a16b1b5a761e202f62b3a5e2d8d222aa8126c70e3"
+      },
+      {
+        "path": "src/js/logic/actions/ScoreCalculator.js",
+        "sha256": "995b859bec84c43f1f2cbb7e9ca4fb1df3f8e3584de513503c603dd1f022a20c"
+      },
+      {
+        "path": "src/js/logic/actions/ScoringConfig.js",
+        "sha256": "1a3fa3f837379a1611698ec4808b2ee72e196741aff82bcfbdbf61e030897a7a"
+      },
+      {
+        "path": "src/js/logic/ai/AIController.js",
+        "sha256": "60fc6a179bdf251ec624ae086f7b032d655bf93902676e61cd8ae58660d6419e"
+      },
+      {
+        "path": "src/js/logic/ai/core/ActionValueCalculator.js",
+        "sha256": "30b8c42c2aab018a09cc874fb447f5b0a9bed050da849fec083c77832543613b"
+      },
+      {
+        "path": "src/js/logic/ai/core/StrategySelector.js",
+        "sha256": "549be3c6e187c358fc27e626a1ae0a6b7e597d01532e0ab07df4b07cf1fc0764"
+      },
+      {
+        "path": "src/js/logic/ai/core/UnityEvaluator.js",
+        "sha256": "e8bd15bc0583e25caa0aae3ab5e5b465421d385d9a2574d56be2deae0351e9a3"
+      },
+      {
+        "path": "src/js/logic/ai/learning/GameRecorder.js",
+        "sha256": "bde5c8c9450e0d414cbdfc1d4fa93127944f4b9727fbafda402fd4d90e74ad0a"
+      },
+      {
+        "path": "src/js/logic/ai/learning/StatsCollector.js",
+        "sha256": "a6587eb8a694f878c55c30f78bac691a1890c96e7d0dc1d26a4db37e2bf7d1d9"
+      },
+      {
+        "path": "src/js/logic/ai/learning/WeightOptimizer.js",
+        "sha256": "261bc7dfa502513d864cb442db2d8cdcdbe64af39c3428b4fb5171fda322a0a8"
+      },
+      {
+        "path": "src/js/logic/flow/GameSequence.js",
+        "sha256": "0e755cb25aba77fa69573f8dc2a2bbbbda547e10c192e599f98c4622b31a912d"
+      },
+      {
+        "path": "src/js/logic/flow/TurnManager.js",
+        "sha256": "c315b60e7282311303ebcc71c6b25730bbcd685727fa06c7f43adca6b06e42b6"
+      },
+      {
+        "path": "src/js/logic/flow/TurnRules.js",
+        "sha256": "c4ab9a13627ed54216eed53c5e1b2d958d34da792322a3cb7f367fb4ea7205fa"
+      },
+      {
+        "path": "src/js/logic/headless/BatchComparison.js",
+        "sha256": "34e686592f77a54ad025c94b49c85c00112a0615187c9c4bf093d93192eb32d3"
+      },
+      {
+        "path": "src/js/logic/headless/CrossoverConfirmation.js",
+        "sha256": "f4e7839460ce84dc3dbbdbd023f173117b46c2b65ccd39d610b884b1837a8ed6"
+      },
+      {
+        "path": "src/js/logic/headless/EvaluationStatistics.js",
+        "sha256": "8d87873db76e7cbe3e608df35582d8fdb582ac06e91d6e98692e71b64cc05909"
+      },
+      {
+        "path": "src/js/logic/headless/FixedPositionContinuations.js",
+        "sha256": "a72009a7532ee73a6ec3b94893dfc453f761b587d84d817d5147577f3ab755c0"
+      },
+      {
+        "path": "src/js/logic/headless/HeadlessMatch.js",
+        "sha256": "4f5b2725bab0b964b9e4736411d5f10c8c6568dfb1146c303c2ad8dacbd6a505"
+      },
+      {
+        "path": "src/js/logic/headless/PublicStrategies.js",
+        "sha256": "70511b05fb1d2604d4431e158411743ec3b882c4aec2b28325a08e74a84146ec"
+      },
+      {
+        "path": "src/js/logic/headless/ScopedState.js",
+        "sha256": "7f57e68f0f738b4025076bc52abc102cfd84c137c9433ae2d5c732c2571dffe2"
+      },
+      {
+        "path": "src/js/logic/headless/SeededMatch.js",
+        "sha256": "512cb14a9400da7c55107b524673993075c5b70986ab4bc0a47cd94d5e98d09e"
+      },
+      {
+        "path": "src/js/logic/headless/SeededRandom.js",
+        "sha256": "bd97796df26e94b5187b97b3a4cfd5afe57813e42520d14e42489de9e3ef7bee"
+      },
+      {
+        "path": "src/js/logic/headless/StrategyEvaluation.js",
+        "sha256": "ccae9d6e4eeba32e96f536e5ae52bd302aede1fc4cb790bf6e3e407808755c65"
+      },
+      {
+        "path": "src/js/network/LeaderboardManager.js",
+        "sha256": "1e272b9c1869383139228bf4e0fc5a726d629daf8c3ac2ab0254b311554b4805"
+      },
+      {
+        "path": "src/js/network/LocalPVPManager.js",
+        "sha256": "904bd7e72b47720f9e82296912c5b4547714ace6959d727430e0bfe05bc4b8f7"
+      },
+      {
+        "path": "src/js/network/ReconnectionManager.js",
+        "sha256": "abb4148067793a08aaaf0a68a62f372caec54589877583f5f49d982242d3f916"
+      },
+      {
+        "path": "src/js/network/RoomManager.js",
+        "sha256": "bc8b15dc5fa78aa82bc28063555ccd4c895edc1c907c0feafe87c2267a7b85ff"
+      },
+      {
+        "path": "src/js/network/SimplifiedPVPManager.js",
+        "sha256": "b21adc3c3a2436559b7cdece1b518b7099d02160fd3d7b41dec6e787c5ea78c4"
+      },
+      {
+        "path": "src/js/network/supabaseClient.js",
+        "sha256": "ca1bc2fbd6de67b5888dee6017931cdd6c25c9d516354ca846940406530d5854"
+      },
+      {
+        "path": "src/js/state/ImmutableState.js",
+        "sha256": "8fca37f1f000ded42c0784d6011b518a4c7ffd69efcfeaf176600681d3dccb9a"
+      },
+      {
+        "path": "src/js/state/StateManager.js",
+        "sha256": "29dfc128b07f8c1d63228c69e7426a2088154c403f28e3b239739554b565ba1c"
+      },
+      {
+        "path": "src/js/state/StateScoreRecorder.js",
+        "sha256": "0f6ea901af603e8f44664954301f39ac0683b6863c33ec32e3426fcc79f51acc"
+      },
+      {
+        "path": "src/js/state/ui-state.js",
+        "sha256": "bf20be9e881f3a9845ab7b18896c93f46f4a723e9e3674391fe847dc316479e3"
+      },
+      {
+        "path": "src/js/types/events.js",
+        "sha256": "21b24d20f94787a68f69c65aaa388dc4fc991b9666bda219d845d6dd51d6cf70"
+      },
+      {
+        "path": "src/js/ui/LeaderboardUI.js",
+        "sha256": "77afa5b877822967af156a1cb104774f02c38b9499b6bb48b85f1366c82c4dbb"
+      },
+      {
+        "path": "src/js/ui/NodeCache.js",
+        "sha256": "3edb4e9eec7a457b50043719f15f7fd71fc4ef7654136096d1e05e9c2fe02f2c"
+      },
+      {
+        "path": "src/js/ui/Renderer.js",
+        "sha256": "7de98ddbf646f150653bb86fe3f1d35d9cf4ed7797f93b6aacee8320b9dfe5c5"
+      },
+      {
+        "path": "src/js/ui/ScoreEffects.js",
+        "sha256": "9357ca9f6e43acede3666e61a71cfaf33eb134225237b29696151eee994e4223"
+      },
+      {
+        "path": "src/js/ui/animation/AnimationManager.js",
+        "sha256": "01985951052e494425164b5a9417fa4c9944404749bd7daae7abac8802b90780"
+      },
+      {
+        "path": "src/js/ui/animation/ParticleSystem.js",
+        "sha256": "4404dacc7441711b5df2ea0299960f98388167d5b858f23887bbd9b474728f12"
+      },
+      {
+        "path": "src/js/ui/animation/SceneTransition.js",
+        "sha256": "a1fd3dda4fa2aa5937e0b8963ef74974c2695c8b871e5f20c30c531f5edb2a06"
+      },
+      {
+        "path": "src/js/ui/board/BoardAnimation.js",
+        "sha256": "133cb31cb58e380b777bba913a9c668699d31850f9a3c48cea0deb97d13d75d1"
+      },
+      {
+        "path": "src/js/ui/board/BoardRenderer.js",
+        "sha256": "76524d50a498105920d84d4c237477a7240200db0ab3c4944170eb1e179932d4"
+      },
+      {
+        "path": "src/js/ui/board/NodeInitializer.js",
+        "sha256": "ffce789c232ce1bda60886dea8b8e4d9caf6ff6749165179481e493390199e63"
+      },
+      {
+        "path": "src/js/ui/board/NodeRenderer.js",
+        "sha256": "65851cb7edc38132300b0757c72e88b2f1717999f08073a2932721910bb24bf9"
+      },
+      {
+        "path": "src/js/ui/decisions/DecisionPanel.js",
+        "sha256": "9737fbada70a03808ea776fe0eb59aa4a2fba0f49eb6c55f512785807bda31de"
+      },
+      {
+        "path": "src/js/ui/effects/ExplosionEffects.js",
+        "sha256": "6444fa4a252fc28a988c55636a275637bac1e96f07fe2d3ad769c3300875642c"
+      },
+      {
+        "path": "src/js/ui/effects/FirstFlight.js",
+        "sha256": "1089d03c70ea6c289aafc724c670b4d6225a82886121fd12925eaf30d13bf8ba"
+      },
+      {
+        "path": "src/js/ui/effects/FlyAnimation.js",
+        "sha256": "1cf919083fcea265ef0fed0dfe991b51bde1b71eaa9019f6fcab5e95a7bef395"
+      },
+      {
+        "path": "src/js/ui/effects/ImpactEffects.js",
+        "sha256": "477ea8cfd8ad499407eaf7f4bd112eb83f76be2a76f5974b6b0279b5788f3f28"
+      },
+      {
+        "path": "src/js/ui/effects/PassiveEffects.js",
+        "sha256": "4d3b914642c7d8cbb8f7bcf54e8bb4a8e8de407e491cfc99dd89ed1ff9b8f631"
+      },
+      {
+        "path": "src/js/ui/effects/SecondFlight.js",
+        "sha256": "2d57f4b7cf6cc0fd33271d8395efadd93f19be5be7ed643733ec663133180c96"
+      },
+      {
+        "path": "src/js/ui/effects/StemAnimation.js",
+        "sha256": "7a7ce9d58758b56efbad9be8dbdb04667a3a895b5b185309bdb71d33bdae8a58"
+      },
+      {
+        "path": "src/js/ui/effects/StemManifestation.js",
+        "sha256": "8042f0a385636bef72245f7d3cd846b14834720e317087197ca5100e33888322"
+      },
+      {
+        "path": "src/js/ui/effects/StemParticleGenerator.js",
+        "sha256": "402fc5aa686a28a52fd447f340f6ff1dcbbaced4afaf9792aa0eb5c8cf40523c"
+      },
+      {
+        "path": "src/js/ui/overlays/AchievementOverlay.js",
+        "sha256": "93faf5693a6f6b491e25b20919a01a77c6a47ad4f05e605a27637480f99e8487"
+      },
+      {
+        "path": "src/js/ui/overlays/ActionStatsRenderer.js",
+        "sha256": "0098999279729eedbf3146259b247a3172a1ce085af726c0d11b2b96d25053d5"
+      },
+      {
+        "path": "src/js/ui/overlays/ReconnectionOverlay.js",
+        "sha256": "a44346b6773291127a449a3e8e1ea2ae3ffeb2b88a6098b0e0e4658cb8af1baf"
+      },
+      {
+        "path": "src/js/ui/overlays/VictoryOverlay.js",
+        "sha256": "48720c7077904f7315e43bb55330ee4e69c3edd74202abf73e49457015ba7a52"
+      },
+      {
+        "path": "src/js/ui/overlays/WaitingOverlay.js",
+        "sha256": "95d27ce8ae1703286746d524e6cac5513448e6a467e0881fbee3f8525a94430a"
+      },
+      {
+        "path": "src/js/ui/utils/ClipboardHelper.js",
+        "sha256": "0747400853d7e1e73e5c3e7c8d79ab69aa711d8dfbb4b9bfa740a06f2a19c974"
+      },
+      {
+        "path": "src/js/utils/DebugController.js",
+        "sha256": "1592b92455e2300f33b21905799644c60ee2647b1ba8ccb77b92c830ec5a7b47"
+      },
+      {
+        "path": "src/js/utils/DebugStyle.css",
+        "sha256": "54a86385c220dcb816c73cabfa792b571ee035a41a81d1b518d1e284d0c8a3aa"
+      },
+      {
+        "path": "src/js/utils/ErrorHandler.js",
+        "sha256": "246955673b48a0d2ea2a51851b878bcfa278d0fa0101c469bc4dcb625db01fa4"
+      },
+      {
+        "path": "src/js/utils/Logger.js",
+        "sha256": "b125be8731f9a4905440fe145401e1321549fc7252a15b684dc154ff1294daa8"
+      },
+      {
+        "path": "src/js/utils/PVPLogger.js",
+        "sha256": "b5d9e2b2b8ce42f6f53d099debd0f71996d557b7d9c14428fc73ca827b240a18"
+      },
+      {
+        "path": "src/js/utils/PerformanceMonitor.js",
+        "sha256": "a9af1109a904e8d71cd817b8ea08d0d5109c524f7b2a46fbd0701b78f4258d8a"
+      },
+      {
+        "path": "src/js/utils/TimerManager.js",
+        "sha256": "a6cfa9ba0e5568a44dd595d64af06cac0bf41dff0d2382c79fc08830a50b8d35"
+      },
+      {
+        "path": "src/js/utils/dom.js",
+        "sha256": "2b663290c1e0c6568ae1301cae8d588372b56a4d13757d83e5c1d6b51cc9cbc0"
+      },
+      {
+        "path": "src/js/utils/easing.js",
+        "sha256": "a2b91c76db8f05b5974ce34b7bde7bc507e0e8c2da8b42d6a6356b83e21a4554"
+      },
+      {
+        "path": "tests/fixtures/fixed-position-continuations/reachable-positions.js",
+        "sha256": "cd5dc4df548103b399b95f8d71654beb209e9e0b5b155d2eca725d95edc72b08"
+      }
+    ],
+    "sourceSha256": "c9651d044f4128e7e8032fd60a35f2f30b44f553778e3381deec65808f849cf7"
   },
   "summary": {
     "coverage": {
