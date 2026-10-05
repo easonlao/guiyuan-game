@@ -9,17 +9,7 @@
 
 import StateManager from '../../state/StateManager.js';
 import { POINTS_CONFIG } from '../../config/game-config.js';
-
-const ACTION_PROBABILITY = {
-  'AUTO': 1.0,
-  'ATK': 0.518,
-  'TRANS': 0.243,
-  'CONVERT': 0.167,
-  'BURST': 0.035,
-  'BURST_ATK': 0.036,
-  'DIVIDEND': 1.0,
-  'PENALTY': 1.0,
-};
+import { calculateRarityAdjustedScore } from './RarityScoring.js';
 
 const ScoreCalculator = {
   /**
@@ -139,9 +129,7 @@ const ScoreCalculator = {
    * @private
    */
   _applyRarityBonus(score, actionType) {
-    const prob = ACTION_PROBABILITY[actionType] || 0.5;
-    const rarityBonus = score * (1 - prob) * POINTS_CONFIG.RARITY_MULTIPLIER;
-    return Math.round(score + rarityBonus);
+    return calculateRarityAdjustedScore(score, actionType, POINTS_CONFIG.RARITY_MULTIPLIER);
   }
 };
 

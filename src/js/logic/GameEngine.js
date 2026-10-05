@@ -500,48 +500,12 @@ const GameEngine = {
       return;
     }
 
-    const isYang = stem && state.players[playerId].burst?.yang;
+    ActionResolver.resolveAction(action, playerId, opponentId, stem);
 
-    switch (action.type) {
-      case 'AUTO': {
-        // 自动吸纳：天干状态<1时自动飞入
-        // 使用本命元素和当前天干的阴阳属性
-        const autoYang = (STEMS_MAP[stem.element].yang === stem.name);
-        ActionResolver.applyPlus(playerId, stem.element, autoYang, 'AUTO', false);
-        break;
-      }
-
-      case 'CONVERT':
-        ActionResolver.applyPlus(action.target.playerId, action.target.elementIndex, action.target.isYang, 'CONVERT', false);
-        break;
-
-      case 'ATK':
-        ActionResolver.applyMinus(action.target.playerId, action.target.elementIndex, action.target.isYang, 'ATK', true);
-        break;
-
-      case 'TRANS':
-        ActionResolver.applyPlus(action.target.playerId, action.target.elementIndex, action.target.isYang, 'TRANS', false);
-        break;
-
-      case 'BURST_ATK':
-        // 强破：原子性执行 - 消耗自身阳1点，攻击对方克属性2次
-        const tElAtk = action.targetEl;
-        ActionResolver.applyBurstAtk(playerId, stem.element, opponentId, tElAtk);
-        // 设置标志：下回合保持当前玩家（额外机会）
-        // 只有非额外机会回合中的强化/强破才给予额外机会
-        const stateForBurstAtk = StateManager.getState();
-        AuthorityExecutor.setLastBurstAction(playerId, stateForBurstAtk.isExtraTurn);
-        break;
-
-      case 'BURST':
-        // 强化：原子性执行 - 消耗自身阴1点，强化自身生属性2次
-        const tElBst = action.targetEl;
-        ActionResolver.applyBurst(playerId, stem.element, tElBst);
-        // 设置标志：下回合保持当前玩家（额外机会）
-        // 只有非额外机会回合中的强化/强破才给予额外机会
-        const stateForBurst = StateManager.getState();
-        AuthorityExecutor.setLastBurstAction(playerId, stateForBurst.isExtraTurn);
-        break;
+    if (action.type === 'BURST' || action.type === 'BURST_ATK') {
+      // Burst opportunity markers are formal-flow orchestration, not action resolution.
+      const stateForBurst = StateManager.getState();
+      AuthorityExecutor.setLastBurstAction(playerId, stateForBurst.isExtraTurn);
     }
   },
 

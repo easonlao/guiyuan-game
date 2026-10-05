@@ -45,6 +45,88 @@ describe('headless match public API', () => {
     expect(StateManager.getState()).toEqual(formalStateBefore);
   });
 
+  it('resumes a complete current-opportunity checkpoint before consuming future stems', () => {
+    const base = createInitialHeadlessState({ phase: 'DECISION', turnCount: 1, maxTurns: 3, currentStem: { name: '乙', element: 0, color: '#2dcc70' } });
+    const initialState = {
+      ...base,
+      nodeStates: { ...base.nodeStates, 'P1-0': { yang: 0, yin: 1 } }
+    };
+    const seen = [];
+    const result = runHeadlessMatch({
+      initialState,
+      stems: [{ name: '甲', element: 0 }],
+      strategies: {
+        P1: context => {
+          seen.push([context.playerId, context.stem.name]);
+          return context.candidates[0];
+        },
+        P2: () => null
+      }
+    });
+
+    expect(result.actionRecords.map(record => [record.opportunity, record.playerId, record.stem.name])).toEqual([
+      [1, 'P1', '乙'],
+      [2, 'P2', '甲']
+    ]);
+    expect(seen).toEqual([['P1', '乙']]);
+    expect(result.consumedStemCount).toBe(1);
+    expect(initialState.turnCount).toBe(1);
+    expect(initialState.currentStem.name).toBe('乙');
+  });
+
+  it('checks terminal status after a resumed opportunity before requiring a future stem', () => {
+    const initialState = createInitialHeadlessState({
+      phase: 'DECISION',
+      turnCount: 2,
+      maxTurns: 3,
+      currentStem: { name: '乙', element: 0, color: '#2dcc70' }
+    });
+    const result = runHeadlessMatch({
+      initialState,
+      stems: [],
+      strategies: { P1: () => null, P2: () => null }
+    });
+
+    expect(result.actionRecords).toHaveLength(1);
+    expect(result.actionRecords[0]).toMatchObject({ opportunity: 2, stem: { name: '乙' }, action: { type: 'AUTO' } });
+    expect(result.terminalResult).toEqual({ winner: 'P1', reason: '回合上限' });
+    expect(result.consumedStemCount).toBe(0);
+    expect(result.finalState.turnCount).toBe(3);
+    expect(result.finalState.currentStem).toBeNull();
+  });
+
+  it('returns an already-terminal complete position unchanged without consuming future stems', () => {
+    const initialState = createInitialHeadlessState({
+      phase: 'GAME_END',
+      turnCount: 1,
+      maxTurns: 1,
+      currentStem: { name: '乙', element: 0, color: '#2dcc70' }
+    });
+    const result = runHeadlessMatch({
+      initialState,
+      stems: [],
+      strategies: { P1: () => null, P2: () => null }
+    });
+
+    expect(result.terminalResult).toEqual({ winner: 'DRAW', reason: '回合上限' });
+    expect(result.consumedStemCount).toBe(0);
+    expect(result.actionRecords).toEqual([]);
+    expect(result.finalState).toEqual(initialState);
+    expect(result.trajectory.at(-1).state).toEqual(initialState);
+  });
+
+  it('validates phase and complete-position coherence, including GAME_END consistency', () => {
+    const base = createInitialHeadlessState({ maxTurns: 3 });
+    const input = { initialState: base, stems: [], strategies: { P1: () => null, P2: () => null } };
+
+    expect(() => runHeadlessMatch({ ...input, initialState: { ...base, phase: 'UNKNOWN' } })).toThrow(expect.objectContaining({ code: 'INVALID_STATE' }));
+    expect(() => runHeadlessMatch({
+      ...input,
+      initialState: { ...base, phase: 'DECISION', currentStem: { name: '甲', element: 0, color: '#2dcc70' } }
+    })).toThrow(expect.objectContaining({ code: 'INVALID_STATE' }));
+    expect(() => runHeadlessMatch({ ...input, initialState: { ...base, phase: 'GAME_END' } })).toThrow(expect.objectContaining({ code: 'INVALID_STATE' }));
+  });
+
   it('offers only real candidates to a strategy and resolves the selected candidate with shared scoring', () => {
     const initialState = createInitialHeadlessState({
       maxTurns: 2,
@@ -157,6 +239,92 @@ describe('headless match public API', () => {
     });
     expect(result.consumedStemCount).toBe(2);
     expect(strategyCalls).toEqual(['甲', '甲']);
+  });
+
+  it('preserves production burst source priority, bounds, and partial substeps at the headless seam', () => {
+    const base = createInitialHeadlessState({ maxTurns: 2 });
+    const initialState = {
+      ...base,
+      nodeStates: {
+        ...base.nodeStates,
+        'P1-0': { yang: 1, yin: 1 },
+        'P1-1': { yang: 2, yin: 1 }
+      }
+    };
+    const result = runHeadlessMatch({
+      initialState,
+      stems: [{ name: '甲', element: 0 }],
+      strategies: {
+        P1: context => context.candidates.find(candidate => candidate.type === 'BURST'),
+        P2: () => null
+      }
+    });
+
+    expect(result.actionRecords[0].action.type).toBe('BURST');
+    expect(result.actionRecords[0].stateChanges).toEqual([
+      { playerId: 'P1', elementIndex: 0, side: 'yin', before: 1, after: 0 },
+      { playerId: 'P1', elementIndex: 1, side: 'yin', before: 1, after: 2 }
+    ]);
+    expect(result.finalState.nodeStates['P1-1']).toEqual({ yang: 2, yin: 2 });
+
+    const attackState = {
+      ...base,
+      nodeStates: {
+        ...base.nodeStates,
+        'P1-0': { yang: 1, yin: 1 },
+        'P2-2': { yang: -1, yin: 0 }
+      }
+    };
+    const attackResult = runHeadlessMatch({
+      initialState: attackState,
+      stems: [{ name: '甲', element: 0 }],
+      strategies: {
+        P1: context => context.candidates.find(candidate => candidate.type === 'BURST_ATK'),
+        P2: () => null
+      }
+    });
+    expect(attackResult.actionRecords[0].stateChanges).toEqual([
+      { playerId: 'P1', elementIndex: 0, side: 'yang', before: 1, after: 0 },
+      { playerId: 'P2', elementIndex: 2, side: 'yin', before: 0, after: -1 }
+    ]);
+  });
+
+  it('keeps attack target priority and damaged-node bounds from production candidates', () => {
+    const base = createInitialHeadlessState({ maxTurns: 2 });
+    const priorityState = {
+      ...base,
+      nodeStates: {
+        ...base.nodeStates,
+        'P1-0': { yang: 1, yin: 1 },
+        'P2-2': { yang: 2, yin: 1 }
+      }
+    };
+    const priorityResult = runHeadlessMatch({
+      initialState: priorityState,
+      stems: [{ name: '甲', element: 0 }],
+      strategies: {
+        P1: context => context.candidates.find(candidate => candidate.type === 'ATK'),
+        P2: () => null
+      }
+    });
+    expect(priorityResult.actionRecords[0].action).toMatchObject({
+      type: 'ATK', target: { playerId: 'P2', elementIndex: 2, isYang: false }
+    });
+
+    const boundedState = {
+      ...base,
+      nodeStates: {
+        ...base.nodeStates,
+        'P1-0': { yang: 1, yin: 1 },
+        'P2-2': { yang: -1, yin: -1 }
+      }
+    };
+    const boundedResult = runHeadlessMatch({
+      initialState: boundedState,
+      stems: [{ name: '甲', element: 0 }],
+      strategies: { P1: context => context.candidates[0], P2: () => null }
+    });
+    expect(boundedResult.actionRecords[0].candidates.some(candidate => candidate.type === 'ATK' || candidate.type === 'BURST_ATK')).toBe(false);
   });
 
   it('resolves TRANS and BURST_ATK through the shared candidate and action rules', () => {
@@ -276,6 +444,7 @@ describe('headless match public API', () => {
     expect(result.terminalResult).toEqual({ winner: 'P1', reason: '所有天干点亮' });
     expect(result.consumedStemCount).toBe(0);
     expect(result.actionRecords).toEqual([]);
+    expect(result.finalState.turnCount).toBe(0);
   });
 
   it.each([
@@ -358,6 +527,121 @@ describe('headless match public API', () => {
       'strategy P1 failed at opportunity 1',
       'strategy P1 failed at opportunity 1'
     ]);
+  });
+
+  it('keeps detached reproduction details for an invalid choice on a later opportunity', () => {
+    const base = createInitialHeadlessState({ maxTurns: 4 });
+    const initialState = {
+      ...base,
+      nodeStates: {
+        ...base.nodeStates,
+        'P2-0': { yang: 0, yin: 1 }
+      }
+    };
+    const stems = [{ name: '甲', element: 0 }, { name: '乙', element: 0 }];
+    let failure;
+    try {
+      runHeadlessMatch({
+        initialState,
+        stems,
+        strategies: {
+          P1: () => null,
+          P2: () => ({ type: 'BURST', invalid: () => {} })
+        }
+      });
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toBeInstanceOf(HeadlessMatchError);
+    expect(failure.code).toBe('INVALID_ACTION');
+    expect(failure.details).toMatchObject({
+      playerId: 'P2',
+      opportunity: 2,
+      stem: { name: '乙', element: 0 },
+      state: { currentPlayer: 'P2', turnCount: 2 },
+      consumedStemCount: 2
+    });
+    expect(failure.details.rejectedSelection).toMatchObject({ type: 'BURST' });
+    expect(failure.details.candidates.length).toBeGreaterThan(0);
+    expect(failure.details.priorActionRecords).toHaveLength(1);
+    expect(failure.details.trajectory.some(entry => entry.event === 'opportunity-complete')).toBe(true);
+    expect(failure.details.initialState).toEqual(initialState);
+    expect(failure.details.stems.map(({ name, element }) => ({ name, element }))).toEqual(stems);
+    failure.details.initialState.players.P1.score = 999;
+    expect(initialState.players.P1.score).toBe(0);
+  });
+
+  it('contains uncloneable inputs and cyclic rejected actions in structured headless errors', () => {
+    const base = createInitialHeadlessState({ maxTurns: 2 });
+    const uncloneableState = { ...base, reproductionOnly: () => {} };
+    let uncloneable;
+    try {
+      runHeadlessMatch({ initialState: uncloneableState, stems: [], strategies: { P1: () => null, P2: () => null } });
+    } catch (error) {
+      uncloneable = error;
+    }
+    expect(uncloneable).toBeInstanceOf(HeadlessMatchError);
+    expect(uncloneable.code).toBe('INVALID_STATE');
+    expect(uncloneable.details.initialState.reproductionOnly).toBe('[Function reproductionOnly]');
+
+    const decisionState = {
+      ...base,
+      nodeStates: { ...base.nodeStates, 'P1-0': { yang: 1, yin: 0 } }
+    };
+    const cyclicSelection = { type: 'CONVERT' };
+    cyclicSelection.self = cyclicSelection;
+    let rejected;
+    try {
+      runHeadlessMatch({
+        initialState: decisionState,
+        stems: [{ name: '甲', element: 0 }],
+        strategies: { P1: () => cyclicSelection, P2: () => null }
+      });
+    } catch (error) {
+      rejected = error;
+    }
+    expect(rejected).toBeInstanceOf(HeadlessMatchError);
+    expect(rejected.code).toBe('INVALID_ACTION');
+    expect(rejected.details).toMatchObject({ playerId: 'P1', opportunity: 1, stem: { name: '甲', element: 0 } });
+    expect(rejected.details.rejectedSelection.self).toBe('[Circular]');
+    expect(rejected.details.candidates.length).toBeGreaterThan(0);
+  });
+
+  it('keeps reproduction context for strategy failures, async results, and exhausted sequences', () => {
+    const base = createInitialHeadlessState({ maxTurns: 3 });
+    const initialState = {
+      ...base,
+      nodeStates: { ...base.nodeStates, 'P1-0': { yang: 1, yin: 0 } }
+    };
+    const fixed = {
+      initialState,
+      stems: [{ name: '甲', element: 0 }],
+      strategies: { P1: () => { throw new Error('private detail'); }, P2: () => null }
+    };
+
+    expect(() => runHeadlessMatch(fixed)).toThrow(expect.objectContaining({
+      code: 'STRATEGY_FAILED',
+      details: expect.objectContaining({ playerId: 'P1', opportunity: 1, stem: expect.objectContaining({ name: '甲', element: 0 }), candidates: expect.any(Array), trajectory: expect.any(Array) })
+    }));
+    expect(() => runHeadlessMatch({
+      ...fixed,
+      strategies: { P1: context => Promise.resolve(context.candidates[0]), P2: () => null }
+    })).toThrow(expect.objectContaining({ code: 'ASYNC_STRATEGY', details: expect.objectContaining({ playerId: 'P1', opportunity: 1 }) }));
+    expect(() => runHeadlessMatch({
+      ...fixed,
+      strategies: { P1: async () => { throw new Error('async implementation detail'); }, P2: () => null }
+    })).toThrow(expect.objectContaining({ code: 'ASYNC_STRATEGY', details: expect.objectContaining({ playerId: 'P1', opportunity: 1 }) }));
+
+    const exhaustionBase = createInitialHeadlessState({ maxTurns: 3 });
+    const exhausted = (() => {
+      try {
+        runHeadlessMatch({ initialState: exhaustionBase, stems: [{ name: '甲', element: 0 }], strategies: { P1: () => null, P2: () => null } });
+      } catch (error) {
+        return error;
+      }
+    })();
+    expect(exhausted).toMatchObject({ code: 'STEMS_EXHAUSTED', details: { opportunity: 2, consumedStemCount: 1, priorActionRecords: expect.any(Array) } });
   });
 
   it('rejects incomplete rule state and strategy choices outside the candidate set with stable errors', () => {

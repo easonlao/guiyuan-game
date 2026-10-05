@@ -1,13 +1,5 @@
 import { POINTS_CONFIG } from '../config/game-config.js';
-
-const ACTION_PROBABILITY = {
-  AUTO: 1.0,
-  ATK: 0.518,
-  TRANS: 0.243,
-  CONVERT: 0.167,
-  BURST: 0.035,
-  BURST_ATK: 0.036
-};
+import { calculateRarityAdjustedScore } from '../logic/actions/RarityScoring.js';
 
 const PASSIVE_ACTIONS = ['DIVIDEND', 'DAMAGE_PENALTY', 'FINAL_PENALTY'];
 const STATE_REASONS = ['点亮', '修复道损', '加持', '致阳道损', '致阴道损', '破阳点亮', '破阴点亮', '削弱加持'];
@@ -18,9 +10,11 @@ function cleanReason(reason) {
 }
 
 function rarityAdjustedScore(score, actionType) {
-  const probability = ACTION_PROBABILITY[actionType] || 0.5;
-  const rarityBonus = score * (1 - probability) * (POINTS_CONFIG?.RARITY_MULTIPLIER || 1.5);
-  return Math.round(score + rarityBonus);
+  return calculateRarityAdjustedScore(
+    score,
+    actionType,
+    POINTS_CONFIG?.RARITY_MULTIPLIER || 1.5
+  );
 }
 
 function actionScore(actionType) {
