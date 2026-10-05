@@ -48,6 +48,21 @@ function branchOutcomeCounts(branch) {
   return counts;
 }
 
+function pairOmissionCounts(branchA, branchB) {
+  const statusesBySeed = new Map();
+  for (const sample of [...(branchA?.samples ?? []), ...(branchB?.samples ?? [])]) {
+    const key = JSON.stringify([typeof sample.seed, sample.seed]);
+    const statuses = statusesBySeed.get(key) ?? { failed: false, budgetSkipped: false };
+    statuses.failed ||= sample.status === 'failed';
+    statuses.budgetSkipped ||= sample.status === 'not-run-budget';
+    statusesBySeed.set(key, statuses);
+  }
+  const seeds = [...statusesBySeed.values()];
+  const failed = seeds.filter(statuses => statuses.failed).length;
+  const budgetSkipped = seeds.filter(statuses => !statuses.failed && statuses.budgetSkipped).length;
+  return { failed, budgetSkipped };
+}
+
 function pairCounts(pair, opponent, comparisons) {
   const comparisonIndex = pair.comparisonIndexes?.[opponent.id];
   const comparison = comparisonIndex === null || comparisonIndex === undefined ? null : comparisons[comparisonIndex];
@@ -56,12 +71,12 @@ function pairCounts(pair, opponent, comparisons) {
   const branchB = comparison?.firstActions.find(branch => branch.candidateIndex === candidateB);
   const countsA = branchOutcomeCounts(branchA);
   const countsB = branchOutcomeCounts(branchB);
+  const omissions = pairOmissionCounts(branchA, branchB);
   return {
     requested: opponent.requestedPairCount ?? 0,
     completed: opponent.pairedCount ?? 0,
     missing: opponent.missingSeeds?.length ?? 0,
-    failed: Math.max(countsA.failed, countsB.failed),
-    budgetSkipped: Math.max(countsA.budgetSkipped, countsB.budgetSkipped),
+    ...omissions,
     actions: { A: countsA, B: countsB }
   };
 }
@@ -260,7 +275,7 @@ function buildResearchMarkdown(study) {
     '',
     '## Observed facts',
     '',
-    `- Revision: ${study.revision.commit ?? 'unavailable'}; working-tree snapshot: ${study.revision.workingTree ?? 'unavailable'}.`,
+    `- Revision: ${study.revision.commit ?? 'unavailable'}; working-tree status: ${study.revision.workingTree ?? 'unavailable'}; source SHA-256: ${study.revision.sourceSha256 ?? 'unavailable'}.`,
     `- Planned / completed / failed / budget-skipped runs: ${coverage.planned} / ${coverage.completed} / ${coverage.failed} / ${coverage.skipped}.`,
     `- Frozen positions: ${study.plan.positions.map(position => `${position.id} (${position.classification}, ${position.source}, sha256 ${position.stateSha256})`).join('; ')}.`,
     `- Scoring selections: ${study.plan.scoringSelections.map(selection => `${selection.id}=${selection.scoringConfig.name}@${selection.scoringConfig.version}`).join('; ')}.`,

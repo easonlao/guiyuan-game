@@ -1,10 +1,13 @@
 #!/usr/bin/env node
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { readFileSync, readdirSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
+const REPOSITORY_ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const CONFIGURATION_NAMES = Object.freeze([
   'formal-baseline', 'no-self-cost-reward', 'burst-action-score-once', 'disable-rarity-bonus', 'combined', 'all'
 ]);
@@ -110,15 +113,51 @@ function requestedOutput(args) {
   return null;
 }
 
+function filesRecursively(directory, includeFile = () => true) {
+  return readdirSync(resolve(REPOSITORY_ROOT, directory), { withFileTypes: true })
+    .sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0)
+    .flatMap(entry => {
+      const relativePath = `${directory}/${entry.name}`;
+      if (entry.isDirectory()) return filesRecursively(relativePath, includeFile);
+      return entry.isFile() && includeFile(relativePath) ? [relativePath] : [];
+    });
+}
+
+function sourceManifest() {
+  const paths = [
+    ...filesRecursively('src/js'),
+    ...filesRecursively('scripts', path => path.endsWith('.js')),
+    'tests/fixtures/fixed-position-continuations/reachable-positions.js',
+    'package.json',
+    'package-lock.json'
+  ].sort();
+  return paths.map(path => ({
+    path,
+    sha256: createHash('sha256').update(readFileSync(resolve(REPOSITORY_ROOT, path))).digest('hex')
+  }));
+}
+
 function currentRevision() {
+  const revision = { commit: null, workingTree: null };
   try {
-    return {
-      commit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
-      workingTree: execFileSync('git', ['status', '--short'], { encoding: 'utf8' }).trim()
-    };
+    revision.commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: REPOSITORY_ROOT, encoding: 'utf8' }).trim();
+    revision.workingTree = execFileSync('git', ['status', '--short'], { cwd: REPOSITORY_ROOT, encoding: 'utf8' }).trim();
   } catch (error) {
-    return { commit: null, workingTree: null, error: error.message };
+    revision.error = error.message;
   }
+  try {
+    revision.sourceManifest = sourceManifest();
+    revision.sourceSha256 = createHash('sha256').update(JSON.stringify(revision.sourceManifest)).digest('hex');
+  } catch (error) {
+    revision.sourceManifest = [];
+    revision.sourceSha256 = null;
+    revision.sourceError = error.message;
+  }
+  return revision;
+}
+
+function resolveFromRepository(path) {
+  return isAbsolute(path) ? resolve(path) : resolve(REPOSITORY_ROOT, path);
 }
 
 function collectFailureReasons(evaluation) {
@@ -146,7 +185,8 @@ function collectFailureReasons(evaluation) {
 }
 
 async function writeMissingDataReport(outputDirectory, error, options = null, evaluation = null) {
-  await mkdir(resolve(outputDirectory), { recursive: true });
+  const resolvedOutputDirectory = resolveFromRepository(outputDirectory);
+  await mkdir(resolvedOutputDirectory, { recursive: true });
   const coverage = evaluation?.summary?.coverage;
   const report = {
     schemaVersion: 1,
@@ -157,10 +197,10 @@ async function writeMissingDataReport(outputDirectory, error, options = null, ev
     failures: evaluation ? collectFailureReasons(evaluation) : [],
     revision: currentRevision()
   };
-  await writeFile(resolve(outputDirectory, 'missing-data.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  await writeFile(resolve(resolvedOutputDirectory, 'missing-data.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   const coverageText = `- Planned/completed/failed/skipped: ${report.coverage.planned ?? 'unknown'}/${report.coverage.completed ?? 0}/${report.coverage.failed ?? 0}/${report.coverage.skipped ?? 0}`;
   const failureText = report.failures.length ? `\n\n## Failure and skip reasons\n\n${report.failures.map(failure => `- ${failure.phase}: ${failure.reason} (count ${failure.count})`).join('\n')}` : '';
-  await writeFile(resolve(outputDirectory, 'missing-data.md'), `# Headless strategy evaluation: missing data\n\nThe evaluation did not complete. No missing run is counted as a draw.\n\n- Reason: ${report.reason}\n${coverageText}\n- Revision: ${report.revision.commit ?? 'unavailable'}\n- Working tree: ${report.revision.workingTree ?? 'unavailable'}${failureText}\n`, 'utf8');
+  await writeFile(resolve(resolvedOutputDirectory, 'missing-data.md'), `# Headless strategy evaluation: missing data\n\nThe evaluation did not complete. No missing run is counted as a draw.\n\n- Reason: ${report.reason}\n${coverageText}\n- Revision: ${report.revision.commit ?? 'unavailable'}\n- Working-tree status: ${report.revision.workingTree ?? 'unavailable'}\n- Source SHA-256: ${report.revision.sourceSha256 ?? 'unavailable'}${failureText}\n`, 'utf8');
 }
 
 async function runEvaluation(options) {
@@ -180,7 +220,7 @@ async function main(args = process.argv.slice(2)) {
       process.stdout.write(`${USAGE}\n`);
       return 0;
     }
-    const outputDirectory = resolve(options.out);
+    const outputDirectory = resolveFromRepository(options.out);
     try {
       const report = await runEvaluation(options);
       await mkdir(outputDirectory, { recursive: true });
@@ -201,7 +241,7 @@ async function main(args = process.argv.slice(2)) {
       return 1;
     }
   } catch (error) {
-    const outputDirectory = options?.out ?? requestedOutput(args) ?? DEFAULTS.out;
+    const outputDirectory = resolveFromRepository(options?.out ?? requestedOutput(args) ?? DEFAULTS.out);
     await writeMissingDataReport(outputDirectory, error, options ?? null);
     process.stderr.write(`${error.message ?? String(error)}\nMissing-data report: ${resolve(outputDirectory, 'missing-data.md')}\n`);
     return 1;
