@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STEMS_LIST } from '../src/js/config/game-config.js';
+import { POINTS_CONFIG, STEMS_LIST } from '../src/js/config/game-config.js';
 import { createSeededStemSequence } from '../src/js/logic/headless/SeededRandom.js';
 import { decidePublicStrategy, PUBLIC_STRATEGIES } from '../src/js/logic/headless/PublicStrategies.js';
 import { createInitialHeadlessState } from '../src/js/logic/headless/HeadlessMatch.js';
@@ -95,6 +95,46 @@ function createStrategyMatchState() {
 }
 
 describe('seeded match and replay public entry points', () => {
+  it('captures scoring once even if a callback changes caller switches and formal points', () => {
+    const initialState = createStrategyMatchState();
+    const scoringConfig = { disableRarityBonus: true };
+    const originalPoints = POINTS_CONFIG.ACTION.ATK;
+    const makeStrategies = mutate => Object.fromEntries(['P1', 'P2'].map(playerId => [playerId, {
+      id: `fixed-${playerId}`, version: 1,
+      decide(context) {
+        if (mutate && context.state.turnCount === 1) {
+          POINTS_CONFIG.ACTION.ATK = 99999;
+          scoringConfig.disableRarityBonus = false;
+        }
+        return context.candidates.find(action => action.type === 'ATK') ?? context.candidates[0];
+      }
+    }]));
+    const baseline = runSeededMatch({ initialState, seed: 202603, scoringConfig, strategies: makeStrategies(false) });
+    try {
+      const changed = runSeededMatch({ initialState, seed: 202603, scoringConfig, strategies: makeStrategies(true) });
+      expect(changed.actionRecords).toEqual(baseline.actionRecords);
+      expect(changed.scoringConfig).toEqual(baseline.scoringConfig);
+    } finally {
+      POINTS_CONFIG.ACTION.ATK = originalPoints;
+    }
+  });
+
+  it('retains whole-match reproduction context on a later illegal decision', () => {
+    const initialState = createStrategyMatchState();
+    const strategy = {
+      id: 'later-invalid', version: 1,
+      decide(context) { return context.history.length ? { type: 'INVALID' } : context.candidates[0]; }
+    };
+    let failure;
+    try {
+      runSeededMatch({ initialState, seed: 202603, strategies: { P1: strategy, P2: strategy } });
+    } catch (error) { failure = error; }
+    expect(failure.code).toBe('INVALID_ACTION');
+    expect(failure.details.priorActionRecords).toHaveLength(1);
+    expect(failure.details.initialState).toEqual(initialState);
+    expect(failure.details.seed).toBe(202603);
+    expect(failure.details.consumedStemCount).toBe(1);
+  });
   it('keeps strategy context public-only, supplies prior action history, and replays recorded choices', () => {
     const initialState = createStrategyMatchState();
     const contexts = [];

@@ -6,7 +6,7 @@
 
 **Status:** resolved
 
-**Resolution:** Added `runSeededMatch`/`replaySeededMatch`, versioned public strategy decisions, and a versioned seeded RNG that samples the formal ten-stem list uniformly with separate stem/P1/P2 tie streams. Results retain consumed stems and replay recorded actions. Strategy callbacks receive frozen public state, completed public action history, the current stem, and legal candidates only. API and policy definitions: `docs/seeded-strategies.md`. Focused seeded/headless/scoring tests: 46 passed; full suite deferred to integration.
+**Resolution:** Added `runSeededMatch`/`replaySeededMatch`, versioned public strategy decisions, and a versioned seeded RNG that samples the formal ten-stem list uniformly with separate stem/P1/P2 tie streams. Results retain consumed stems and replay recorded actions. Strategy callbacks receive frozen public state, completed public action history, the current stem, and legal candidates only. API and policy definitions: `docs/seeded-strategies.md`. Focused seeded/headless/scoring tests: 48 passed after review regressions; integration suite: 84 passed. Spec review fixes capture scoring once per whole match and retain whole-match reproduction context on later strategy failures.
 
 - [x] 种子随机源保留正式天干分布语义；相同输入、策略与种子得到相同记录，实际随机输入可保存和重放。
 - [x] 提供建设优先、攻击优先及局势响应型策略，具有明确版本身份、确定的决策定义与合法回退。

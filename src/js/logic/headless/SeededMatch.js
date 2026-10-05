@@ -1,5 +1,5 @@
 import { createInitialHeadlessState, runHeadlessMatch } from './HeadlessMatch.js';
-import { createSeededRandom, createSeededStemGenerator, SEEDED_RANDOM_VERSION } from './SeededRandom.js';
+import { createSeededRandom, createSeededStemSequence, SEEDED_RANDOM_VERSION } from './SeededRandom.js';
 import { decidePublicStrategy, PUBLIC_STRATEGIES } from './PublicStrategies.js';
 
 const PLAYER_IDS = ['P1', 'P2'];
@@ -70,88 +70,21 @@ function publicStrategyContext(context, history) {
   });
 }
 
-function createRunnerStrategies({ history, randomStreams, chooseAction }) {
+function createRunnerStrategies({ randomStreams, chooseAction }) {
   return Object.fromEntries(PLAYER_IDS.map(playerId => [playerId, runnerContext => {
-    const publicContext = publicStrategyContext(runnerContext, history);
+    const publicContext = publicStrategyContext(runnerContext, runnerContext.history);
     return chooseAction(playerId, publicContext, randomStreams[playerId]);
   }]));
 }
 
-function appendTrajectory(target, source) {
-  for (const entry of source) {
-    if (entry.event === 'match-start' && target.length > 0) continue;
-    target.push(clone(entry));
-  }
-}
-
-function appendActionHistory(targetRecords, history, records) {
-  for (const record of records) {
-    const detached = clone(record);
-    targetRecords.push(detached);
-    history.push(detached);
-  }
-}
-
-function resumePosition(error) {
-  const state = clone(error.details.state);
-  // The core records the next turn-start before reporting missing sequence input.
-  // Roll its count back so the next one-opportunity invocation starts that turn once.
-  state.turnCount = error.details.opportunity - 1;
-  return state;
-}
-
-function runInRecordedOpportunities({ initialState, stems, stemLimit = stems.length, nextStem, chooseAction, randomStreams = { P1: () => 0, P2: () => 0 }, scoringConfig }) {
-  let state = clone(initialState);
-  const history = [];
-  const actionRecords = [];
-  const trajectory = [];
-  let consumedStemCount = 0;
-  let terminalResult;
-  let finalState;
-  let lastResult;
-
-  while (true) {
-    const hasCheckpointStem = state.currentStem !== null;
-    let stem = stems[consumedStemCount];
-    if (!hasCheckpointStem && !stem && nextStem && consumedStemCount < stemLimit) {
-      stem = nextStem();
-      stems.push(stem);
-    }
-    const chunkStems = hasCheckpointStem ? [] : (stem ? [stem] : []);
-    const runnerInput = {
-      initialState: state,
-      stems: chunkStems,
-      strategies: createRunnerStrategies({ history, randomStreams, chooseAction })
-    };
-    if (scoringConfig !== undefined) runnerInput.scoringConfig = scoringConfig;
-
-    try {
-      lastResult = runHeadlessMatch(runnerInput);
-      appendTrajectory(trajectory, lastResult.trajectory);
-      appendActionHistory(actionRecords, history, lastResult.actionRecords);
-      consumedStemCount += lastResult.consumedStemCount;
-      terminalResult = lastResult.terminalResult;
-      finalState = lastResult.finalState;
-      break;
-    } catch (error) {
-      if (error?.code !== 'STEMS_EXHAUSTED') throw error;
-      appendTrajectory(trajectory, error.details.trajectory ?? []);
-      appendActionHistory(actionRecords, history, error.details.priorActionRecords ?? []);
-      consumedStemCount += error.details.consumedStemCount ?? 0;
-      if (consumedStemCount >= stemLimit) throw error;
-      state = resumePosition(error);
-    }
-  }
-
-  return {
-    ...lastResult,
-    trajectory,
-    actionRecords,
-    finalState,
-    terminalResult,
-    consumedStemCount,
-    stems: stems.slice(0, consumedStemCount).map(clone)
-  };
+function runRecordedMatch({ initialState, stems, chooseAction, randomStreams = { P1: () => 0, P2: () => 0 }, scoringConfig }) {
+  const result = runHeadlessMatch({
+    initialState,
+    stems,
+    scoringConfig,
+    strategies: createRunnerStrategies({ randomStreams, chooseAction })
+  });
+  return { ...result, stems: stems.slice(0, result.consumedStemCount).map(clone) };
 }
 
 /**
@@ -167,20 +100,28 @@ export function runSeededMatch({ initialState, seed, strategies, scoringConfig }
   const upperBound = Number.isSafeInteger(initialState?.maxTurns) && Number.isSafeInteger(initialState?.turnCount)
     ? Math.max(0, initialState.maxTurns - initialState.turnCount)
     : 0;
-  const generatedStems = [];
+  const generatedStems = createSeededStemSequence(seed, upperBound);
   const randomStreams = {
     P1: createSeededRandom(seed, 'strategy-ties:P1'),
     P2: createSeededRandom(seed, 'strategy-ties:P2')
   };
-  const result = runInRecordedOpportunities({
-    initialState,
-    stems: generatedStems,
-    stemLimit: upperBound,
-    nextStem: createSeededStemGenerator(seed),
-    randomStreams,
-    scoringConfig,
-    chooseAction: (playerId, context, random) => resolvedStrategies[playerId].decide(context, random)
-  });
+  let result;
+  try {
+    result = runRecordedMatch({
+      initialState,
+      stems: generatedStems,
+      randomStreams,
+      scoringConfig,
+      chooseAction: (playerId, context, random) => resolvedStrategies[playerId].decide(context, random)
+    });
+  } catch (error) {
+    if (error.details) {
+      error.details.seed = seed;
+      error.details.randomVersion = SEEDED_RANDOM_VERSION;
+      error.details.strategyIdentities = clone(Object.fromEntries(PLAYER_IDS.map(playerId => [playerId, resolvedStrategies[playerId].identity])));
+    }
+    throw error;
+  }
 
   return {
     ...result,
@@ -204,7 +145,7 @@ export function replaySeededMatch({ initialState, stems, selectedActions, scorin
     choices.set(key, clone(record.action));
   }
 
-  const result = runInRecordedOpportunities({
+  const result = runRecordedMatch({
     initialState,
     stems,
     scoringConfig,
