@@ -1,8 +1,9 @@
-import { STEMS_LIST, STEMS_MAP, POINTS_CONFIG } from '../../config/game-config.js';
+import { STEMS_LIST, STEMS_MAP } from '../../config/game-config.js';
 import { createInitialGameState } from '../../state/StateManager.js';
 import { createActionCandidates } from '../actions/ActionCandidates.js';
 import { createActionResolver } from '../actions/ActionResolver.js';
 import { createScoreCalculator } from '../actions/ScoreCalculator.js';
+import { createScoringConfig } from '../actions/ScoringConfig.js';
 import {
   calculateNextPlayer,
   calculatePassiveEffects,
@@ -276,14 +277,15 @@ export function createInitialHeadlessState(overrides = {}) {
  * Strategies are called synchronously in opportunity order and must return one of the
  * supplied candidates. AUTO and skipped opportunities do not invoke a strategy.
  *
- * @param {{ initialState: object, stems: object[], strategies: { P1: Function, P2: Function } }} input
- * @returns {{ trajectory: object[], actionRecords: object[], finalState: object, terminalResult: object, consumedStemCount: number }}
+ * @param {{ initialState: object, stems: object[], strategies: { P1: Function, P2: Function }, scoringConfig?: object }} input
+ * @returns {{ trajectory: object[], actionRecords: object[], finalState: object, terminalResult: object, consumedStemCount: number, scoringConfig: object }}
  * @throws {HeadlessMatchError} for invalid inputs, strategy failures, or exhausted stems
  */
-export function runHeadlessMatch({ initialState, stems, strategies } = {}) {
+export function runHeadlessMatch({ initialState, stems, strategies, scoringConfig } = {}) {
   let isolatedInitialState;
   let reproductionInitialState;
   let stemSequence;
+  let matchScoringConfig;
   const inputDetails = {
     state: initialState,
     stem: null,
@@ -295,7 +297,8 @@ export function runHeadlessMatch({ initialState, stems, strategies } = {}) {
     trajectory: [],
     consumedStemCount: 0,
     initialState,
-    stems
+    stems,
+    scoringConfig
   };
   try {
     inputDetails.stem = initialState?.currentStem ?? null;
@@ -304,6 +307,11 @@ export function runHeadlessMatch({ initialState, stems, strategies } = {}) {
     validateFullState(initialState);
     stemSequence = validateStems(stems);
     validateStrategies(strategies);
+    try {
+      matchScoringConfig = createScoringConfig(scoringConfig);
+    } catch (error) {
+      fail('INVALID_SCORING_CONFIG', error.message, { ...inputDetails, rejectedSelection: scoringConfig });
+    }
     isolatedInitialState = clone(initialState);
     reproductionInitialState = clone(isolatedInitialState);
   } catch (error) {
@@ -316,9 +324,9 @@ export function runHeadlessMatch({ initialState, stems, strategies } = {}) {
   let stateManager;
   let currentDetails = { ...inputDetails, stems: stemSequence, trajectory, priorActionRecords: actionRecords };
   try {
-    stateManager = createScopedState(isolatedInitialState);
+    stateManager = createScopedState(isolatedInitialState, matchScoringConfig);
     const candidates = createActionCandidates(stateManager);
-    const scoreCalculator = createScoreCalculator(stateManager);
+    const scoreCalculator = createScoreCalculator(stateManager, matchScoringConfig);
     const resolver = createActionResolver(stateManager, scoreCalculator);
 
     const getDetails = overrides => {
@@ -352,7 +360,8 @@ export function runHeadlessMatch({ initialState, stems, strategies } = {}) {
         actionRecords,
         finalState: clone(state),
         terminalResult: initialTerminal,
-        consumedStemCount
+        consumedStemCount,
+        scoringConfig: matchScoringConfig
       };
     }
 
@@ -465,7 +474,7 @@ export function runHeadlessMatch({ initialState, stems, strategies } = {}) {
       }
       stateManager.update({ pendingBurstPlayer: burstPlayer });
 
-      const passive = calculatePassiveEffects(stateManager.getState(), POINTS_CONFIG);
+      const passive = calculatePassiveEffects(stateManager.getState(), matchScoringConfig.pointsConfig);
       for (const change of passive.scoreChanges) {
         stateManager.addScore(change.playerId, change.amount, change.reason, change.actionType);
       }
@@ -504,7 +513,8 @@ export function runHeadlessMatch({ initialState, stems, strategies } = {}) {
       actionRecords,
       finalState: clone(stateManager.getState()),
       terminalResult,
-      consumedStemCount
+      consumedStemCount,
+      scoringConfig: matchScoringConfig
     };
   } catch (error) {
     throw attachErrorDetails(error, currentDetails);

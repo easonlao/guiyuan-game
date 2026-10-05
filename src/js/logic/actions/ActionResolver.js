@@ -20,6 +20,7 @@ const ActionResolver = {
   resolveAction(action, playerId, opponentId, stem) {
     if (!action || !action.type) return false;
     if (['AUTO', 'BURST', 'BURST_ATK'].includes(action.type) && !stem) return false;
+    if (this.scoreCalculator.scoringConfig?.burstActionScoreOnce) this.scoreCalculator.beginAction?.();
 
     switch (action.type) {
       case 'AUTO': {
