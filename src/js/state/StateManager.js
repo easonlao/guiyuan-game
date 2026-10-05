@@ -14,8 +14,8 @@
 
 import EventBus from '../bus/EventBus.js';
 import { GAME_EVENTS } from '../types/events.js';
-import { POINTS_CONFIG } from '../config/game-config.js';
 import { deepMerge, updatePath as updatePathUtil, shallowCopy } from './ImmutableState.js';
+import { recordScoreByReason } from './StateScoreRecorder.js';
 
 /**
  * @typedef {Object} GameState
@@ -47,12 +47,6 @@ import { deepMerge, updatePath as updatePathUtil, shallowCopy } from './Immutabl
  * @property {boolean} burstBonus - 是否有额外机会
  * @property {string} type - 玩家类型 ('HUMAN'|'AI')
  */
-
-// 稀有度概率配置
-const ACTION_PROBABILITY = {
-  'AUTO': 1.0, 'ATK': 0.518, 'TRANS': 0.243,
-  'CONVERT': 0.167, 'BURST': 0.035, 'BURST_ATK': 0.036
-};
 
 const initialState = {
   // 游戏阶段: 'HOME', 'INITIATIVE', 'STEM_GENERATION', 'DECISION', 'GAME_END'
@@ -160,6 +154,10 @@ function createInitialState() {
     ...deepMerge({}, initialState),
     nodeStates: initNodeStates()
   };
+}
+
+export function createInitialGameState() {
+  return createInitialState();
 }
 
 let state = createInitialState();
@@ -315,140 +313,7 @@ const StateManager = {
    * @private
    */
   _recordScoreByReason(playerId, reason, actionType, amount) {
-    const cleanReason = this._extractCleanReason(reason);
-
-    // 被动类：直接记录
-    if (['DIVIDEND', 'DAMAGE_PENALTY', 'FINAL_PENALTY'].includes(actionType)) {
-      this._recordStat(playerId, 'passive', cleanReason, amount);
-      return;
-    }
-
-    // 检查是否为组合格式："动作·状态"
-    if (cleanReason.includes('·')) {
-      const [actionName, stateName] = cleanReason.split('·');
-
-      // 分别计算行为分和状态分（按配置比例拆分）
-      const actionScore = this._calculateActionScore(actionType);
-      const stateScore = this._calculateStateScore(actionName, stateName);
-
-      // 记录行为统计
-      if (actionScore > 0 && state.actionStats[playerId][actionName] !== undefined) {
-        state.actionStats[playerId][actionName]++;
-        state.actionScores[playerId][actionName] += this._applyRarityBonus(actionScore, actionType);
-      }
-
-      // 记录状态统计
-      if (stateScore > 0 && state.stateStats[playerId][stateName] !== undefined) {
-        state.stateStats[playerId][stateName]++;
-        state.stateScores[playerId][stateName] += this._applyRarityBonus(stateScore, actionType);
-      }
-    } else {
-      // 非组合格式，按原逻辑判断
-      const statType = this._classifyStatType(actionType, cleanReason);
-      this._recordStat(playerId, statType, cleanReason, amount);
-    }
-  },
-
-  /**
-   * 计算行为分
-   * @private
-   */
-  _calculateActionScore(actionType) {
-    return POINTS_CONFIG?.ACTION?.[actionType] || 0;
-  },
-
-  /**
-   * 计算状态分
-   * @private
-   */
-  _calculateStateScore(actionName, stateName) {
-    const stateChange = POINTS_CONFIG?.STATE_CHANGE;
-    if (!stateChange) return 0;
-
-    // 根据状态名称返回对应分数
-    if (stateName === '点亮') return stateChange.LIGHT_UP || 0;
-    if (stateName === '加持') return stateChange.BLESSING || 0;
-    if (stateName === '修复道损') return stateChange.REPAIR_DMG?.yang || 0;
-    if (stateName === '致阳道损') return stateChange.CAUSE_DMG?.yang || 0;
-    if (stateName === '致阴道损') return stateChange.CAUSE_DMG?.yin || 0;
-    if (stateName === '破阳点亮') return stateChange.BREAK_LIGHT?.yang || 0;
-    if (stateName === '破阴点亮') return stateChange.BREAK_LIGHT?.yin || 0;
-    if (stateName === '削弱加持') return stateChange.WEAKEN || 0;
-
-    return 0;
-  },
-
-  /**
-   * 应用稀有度加成
-   * @private
-   */
-  _applyRarityBonus(score, actionType) {
-    const prob = ACTION_PROBABILITY[actionType] || 0.5;
-    const rarityBonus = score * (1 - prob) * (POINTS_CONFIG?.RARITY_MULTIPLIER || 1.5);
-    return Math.round(score + rarityBonus);
-  },
-
-  /**
-   * 判断统计类型（行为/状态/被动）
-   * @param {string} actionType - 动作类型
-   * @param {string} reason - 得分原因
-   * @returns {string} - 'action' | 'state' | 'passive'
-   * @private
-   */
-  _classifyStatType(actionType, reason) {
-    // 被动类：回合结算
-    if (['DIVIDEND', 'DAMAGE_PENALTY', 'FINAL_PENALTY'].includes(actionType)) {
-      return 'passive';
-    }
-    // 状态类：根据 reason 判断
-    if (['点亮', '修复道损', '加持', '致阳道损', '致阴道损', '破阳点亮', '破阴点亮', '削弱加持'].includes(reason)) {
-      return 'state';
-    }
-    // 默认行为类
-    return 'action';
-  },
-
-  /**
-   * 记录统计到对应的类别
-   * @param {string} playerId - 玩家ID
-   * @param {string} statType - 统计类型 ('action' | 'state' | 'passive')
-   * @param {string} cleanReason - 清理后的原因
-   * @param {number} amount - 分数
-   * @private
-   */
-  _recordStat(playerId, statType, cleanReason, amount) {
-    let stats, scores;
-
-    switch (statType) {
-      case 'state':
-        stats = state.stateStats;
-        scores = state.stateScores;
-        break;
-      case 'passive':
-        stats = state.passiveStats;
-        scores = state.passiveScores;
-        break;
-      default:
-        stats = state.actionStats;
-        scores = state.actionScores;
-    }
-
-    if (stats[playerId][cleanReason] !== undefined) {
-      stats[playerId][cleanReason]++;
-      scores[playerId][cleanReason] += amount;
-    }
-  },
-
-  /**
-   * 提取纯净的原因名称（去除括号中的额外信息）
-   * @param {string} reason - 原始原因
-   * @returns {string}
-   * @private
-   */
-  _extractCleanReason(reason) {
-    // 匹配括号前的内容，例如 "天道分红(3)" → "天道分红"
-    const match = reason.match(/^([^(]+)/);
-    return match ? match[1].trim() : reason;
+    recordScoreByReason(state, playerId, reason, actionType, amount);
   },
 
   /**
