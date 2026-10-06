@@ -67,6 +67,8 @@ describe('experimental headless scoring', () => {
     [{ noSelfCostReward: 1 }],
     [{ noRarityActions: 'BURST' }],
     [{ noRarityActions: [123] }],
+    [{ attackScoreMultiplier: -1 }],
+    [{ attackScoreMultiplier: '2.0' }],
     [{ unknownRule: true }],
     [{ pointsConfig: { ACTION: {} } }]
   ])('rejects illegal scoring configuration %j', scoringConfig => {
@@ -90,6 +92,22 @@ describe('experimental headless scoring', () => {
     expect(result.scoringConfig.name).toBe('experimental');
     expect(result.scoringConfig.noRarityActions).toEqual(['BURST', 'BURST_ATK']);
     expect(Object.isFrozen(result.scoringConfig.noRarityActions)).toBe(true);
+  });
+
+  it('supports attackScoreMultiplier configuration and scales attack state scores in headless match', () => {
+    const initialState = currentOpportunity({
+      nodeStates: {
+        ...createInitialHeadlessState().nodeStates,
+        'P1-0': { yang: 1, yin: 0 },
+        'P2-2': { yang: 1, yin: -1 }
+      }
+    });
+    const result = evaluate(initialState, { attackScoreMultiplier: 2.0 }, choose('ATK'));
+
+    expect(result.scoringConfig.name).toBe('experimental');
+    expect(result.scoringConfig.attackScoreMultiplier).toBe(2.0);
+    // BREAK_LIGHT.yang base 80 * 2 = 160; with ATK rarity bonus = 276
+    expect(result.finalState.stateScores.P1['破阳点亮']).toBe(276);
   });
 
   it.each([

@@ -233,10 +233,11 @@ describe('issue 08: Score Rarity Reanalysis', () => {
     it('executes CLI with --data and --out flags successfully', async () => {
       const { execSync } = await import('node:child_process');
       const { writeFileSync, unlinkSync, existsSync, readFileSync } = await import('node:fs');
+      const { tmpdir } = await import('node:os');
       const { resolve } = await import('node:path');
 
-      const tempJson = resolve('tests/temp-reanalysis-test.json');
-      const tempReport = resolve('tests/temp-reanalysis-report.md');
+      const tempJson = resolve(tmpdir(), 'temp-reanalysis-test.json');
+      const tempReport = resolve(tmpdir(), 'temp-reanalysis-report.md');
 
       const mockData = {
         totalMatches: 2,

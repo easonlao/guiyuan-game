@@ -27,14 +27,15 @@ function actionScore(actionType, scoringConfig = null) {
 function stateScore(stateName, scoringConfig = null) {
   const changes = (scoringConfig?.pointsConfig ?? POINTS_CONFIG)?.STATE_CHANGE;
   if (!changes) return 0;
+  const multiplier = scoringConfig?.attackScoreMultiplier ?? 1;
   if (stateName === '点亮') return changes.LIGHT_UP || 0;
   if (stateName === '加持') return changes.BLESSING || 0;
   if (stateName === '修复道损') return changes.REPAIR_DMG?.yang || 0;
-  if (stateName === '致阳道损') return changes.CAUSE_DMG?.yang || 0;
-  if (stateName === '致阴道损') return changes.CAUSE_DMG?.yin || 0;
-  if (stateName === '破阳点亮') return changes.BREAK_LIGHT?.yang || 0;
-  if (stateName === '破阴点亮') return changes.BREAK_LIGHT?.yin || 0;
-  if (stateName === '削弱加持') return changes.WEAKEN || 0;
+  if (stateName === '致阳道损') return Math.round((changes.CAUSE_DMG?.yang || 0) * multiplier);
+  if (stateName === '致阴道损') return Math.round((changes.CAUSE_DMG?.yin || 0) * multiplier);
+  if (stateName === '破阳点亮') return Math.round((changes.BREAK_LIGHT?.yang || 0) * multiplier);
+  if (stateName === '破阴点亮') return Math.round((changes.BREAK_LIGHT?.yin || 0) * multiplier);
+  if (stateName === '削弱加持') return Math.round((changes.WEAKEN || 0) * multiplier);
   return 0;
 }
 
