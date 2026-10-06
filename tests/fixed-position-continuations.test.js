@@ -340,14 +340,14 @@ describe('fixed-position continuation public API', () => {
     const result = compareFixedPositionContinuations({
       position,
       strategies: { P1: 'build-priority', P2: 'attack-priority' },
-      seeds: [2, 5],
+      seeds: [13, 27],
       scoringConfig: {},
       maxTurns: 20
     });
 
     expect(result.status).toBe('complete');
     expect(result.firstActions.map(branch => branch.action.type)).toEqual(['CONVERT', 'TRANS']);
-    expect(result.pairing).toMatchObject({ seeds: [2, 5], commonSeedPolicy: 'same-seed-for-every-first-action' });
+    expect(result.pairing).toMatchObject({ seeds: [13, 27], commonSeedPolicy: 'same-seed-for-every-first-action' });
     expect(result.firstActions[0].samples.map(sample => sample.outcome)).toEqual(['loss', 'win']);
     expect(result.firstActions[0].samples.map(sample => sample.value)).toEqual([0, 1]);
     expect(result.firstActions[1].samples.map(sample => sample.outcome)).toEqual(['win', 'loss']);

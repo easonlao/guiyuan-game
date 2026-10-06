@@ -40,11 +40,11 @@ describe('Issue 10: Attack Buff Sweep Experiment', () => {
       const calculator = createScoreCalculator(undefined, config2x);
 
       // Attack state changes scaled by 2.0x
-      expect(calculator._getStateChangeScore(0, -1, true, true, 'ATK')).toBe(240);  // CAUSE_DMG.yang: 120 * 2
-      expect(calculator._getStateChangeScore(0, -1, false, true, 'ATK')).toBe(200); // CAUSE_DMG.yin: 100 * 2
-      expect(calculator._getStateChangeScore(1, 0, true, true, 'ATK')).toBe(160);   // BREAK_LIGHT.yang: 80 * 2
-      expect(calculator._getStateChangeScore(1, 0, false, true, 'ATK')).toBe(120);  // BREAK_LIGHT.yin: 60 * 2
-      expect(calculator._getStateChangeScore(2, 1, false, true, 'ATK')).toBe(160);  // WEAKEN: 80 * 2
+      expect(calculator._getStateChangeScore(0, -1, true, true, 'ATK')).toBe(600);  // CAUSE_DMG.yang: 300 * 2
+      expect(calculator._getStateChangeScore(0, -1, false, true, 'ATK')).toBe(500); // CAUSE_DMG.yin: 250 * 2
+      expect(calculator._getStateChangeScore(1, 0, true, true, 'ATK')).toBe(400);   // BREAK_LIGHT.yang: 200 * 2
+      expect(calculator._getStateChangeScore(1, 0, false, true, 'ATK')).toBe(300);  // BREAK_LIGHT.yin: 150 * 2
+      expect(calculator._getStateChangeScore(2, 1, false, true, 'ATK')).toBe(400);  // WEAKEN: 200 * 2
 
       // Defense / construction state changes NOT scaled
       expect(calculator._getStateChangeScore(0, 1, true, false, 'AUTO')).toBe(100);   // LIGHT_UP: 100
@@ -62,19 +62,19 @@ describe('Issue 10: Attack Buff Sweep Experiment', () => {
     it('scales attack state scores with fractional multiplier 1.5x and 2.5x accurately', () => {
       const config15 = createScoringConfig({ attackScoreMultiplier: 1.5 });
       const calc15 = createScoreCalculator(undefined, config15);
-      expect(calc15._getStateChangeScore(0, -1, true, true, 'ATK')).toBe(180);  // 120 * 1.5
-      expect(calc15._getStateChangeScore(0, -1, false, true, 'ATK')).toBe(150); // 100 * 1.5
-      expect(calc15._getStateChangeScore(1, 0, true, true, 'ATK')).toBe(120);   // 80 * 1.5
-      expect(calc15._getStateChangeScore(1, 0, false, true, 'ATK')).toBe(90);    // 60 * 1.5
-      expect(calc15._getStateChangeScore(2, 1, false, true, 'ATK')).toBe(120);  // 80 * 1.5
+      expect(calc15._getStateChangeScore(0, -1, true, true, 'ATK')).toBe(450);  // 300 * 1.5
+      expect(calc15._getStateChangeScore(0, -1, false, true, 'ATK')).toBe(375); // 250 * 1.5
+      expect(calc15._getStateChangeScore(1, 0, true, true, 'ATK')).toBe(300);   // 200 * 1.5
+      expect(calc15._getStateChangeScore(1, 0, false, true, 'ATK')).toBe(225);  // 150 * 1.5
+      expect(calc15._getStateChangeScore(2, 1, false, true, 'ATK')).toBe(300);  // 200 * 1.5
 
       const config25 = createScoringConfig({ attackScoreMultiplier: 2.5 });
       const calc25 = createScoreCalculator(undefined, config25);
-      expect(calc25._getStateChangeScore(0, -1, true, true, 'ATK')).toBe(300);  // 120 * 2.5
-      expect(calc25._getStateChangeScore(0, -1, false, true, 'ATK')).toBe(250); // 100 * 2.5
-      expect(calc25._getStateChangeScore(1, 0, true, true, 'ATK')).toBe(200);   // 80 * 2.5
-      expect(calc25._getStateChangeScore(1, 0, false, true, 'ATK')).toBe(150);  // 60 * 2.5
-      expect(calc25._getStateChangeScore(2, 1, false, true, 'ATK')).toBe(200);  // 80 * 2.5
+      expect(calc25._getStateChangeScore(0, -1, true, true, 'ATK')).toBe(750);  // 300 * 2.5
+      expect(calc25._getStateChangeScore(0, -1, false, true, 'ATK')).toBe(625); // 250 * 2.5
+      expect(calc25._getStateChangeScore(1, 0, true, true, 'ATK')).toBe(500);   // 200 * 2.5
+      expect(calc25._getStateChangeScore(1, 0, false, true, 'ATK')).toBe(375);  // 150 * 2.5
+      expect(calc25._getStateChangeScore(2, 1, false, true, 'ATK')).toBe(500);  // 200 * 2.5
     });
   });
 
@@ -121,23 +121,23 @@ describe('Issue 10: Attack Buff Sweep Experiment', () => {
 
       const match = evaluate(initialState, scoringConfig, choose('ATK'));
 
-      // BREAK_LIGHT.yang base = 80, multiplied by 2 = 160
-      expect(match.finalState.stateScores.P1['破阳点亮']).toBe(276); // 160 state score with ATK rarity (160 * (1 + 1.5 * (1 - 0.518)) = 276)
+      // BREAK_LIGHT.yang base = 200, multiplied by 2 = 400
+      expect(match.finalState.stateScores.P1['破阳点亮']).toBe(689); // 400 state score with ATK rarity (400 * (1 + 1.5 * (1 - 0.518)) = 689)
       expect(match.finalState.actionScores.P1['破']).toBe(69);        // 40 action score with ATK rarity (40 * 1.723 = 69)
-      expect(match.finalState.players.P1.score).toBe(345);           // Total = 345
+      expect(match.finalState.players.P1.score).toBe(758);           // Total = 758
 
       // Decompose standard
       const breakdown = decomposePlayerScores(match, match.scoringConfig);
-      expect(breakdown.P1.attack).toBe(160); // Scaled attack state score
+      expect(breakdown.P1.attack).toBe(400); // Scaled attack state score
       expect(breakdown.P1.behavior).toBe(40);
-      expect(breakdown.P1.rarity).toBe(145); // 345 - (160 + 40) = 145
+      expect(breakdown.P1.rarity).toBe(318); // 758 - (400 + 40) = 318
       expect(breakdown.P1.total).toBe(match.finalState.players.P1.score);
 
       // Decompose with reanalysis
       const reanalysisBreakdown = decomposePlayerScoresWithReanalysis(match, match.scoringConfig);
-      expect(reanalysisBreakdown.P1.attack).toBe(160);
+      expect(reanalysisBreakdown.P1.attack).toBe(400);
       expect(reanalysisBreakdown.P1.behavior).toBe(40);
-      expect(reanalysisBreakdown.P1.rarity).toBe(145);
+      expect(reanalysisBreakdown.P1.rarity).toBe(318);
       expect(reanalysisBreakdown.P1.total).toBe(match.finalState.players.P1.score);
     });
 

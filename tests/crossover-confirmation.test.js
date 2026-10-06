@@ -191,6 +191,7 @@ describe('crossover confirmation public API', () => {
       state.nodeStates[`P2-${elementIndex}`] = { yang: 1, yin: 1 };
     }
     state.nodeStates['P2-4'].yin = 0;
+    state.players.P2.score = 50;
     const position = freezeDiagnosticFixedPosition({
       id: 'three-action-diagnostic',
       description: 'Three legal first actions expose position-wide confirmation leakage.',

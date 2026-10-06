@@ -233,7 +233,7 @@ describe('headless match public API', () => {
     expect(result.actionRecords[0].action.type).toBe('BURST');
     expect(result.actionRecords[0].stateChanges).toHaveLength(3);
     expect(result.actionRecords[0].stateChanges.map(change => change.after)).toEqual([0, 1, 2]);
-    expect(result.actionRecords[0].scoreChanges.map(change => change.amount)).toEqual([392, 490, 734]);
+    expect(result.actionRecords[0].scoreChanges.map(change => change.amount)).toEqual([250, 200, 300]);
     expect(result.trajectory.find(entry => entry.event === 'opportunity-complete').state).toMatchObject({
       currentPlayer: 'P1', isExtraTurn: true, pendingBurstPlayer: null
     });
@@ -365,7 +365,7 @@ describe('headless match public API', () => {
       { playerId: 'P2', elementIndex: 2, side: 'yin', before: 0, after: -1 },
       { playerId: 'P2', elementIndex: 2, side: 'yang', before: 0, after: -1 }
     ]);
-    expect(burstAtkResult.actionRecords[0].scoreChanges.map(change => change.amount)).toEqual([391, 440, 489]);
+    expect(burstAtkResult.actionRecords[0].scoreChanges.map(change => change.amount)).toEqual([280, 330, 380]);
   });
 
   it('uses host passive settlement for the current player only after the action', () => {
@@ -391,9 +391,9 @@ describe('headless match public API', () => {
       playerId: 'P1', amount: 50, reason: '天道分红(1)', actionType: 'DIVIDEND'
     }]);
     expect(result.actionRecords[0].scoreChanges).toEqual([{
-      playerId: 'P1', amount: 241, reason: '破·致阴道损', actionType: 'ATK'
+      playerId: 'P1', amount: 500, reason: '破·致阴道损', actionType: 'ATK'
     }]);
-    expect(result.finalState.players.P1.score).toBe(291);
+    expect(result.finalState.players.P1.score).toBe(550);
     expect(result.finalState.players.P2.score).toBe(0);
   });
 

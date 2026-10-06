@@ -16,7 +16,7 @@ describe('current action scoring baseline', () => {
     ['AUTO', () => ActionResolver.applyPlus('P1', 0, false, 'AUTO', false), 100],
     ['CONVERT', () => ActionResolver.applyPlus('P1', 0, false, 'CONVERT', false), 337],
     ['TRANS', () => ActionResolver.applyPlus('P1', 0, false, 'TRANS', false), 278],
-    ['ATK', () => ActionResolver.applyMinus('P2', 0, false, 'ATK', true), 241]
+    ['ATK', () => ActionResolver.applyMinus('P2', 0, false, 'ATK', true), 500]
   ])('%s keeps its current state and rarity score', (_actionType, execute, expectedScore) => {
     execute();
 
@@ -32,7 +32,7 @@ describe('current action scoring baseline', () => {
     expect(result).toEqual({ success: true, executedCount: 3 });
     expect(StateManager.getNodeState('P1', 0)).toEqual({ yang: 1, yin: 0 });
     expect(StateManager.getNodeState('P1', 1)).toEqual({ yang: 0, yin: 2 });
-    expect(StateManager.getState().players.P1.score).toBe(1616);
+    expect(StateManager.getState().players.P1.score).toBe(750);
   });
 
   it('scores a BURST_ATK source consumption and both successful opponent attacks', () => {
@@ -44,12 +44,12 @@ describe('current action scoring baseline', () => {
     expect(result).toEqual({ success: true, executedCount: 3 });
     expect(StateManager.getNodeState('P1', 0)).toEqual({ yang: 0, yin: 1 });
     expect(StateManager.getNodeState('P2', 2)).toEqual({ yang: -1, yin: -1 });
-    expect(StateManager.getState().players.P1.score).toBe(1320);
+    expect(StateManager.getState().players.P1.score).toBe(990);
   });
 
   it.each([
-    ['BURST', false, 490],
-    ['BURST_ATK', true, 489]
+    ['BURST', false, 350],
+    ['BURST_ATK', true, 380]
   ])('keeps the positive self-damage diagnostic for %s', (actionType, isYang, expectedScore) => {
     ActionResolver.applyMinus('P1', 0, isYang, actionType, false);
 
@@ -69,9 +69,9 @@ describe('current action scoring baseline', () => {
 
     expect(result).toEqual({ success: true, executedCount: 2 });
     expect(StateManager.getNodeState('P1', 1)).toEqual({ yang: 2, yin: 2 });
-    expect(StateManager.getState().players.P1.score).toBe(1126);
+    expect(StateManager.getState().players.P1.score).toBe(550);
     expect(StateManager.getActionStats('P1')['强化']).toBe(2);
-    expect(StateManager.getActionScores('P1')['强化']).toBe(490);
+    expect(StateManager.getActionScores('P1')['强化']).toBe(200);
     expect(StateManager.getStateStats('P1')['加持']).toBe(1);
   });
 
@@ -79,11 +79,11 @@ describe('current action scoring baseline', () => {
     ActionResolver.applyMinus('P2', 0, true, 'BURST_ATK', true);
 
     const state = StateManager.getState();
-    expect(state.players.P1.score).toBe(489);
-    expect(StateManager.getActionScores('P1')['强破']).toBe(196);
-    expect(StateManager.getStateScores('P1')['致阳道损']).toBe(294);
+    expect(state.players.P1.score).toBe(380);
+    expect(StateManager.getActionScores('P1')['强破']).toBe(80);
+    expect(StateManager.getStateScores('P1')['致阳道损']).toBe(300);
     expect(
       StateManager.getActionScores('P1')['强破'] + StateManager.getStateScores('P1')['致阳道损']
-    ).toBe(490);
+    ).toBe(380);
   });
 });

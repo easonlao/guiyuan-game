@@ -16,21 +16,21 @@ const FIXTURES = [
     classification: 'extra-action-semantics',
     opportunity: 11,
     playerId: 'P2',
-    stateSha256: '326057f86e1388cb4f0ec19a26f54b7d9d69b62d190a626068c457f160e08d3d'
+    stateSha256: 'c9eaef6c30a31031d11f34e0e2e14628f60085ab05e473eebfaf116dc6ae1cf2'
   },
   {
     id: 'reachable-trailing-needs-disruption-turn-14',
     classification: 'trailing-needs-disruption',
     opportunity: 14,
     playerId: 'P1',
-    stateSha256: '00c3013fc0e044fc6eb107c43aeb2a876731844de44893e772d5dce0535110a3'
+    stateSha256: 'a547502c02858dbac877243cebec831f9a2e2bda28b67c02804ec18b21b0fbbc'
   },
   {
     id: 'reachable-near-turn-limit-turn-19',
     classification: 'near-turn-limit',
     opportunity: 19,
     playerId: 'P2',
-    stateSha256: '1d1feba4040717b4a05ab3a52efc186027acd8bbc95015a6f61c00eaf093ad89'
+    stateSha256: 'b7ec876268a282934aa99792d9ef773a22f97a2fb3b47c425856332a3b624d4c'
   }
 ];
 

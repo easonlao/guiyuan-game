@@ -106,13 +106,13 @@ describe('experimental headless scoring', () => {
 
     expect(result.scoringConfig.name).toBe('experimental');
     expect(result.scoringConfig.attackScoreMultiplier).toBe(2.0);
-    // BREAK_LIGHT.yang base 80 * 2 = 160; with ATK rarity bonus = 276
-    expect(result.finalState.stateScores.P1['破阳点亮']).toBe(276);
+    // BREAK_LIGHT.yang base 200 * 2 = 400; with ATK rarity bonus = 689
+    expect(result.finalState.stateScores.P1['破阳点亮']).toBe(689);
   });
 
   it.each([
-    ['BURST', '强化', { 'P1-1': { yang: 2, yin: 1 } }, [392, 734], [245, 734], '破阴点亮'],
-    ['BURST_ATK', '强破', { 'P2-2': { yang: 0, yin: 0 } }, [391, 440, 489], [196, 440, 489], '破阳点亮']
+    ['BURST', '强化', { 'P1-1': { yang: 2, yin: 1 } }, [250, 300], [100, 300], '破阴点亮'],
+    ['BURST_ATK', '强破', { 'P2-2': { yang: 0, yin: 0 } }, [280, 330, 380], [80, 330, 380], '破阳点亮']
   ])('removes only the %s self-cost state reward while preserving burst effects and extra turn', (actionType, actionName, targetStates, baselineScores, experimentalScores, selfStateReason) => {
     const initialState = currentOpportunity({
       nodeStates: {
@@ -136,8 +136,8 @@ describe('experimental headless scoring', () => {
   });
 
   it.each([
-    ['BURST', '强化', 245],
-    ['BURST_ATK', '强破', 196]
+    ['BURST', '强化', 100],
+    ['BURST_ATK', '强破', 80]
   ])('awards %s behavior points once while retaining each successful substep and boundary result', (actionType, actionName, expectedActionScore) => {
     const initialState = currentOpportunity({
       nodeStates: {
@@ -160,8 +160,8 @@ describe('experimental headless scoring', () => {
   });
 
   it.each([
-    ['BURST', '强化', 245],
-    ['BURST_ATK', '强破', 196]
+    ['BURST', '强化', 100],
+    ['BURST_ATK', '强破', 80]
   ])('keeps %s successful-substep boundaries while awarding behavior score once', (actionType, actionName, expectedActionScore) => {
     const initialState = currentOpportunity({
       nodeStates: {

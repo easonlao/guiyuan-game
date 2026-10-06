@@ -81,12 +81,12 @@ describe('issue 08: Score Rarity Reanalysis', () => {
       const breakdown = decomposePlayerScoresWithReanalysis(mockMatch);
       const p1 = breakdown.P1;
 
-      // Burst self cost is 60 (baseState of 破阴点亮)
-      expect(p1.burstSelfCost).toBe(60);
+      // Burst self cost is 150 (baseState of 破阴点亮)
+      expect(p1.burstSelfCost).toBe(150);
       // Attack must be 0 because BURST self-cost was removed from attack!
       expect(p1.attack).toBe(0);
-      // Construction includes baseState for 点亮 (100) + burstSelfCost (60) = 160
-      expect(p1.construction).toBe(160);
+      // Construction includes baseState for 点亮 (100) + burstSelfCost (150) = 250
+      expect(p1.construction).toBe(250);
       // Total score invariant holds
       expect(p1.total).toBe(882);
       expect(p1.construction + p1.attack + p1.behavior + p1.dividend + p1.penalty + p1.rarity).toBe(882);
