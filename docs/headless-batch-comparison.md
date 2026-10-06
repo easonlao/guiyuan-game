@@ -9,7 +9,7 @@ npm run headless:compare -- \
   --samples 4 \
   --seed 202603 \
   --max-turns 20 \
-  --config disable-rarity-bonus \
+  --config no-self-cost-reward \
   --out reports/strategy-comparison.json
 ```
 
@@ -34,7 +34,7 @@ const report = runBatchComparison({
   samples: 4,
   seed: 202603,
   maxTurns: 20,
-  experimentalScoringConfig: { version: 1, disableRarityBonus: true }
+  experimentalScoringConfig: { version: 1, noSelfCostReward: true }
 });
 ```
 
