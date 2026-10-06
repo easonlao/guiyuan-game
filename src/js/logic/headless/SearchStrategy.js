@@ -57,25 +57,61 @@ function evaluateTerminalState(term, rootPlayer) {
   return -1.0;
 }
 
-function normalizeSimulationState(state) {
-  const base = createInitialGameState();
-  const p1Score = state.players?.P1?.score ?? state.scores?.P1 ?? 0;
-  const p2Score = state.players?.P2?.score ?? state.scores?.P2 ?? 0;
-  base.phase = state.phase ?? 'DECISION';
-  base.turnCount = state.turnCount ?? 0;
-  base.maxTurns = state.maxTurns ?? 60;
-  base.currentPlayer = state.currentPlayer ?? 'P1';
-  base.isExtraTurn = state.isExtraTurn ?? false;
-  base.currentStem = clone(state.currentStem ?? null);
-  base.pendingBurstPlayer = state.pendingBurstPlayer ?? null;
-  base.players.P1.score = p1Score;
-  base.players.P2.score = p2Score;
-  base.nodeStates = clone(state.nodeStates);
-  return base;
+function fastCloneState(state) {
+  const nodeStates = {};
+  for (const p of ['P1', 'P2']) {
+    for (let el = 0; el < 5; el++) {
+      const key = `${p}-${el}`;
+      const n = state.nodeStates?.[key];
+      nodeStates[key] = n ? { yang: n.yang, yin: n.yin } : { yang: 0, yin: 0 };
+    }
+  }
+  return {
+    phase: state.phase ?? 'DECISION',
+    turnCount: state.turnCount ?? 0,
+    maxTurns: state.maxTurns ?? 60,
+    currentPlayer: state.currentPlayer ?? 'P1',
+    isExtraTurn: state.isExtraTurn ?? false,
+    currentStem: state.currentStem,
+    pendingBurstPlayer: state.pendingBurstPlayer ?? null,
+    players: {
+      P1: { score: state.players?.P1?.score ?? state.scores?.P1 ?? 0 },
+      P2: { score: state.players?.P2?.score ?? state.scores?.P2 ?? 0 }
+    },
+    turnScoreChanges: {
+      P1: state.turnScoreChanges?.P1 ?? 0,
+      P2: state.turnScoreChanges?.P2 ?? 0
+    },
+    actionStats: {
+      P1: state.actionStats?.P1 ? { ...state.actionStats.P1 } : {},
+      P2: state.actionStats?.P2 ? { ...state.actionStats.P2 } : {}
+    },
+    actionScores: {
+      P1: state.actionScores?.P1 ? { ...state.actionScores.P1 } : {},
+      P2: state.actionScores?.P2 ? { ...state.actionScores.P2 } : {}
+    },
+    stateStats: {
+      P1: state.stateStats?.P1 ? { ...state.stateStats.P1 } : {},
+      P2: state.stateStats?.P2 ? { ...state.stateStats.P2 } : {}
+    },
+    stateScores: {
+      P1: state.stateScores?.P1 ? { ...state.stateScores.P1 } : {},
+      P2: state.stateScores?.P2 ? { ...state.stateScores.P2 } : {}
+    },
+    passiveStats: {
+      P1: state.passiveStats?.P1 ? { ...state.passiveStats.P1 } : {},
+      P2: state.passiveStats?.P2 ? { ...state.passiveStats.P2 } : {}
+    },
+    passiveScores: {
+      P1: state.passiveScores?.P1 ? { ...state.passiveScores.P1 } : {},
+      P2: state.passiveScores?.P2 ? { ...state.passiveScores.P2 } : {}
+    },
+    nodeStates
+  };
 }
 
 function applyAction(state, action, playerId, stem, scoringConfig) {
-  const normalized = normalizeSimulationState(state);
+  const normalized = fastCloneState(state);
   const stateManager = createScopedState(normalized, scoringConfig);
   const scoreCalculator = createScoreCalculator(stateManager, scoringConfig);
   const resolver = createActionResolver(stateManager, scoreCalculator);
@@ -130,8 +166,8 @@ function evaluateChanceNode(state, remainingDepth, rootPlayer, weights, scoringC
   const prob = 1 / STEMS_LIST.length; // 0.1
 
   for (const stem of STEMS_LIST) {
-    const nextState = clone(state);
-    nextState.currentStem = clone(stem);
+    const nextState = fastCloneState(state);
+    nextState.currentStem = stem;
     if (!nextState.isExtraTurn) {
       nextState.turnCount++;
     }
