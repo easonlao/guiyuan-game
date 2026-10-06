@@ -67,9 +67,9 @@ export const POINTS_CONFIG = {
     BLESSING: 200,                           // 1 → 2 加持（归一）
 
     // 敌方状态破坏（攻击）
-    CAUSE_DMG: { yang: 120, yin: 100 },     // 0 → -1 致道损
-    BREAK_LIGHT: { yang: 80, yin: 60 },     // 1 → 0 破点亮
-    WEAKEN: 80                               // 2 → 1 削弱加持
+    CAUSE_DMG: { yang: 300, yin: 250 },     // 0 → -1 致道损
+    BREAK_LIGHT: { yang: 200, yin: 150 },   // 1 → 0 破点亮
+    WEAKEN: 200                              // 2 → 1 削弱加持
   },
 
   // 【回合结算】持续状态的正负反馈
@@ -84,7 +84,10 @@ export const POINTS_CONFIG = {
   },
 
   // 稀有度乘数（用于计算稀有行为的加成）
-  RARITY_MULTIPLIER: 1.5
+  RARITY_MULTIPLIER: 1.5,
+
+  // 稀有度黑名单（不享受稀有度加成的动作类型）
+  NO_RARITY_ACTIONS: ['BURST', 'BURST_ATK']
 };
 
 // 游戏配置常量

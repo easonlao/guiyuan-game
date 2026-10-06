@@ -71,7 +71,7 @@ describe('issue 01: loser 500-score floor diagnostic', () => {
     // BURST generates 3 sub-step score awards in this match
     expect(burstRecord.scoreChanges.length).toBeGreaterThanOrEqual(2);
     const burstTotal = burstRecord.scoreChanges.reduce((sum, sc) => sum + sc.amount, 0);
-    expect(burstTotal).toBe(1616); // 392 + 490 + 734
+    expect(burstTotal).toBe(750); // 250 + 200 + 300 (no rarity bonus)
   });
 
   it('verifies the 500-score loser floor does NOT persist under formal maxTurns=60', () => {

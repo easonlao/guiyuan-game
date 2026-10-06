@@ -111,7 +111,7 @@ describe('issue 04: expectimax search strategy', () => {
     const actionScore = {
       type: 'ATK',
       executorId: 'P1',
-      target: { playerId: 'P2', elementIndex: 2, isYang: true }
+      target: { playerId: 'P2', elementIndex: 2, isYang: false }
     };
     const actionLit = {
       type: 'CONVERT',

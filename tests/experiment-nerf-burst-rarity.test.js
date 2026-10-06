@@ -79,21 +79,21 @@ describe('Issue 09: Nerf Burst Rarity Scoring Experiment', () => {
       expect(nerfed.finalState.isExtraTurn).toBe(baseline.finalState.isExtraTurn);
       expect(nerfed.finalState.pendingBurstPlayer).toBe(baseline.finalState.pendingBurstPlayer);
 
-      // Baseline BURST awards rarity bonus on behavior (100 -> 245 * 3 substeps = 735)
-      expect(baseline.finalState.actionScores.P1['强化']).toBe(735);
+      // Baseline BURST in formal rules also awards unadjusted score on behavior (300)
+      expect(baseline.finalState.actionScores.P1['强化']).toBe(300);
 
       // Nerfed BURST awards exact unadjusted scores: behavior 100 * 3 substeps = 300
       expect(nerfed.finalState.actionScores.P1['强化']).toBe(300);
       expect(nerfed.finalState.stateScores.P1['点亮']).toBe(100); // 1 lit up step * 100
       expect(nerfed.finalState.stateScores.P1['加持']).toBe(200); // 1 blessing step * 200
-      expect(nerfed.finalState.stateScores.P1['破阴点亮']).toBe(60); // 1 self sacrifice * 60
+      expect(nerfed.finalState.stateScores.P1['破阴点亮']).toBe(150); // 1 self sacrifice * 150
 
       // Score change amounts should match unadjusted sum:
-      // Substep 1: self sacrifice (100 action + 60 BREAK_LIGHT.yin = 160)
+      // Substep 1: self sacrifice (100 action + 150 BREAK_LIGHT.yin = 250)
       // Substep 2: target yin light-up (100 action + 100 LIGHT_UP = 200)
       // Substep 3: target yin blessing (100 action + 200 BLESSING = 300)
       const nerfedScoreAmounts = nerfed.actionRecords[0].scoreChanges.map(sc => sc.amount);
-      expect(nerfedScoreAmounts).toEqual([160, 200, 300]);
+      expect(nerfedScoreAmounts).toEqual([250, 200, 300]);
 
       // Verify decompositions show 0 rarity for BURST
       const standardBreakdown = decomposePlayerScores(nerfed, nerfed.scoringConfig);

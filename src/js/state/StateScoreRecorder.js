@@ -11,7 +11,8 @@ function cleanReason(reason) {
 
 export function rarityAdjustedScore(score, actionType, scoringConfig = null) {
   if (scoringConfig?.disableRarityBonus) return score;
-  if (scoringConfig?.noRarityActions?.includes(actionType)) return score;
+  const formalNoRarity = scoringConfig?.pointsConfig?.NO_RARITY_ACTIONS ?? POINTS_CONFIG?.NO_RARITY_ACTIONS ?? [];
+  if (scoringConfig?.noRarityActions?.includes(actionType) || formalNoRarity.includes(actionType)) return score;
   return calculateRarityAdjustedScore(
     score,
     actionType,
