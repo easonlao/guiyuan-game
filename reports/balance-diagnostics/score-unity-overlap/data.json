@@ -1,0 +1,1119 @@
+{
+  "schemaVersion": 1,
+  "diagnosticPhase": "score-unity-overlap",
+  "totalMatches": 2400,
+  "totalElapsedMs": 83923.625653,
+  "seedsCount": 200,
+  "seedRange": [
+    202603,
+    202802
+  ],
+  "maxTurns": 60,
+  "pairingKeys": [
+    "rule-vs-rule",
+    "search-d1-score",
+    "search-d1-lit",
+    "search-d2-score",
+    "strong-d1-vs-rule",
+    "strong-d2-vs-rule"
+  ],
+  "pairings": [
+    {
+      "id": "rule-vs-rule",
+      "name": "规则式对抗 (局势响应 vs 建设优先)",
+      "totalMatches": 400,
+      "unityCount": 244,
+      "unityRate": 0.61,
+      "turnLimitCount": 156,
+      "turnLimitRate": 0.39,
+      "avgTurns": 49.4975,
+      "p1Wins": 199,
+      "p2Wins": 201,
+      "draws": 0,
+      "p1WinRate": 0.4975,
+      "starterWins": 213,
+      "starterWinRate": 0.5325,
+      "starterCI": {
+        "low": 0.48352749876023604,
+        "high": 0.5808542021080347
+      },
+      "turnLimitOverlap": {
+        "totalMatches": 400,
+        "turnLimitMatchesCount": 156,
+        "turnLimitRate": 0.39,
+        "scoreLeaderEqualsLitLeaderCount": 59,
+        "scoreLeaderEqualsLitLeaderRate": 0.3782051282051282,
+        "litEqualCount": 54,
+        "litEqualRate": 0.34615384615384615,
+        "scoreLeaderFewerLitCount": 43,
+        "scoreLeaderFewerLitRate": 0.27564102564102566,
+        "scoreDrawCount": 0,
+        "scoreDrawRate": 0
+      },
+      "midgamePrediction": {
+        "totalMatches": 400,
+        "reachedMidgameCount": 364,
+        "endedBeforeMidgameCount": 36,
+        "alignedCount": 122,
+        "alignedRate": 0.33516483516483514,
+        "aligned": {
+          "leaderWonCount": 89,
+          "leaderUnityWonCount": 57,
+          "leaderTurnLimitWonCount": 32,
+          "trailerWonCount": 33,
+          "trailerUnityWonCount": 22,
+          "trailerTurnLimitWonCount": 11,
+          "drawCount": 0,
+          "leaderWinRate": 0.7295081967213115,
+          "trailerWinRate": 0.27049180327868855
+        },
+        "divergentCount": 102,
+        "divergentRate": 0.2802197802197802,
+        "divergent": {
+          "scoreLeaderWonCount": 53,
+          "scoreLeaderUnityWonCount": 28,
+          "scoreLeaderTurnLimitWonCount": 25,
+          "litLeaderWonCount": 49,
+          "litLeaderUnityWonCount": 36,
+          "litLeaderTurnLimitWonCount": 13,
+          "drawCount": 0,
+          "scoreLeaderWinRate": 0.5196078431372549,
+          "litLeaderWinRate": 0.4803921568627451
+        },
+        "tiedCount": 140,
+        "tiedRate": 0.38461538461538464,
+        "tied": {
+          "p1WonCount": 67,
+          "p2WonCount": 73,
+          "drawCount": 0,
+          "unityWonCount": 65,
+          "turnLimitWonCount": 75
+        }
+      },
+      "scoreComposition": {
+        "winner": {
+          "count": 400,
+          "total": {
+            "sum": 4822874,
+            "mean": 12057.185
+          },
+          "construction": {
+            "sum": 1177500,
+            "mean": 2943.75,
+            "percent": 24.414902815209356
+          },
+          "attack": {
+            "sum": 311820,
+            "mean": 779.55,
+            "percent": 6.465439486911746
+          },
+          "behavior": {
+            "sum": 696600,
+            "mean": 1741.5,
+            "percent": 14.4436698947557
+          },
+          "dividend": {
+            "sum": 289150,
+            "mean": 722.875,
+            "percent": 5.995387812329329
+          },
+          "penalty": {
+            "sum": -1520,
+            "mean": -3.8,
+            "percent": -0.03151647751942099
+          },
+          "rarity": {
+            "sum": 2349324,
+            "mean": 5873.31,
+            "percent": 48.7121164683133
+          }
+        },
+        "loser": {
+          "count": 400,
+          "total": {
+            "sum": 4092734,
+            "mean": 10231.835
+          },
+          "construction": {
+            "sum": 1079200,
+            "mean": 2698,
+            "percent": 26.368681668537462
+          },
+          "attack": {
+            "sum": 270680,
+            "mean": 676.7,
+            "percent": 6.613671936656525
+          },
+          "behavior": {
+            "sum": 560360,
+            "mean": 1400.9,
+            "percent": 13.69158122663237
+          },
+          "dividend": {
+            "sum": 254400,
+            "mean": 636,
+            "percent": 6.2158938254966
+          },
+          "penalty": {
+            "sum": -3880,
+            "mean": -9.7,
+            "percent": -0.09480215425678776
+          },
+          "rarity": {
+            "sum": 1931974,
+            "mean": 4829.935,
+            "percent": 47.204973496933846
+          }
+        }
+      }
+    },
+    {
+      "id": "search-d1-score",
+      "name": "搜索深度1 自对弈 (偏分数权重)",
+      "totalMatches": 400,
+      "unityCount": 205,
+      "unityRate": 0.5125,
+      "turnLimitCount": 195,
+      "turnLimitRate": 0.4875,
+      "avgTurns": 50.7875,
+      "p1Wins": 203,
+      "p2Wins": 197,
+      "draws": 0,
+      "p1WinRate": 0.5075,
+      "starterWins": 217,
+      "starterWinRate": 0.5425,
+      "starterCI": {
+        "low": 0.4935050345733776,
+        "high": 0.5906864204082072
+      },
+      "turnLimitOverlap": {
+        "totalMatches": 400,
+        "turnLimitMatchesCount": 195,
+        "turnLimitRate": 0.4875,
+        "scoreLeaderEqualsLitLeaderCount": 115,
+        "scoreLeaderEqualsLitLeaderRate": 0.5897435897435898,
+        "litEqualCount": 50,
+        "litEqualRate": 0.2564102564102564,
+        "scoreLeaderFewerLitCount": 30,
+        "scoreLeaderFewerLitRate": 0.15384615384615385,
+        "scoreDrawCount": 0,
+        "scoreDrawRate": 0
+      },
+      "midgamePrediction": {
+        "totalMatches": 400,
+        "reachedMidgameCount": 368,
+        "endedBeforeMidgameCount": 32,
+        "alignedCount": 198,
+        "alignedRate": 0.5380434782608695,
+        "aligned": {
+          "leaderWonCount": 168,
+          "leaderUnityWonCount": 77,
+          "leaderTurnLimitWonCount": 91,
+          "trailerWonCount": 30,
+          "trailerUnityWonCount": 13,
+          "trailerTurnLimitWonCount": 17,
+          "drawCount": 0,
+          "leaderWinRate": 0.8484848484848485,
+          "trailerWinRate": 0.15151515151515152
+        },
+        "divergentCount": 70,
+        "divergentRate": 0.19021739130434784,
+        "divergent": {
+          "scoreLeaderWonCount": 33,
+          "scoreLeaderUnityWonCount": 14,
+          "scoreLeaderTurnLimitWonCount": 19,
+          "litLeaderWonCount": 37,
+          "litLeaderUnityWonCount": 18,
+          "litLeaderTurnLimitWonCount": 19,
+          "drawCount": 0,
+          "scoreLeaderWinRate": 0.4714285714285714,
+          "litLeaderWinRate": 0.5285714285714286
+        },
+        "tiedCount": 100,
+        "tiedRate": 0.2717391304347826,
+        "tied": {
+          "p1WonCount": 55,
+          "p2WonCount": 45,
+          "drawCount": 0,
+          "unityWonCount": 51,
+          "turnLimitWonCount": 49
+        }
+      },
+      "scoreComposition": {
+        "winner": {
+          "count": 400,
+          "total": {
+            "sum": 4840542,
+            "mean": 12101.355
+          },
+          "construction": {
+            "sum": 1099900,
+            "mean": 2749.75,
+            "percent": 22.72266204900195
+          },
+          "attack": {
+            "sum": 434760,
+            "mean": 1086.9,
+            "percent": 8.981638833006718
+          },
+          "behavior": {
+            "sum": 743660,
+            "mean": 1859.15,
+            "percent": 15.36315561356559
+          },
+          "dividend": {
+            "sum": 130350,
+            "mean": 325.875,
+            "percent": 2.692880260103104
+          },
+          "penalty": {
+            "sum": -2360,
+            "mean": -5.9,
+            "percent": -0.04875487083884409
+          },
+          "rarity": {
+            "sum": 2434232,
+            "mean": 6085.58,
+            "percent": 50.288418115161484
+          }
+        },
+        "loser": {
+          "count": 400,
+          "total": {
+            "sum": 3780982,
+            "mean": 9452.455
+          },
+          "construction": {
+            "sum": 1080800,
+            "mean": 2702,
+            "percent": 28.585166499073523
+          },
+          "attack": {
+            "sum": 277360,
+            "mean": 693.4,
+            "percent": 7.335660418378083
+          },
+          "behavior": {
+            "sum": 524030,
+            "mean": 1310.075,
+            "percent": 13.859626943476588
+          },
+          "dividend": {
+            "sum": 130400,
+            "mean": 326,
+            "percent": 3.4488394813834073
+          },
+          "penalty": {
+            "sum": -12000,
+            "mean": -30,
+            "percent": -0.3173778663849762
+          },
+          "rarity": {
+            "sum": 1780392,
+            "mean": 4450.98,
+            "percent": 47.08808452407337
+          }
+        }
+      }
+    },
+    {
+      "id": "search-d1-lit",
+      "name": "搜索深度1 自对弈 (偏点亮权重)",
+      "totalMatches": 400,
+      "unityCount": 179,
+      "unityRate": 0.4475,
+      "turnLimitCount": 221,
+      "turnLimitRate": 0.5525,
+      "avgTurns": 52.1625,
+      "p1Wins": 192,
+      "p2Wins": 208,
+      "draws": 0,
+      "p1WinRate": 0.48,
+      "starterWins": 232,
+      "starterWinRate": 0.58,
+      "starterCI": {
+        "low": 0.5310957511319983,
+        "high": 0.6273822817745143
+      },
+      "turnLimitOverlap": {
+        "totalMatches": 400,
+        "turnLimitMatchesCount": 221,
+        "turnLimitRate": 0.5525,
+        "scoreLeaderEqualsLitLeaderCount": 129,
+        "scoreLeaderEqualsLitLeaderRate": 0.583710407239819,
+        "litEqualCount": 64,
+        "litEqualRate": 0.2895927601809955,
+        "scoreLeaderFewerLitCount": 28,
+        "scoreLeaderFewerLitRate": 0.12669683257918551,
+        "scoreDrawCount": 0,
+        "scoreDrawRate": 0
+      },
+      "midgamePrediction": {
+        "totalMatches": 400,
+        "reachedMidgameCount": 366,
+        "endedBeforeMidgameCount": 34,
+        "alignedCount": 194,
+        "alignedRate": 0.5300546448087432,
+        "aligned": {
+          "leaderWonCount": 158,
+          "leaderUnityWonCount": 54,
+          "leaderTurnLimitWonCount": 104,
+          "trailerWonCount": 36,
+          "trailerUnityWonCount": 13,
+          "trailerTurnLimitWonCount": 23,
+          "drawCount": 0,
+          "leaderWinRate": 0.8144329896907216,
+          "trailerWinRate": 0.18556701030927836
+        },
+        "divergentCount": 60,
+        "divergentRate": 0.16393442622950818,
+        "divergent": {
+          "scoreLeaderWonCount": 23,
+          "scoreLeaderUnityWonCount": 10,
+          "scoreLeaderTurnLimitWonCount": 13,
+          "litLeaderWonCount": 37,
+          "litLeaderUnityWonCount": 21,
+          "litLeaderTurnLimitWonCount": 16,
+          "drawCount": 0,
+          "scoreLeaderWinRate": 0.38333333333333336,
+          "litLeaderWinRate": 0.6166666666666667
+        },
+        "tiedCount": 112,
+        "tiedRate": 0.30601092896174864,
+        "tied": {
+          "p1WonCount": 59,
+          "p2WonCount": 53,
+          "drawCount": 0,
+          "unityWonCount": 47,
+          "turnLimitWonCount": 65
+        }
+      },
+      "scoreComposition": {
+        "winner": {
+          "count": 400,
+          "total": {
+            "sum": 5047763,
+            "mean": 12619.4075
+          },
+          "construction": {
+            "sum": 1102500,
+            "mean": 2756.25,
+            "percent": 21.841358241264498
+          },
+          "attack": {
+            "sum": 485420,
+            "mean": 1213.55,
+            "percent": 9.616537068004183
+          },
+          "behavior": {
+            "sum": 800310,
+            "mean": 2000.775,
+            "percent": 15.854745953801716
+          },
+          "dividend": {
+            "sum": 82600,
+            "mean": 206.5,
+            "percent": 1.6363684269645782
+          },
+          "penalty": {
+            "sum": -3120,
+            "mean": -7.8,
+            "percent": -0.061809558016095445
+          },
+          "rarity": {
+            "sum": 2580053,
+            "mean": 6450.1325,
+            "percent": 51.11279986798113
+          }
+        },
+        "loser": {
+          "count": 400,
+          "total": {
+            "sum": 3944438,
+            "mean": 9861.095
+          },
+          "construction": {
+            "sum": 1097900,
+            "mean": 2744.75,
+            "percent": 27.834129982522228
+          },
+          "attack": {
+            "sum": 304780,
+            "mean": 761.95,
+            "percent": 7.7268295255242965
+          },
+          "behavior": {
+            "sum": 578230,
+            "mean": 1445.575,
+            "percent": 14.659376063205965
+          },
+          "dividend": {
+            "sum": 77600,
+            "mean": 194,
+            "percent": 1.9673271578866243
+          },
+          "penalty": {
+            "sum": -15600,
+            "mean": -39,
+            "percent": -0.39549360390504307
+          },
+          "rarity": {
+            "sum": 1901528,
+            "mean": 4753.82,
+            "percent": 48.20783087476594
+          }
+        }
+      }
+    },
+    {
+      "id": "search-d2-score",
+      "name": "搜索深度2 自对弈 (偏分数权重)",
+      "totalMatches": 400,
+      "unityCount": 222,
+      "unityRate": 0.555,
+      "turnLimitCount": 178,
+      "turnLimitRate": 0.445,
+      "avgTurns": 49.0625,
+      "p1Wins": 201,
+      "p2Wins": 199,
+      "draws": 0,
+      "p1WinRate": 0.5025,
+      "starterWins": 217,
+      "starterWinRate": 0.5425,
+      "starterCI": {
+        "low": 0.4935050345733776,
+        "high": 0.5906864204082072
+      },
+      "turnLimitOverlap": {
+        "totalMatches": 400,
+        "turnLimitMatchesCount": 178,
+        "turnLimitRate": 0.445,
+        "scoreLeaderEqualsLitLeaderCount": 89,
+        "scoreLeaderEqualsLitLeaderRate": 0.5,
+        "litEqualCount": 57,
+        "litEqualRate": 0.3202247191011236,
+        "scoreLeaderFewerLitCount": 32,
+        "scoreLeaderFewerLitRate": 0.1797752808988764,
+        "scoreDrawCount": 0,
+        "scoreDrawRate": 0
+      },
+      "midgamePrediction": {
+        "totalMatches": 400,
+        "reachedMidgameCount": 357,
+        "endedBeforeMidgameCount": 43,
+        "alignedCount": 154,
+        "alignedRate": 0.43137254901960786,
+        "aligned": {
+          "leaderWonCount": 130,
+          "leaderUnityWonCount": 66,
+          "leaderTurnLimitWonCount": 64,
+          "trailerWonCount": 24,
+          "trailerUnityWonCount": 9,
+          "trailerTurnLimitWonCount": 15,
+          "drawCount": 0,
+          "leaderWinRate": 0.8441558441558441,
+          "trailerWinRate": 0.15584415584415584
+        },
+        "divergentCount": 83,
+        "divergentRate": 0.23249299719887956,
+        "divergent": {
+          "scoreLeaderWonCount": 32,
+          "scoreLeaderUnityWonCount": 10,
+          "scoreLeaderTurnLimitWonCount": 22,
+          "litLeaderWonCount": 51,
+          "litLeaderUnityWonCount": 34,
+          "litLeaderTurnLimitWonCount": 17,
+          "drawCount": 0,
+          "scoreLeaderWinRate": 0.3855421686746988,
+          "litLeaderWinRate": 0.6144578313253012
+        },
+        "tiedCount": 120,
+        "tiedRate": 0.33613445378151263,
+        "tied": {
+          "p1WonCount": 60,
+          "p2WonCount": 60,
+          "drawCount": 0,
+          "unityWonCount": 60,
+          "turnLimitWonCount": 60
+        }
+      },
+      "scoreComposition": {
+        "winner": {
+          "count": 400,
+          "total": {
+            "sum": 4421440,
+            "mean": 11053.6
+          },
+          "construction": {
+            "sum": 1060500,
+            "mean": 2651.25,
+            "percent": 23.98539842223348
+          },
+          "attack": {
+            "sum": 365740,
+            "mean": 914.35,
+            "percent": 8.271965694434392
+          },
+          "behavior": {
+            "sum": 656520,
+            "mean": 1641.3,
+            "percent": 14.84855612651082
+          },
+          "dividend": {
+            "sum": 162600,
+            "mean": 406.5,
+            "percent": 3.677534920749801
+          },
+          "penalty": {
+            "sum": -3160,
+            "mean": -7.9,
+            "percent": -0.07146992834913513
+          },
+          "rarity": {
+            "sum": 2179240,
+            "mean": 5448.1,
+            "percent": 49.288014764420645
+          }
+        },
+        "loser": {
+          "count": 400,
+          "total": {
+            "sum": 3617463,
+            "mean": 9043.6575
+          },
+          "construction": {
+            "sum": 1041400,
+            "mean": 2603.5,
+            "percent": 28.788131350617824
+          },
+          "attack": {
+            "sum": 254060,
+            "mean": 635.15,
+            "percent": 7.023154072342966
+          },
+          "behavior": {
+            "sum": 493500,
+            "mean": 1233.75,
+            "percent": 13.642157500988954
+          },
+          "dividend": {
+            "sum": 152500,
+            "mean": 381.25,
+            "percent": 4.215661639110062
+          },
+          "penalty": {
+            "sum": -11400,
+            "mean": -28.5,
+            "percent": -0.3151379848252767
+          },
+          "rarity": {
+            "sum": 1687403,
+            "mean": 4218.5075,
+            "percent": 46.64603342176547
+          }
+        }
+      }
+    },
+    {
+      "id": "strong-d1-vs-rule",
+      "name": "强弱对阵 (搜索深度1 vs 规则建设)",
+      "totalMatches": 400,
+      "unityCount": 326,
+      "unityRate": 0.815,
+      "turnLimitCount": 74,
+      "turnLimitRate": 0.185,
+      "avgTurns": 43.15,
+      "p1Wins": 285,
+      "p2Wins": 115,
+      "draws": 0,
+      "p1WinRate": 0.7125,
+      "starterWins": 229,
+      "starterWinRate": 0.5725,
+      "starterCI": {
+        "low": 0.5235553051258613,
+        "high": 0.6200654121956656
+      },
+      "turnLimitOverlap": {
+        "totalMatches": 400,
+        "turnLimitMatchesCount": 74,
+        "turnLimitRate": 0.185,
+        "scoreLeaderEqualsLitLeaderCount": 38,
+        "scoreLeaderEqualsLitLeaderRate": 0.5135135135135135,
+        "litEqualCount": 21,
+        "litEqualRate": 0.28378378378378377,
+        "scoreLeaderFewerLitCount": 15,
+        "scoreLeaderFewerLitRate": 0.20270270270270271,
+        "scoreDrawCount": 0,
+        "scoreDrawRate": 0
+      },
+      "midgamePrediction": {
+        "totalMatches": 400,
+        "reachedMidgameCount": 325,
+        "endedBeforeMidgameCount": 75,
+        "alignedCount": 120,
+        "alignedRate": 0.36923076923076925,
+        "aligned": {
+          "leaderWonCount": 99,
+          "leaderUnityWonCount": 70,
+          "leaderTurnLimitWonCount": 29,
+          "trailerWonCount": 21,
+          "trailerUnityWonCount": 18,
+          "trailerTurnLimitWonCount": 3,
+          "drawCount": 0,
+          "leaderWinRate": 0.825,
+          "trailerWinRate": 0.175
+        },
+        "divergentCount": 81,
+        "divergentRate": 0.24923076923076923,
+        "divergent": {
+          "scoreLeaderWonCount": 34,
+          "scoreLeaderUnityWonCount": 25,
+          "scoreLeaderTurnLimitWonCount": 9,
+          "litLeaderWonCount": 47,
+          "litLeaderUnityWonCount": 41,
+          "litLeaderTurnLimitWonCount": 6,
+          "drawCount": 0,
+          "scoreLeaderWinRate": 0.41975308641975306,
+          "litLeaderWinRate": 0.5802469135802469
+        },
+        "tiedCount": 124,
+        "tiedRate": 0.38153846153846155,
+        "tied": {
+          "p1WonCount": 86,
+          "p2WonCount": 38,
+          "drawCount": 0,
+          "unityWonCount": 97,
+          "turnLimitWonCount": 27
+        }
+      },
+      "scoreComposition": {
+        "winner": {
+          "count": 400,
+          "total": {
+            "sum": 3926577,
+            "mean": 9816.4425
+          },
+          "construction": {
+            "sum": 974300,
+            "mean": 2435.75,
+            "percent": 24.812960499692228
+          },
+          "attack": {
+            "sum": 286240,
+            "mean": 715.6,
+            "percent": 7.289809928596842
+          },
+          "behavior": {
+            "sum": 573980,
+            "mean": 1434.95,
+            "percent": 14.617821069088933
+          },
+          "dividend": {
+            "sum": 163950,
+            "mean": 409.875,
+            "percent": 4.175392460150406
+          },
+          "penalty": {
+            "sum": -960,
+            "mean": -2.4,
+            "percent": -0.024448775612957545
+          },
+          "rarity": {
+            "sum": 1929067,
+            "mean": 4822.6675,
+            "percent": 49.12846481808455
+          }
+        },
+        "loser": {
+          "count": 400,
+          "total": {
+            "sum": 3601492,
+            "mean": 9003.73
+          },
+          "construction": {
+            "sum": 1028200,
+            "mean": 2570.5,
+            "percent": 28.54927902102795
+          },
+          "attack": {
+            "sum": 182140,
+            "mean": 455.35,
+            "percent": 5.0573484544738685
+          },
+          "behavior": {
+            "sum": 492740,
+            "mean": 1231.85,
+            "percent": 13.681551979013143
+          },
+          "dividend": {
+            "sum": 187900,
+            "mean": 469.75,
+            "percent": 5.217282170833644
+          },
+          "penalty": {
+            "sum": -6400,
+            "mean": -16,
+            "percent": -0.17770412928863927
+          },
+          "rarity": {
+            "sum": 1716912,
+            "mean": 4292.28,
+            "percent": 47.67224250394003
+          }
+        }
+      }
+    },
+    {
+      "id": "strong-d2-vs-rule",
+      "name": "强弱对阵 (搜索深度2 vs 规则建设)",
+      "totalMatches": 400,
+      "unityCount": 328,
+      "unityRate": 0.82,
+      "turnLimitCount": 72,
+      "turnLimitRate": 0.18,
+      "avgTurns": 43.29,
+      "p1Wins": 280,
+      "p2Wins": 120,
+      "draws": 0,
+      "p1WinRate": 0.7,
+      "starterWins": 210,
+      "starterWinRate": 0.525,
+      "starterCI": {
+        "low": 0.4760571112644918,
+        "high": 0.5734672740187934
+      },
+      "turnLimitOverlap": {
+        "totalMatches": 400,
+        "turnLimitMatchesCount": 72,
+        "turnLimitRate": 0.18,
+        "scoreLeaderEqualsLitLeaderCount": 36,
+        "scoreLeaderEqualsLitLeaderRate": 0.5,
+        "litEqualCount": 23,
+        "litEqualRate": 0.3194444444444444,
+        "scoreLeaderFewerLitCount": 13,
+        "scoreLeaderFewerLitRate": 0.18055555555555555,
+        "scoreDrawCount": 0,
+        "scoreDrawRate": 0
+      },
+      "midgamePrediction": {
+        "totalMatches": 400,
+        "reachedMidgameCount": 323,
+        "endedBeforeMidgameCount": 77,
+        "alignedCount": 113,
+        "alignedRate": 0.3498452012383901,
+        "aligned": {
+          "leaderWonCount": 85,
+          "leaderUnityWonCount": 63,
+          "leaderTurnLimitWonCount": 22,
+          "trailerWonCount": 28,
+          "trailerUnityWonCount": 21,
+          "trailerTurnLimitWonCount": 7,
+          "drawCount": 0,
+          "leaderWinRate": 0.7522123893805309,
+          "trailerWinRate": 0.24778761061946902
+        },
+        "divergentCount": 80,
+        "divergentRate": 0.2476780185758514,
+        "divergent": {
+          "scoreLeaderWonCount": 30,
+          "scoreLeaderUnityWonCount": 22,
+          "scoreLeaderTurnLimitWonCount": 8,
+          "litLeaderWonCount": 50,
+          "litLeaderUnityWonCount": 40,
+          "litLeaderTurnLimitWonCount": 10,
+          "drawCount": 0,
+          "scoreLeaderWinRate": 0.375,
+          "litLeaderWinRate": 0.625
+        },
+        "tiedCount": 130,
+        "tiedRate": 0.4024767801857585,
+        "tied": {
+          "p1WonCount": 91,
+          "p2WonCount": 39,
+          "drawCount": 0,
+          "unityWonCount": 105,
+          "turnLimitWonCount": 25
+        }
+      },
+      "scoreComposition": {
+        "winner": {
+          "count": 400,
+          "total": {
+            "sum": 3848116,
+            "mean": 9620.29
+          },
+          "construction": {
+            "sum": 978800,
+            "mean": 2447,
+            "percent": 25.43582366020151
+          },
+          "attack": {
+            "sum": 265860,
+            "mean": 664.65,
+            "percent": 6.908835388538183
+          },
+          "behavior": {
+            "sum": 552610,
+            "mean": 1381.525,
+            "percent": 14.360533830061256
+          },
+          "dividend": {
+            "sum": 183600,
+            "mean": 459,
+            "percent": 4.771165941983037
+          },
+          "penalty": {
+            "sum": -1480,
+            "mean": -3.7,
+            "percent": -0.038460379053022305
+          },
+          "rarity": {
+            "sum": 1868726,
+            "mean": 4671.815,
+            "percent": 48.56210155826903
+          }
+        },
+        "loser": {
+          "count": 400,
+          "total": {
+            "sum": 3607545,
+            "mean": 9018.8625
+          },
+          "construction": {
+            "sum": 1023700,
+            "mean": 2559.25,
+            "percent": 28.376638406450926
+          },
+          "attack": {
+            "sum": 185800,
+            "mean": 464.5,
+            "percent": 5.150316905263829
+          },
+          "behavior": {
+            "sum": 489580,
+            "mean": 1223.95,
+            "percent": 13.571001886324357
+          },
+          "dividend": {
+            "sum": 197450,
+            "mean": 493.625,
+            "percent": 5.473251199915732
+          },
+          "penalty": {
+            "sum": -5960,
+            "mean": -14.9,
+            "percent": -0.16520930438844147
+          },
+          "rarity": {
+            "sum": 1716975,
+            "mean": 4292.4375,
+            "percent": 47.59400090643361
+          }
+        }
+      }
+    }
+  ],
+  "adr0001Evaluation": {
+    "guardrail1UnityRate": {
+      "target": "25%–80%",
+      "status": "PASS",
+      "pairings": [
+        {
+          "id": "search-d1-score",
+          "name": "搜索深度1 自对弈 (偏分数权重)",
+          "unityRate": 0.5125
+        },
+        {
+          "id": "search-d1-lit",
+          "name": "搜索深度1 自对弈 (偏点亮权重)",
+          "unityRate": 0.4475
+        },
+        {
+          "id": "search-d2-score",
+          "name": "搜索深度2 自对弈 (偏分数权重)",
+          "unityRate": 0.555
+        }
+      ]
+    },
+    "guardrail2StrongWinRate": {
+      "target": "≥65%",
+      "status": "PASS",
+      "pairings": [
+        {
+          "id": "strong-d1-vs-rule",
+          "name": "强弱对阵 (搜索深度1 vs 规则建设)",
+          "winRate": 0.7125
+        },
+        {
+          "id": "strong-d2-vs-rule",
+          "name": "强弱对阵 (搜索深度2 vs 规则建设)",
+          "winRate": 0.7
+        }
+      ]
+    },
+    "guardrail3StarterCI": {
+      "target": "不显著偏离 50%",
+      "pairings": [
+        {
+          "id": "search-d1-score",
+          "name": "搜索深度1 自对弈 (偏分数权重)",
+          "starterWinRate": 0.5425,
+          "starterCI": {
+            "low": 0.4935050345733776,
+            "high": 0.5906864204082072
+          }
+        },
+        {
+          "id": "search-d1-lit",
+          "name": "搜索深度1 自对弈 (偏点亮权重)",
+          "starterWinRate": 0.58,
+          "starterCI": {
+            "low": 0.5310957511319983,
+            "high": 0.6273822817745143
+          }
+        },
+        {
+          "id": "search-d2-score",
+          "name": "搜索深度2 自对弈 (偏分数权重)",
+          "starterWinRate": 0.5425,
+          "starterCI": {
+            "low": 0.4935050345733776,
+            "high": 0.5906864204082072
+          }
+        }
+      ]
+    }
+  },
+  "overall": {
+    "totalMatches": 2400,
+    "turnLimitOverlap": {
+      "totalMatches": 2400,
+      "turnLimitMatchesCount": 896,
+      "turnLimitRate": 0.37333333333333335,
+      "scoreLeaderEqualsLitLeaderCount": 466,
+      "scoreLeaderEqualsLitLeaderRate": 0.5200892857142857,
+      "litEqualCount": 269,
+      "litEqualRate": 0.3002232142857143,
+      "scoreLeaderFewerLitCount": 161,
+      "scoreLeaderFewerLitRate": 0.1796875,
+      "scoreDrawCount": 0,
+      "scoreDrawRate": 0
+    },
+    "midgamePrediction": {
+      "totalMatches": 2400,
+      "reachedMidgameCount": 2103,
+      "endedBeforeMidgameCount": 297,
+      "alignedCount": 901,
+      "alignedRate": 0.42843556823585355,
+      "aligned": {
+        "leaderWonCount": 729,
+        "leaderUnityWonCount": 387,
+        "leaderTurnLimitWonCount": 342,
+        "trailerWonCount": 172,
+        "trailerUnityWonCount": 96,
+        "trailerTurnLimitWonCount": 76,
+        "drawCount": 0,
+        "leaderWinRate": 0.8091009988901221,
+        "trailerWinRate": 0.19089900110987792
+      },
+      "divergentCount": 476,
+      "divergentRate": 0.2263433190679981,
+      "divergent": {
+        "scoreLeaderWonCount": 205,
+        "scoreLeaderUnityWonCount": 109,
+        "scoreLeaderTurnLimitWonCount": 96,
+        "litLeaderWonCount": 271,
+        "litLeaderUnityWonCount": 190,
+        "litLeaderTurnLimitWonCount": 81,
+        "drawCount": 0,
+        "scoreLeaderWinRate": 0.43067226890756305,
+        "litLeaderWinRate": 0.569327731092437
+      },
+      "tiedCount": 726,
+      "tiedRate": 0.34522111269614836,
+      "tied": {
+        "p1WonCount": 418,
+        "p2WonCount": 308,
+        "drawCount": 0,
+        "unityWonCount": 425,
+        "turnLimitWonCount": 301
+      }
+    },
+    "scoreComposition": {
+      "winner": {
+        "count": 2400,
+        "total": {
+          "sum": 26907312,
+          "mean": 11211.38
+        },
+        "construction": {
+          "sum": 6393500,
+          "mean": 2663.9583333333335,
+          "percent": 23.761199186302967
+        },
+        "attack": {
+          "sum": 2149840,
+          "mean": 895.7666666666667,
+          "percent": 7.989798460730675
+        },
+        "behavior": {
+          "sum": 4023680,
+          "mean": 1676.5333333333333,
+          "percent": 14.953853435824435
+        },
+        "dividend": {
+          "sum": 1012250,
+          "mean": 421.7708333333333,
+          "percent": 3.7619885628114766
+        },
+        "penalty": {
+          "sum": -12600,
+          "mean": -5.25,
+          "percent": -0.046827419996467876
+        },
+        "rarity": {
+          "sum": 13340642,
+          "mean": 5558.600833333333,
+          "percent": 49.579987774326916
+        }
+      },
+      "loser": {
+        "count": 2400,
+        "total": {
+          "sum": 22644654,
+          "mean": 9435.2725
+        },
+        "construction": {
+          "sum": 6351200,
+          "mean": 2646.3333333333335,
+          "percent": 28.047237992684725
+        },
+        "attack": {
+          "sum": 1474820,
+          "mean": 614.5083333333333,
+          "percent": 6.5128837914679565
+        },
+        "behavior": {
+          "sum": 3138440,
+          "mean": 1307.6833333333334,
+          "percent": 13.859518454112834
+        },
+        "dividend": {
+          "sum": 1000250,
+          "mean": 416.7708333333333,
+          "percent": 4.4171573564338855
+        },
+        "penalty": {
+          "sum": -55240,
+          "mean": -23.016666666666666,
+          "percent": -0.24394278667273966
+        },
+        "rarity": {
+          "sum": 10735184,
+          "mean": 4472.993333333333,
+          "percent": 47.40714519197334
+        }
+      }
+    }
+  }
+}
