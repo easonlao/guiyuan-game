@@ -8,7 +8,8 @@ const OPTION_DEFAULTS = Object.freeze({
   noSelfCostReward: false,
   burstActionScoreOnce: false,
   disableRarityBonus: false,
-  noRarityActions: Object.freeze([])
+  noRarityActions: Object.freeze([]),
+  attackScoreMultiplier: 1
 });
 const ALLOWED_INPUT_KEYS = new Set(['version', ...Object.keys(OPTION_DEFAULTS)]);
 
@@ -60,6 +61,11 @@ function validateInput(input) {
       throw new TypeError('scoringConfig.noRarityActions must be an array of strings');
     }
   }
+  if (Object.hasOwn(input, 'attackScoreMultiplier')) {
+    if (typeof input.attackScoreMultiplier !== 'number' || !Number.isFinite(input.attackScoreMultiplier) || input.attackScoreMultiplier <= 0) {
+      throw new TypeError('scoringConfig.attackScoreMultiplier must be a positive finite number');
+    }
+  }
   return input;
 }
 
@@ -80,7 +86,8 @@ export function createScoringConfig(input) {
     !switches.noSelfCostReward &&
     !switches.burstActionScoreOnce &&
     !switches.disableRarityBonus &&
-    switches.noRarityActions.length === 0;
+    switches.noRarityActions.length === 0 &&
+    switches.attackScoreMultiplier === 1;
 
   const configuration = {
     version: SCORING_CONFIG_VERSION,

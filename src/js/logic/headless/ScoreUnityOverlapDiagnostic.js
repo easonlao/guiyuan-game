@@ -75,7 +75,16 @@ export function decomposePlayerScores(match, scoringConfig = null) {
       const [actionName, stateName] = sc.reason.split('·');
       const actionType = sc.actionType;
       const baseAction = pointsConfig.ACTION?.[actionType] || 0;
-      const baseState = lookupStateScore(pointsConfig, stateName);
+
+      const scoreChanges = record.scoreChanges || [];
+      const idx = scoreChanges.indexOf(sc);
+      const isBurstSelf = (actionType === 'BURST' && ATTACK_STATES.includes(stateName)) ||
+        (actionType === 'BURST_ATK' && ATTACK_STATES.includes(stateName) && (record.stateChanges?.[idx]?.playerId === pid || idx === 0));
+
+      let baseState = lookupStateScore(pointsConfig, stateName);
+      if (scoringConfig?.attackScoreMultiplier && ATTACK_STATES.includes(stateName) && !isBurstSelf) {
+        baseState = Math.round(baseState * scoringConfig.attackScoreMultiplier);
+      }
       const unadjusted = baseAction + baseState;
       const rarity = sc.amount - unadjusted;
 

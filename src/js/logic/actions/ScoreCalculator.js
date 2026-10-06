@@ -80,15 +80,19 @@ const ScoreCalculator = {
       afterState < beforeState && ['BURST', 'BURST_ATK'].includes(actionType);
     if (isBurstSelfCost) return 0;
 
+    const multiplier = (isAttack && this.scoringConfig?.attackScoreMultiplier) ? this.scoringConfig.attackScoreMultiplier : 1;
+
     // 攻击类状态变化
     if (beforeState === 0 && afterState === -1) {
-      return isYang ? pointsConfig.STATE_CHANGE.CAUSE_DMG.yang : pointsConfig.STATE_CHANGE.CAUSE_DMG.yin;
+      const base = isYang ? pointsConfig.STATE_CHANGE.CAUSE_DMG.yang : pointsConfig.STATE_CHANGE.CAUSE_DMG.yin;
+      return Math.round(base * multiplier);
     }
     if (beforeState === 1 && afterState === 0) {
-      return isYang ? pointsConfig.STATE_CHANGE.BREAK_LIGHT.yang : pointsConfig.STATE_CHANGE.BREAK_LIGHT.yin;
+      const base = isYang ? pointsConfig.STATE_CHANGE.BREAK_LIGHT.yang : pointsConfig.STATE_CHANGE.BREAK_LIGHT.yin;
+      return Math.round(base * multiplier);
     }
     if (beforeState === 2 && afterState === 1) {
-      return pointsConfig.STATE_CHANGE.WEAKEN;
+      return Math.round(pointsConfig.STATE_CHANGE.WEAKEN * multiplier);
     }
 
     // 防御类状态变化

@@ -58,11 +58,6 @@ export function decomposePlayerScoresWithReanalysis(match, scoringConfig = null)
       const [, stateName] = sc.reason.split('·');
       const actionType = sc.actionType;
       const baseAction = pointsConfig.ACTION?.[actionType] || 0;
-      const baseState = lookupStateScore(pointsConfig, stateName);
-      const unadjusted = baseAction + baseState;
-      const rarity = sc.amount - unadjusted;
-
-      breakdown[pid].behavior += baseAction;
 
       // Identify whether this state change is self-cost from BURST / BURST_ATK
       let isBurstSelf = false;
@@ -77,6 +72,15 @@ export function decomposePlayerScoresWithReanalysis(match, scoringConfig = null)
           isBurstSelf = (i === 0);
         }
       }
+
+      let baseState = lookupStateScore(pointsConfig, stateName);
+      if (scoringConfig?.attackScoreMultiplier && ATTACK_STATES.includes(stateName) && !isBurstSelf) {
+        baseState = Math.round(baseState * scoringConfig.attackScoreMultiplier);
+      }
+      const unadjusted = baseAction + baseState;
+      const rarity = sc.amount - unadjusted;
+
+      breakdown[pid].behavior += baseAction;
 
       if (isBurstSelf) {
         breakdown[pid].burstSelfCost += baseState;
