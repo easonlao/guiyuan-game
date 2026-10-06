@@ -128,7 +128,7 @@ export function extractMatchBreakdown(match, pairingId = '') {
     winner: match.terminalResult?.winner || null,
     reason: match.terminalResult?.reason || '',
     turns: match.finalState?.turnCount || 0,
-    breakdown: decomposePlayerScoresWithReanalysis(match)
+    breakdown: decomposePlayerScoresWithReanalysis(match, match.scoringConfig)
   };
 }
 
