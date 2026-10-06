@@ -2,6 +2,12 @@ import { POINTS_CONFIG } from '../../config/game-config.js';
 import { SWEEP_PAIRINGS } from './Phase1SweepRunner.js';
 import { runSeededMatch } from './SeededMatch.js';
 import { createInitialHeadlessState } from './HeadlessMatch.js';
+import {
+  extractMatchBreakdown,
+  decomposePlayerScoresWithReanalysis,
+  performScoreRarityReanalysis,
+  buildScoreRarityReanalysisReportMarkdown
+} from './ScoreRarityReanalysis.js';
 
 export const CONSTRUCTION_STATES = Object.freeze(['点亮', '加持', '修复道损']);
 export const ATTACK_STATES = Object.freeze(['致阳道损', '致阴道损', '破阳点亮', '破阴点亮', '削弱加持']);
@@ -337,6 +343,7 @@ export function runScoreUnityOverlapDiagnostic({
   const startTime = performance.now();
   const pairings = [];
   const allMatches = [];
+  const allMatchBreakdowns = [];
   let totalRuns = 0;
 
   for (const key of pairingKeys) {
@@ -365,6 +372,7 @@ export function runScoreUnityOverlapDiagnostic({
         match.breakdown = decomposePlayerScores(match, scoringConfig);
         pairingMatches.push(match);
         allMatches.push(match);
+        allMatchBreakdowns.push(extractMatchBreakdown(match, pairingConfig.id));
 
         const turns = match.finalState.turnCount || 0;
         totalTurnsAccum += turns;
@@ -453,6 +461,7 @@ export function runScoreUnityOverlapDiagnostic({
     pairingKeys: clone(pairingKeys),
     pairings,
     adr0001Evaluation,
+    matchBreakdowns: allMatchBreakdowns,
     overall: {
       totalMatches: allMatches.length,
       turnLimitOverlap: overallTurnLimitOverlap,
@@ -653,3 +662,9 @@ export function buildScoreUnityOverlapReportMarkdown(diagnosticData, { revision 
   return lines.join('\n') + '\n';
 }
 
+export {
+  extractMatchBreakdown,
+  decomposePlayerScoresWithReanalysis,
+  performScoreRarityReanalysis,
+  buildScoreRarityReanalysisReportMarkdown
+};
