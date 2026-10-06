@@ -1,0 +1,2488 @@
+{
+  "schemaVersion": 1,
+  "diagnosticPhase": "phase1-balance-sweep",
+  "totalRuns": 12000,
+  "totalElapsedMs": 233036.460008,
+  "seedsCount": 200,
+  "seedRange": [
+    202603,
+    202802
+  ],
+  "maxTurnsList": [
+    12,
+    20,
+    30,
+    45,
+    60
+  ],
+  "pairingKeys": [
+    "rule-vs-rule",
+    "search-d1-score",
+    "search-d1-lit",
+    "search-d2-score",
+    "strong-d1-vs-rule",
+    "strong-d2-vs-rule"
+  ],
+  "cells": [
+    {
+      "maxTurns": 12,
+      "pairingId": "rule-vs-rule",
+      "pairingName": "规则式对抗 (局势响应 vs 建设优先)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 0,
+        "rate": 0,
+        "averageTurn": null
+      },
+      "turnLimitSettlement": {
+        "count": 400,
+        "rate": 1
+      },
+      "starterAdvantage": {
+        "starterWins": 270,
+        "followerWins": 130,
+        "draws": 0,
+        "winRate": 0.675,
+        "interval95": {
+          "lower": 0.6290992647117718,
+          "upper": 0.7209007352882283
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 43,
+          "p25": 137,
+          "median": 811,
+          "p75": 1723,
+          "max": 3606,
+          "mean": 986.1
+        },
+        "loserScore": {
+          "min": 400,
+          "p25": 500,
+          "median": 737,
+          "p75": 737,
+          "max": 2547,
+          "mean": 753.125
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(12/2)=6 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 366,
+        "reversals": 108,
+        "rate": 0.29508196721311475
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 936,
+        "decisionsPerMatch": 2.34,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 664,
+            "rate": 0.7094017094017094
+          },
+          "BURST": {
+            "count": 260,
+            "rate": 0.2777777777777778
+          },
+          "TRANS": {
+            "count": 6,
+            "rate": 0.00641025641025641
+          },
+          "ATK": {
+            "count": 6,
+            "rate": 0.00641025641025641
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 12,
+      "pairingId": "search-d1-score",
+      "pairingName": "搜索深度1 自对弈 (偏分数权重)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 0,
+        "rate": 0,
+        "averageTurn": null
+      },
+      "turnLimitSettlement": {
+        "count": 400,
+        "rate": 1
+      },
+      "starterAdvantage": {
+        "starterWins": 268,
+        "followerWins": 132,
+        "draws": 0,
+        "winRate": 0.67,
+        "interval95": {
+          "lower": 0.6239191536536057,
+          "upper": 0.7160808463463944
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 4,
+          "p25": 137,
+          "median": 478,
+          "p75": 1410,
+          "max": 3606,
+          "mean": 766.9975
+        },
+        "loserScore": {
+          "min": 400,
+          "p25": 500,
+          "median": 678,
+          "p75": 737,
+          "max": 2253,
+          "mean": 742.2725
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(12/2)=6 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 366,
+        "reversals": 110,
+        "rate": 0.3005464480874317
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 930,
+        "decisionsPerMatch": 2.325,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 545,
+            "rate": 0.5860215053763441
+          },
+          "BURST_ATK": {
+            "count": 70,
+            "rate": 0.07526881720430108
+          },
+          "TRANS": {
+            "count": 123,
+            "rate": 0.13225806451612904
+          },
+          "BURST": {
+            "count": 137,
+            "rate": 0.14731182795698924
+          },
+          "ATK": {
+            "count": 55,
+            "rate": 0.05913978494623656
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 12,
+      "pairingId": "search-d1-lit",
+      "pairingName": "搜索深度1 自对弈 (偏点亮权重)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 0,
+        "rate": 0,
+        "averageTurn": null
+      },
+      "turnLimitSettlement": {
+        "count": 400,
+        "rate": 1
+      },
+      "starterAdvantage": {
+        "starterWins": 270,
+        "followerWins": 130,
+        "draws": 0,
+        "winRate": 0.675,
+        "interval95": {
+          "lower": 0.6290992647117718,
+          "upper": 0.7209007352882283
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 4,
+          "p25": 137,
+          "median": 409,
+          "p75": 1459,
+          "max": 3606,
+          "mean": 773.3975
+        },
+        "loserScore": {
+          "min": 400,
+          "p25": 500,
+          "median": 641,
+          "p75": 737,
+          "max": 2253,
+          "mean": 733.42
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(12/2)=6 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 366,
+        "reversals": 108,
+        "rate": 0.29508196721311475
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 927,
+        "decisionsPerMatch": 2.3175,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 609,
+            "rate": 0.656957928802589
+          },
+          "BURST_ATK": {
+            "count": 64,
+            "rate": 0.06903991370010787
+          },
+          "TRANS": {
+            "count": 53,
+            "rate": 0.05717367853290183
+          },
+          "BURST": {
+            "count": 146,
+            "rate": 0.1574973031283711
+          },
+          "ATK": {
+            "count": 55,
+            "rate": 0.0593311758360302
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 12,
+      "pairingId": "search-d2-score",
+      "pairingName": "搜索深度2 自对弈 (偏分数权重)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 0,
+        "rate": 0,
+        "averageTurn": null
+      },
+      "turnLimitSettlement": {
+        "count": 400,
+        "rate": 1
+      },
+      "starterAdvantage": {
+        "starterWins": 264,
+        "followerWins": 136,
+        "draws": 0,
+        "winRate": 0.66,
+        "interval95": {
+          "lower": 0.6135765404132781,
+          "upper": 0.7064234595867219
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 4,
+          "p25": 137,
+          "median": 528,
+          "p75": 1459,
+          "max": 3369,
+          "mean": 795.0575
+        },
+        "loserScore": {
+          "min": 500,
+          "p25": 500,
+          "median": 641,
+          "p75": 737,
+          "max": 2547,
+          "mean": 739.5625
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(12/2)=6 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 366,
+        "reversals": 112,
+        "rate": 0.30601092896174864
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 926,
+        "decisionsPerMatch": 2.315,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 508,
+            "rate": 0.5485961123110151
+          },
+          "BURST_ATK": {
+            "count": 70,
+            "rate": 0.0755939524838013
+          },
+          "BURST": {
+            "count": 145,
+            "rate": 0.15658747300215983
+          },
+          "ATK": {
+            "count": 67,
+            "rate": 0.07235421166306695
+          },
+          "TRANS": {
+            "count": 136,
+            "rate": 0.1468682505399568
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 12,
+      "pairingId": "strong-d1-vs-rule",
+      "pairingName": "强弱对阵 (搜索深度1 vs 规则建设)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 0,
+        "rate": 0,
+        "averageTurn": null
+      },
+      "turnLimitSettlement": {
+        "count": 400,
+        "rate": 1
+      },
+      "starterAdvantage": {
+        "starterWins": 270,
+        "followerWins": 130,
+        "draws": 0,
+        "winRate": 0.675,
+        "interval95": {
+          "lower": 0.6290992647117718,
+          "upper": 0.7209007352882283
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 4,
+          "p25": 137,
+          "median": 563,
+          "p75": 1616,
+          "max": 3606,
+          "mean": 873.665
+        },
+        "loserScore": {
+          "min": 400,
+          "p25": 500,
+          "median": 737,
+          "p75": 737,
+          "max": 2253,
+          "mean": 748.62
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(12/2)=6 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 366,
+        "reversals": 108,
+        "rate": 0.29508196721311475
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 936,
+        "decisionsPerMatch": 2.34,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 604,
+            "rate": 0.6452991452991453
+          },
+          "BURST": {
+            "count": 199,
+            "rate": 0.2126068376068376
+          },
+          "BURST_ATK": {
+            "count": 34,
+            "rate": 0.03632478632478633
+          },
+          "TRANS": {
+            "count": 67,
+            "rate": 0.07158119658119658
+          },
+          "ATK": {
+            "count": 32,
+            "rate": 0.03418803418803419
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": true,
+        "strongWinRate": 0.505
+      }
+    },
+    {
+      "maxTurns": 12,
+      "pairingId": "strong-d2-vs-rule",
+      "pairingName": "强弱对阵 (搜索深度2 vs 规则建设)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 0,
+        "rate": 0,
+        "averageTurn": null
+      },
+      "turnLimitSettlement": {
+        "count": 400,
+        "rate": 1
+      },
+      "starterAdvantage": {
+        "starterWins": 267,
+        "followerWins": 133,
+        "draws": 0,
+        "winRate": 0.6675,
+        "interval95": {
+          "lower": 0.6213313117470293,
+          "upper": 0.7136686882529707
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 4,
+          "p25": 137,
+          "median": 574,
+          "p75": 1616,
+          "max": 3606,
+          "mean": 888.255
+        },
+        "loserScore": {
+          "min": 400,
+          "p25": 500,
+          "median": 737,
+          "p75": 737,
+          "max": 2547,
+          "mean": 744.585
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(12/2)=6 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 366,
+        "reversals": 110,
+        "rate": 0.3005464480874317
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 930,
+        "decisionsPerMatch": 2.325,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 589,
+            "rate": 0.6333333333333333
+          },
+          "BURST": {
+            "count": 198,
+            "rate": 0.2129032258064516
+          },
+          "BURST_ATK": {
+            "count": 39,
+            "rate": 0.041935483870967745
+          },
+          "TRANS": {
+            "count": 72,
+            "rate": 0.07741935483870968
+          },
+          "ATK": {
+            "count": 32,
+            "rate": 0.034408602150537634
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": true,
+        "strongWinRate": 0.5025
+      }
+    },
+    {
+      "maxTurns": 20,
+      "pairingId": "rule-vs-rule",
+      "pairingName": "规则式对抗 (局势响应 vs 建设优先)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 0,
+        "rate": 0,
+        "averageTurn": null
+      },
+      "turnLimitSettlement": {
+        "count": 400,
+        "rate": 1
+      },
+      "starterAdvantage": {
+        "starterWins": 252,
+        "followerWins": 148,
+        "draws": 0,
+        "winRate": 0.63,
+        "interval95": {
+          "lower": 0.5826851777980726,
+          "upper": 0.6773148222019274
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 4,
+          "p25": 574,
+          "median": 1459,
+          "p75": 1903,
+          "max": 5600,
+          "mean": 1495.735
+        },
+        "loserScore": {
+          "min": 800,
+          "p25": 2594,
+          "median": 2890,
+          "p75": 3199,
+          "max": 6213,
+          "mean": 2799.7725
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(20/2)=10 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 340,
+        "reversals": 108,
+        "rate": 0.3176470588235294
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 2826,
+        "decisionsPerMatch": 7.065,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 1317,
+            "rate": 0.46602972399150744
+          },
+          "BURST": {
+            "count": 1030,
+            "rate": 0.36447275300778487
+          },
+          "ATK": {
+            "count": 218,
+            "rate": 0.07714083510261854
+          },
+          "BURST_ATK": {
+            "count": 53,
+            "rate": 0.01875442321302194
+          },
+          "TRANS": {
+            "count": 208,
+            "rate": 0.07360226468506724
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 20,
+      "pairingId": "search-d1-score",
+      "pairingName": "搜索深度1 自对弈 (偏分数权重)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 0,
+        "rate": 0,
+        "averageTurn": null
+      },
+      "turnLimitSettlement": {
+        "count": 400,
+        "rate": 1
+      },
+      "starterAdvantage": {
+        "starterWins": 237,
+        "followerWins": 163,
+        "draws": 0,
+        "winRate": 0.5925,
+        "interval95": {
+          "lower": 0.5443458124873859,
+          "upper": 0.6406541875126142
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 2,
+          "p25": 505,
+          "median": 1073,
+          "p75": 1888,
+          "max": 5600,
+          "mean": 1319.9525
+        },
+        "loserScore": {
+          "min": 800,
+          "p25": 1528,
+          "median": 2594,
+          "p75": 2907,
+          "max": 4763,
+          "mean": 2399.3225
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(20/2)=10 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 342,
+        "reversals": 122,
+        "rate": 0.3567251461988304
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 2679,
+        "decisionsPerMatch": 6.6975,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 1125,
+            "rate": 0.41993281075027994
+          },
+          "BURST_ATK": {
+            "count": 336,
+            "rate": 0.12541993281075028
+          },
+          "TRANS": {
+            "count": 396,
+            "rate": 0.14781634938409854
+          },
+          "BURST": {
+            "count": 574,
+            "rate": 0.21425905188503172
+          },
+          "ATK": {
+            "count": 248,
+            "rate": 0.0925718551698395
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 20,
+      "pairingId": "search-d1-lit",
+      "pairingName": "搜索深度1 自对弈 (偏点亮权重)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 0,
+        "rate": 0,
+        "averageTurn": null
+      },
+      "turnLimitSettlement": {
+        "count": 400,
+        "rate": 1
+      },
+      "starterAdvantage": {
+        "starterWins": 237,
+        "followerWins": 163,
+        "draws": 0,
+        "winRate": 0.5925,
+        "interval95": {
+          "lower": 0.5443458124873859,
+          "upper": 0.6406541875126142
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 3,
+          "p25": 501,
+          "median": 1073,
+          "p75": 1891,
+          "max": 5600,
+          "mean": 1373.785
+        },
+        "loserScore": {
+          "min": 800,
+          "p25": 1528,
+          "median": 2653,
+          "p75": 2890,
+          "max": 4763,
+          "mean": 2419.1075
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(20/2)=10 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 342,
+        "reversals": 119,
+        "rate": 0.347953216374269
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 2701,
+        "decisionsPerMatch": 6.7525,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 1283,
+            "rate": 0.47500925583117365
+          },
+          "BURST_ATK": {
+            "count": 355,
+            "rate": 0.1314328026656794
+          },
+          "BURST": {
+            "count": 613,
+            "rate": 0.22695298037763792
+          },
+          "ATK": {
+            "count": 243,
+            "rate": 0.0899666790077749
+          },
+          "TRANS": {
+            "count": 207,
+            "rate": 0.07663828211773417
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 20,
+      "pairingId": "search-d2-score",
+      "pairingName": "搜索深度2 自对弈 (偏分数权重)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 0,
+        "rate": 0,
+        "averageTurn": null
+      },
+      "turnLimitSettlement": {
+        "count": 400,
+        "rate": 1
+      },
+      "starterAdvantage": {
+        "starterWins": 232,
+        "followerWins": 168,
+        "draws": 0,
+        "winRate": 0.58,
+        "interval95": {
+          "lower": 0.5316312662973279,
+          "upper": 0.628368733702672
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 3,
+          "p25": 541,
+          "median": 1251,
+          "p75": 1975,
+          "max": 5531,
+          "mean": 1366.97
+        },
+        "loserScore": {
+          "min": 800,
+          "p25": 1641,
+          "median": 2653,
+          "p75": 2997,
+          "max": 4591,
+          "mean": 2464.52
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(20/2)=10 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 338,
+        "reversals": 114,
+        "rate": 0.33727810650887574
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 2682,
+        "decisionsPerMatch": 6.705,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 1129,
+            "rate": 0.4209545115585384
+          },
+          "BURST_ATK": {
+            "count": 255,
+            "rate": 0.09507829977628636
+          },
+          "TRANS": {
+            "count": 337,
+            "rate": 0.1256524981357196
+          },
+          "BURST": {
+            "count": 678,
+            "rate": 0.25279642058165547
+          },
+          "ATK": {
+            "count": 283,
+            "rate": 0.10551826994780016
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 20,
+      "pairingId": "strong-d1-vs-rule",
+      "pairingName": "强弱对阵 (搜索深度1 vs 规则建设)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 0,
+        "rate": 0,
+        "averageTurn": null
+      },
+      "turnLimitSettlement": {
+        "count": 400,
+        "rate": 1
+      },
+      "starterAdvantage": {
+        "starterWins": 245,
+        "followerWins": 155,
+        "draws": 0,
+        "winRate": 0.6125,
+        "interval95": {
+          "lower": 0.5647564205887327,
+          "upper": 0.6602435794112674
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 4,
+          "p25": 539,
+          "median": 1258,
+          "p75": 1925,
+          "max": 5600,
+          "mean": 1457.5125
+        },
+        "loserScore": {
+          "min": 800,
+          "p25": 2110,
+          "median": 2794,
+          "p75": 3068,
+          "max": 6213,
+          "mean": 2625.595
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(20/2)=10 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 340,
+        "reversals": 114,
+        "rate": 0.3352941176470588
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 2769,
+        "decisionsPerMatch": 6.9225,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 1254,
+            "rate": 0.4528710725893825
+          },
+          "BURST": {
+            "count": 846,
+            "rate": 0.3055254604550379
+          },
+          "ATK": {
+            "count": 210,
+            "rate": 0.07583965330444203
+          },
+          "BURST_ATK": {
+            "count": 162,
+            "rate": 0.05850487540628386
+          },
+          "TRANS": {
+            "count": 297,
+            "rate": 0.10725893824485373
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": true,
+        "strongWinRate": 0.4725
+      }
+    },
+    {
+      "maxTurns": 20,
+      "pairingId": "strong-d2-vs-rule",
+      "pairingName": "强弱对阵 (搜索深度2 vs 规则建设)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 0,
+        "rate": 0,
+        "averageTurn": null
+      },
+      "turnLimitSettlement": {
+        "count": 400,
+        "rate": 1
+      },
+      "starterAdvantage": {
+        "starterWins": 241,
+        "followerWins": 159,
+        "draws": 0,
+        "winRate": 0.6025,
+        "interval95": {
+          "lower": 0.5545406633177647,
+          "upper": 0.6504593366822353
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 3,
+          "p25": 638,
+          "median": 1392,
+          "p75": 1945,
+          "max": 5600,
+          "mean": 1485.14
+        },
+        "loserScore": {
+          "min": 800,
+          "p25": 2122,
+          "median": 2810,
+          "p75": 3115,
+          "max": 6213,
+          "mean": 2643.0375
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(20/2)=10 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 338,
+        "reversals": 112,
+        "rate": 0.33136094674556216
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 2757,
+        "decisionsPerMatch": 6.8925,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 1240,
+            "rate": 0.44976423648893726
+          },
+          "BURST": {
+            "count": 883,
+            "rate": 0.32027566195139645
+          },
+          "ATK": {
+            "count": 223,
+            "rate": 0.08088501994922016
+          },
+          "BURST_ATK": {
+            "count": 137,
+            "rate": 0.04969169387014871
+          },
+          "TRANS": {
+            "count": 274,
+            "rate": 0.09938338774029742
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": true,
+        "strongWinRate": 0.4975
+      }
+    },
+    {
+      "maxTurns": 30,
+      "pairingId": "rule-vs-rule",
+      "pairingName": "规则式对抗 (局势响应 vs 建设优先)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 36,
+        "rate": 0.09,
+        "averageTurn": 25.916666666666668
+      },
+      "turnLimitSettlement": {
+        "count": 364,
+        "rate": 0.91
+      },
+      "starterAdvantage": {
+        "starterWins": 266,
+        "followerWins": 134,
+        "draws": 0,
+        "winRate": 0.665,
+        "interval95": {
+          "lower": 0.6187449343314703,
+          "upper": 0.7112550656685298
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 23,
+          "p25": 754,
+          "median": 1734,
+          "p75": 2778,
+          "max": 8012,
+          "mean": 1885.868131868132
+        },
+        "loserScore": {
+          "min": 1874,
+          "p25": 4848,
+          "median": 5426,
+          "p75": 6075,
+          "max": 8114,
+          "mean": 5440.9670329670325
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(30/2)=15 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 224,
+        "reversals": 78,
+        "rate": 0.3482142857142857
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 5689,
+        "decisionsPerMatch": 14.2225,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 1938,
+            "rate": 0.34065740903497976
+          },
+          "BURST": {
+            "count": 1672,
+            "rate": 0.29390050975566884
+          },
+          "ATK": {
+            "count": 1011,
+            "rate": 0.17771137282474953
+          },
+          "BURST_ATK": {
+            "count": 325,
+            "rate": 0.057127790472842326
+          },
+          "TRANS": {
+            "count": 719,
+            "rate": 0.1263842503076112
+          },
+          "SKIP": {
+            "count": 24,
+            "rate": 0.004218667604148356
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 30,
+      "pairingId": "search-d1-score",
+      "pairingName": "搜索深度1 自对弈 (偏分数权重)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 32,
+        "rate": 0.08,
+        "averageTurn": 26.46875
+      },
+      "turnLimitSettlement": {
+        "count": 368,
+        "rate": 0.92
+      },
+      "starterAdvantage": {
+        "starterWins": 236,
+        "followerWins": 164,
+        "draws": 0,
+        "winRate": 0.59,
+        "interval95": {
+          "lower": 0.5418003361007568,
+          "upper": 0.6381996638992431
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 8,
+          "p25": 848,
+          "median": 1593,
+          "p75": 2623,
+          "max": 6001,
+          "mean": 1897.0434782608695
+        },
+        "loserScore": {
+          "min": 1747,
+          "p25": 3959,
+          "median": 4817,
+          "p75": 5622,
+          "max": 8068,
+          "mean": 4764.100543478261
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(30/2)=15 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 258,
+        "reversals": 66,
+        "rate": 0.2558139534883721
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 5255,
+        "decisionsPerMatch": 13.1375,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 1790,
+            "rate": 0.340627973358706
+          },
+          "BURST_ATK": {
+            "count": 796,
+            "rate": 0.15147478591817318
+          },
+          "TRANS": {
+            "count": 834,
+            "rate": 0.1587059942911513
+          },
+          "BURST": {
+            "count": 1063,
+            "rate": 0.20228353948620362
+          },
+          "ATK": {
+            "count": 772,
+            "rate": 0.14690770694576594
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 30,
+      "pairingId": "search-d1-lit",
+      "pairingName": "搜索深度1 自对弈 (偏点亮权重)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 34,
+        "rate": 0.085,
+        "averageTurn": 26.176470588235293
+      },
+      "turnLimitSettlement": {
+        "count": 366,
+        "rate": 0.915
+      },
+      "starterAdvantage": {
+        "starterWins": 252,
+        "followerWins": 148,
+        "draws": 0,
+        "winRate": 0.63,
+        "interval95": {
+          "lower": 0.5826851777980726,
+          "upper": 0.6773148222019274
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 12,
+          "p25": 850,
+          "median": 1623,
+          "p75": 2961,
+          "max": 6957,
+          "mean": 2040.2896174863388
+        },
+        "loserScore": {
+          "min": 1747,
+          "p25": 3918,
+          "median": 4837,
+          "p75": 5636,
+          "max": 7887,
+          "mean": 4794.912568306011
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(30/2)=15 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 260,
+        "reversals": 72,
+        "rate": 0.27692307692307694
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 5324,
+        "decisionsPerMatch": 13.31,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 2014,
+            "rate": 0.3782870022539444
+          },
+          "BURST_ATK": {
+            "count": 922,
+            "rate": 0.17317806160781368
+          },
+          "BURST": {
+            "count": 1057,
+            "rate": 0.1985349361382419
+          },
+          "ATK": {
+            "count": 781,
+            "rate": 0.14669421487603307
+          },
+          "TRANS": {
+            "count": 550,
+            "rate": 0.10330578512396695
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 30,
+      "pairingId": "search-d2-score",
+      "pairingName": "搜索深度2 自对弈 (偏分数权重)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 43,
+        "rate": 0.1075,
+        "averageTurn": 26.58139534883721
+      },
+      "turnLimitSettlement": {
+        "count": 357,
+        "rate": 0.8925
+      },
+      "starterAdvantage": {
+        "starterWins": 228,
+        "followerWins": 172,
+        "draws": 0,
+        "winRate": 0.57,
+        "interval95": {
+          "lower": 0.5214825763256126,
+          "upper": 0.6185174236743873
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 8,
+          "p25": 789,
+          "median": 1711,
+          "p75": 2664,
+          "max": 5895,
+          "mean": 1833.8235294117646
+        },
+        "loserScore": {
+          "min": 1681,
+          "p25": 4088,
+          "median": 5011,
+          "p75": 5657,
+          "max": 8042,
+          "mean": 4910.380952380952
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(30/2)=15 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 250,
+        "reversals": 90,
+        "rate": 0.36
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 5382,
+        "decisionsPerMatch": 13.455,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 1788,
+            "rate": 0.33221850613154963
+          },
+          "BURST_ATK": {
+            "count": 618,
+            "rate": 0.11482720178372352
+          },
+          "TRANS": {
+            "count": 845,
+            "rate": 0.1570048309178744
+          },
+          "BURST": {
+            "count": 1194,
+            "rate": 0.221850613154961
+          },
+          "ATK": {
+            "count": 925,
+            "rate": 0.17186919360832403
+          },
+          "SKIP": {
+            "count": 12,
+            "rate": 0.002229654403567447
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 30,
+      "pairingId": "strong-d1-vs-rule",
+      "pairingName": "强弱对阵 (搜索深度1 vs 规则建设)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 75,
+        "rate": 0.1875,
+        "averageTurn": 26.626666666666665
+      },
+      "turnLimitSettlement": {
+        "count": 325,
+        "rate": 0.8125
+      },
+      "starterAdvantage": {
+        "starterWins": 251,
+        "followerWins": 149,
+        "draws": 0,
+        "winRate": 0.6275,
+        "interval95": {
+          "lower": 0.5801198884024108,
+          "upper": 0.6748801115975891
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 42,
+          "p25": 752,
+          "median": 1535,
+          "p75": 2672,
+          "max": 6155,
+          "mean": 1863.7046153846154
+        },
+        "loserScore": {
+          "min": 1874,
+          "p25": 4521,
+          "median": 5342,
+          "p75": 5937,
+          "max": 8851,
+          "mean": 5264.443076923077
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(30/2)=15 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 239,
+        "reversals": 85,
+        "rate": 0.35564853556485354
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 5432,
+        "decisionsPerMatch": 13.58,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 1947,
+            "rate": 0.3584315169366716
+          },
+          "BURST": {
+            "count": 1478,
+            "rate": 0.27209131075110454
+          },
+          "ATK": {
+            "count": 777,
+            "rate": 0.14304123711340205
+          },
+          "BURST_ATK": {
+            "count": 422,
+            "rate": 0.07768777614138439
+          },
+          "TRANS": {
+            "count": 795,
+            "rate": 0.14635493372606775
+          },
+          "SKIP": {
+            "count": 13,
+            "rate": 0.0023932253313696614
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": true,
+        "strongWinRate": 0.5525
+      }
+    },
+    {
+      "maxTurns": 30,
+      "pairingId": "strong-d2-vs-rule",
+      "pairingName": "强弱对阵 (搜索深度2 vs 规则建设)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 77,
+        "rate": 0.1925,
+        "averageTurn": 26.272727272727273
+      },
+      "turnLimitSettlement": {
+        "count": 323,
+        "rate": 0.8075
+      },
+      "starterAdvantage": {
+        "starterWins": 250,
+        "followerWins": 150,
+        "draws": 0,
+        "winRate": 0.625,
+        "interval95": {
+          "lower": 0.5775559540089591,
+          "upper": 0.6724440459910409
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 20,
+          "p25": 781,
+          "median": 1579,
+          "p75": 2679,
+          "max": 6430,
+          "mean": 1840.1640866873065
+        },
+        "loserScore": {
+          "min": 1999,
+          "p25": 4669,
+          "median": 5352,
+          "p75": 6020,
+          "max": 8851,
+          "mean": 5348.938080495356
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(30/2)=15 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 239,
+        "reversals": 89,
+        "rate": 0.3723849372384937
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 5477,
+        "decisionsPerMatch": 13.6925,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 1941,
+            "rate": 0.35439109001278074
+          },
+          "BURST": {
+            "count": 1522,
+            "rate": 0.2778893554865802
+          },
+          "ATK": {
+            "count": 856,
+            "rate": 0.15628993974803726
+          },
+          "TRANS": {
+            "count": 779,
+            "rate": 0.14223114843892642
+          },
+          "BURST_ATK": {
+            "count": 363,
+            "rate": 0.06627715902866532
+          },
+          "SKIP": {
+            "count": 16,
+            "rate": 0.002921307285010042
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": true,
+        "strongWinRate": 0.56
+      }
+    },
+    {
+      "maxTurns": 45,
+      "pairingId": "rule-vs-rule",
+      "pairingName": "规则式对抗 (局势响应 vs 建设优先)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 138,
+        "rate": 0.345,
+        "averageTurn": 35.15217391304348
+      },
+      "turnLimitSettlement": {
+        "count": 262,
+        "rate": 0.655
+      },
+      "starterAdvantage": {
+        "starterWins": 246,
+        "followerWins": 154,
+        "draws": 0,
+        "winRate": 0.615,
+        "interval95": {
+          "lower": 0.5673136591884007,
+          "upper": 0.6626863408115993
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 20,
+          "p25": 977,
+          "median": 2143,
+          "p75": 3364,
+          "max": 8909,
+          "mean": 2485.793893129771
+        },
+        "loserScore": {
+          "min": 5559,
+          "p25": 8063,
+          "median": 8953,
+          "p75": 9861,
+          "max": 12227,
+          "mean": 8906.980916030534
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(45/2)=22 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 254,
+        "reversals": 87,
+        "rate": 0.3425196850393701
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 9324,
+        "decisionsPerMatch": 23.31,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 2555,
+            "rate": 0.27402402402402404
+          },
+          "BURST": {
+            "count": 2225,
+            "rate": 0.23863148863148864
+          },
+          "ATK": {
+            "count": 2187,
+            "rate": 0.23455598455598456
+          },
+          "TRANS": {
+            "count": 1597,
+            "rate": 0.17127842127842127
+          },
+          "BURST_ATK": {
+            "count": 627,
+            "rate": 0.06724581724581724
+          },
+          "SKIP": {
+            "count": 133,
+            "rate": 0.014264264264264264
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 45,
+      "pairingId": "search-d1-score",
+      "pairingName": "搜索深度1 自对弈 (偏分数权重)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 121,
+        "rate": 0.3025,
+        "averageTurn": 35.22314049586777
+      },
+      "turnLimitSettlement": {
+        "count": 279,
+        "rate": 0.6975
+      },
+      "starterAdvantage": {
+        "starterWins": 224,
+        "followerWins": 176,
+        "draws": 0,
+        "winRate": 0.56,
+        "interval95": {
+          "lower": 0.5113540793077159,
+          "upper": 0.6086459206922842
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 50,
+          "p25": 902,
+          "median": 1978,
+          "p75": 3578,
+          "max": 8903,
+          "mean": 2503.4121863799282
+        },
+        "loserScore": {
+          "min": 3645,
+          "p25": 7178,
+          "median": 8123,
+          "p75": 9024,
+          "max": 12161,
+          "mean": 8090.8530465949825
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(45/2)=22 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 303,
+        "reversals": 91,
+        "rate": 0.30033003300330036
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 8630,
+        "decisionsPerMatch": 21.575,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 2532,
+            "rate": 0.2933951332560834
+          },
+          "BURST_ATK": {
+            "count": 1391,
+            "rate": 0.1611819235225956
+          },
+          "TRANS": {
+            "count": 1497,
+            "rate": 0.17346465816917728
+          },
+          "BURST": {
+            "count": 1503,
+            "rate": 0.17415990730011588
+          },
+          "ATK": {
+            "count": 1656,
+            "rate": 0.19188876013904982
+          },
+          "SKIP": {
+            "count": 51,
+            "rate": 0.005909617612977984
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 45,
+      "pairingId": "search-d1-lit",
+      "pairingName": "搜索深度1 自对弈 (偏点亮权重)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 97,
+        "rate": 0.2425,
+        "averageTurn": 33.618556701030926
+      },
+      "turnLimitSettlement": {
+        "count": 303,
+        "rate": 0.7575
+      },
+      "starterAdvantage": {
+        "starterWins": 247,
+        "followerWins": 153,
+        "draws": 0,
+        "winRate": 0.6175,
+        "interval95": {
+          "lower": 0.5698722268523921,
+          "upper": 0.665127773147608
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 1,
+          "p25": 1200,
+          "median": 2424,
+          "p75": 4282,
+          "max": 9474,
+          "mean": 2837.2871287128714
+        },
+        "loserScore": {
+          "min": 3672,
+          "p25": 7120,
+          "median": 8158,
+          "p75": 9322,
+          "max": 11530,
+          "mean": 8106.184818481848
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(45/2)=22 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 286,
+        "reversals": 81,
+        "rate": 0.28321678321678323
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 8684,
+        "decisionsPerMatch": 21.71,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 2817,
+            "rate": 0.3243896821741133
+          },
+          "BURST_ATK": {
+            "count": 1621,
+            "rate": 0.18666513127590972
+          },
+          "BURST": {
+            "count": 1514,
+            "rate": 0.1743436204514049
+          },
+          "ATK": {
+            "count": 1582,
+            "rate": 0.18217411331183786
+          },
+          "TRANS": {
+            "count": 1106,
+            "rate": 0.127360663288807
+          },
+          "SKIP": {
+            "count": 44,
+            "rate": 0.005066789497927222
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 45,
+      "pairingId": "search-d2-score",
+      "pairingName": "搜索深度2 自对弈 (偏分数权重)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 149,
+        "rate": 0.3725,
+        "averageTurn": 34.24832214765101
+      },
+      "turnLimitSettlement": {
+        "count": 251,
+        "rate": 0.6275
+      },
+      "starterAdvantage": {
+        "starterWins": 220,
+        "followerWins": 180,
+        "draws": 0,
+        "winRate": 0.55,
+        "interval95": {
+          "lower": 0.5012456155817757,
+          "upper": 0.5987543844182244
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 43,
+          "p25": 1193,
+          "median": 2347,
+          "p75": 3535,
+          "max": 7577,
+          "mean": 2537.561752988048
+        },
+        "loserScore": {
+          "min": 2871,
+          "p25": 6725,
+          "median": 8123,
+          "p75": 9346,
+          "max": 11413,
+          "mean": 8006.227091633466
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(45/2)=22 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 279,
+        "reversals": 83,
+        "rate": 0.2974910394265233
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 8559,
+        "decisionsPerMatch": 21.3975,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 2457,
+            "rate": 0.2870662460567823
+          },
+          "BURST_ATK": {
+            "count": 1057,
+            "rate": 0.12349573548311718
+          },
+          "TRANS": {
+            "count": 1579,
+            "rate": 0.18448416871129805
+          },
+          "BURST": {
+            "count": 1543,
+            "rate": 0.18027806986797523
+          },
+          "ATK": {
+            "count": 1849,
+            "rate": 0.21602991003621919
+          },
+          "SKIP": {
+            "count": 74,
+            "rate": 0.008645869844608014
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 45,
+      "pairingId": "strong-d1-vs-rule",
+      "pairingName": "强弱对阵 (搜索深度1 vs 规则建设)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 235,
+        "rate": 0.5875,
+        "averageTurn": 34.61702127659574
+      },
+      "turnLimitSettlement": {
+        "count": 165,
+        "rate": 0.4125
+      },
+      "starterAdvantage": {
+        "starterWins": 240,
+        "followerWins": 160,
+        "draws": 0,
+        "winRate": 0.6,
+        "interval95": {
+          "lower": 0.5519900010414497,
+          "upper": 0.6480099989585503
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 69,
+          "p25": 1376,
+          "median": 2211,
+          "p75": 3523,
+          "max": 10675,
+          "mean": 2609.0363636363636
+        },
+        "loserScore": {
+          "min": 3695,
+          "p25": 8080,
+          "median": 8828,
+          "p75": 9775,
+          "max": 11876,
+          "mean": 8759.121212121212
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(45/2)=22 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 266,
+        "reversals": 98,
+        "rate": 0.3684210526315789
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 8254,
+        "decisionsPerMatch": 20.635,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 2573,
+            "rate": 0.3117276472013569
+          },
+          "BURST": {
+            "count": 1921,
+            "rate": 0.23273564332444877
+          },
+          "ATK": {
+            "count": 1514,
+            "rate": 0.1834262175914708
+          },
+          "TRANS": {
+            "count": 1433,
+            "rate": 0.17361279379694694
+          },
+          "BURST_ATK": {
+            "count": 718,
+            "rate": 0.08698812696874243
+          },
+          "SKIP": {
+            "count": 95,
+            "rate": 0.011509571117034165
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": true,
+        "strongWinRate": 0.665
+      }
+    },
+    {
+      "maxTurns": 45,
+      "pairingId": "strong-d2-vs-rule",
+      "pairingName": "强弱对阵 (搜索深度2 vs 规则建设)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 226,
+        "rate": 0.565,
+        "averageTurn": 34.084070796460175
+      },
+      "turnLimitSettlement": {
+        "count": 174,
+        "rate": 0.435
+      },
+      "starterAdvantage": {
+        "starterWins": 231,
+        "followerWins": 169,
+        "draws": 0,
+        "winRate": 0.5775,
+        "interval95": {
+          "lower": 0.5290921909708775,
+          "upper": 0.6259078090291226
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 18,
+          "p25": 1061,
+          "median": 1982,
+          "p75": 3091,
+          "max": 7904,
+          "mean": 2224.844827586207
+        },
+        "loserScore": {
+          "min": 4072,
+          "p25": 7738,
+          "median": 8976,
+          "p75": 9835,
+          "max": 12114,
+          "mean": 8817.80459770115
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(45/2)=22 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 260,
+        "reversals": 107,
+        "rate": 0.4115384615384615
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 8334,
+        "decisionsPerMatch": 20.835,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 2544,
+            "rate": 0.3052555795536357
+          },
+          "BURST": {
+            "count": 1915,
+            "rate": 0.22978161747060236
+          },
+          "ATK": {
+            "count": 1683,
+            "rate": 0.2019438444924406
+          },
+          "TRANS": {
+            "count": 1487,
+            "rate": 0.17842572594192466
+          },
+          "BURST_ATK": {
+            "count": 605,
+            "rate": 0.07259419246460283
+          },
+          "SKIP": {
+            "count": 100,
+            "rate": 0.011999040076793857
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": true,
+        "strongWinRate": 0.6575
+      }
+    },
+    {
+      "maxTurns": 60,
+      "pairingId": "rule-vs-rule",
+      "pairingName": "规则式对抗 (局势响应 vs 建设优先)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 244,
+        "rate": 0.61,
+        "averageTurn": 42.782786885245905
+      },
+      "turnLimitSettlement": {
+        "count": 156,
+        "rate": 0.39
+      },
+      "starterAdvantage": {
+        "starterWins": 213,
+        "followerWins": 187,
+        "draws": 0,
+        "winRate": 0.5325,
+        "interval95": {
+          "lower": 0.4836036220666602,
+          "upper": 0.5813963779333398
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 28,
+          "p25": 1217,
+          "median": 2995,
+          "p75": 4354,
+          "max": 10814,
+          "mean": 3178.25641025641
+        },
+        "loserScore": {
+          "min": 7777,
+          "p25": 11310,
+          "median": 12337,
+          "p75": 13290,
+          "max": 16519,
+          "mean": 12251.948717948719
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(60/2)=30 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 283,
+        "reversals": 95,
+        "rate": 0.33568904593639576
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 11790,
+        "decisionsPerMatch": 29.475,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 2964,
+            "rate": 0.2513994910941476
+          },
+          "BURST": {
+            "count": 2528,
+            "rate": 0.21441899915182358
+          },
+          "ATK": {
+            "count": 2996,
+            "rate": 0.2541136556403732
+          },
+          "TRANS": {
+            "count": 2200,
+            "rate": 0.18659881255301103
+          },
+          "BURST_ATK": {
+            "count": 841,
+            "rate": 0.07133163698049194
+          },
+          "SKIP": {
+            "count": 261,
+            "rate": 0.022137404580152672
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 60,
+      "pairingId": "search-d1-score",
+      "pairingName": "搜索深度1 自对弈 (偏分数权重)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 205,
+        "rate": 0.5125,
+        "averageTurn": 42.02439024390244
+      },
+      "turnLimitSettlement": {
+        "count": 195,
+        "rate": 0.4875
+      },
+      "starterAdvantage": {
+        "starterWins": 217,
+        "followerWins": 183,
+        "draws": 0,
+        "winRate": 0.5425,
+        "interval95": {
+          "lower": 0.49367733338909064,
+          "upper": 0.5913226666109093
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 11,
+          "p25": 1261,
+          "median": 3034,
+          "p75": 5072,
+          "max": 12577,
+          "mean": 3605.1589743589743
+        },
+        "loserScore": {
+          "min": 4432,
+          "p25": 10273,
+          "median": 11312,
+          "p75": 12505,
+          "max": 15075,
+          "mean": 11222.446153846155
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(60/2)=30 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 320,
+        "reversals": 71,
+        "rate": 0.221875
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 11062,
+        "decisionsPerMatch": 27.655,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 3071,
+            "rate": 0.2776170674380763
+          },
+          "BURST_ATK": {
+            "count": 1796,
+            "rate": 0.16235762068342072
+          },
+          "TRANS": {
+            "count": 2010,
+            "rate": 0.18170312782498643
+          },
+          "BURST": {
+            "count": 1805,
+            "rate": 0.16317121677815946
+          },
+          "ATK": {
+            "count": 2279,
+            "rate": 0.2060206111010667
+          },
+          "SKIP": {
+            "count": 101,
+            "rate": 0.009130356174290363
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 60,
+      "pairingId": "search-d1-lit",
+      "pairingName": "搜索深度1 自对弈 (偏点亮权重)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 179,
+        "rate": 0.4475,
+        "averageTurn": 42.486033519553075
+      },
+      "turnLimitSettlement": {
+        "count": 221,
+        "rate": 0.5525
+      },
+      "starterAdvantage": {
+        "starterWins": 232,
+        "followerWins": 168,
+        "draws": 0,
+        "winRate": 0.58,
+        "interval95": {
+          "lower": 0.5316312662973279,
+          "upper": 0.628368733702672
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 7,
+          "p25": 1364,
+          "median": 3054,
+          "p75": 5216,
+          "max": 13472,
+          "mean": 3598.185520361991
+        },
+        "loserScore": {
+          "min": 4432,
+          "p25": 10173,
+          "median": 11734,
+          "p75": 12973,
+          "max": 15696,
+          "mean": 11489.683257918552
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(60/2)=30 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 328,
+        "reversals": 83,
+        "rate": 0.2530487804878049
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 11377,
+        "decisionsPerMatch": 28.4425,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 3434,
+            "rate": 0.30183703964138175
+          },
+          "BURST_ATK": {
+            "count": 2121,
+            "rate": 0.18642875977850049
+          },
+          "BURST": {
+            "count": 1880,
+            "rate": 0.1652456710907972
+          },
+          "ATK": {
+            "count": 2226,
+            "rate": 0.19565790630218863
+          },
+          "TRANS": {
+            "count": 1636,
+            "rate": 0.14379889250241715
+          },
+          "SKIP": {
+            "count": 80,
+            "rate": 0.007031730684714775
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 60,
+      "pairingId": "search-d2-score",
+      "pairingName": "搜索深度2 自对弈 (偏分数权重)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 222,
+        "rate": 0.555,
+        "averageTurn": 40.292792792792795
+      },
+      "turnLimitSettlement": {
+        "count": 178,
+        "rate": 0.445
+      },
+      "starterAdvantage": {
+        "starterWins": 217,
+        "followerWins": 183,
+        "draws": 0,
+        "winRate": 0.5425,
+        "interval95": {
+          "lower": 0.49367733338909064,
+          "upper": 0.5913226666109093
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 48,
+          "p25": 1459,
+          "median": 2827,
+          "p75": 4758,
+          "max": 7749,
+          "mean": 3079.808988764045
+        },
+        "loserScore": {
+          "min": 5918,
+          "p25": 9623,
+          "median": 11259,
+          "p75": 12357,
+          "max": 14790,
+          "mean": 10942.280898876405
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(60/2)=30 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 299,
+        "reversals": 76,
+        "rate": 0.25418060200668896
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 10888,
+        "decisionsPerMatch": 27.22,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 2904,
+            "rate": 0.26671565025716387
+          },
+          "BURST_ATK": {
+            "count": 1336,
+            "rate": 0.12270389419544453
+          },
+          "TRANS": {
+            "count": 2134,
+            "rate": 0.19599559147685525
+          },
+          "BURST": {
+            "count": 1737,
+            "rate": 0.15953343130051434
+          },
+          "ATK": {
+            "count": 2616,
+            "rate": 0.2402645113886848
+          },
+          "SKIP": {
+            "count": 161,
+            "rate": 0.014786921381337251
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": false,
+        "strongWinRate": null
+      }
+    },
+    {
+      "maxTurns": 60,
+      "pairingId": "strong-d1-vs-rule",
+      "pairingName": "强弱对阵 (搜索深度1 vs 规则建设)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 326,
+        "rate": 0.815,
+        "averageTurn": 39.32515337423313
+      },
+      "turnLimitSettlement": {
+        "count": 74,
+        "rate": 0.185
+      },
+      "starterAdvantage": {
+        "starterWins": 229,
+        "followerWins": 171,
+        "draws": 0,
+        "winRate": 0.5725,
+        "interval95": {
+          "lower": 0.524017848902921,
+          "upper": 0.620982151097079
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 26,
+          "p25": 813,
+          "median": 2167,
+          "p75": 4439,
+          "max": 8962,
+          "mean": 2864.554054054054
+        },
+        "loserScore": {
+          "min": 8287,
+          "p25": 11214,
+          "median": 12594,
+          "p75": 13772,
+          "max": 16437,
+          "mean": 12397.567567567568
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(60/2)=30 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 288,
+        "reversals": 95,
+        "rate": 0.3298611111111111
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 9523,
+        "decisionsPerMatch": 23.8075,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 2818,
+            "rate": 0.29591515278798697
+          },
+          "BURST": {
+            "count": 2082,
+            "rate": 0.21862858342959152
+          },
+          "ATK": {
+            "count": 1874,
+            "rate": 0.1967867268717841
+          },
+          "TRANS": {
+            "count": 1750,
+            "rate": 0.1837656200777066
+          },
+          "BURST_ATK": {
+            "count": 828,
+            "rate": 0.08694739052819489
+          },
+          "SKIP": {
+            "count": 171,
+            "rate": 0.017956526304735904
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": true,
+        "strongWinRate": 0.7125
+      }
+    },
+    {
+      "maxTurns": 60,
+      "pairingId": "strong-d2-vs-rule",
+      "pairingName": "强弱对阵 (搜索深度2 vs 规则建设)",
+      "totalMatches": 400,
+      "effectiveSamples": 400,
+      "unityVictory": {
+        "count": 328,
+        "rate": 0.82,
+        "averageTurn": 39.6219512195122
+      },
+      "turnLimitSettlement": {
+        "count": 72,
+        "rate": 0.18
+      },
+      "starterAdvantage": {
+        "starterWins": 210,
+        "followerWins": 190,
+        "draws": 0,
+        "winRate": 0.525,
+        "interval95": {
+          "lower": 0.4760612883291765,
+          "upper": 0.5739387116708236
+        }
+      },
+      "settlementDistributions": {
+        "scoreDiff": {
+          "min": 48,
+          "p25": 1214,
+          "median": 1830,
+          "p75": 3463,
+          "max": 10582,
+          "mean": 2426.5138888888887
+        },
+        "loserScore": {
+          "min": 7087,
+          "p25": 11332,
+          "median": 12199,
+          "p75": 13267,
+          "max": 16986,
+          "mean": 12148.166666666666
+        }
+      },
+      "reversal": {
+        "definition": "在第 Math.floor(60/2)=30 回合处点亮与分数落后方定义为中盘落后方；终局反超获胜计为逆转。",
+        "midpointTrailers": 283,
+        "reversals": 94,
+        "rate": 0.3321554770318021
+      },
+      "decisionMetrics": {
+        "totalRealDecisions": 9723,
+        "decisionsPerMatch": 24.3075,
+        "actionDistribution": {
+          "CONVERT": {
+            "count": 2823,
+            "rate": 0.29034248688676334
+          },
+          "BURST": {
+            "count": 2049,
+            "rate": 0.2107374267201481
+          },
+          "ATK": {
+            "count": 2104,
+            "rate": 0.2163941170420652
+          },
+          "TRANS": {
+            "count": 1866,
+            "rate": 0.19191607528540575
+          },
+          "BURST_ATK": {
+            "count": 697,
+            "rate": 0.0716856937159313
+          },
+          "SKIP": {
+            "count": 184,
+            "rate": 0.01892420034968631
+          }
+        }
+      },
+      "strongVsWeak": {
+        "isStrongVsWeak": true,
+        "strongWinRate": 0.7
+      }
+    }
+  ]
+}
