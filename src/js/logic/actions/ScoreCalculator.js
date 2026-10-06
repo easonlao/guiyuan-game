@@ -9,7 +9,7 @@
 
 import StateManager from '../../state/StateManager.js';
 import { POINTS_CONFIG } from '../../config/game-config.js';
-import { calculateRarityAdjustedScore } from './RarityScoring.js';
+import { calculateRarityAdjustedScore, isNoRarityAction } from './RarityScoring.js';
 
 const ScoreCalculator = {
   /**
@@ -138,8 +138,7 @@ const ScoreCalculator = {
    */
   _applyRarityBonus(score, actionType) {
     if (this.scoringConfig?.disableRarityBonus) return score;
-    const formalNoRarity = this.scoringConfig?.pointsConfig?.NO_RARITY_ACTIONS ?? POINTS_CONFIG.NO_RARITY_ACTIONS ?? [];
-    if (this.scoringConfig?.noRarityActions?.includes(actionType) || formalNoRarity.includes(actionType)) return score;
+    if (isNoRarityAction(actionType, this.scoringConfig)) return score;
     const multiplier = this.scoringConfig?.pointsConfig?.RARITY_MULTIPLIER ?? POINTS_CONFIG.RARITY_MULTIPLIER;
     return calculateRarityAdjustedScore(score, actionType, multiplier);
   }

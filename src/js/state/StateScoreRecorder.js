@@ -1,5 +1,5 @@
 import { POINTS_CONFIG } from '../config/game-config.js';
-import { calculateRarityAdjustedScore } from '../logic/actions/RarityScoring.js';
+import { calculateRarityAdjustedScore, isNoRarityAction } from '../logic/actions/RarityScoring.js';
 
 const PASSIVE_ACTIONS = ['DIVIDEND', 'DAMAGE_PENALTY', 'FINAL_PENALTY'];
 const STATE_REASONS = ['点亮', '修复道损', '加持', '致阳道损', '致阴道损', '破阳点亮', '破阴点亮', '削弱加持'];
@@ -11,8 +11,7 @@ function cleanReason(reason) {
 
 export function rarityAdjustedScore(score, actionType, scoringConfig = null) {
   if (scoringConfig?.disableRarityBonus) return score;
-  const formalNoRarity = scoringConfig?.pointsConfig?.NO_RARITY_ACTIONS ?? POINTS_CONFIG?.NO_RARITY_ACTIONS ?? [];
-  if (scoringConfig?.noRarityActions?.includes(actionType) || formalNoRarity.includes(actionType)) return score;
+  if (isNoRarityAction(actionType, scoringConfig)) return score;
   return calculateRarityAdjustedScore(
     score,
     actionType,
