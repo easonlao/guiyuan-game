@@ -5,7 +5,7 @@
 ```sh
 npm run headless:evaluate -- --help
 npm run headless:evaluate -- --samples 2 --seed 202603 --max-turns 12 --config all
-npm run headless:evaluate -- --config disable-rarity-bonus --max-runs 100 --out reports/my-evaluation
+npm run headless:evaluate -- --max-runs 100 --out reports/my-evaluation
 ```
 
 Defaults use two discovery and two independent confirmation seeds, seed `202603`, a 12-turn cap for paired full-match batch comparisons, all five scoring selections (including `combined`), and `minimumEffect: 0.1`, `minimumPairs: 6`. Relative output paths, including the default artifact directory, are resolved from the repository root derived from the CLI module URL, so invocation does not depend on the caller's working directory. Frozen continuation checkpoints keep their recorded full `maxTurns` value (20 in the shipped fixture); the CLI never rewrites a checkpoint into an unreachable state. The evidence floor is intentionally greater than the default phase sample count, so a small run can correctly report insufficient evidence rather than overstate a result. `--samples` sets both phase counts; `--discovery-samples` and `--confirmation-samples` may set them separately. `--max-runs` caps fixed-position continuation matches for the full CLI study; it is not a match-turn cap. Select one rule preset with `--config formal-baseline`, an individual switch name, or `--config combined`; `--config all` runs all five selections. Arguments accept `--name value` or `--name=value`. Invalid options and incomplete evaluations exit nonzero and write `missing-data.json` and `missing-data.md`; failed or skipped runs are never interpreted as draws.

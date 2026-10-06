@@ -1,5 +1,7 @@
 # Experimental scoring for headless matches
 
+> **Note**: As of ADR 0002, the formal baseline rules now include the removal of rarity bonuses for `BURST` and `BURST_ATK`, and a permanent 2.5x multiplier for attack state changes. The `scoringConfig` parameters below remain available for testing alternative rules, but are no longer needed to achieve the balance addressed by ADR 0002.
+
 `runHeadlessMatch` accepts an optional `scoringConfig`. Omitting it preserves the formal scoring rules. Every successful result, including an omitted-config run, returns `result.scoringConfig`: an immutable, versioned snapshot of the selected switches and the `POINTS_CONFIG` values captured at match start.
 
 ```js
