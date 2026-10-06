@@ -141,7 +141,7 @@ export function performScoreRarityReanalysis(dataOrMatches) {
     : (dataOrMatches?.matchBreakdowns || []);
   const totalMatches = dataOrMatches?.totalMatches ?? matches.length;
 
-  const turnLimitMatches = matches.filter(m => m.reason !== '所有天干点亮' && m.reason !== '');
+  const turnLimitMatches = matches.filter(m => m.reason === '回合上限');
   const turnLimitMatchesCount = turnLimitMatches.length;
   const turnLimitRate = totalMatches > 0 ? turnLimitMatchesCount / totalMatches : 0;
 
@@ -299,12 +299,12 @@ export function buildScoreRarityReanalysisReportMarkdown(result, {
     '',
     '### 问题二：修正强化（BURST）自耗归属后，真实攻击类得分占比与激励现状为何？',
     '- **证据与分析：**',
-    `  - **强化自耗剥离：** 在原始统计中，强化与强破的第一步自耗（消耗自身本命合一状态）产生了削弱/破点亮事件，误计入攻击大类。在回合上限局中，胜方自耗均值为 **${fmtNum(burstCorrection.winnerSelfCostMean)} 分**，输方自耗均值为 **${fmtNum(burstCorrection.loserSelfCostMean)} 分**。`,
+    `  - **强化自耗剥离：** 在原始统计中，强化与强破的第一步自耗（消耗己方归一节点的一侧状态）产生了解除点亮或削弱事件，误计入攻击大类。在回合上限局中，胜方自耗均值为 **${fmtNum(burstCorrection.winnerSelfCostMean)} 分**，输方自耗均值为 **${fmtNum(burstCorrection.loserSelfCostMean)} 分**。`,
     `  - **修正前后攻击得分对比：**`,
     `    - 胜方攻击得分：由修正前 **${fmtNum(burstCorrection.winnerUnadjustedAttackMean)} 分** 降至修正后 **${fmtNum(scW.attack.mean)} 分**（占总分仅 **${fmtPctDirect(scW.attack.percent)}**）。`,
     `    - 输方攻击得分：由修正前 **${fmtNum(burstCorrection.loserUnadjustedAttackMean)} 分** 降至修正后 **${fmtNum(scL.attack.mean)} 分**（占总分仅 **${fmtPctDirect(scL.attack.percent)}**）。`,
     '  - **分析结论：**',
-    '    - 剥离强化自耗后，纯粹针对对手的攻击类压制得分（致道损、破点亮、压制削弱）在总分中的实际占比**仅约 5%**！',
+    '    - 剥离强化自耗后，纯粹针对对手的攻击类压制得分（致道损、破点亮、压制削弱）在总分中的实际占比**仅约 6%**（胜方 6.1%，输方 5.5%）！',
     '    - 这进一步确凿地证明：在现行计分规则下，攻击对手所获得的分数激励微乎其微，攻击动作不仅存在被动防守的机会成本，在计分上也几乎没有正向收益拉动力。',
     '- **结论边界：** 归属修正仅改变统计分类，不影响游戏内实际分数总和。',
     '',
