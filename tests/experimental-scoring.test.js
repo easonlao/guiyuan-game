@@ -44,6 +44,7 @@ describe('experimental headless scoring', () => {
       noSelfCostReward: false,
       burstActionScoreOnce: false,
       disableRarityBonus: false,
+      noRarityActions: [],
       pointsConfig: {
         ACTION: { CONVERT: 50 },
         STATE_CHANGE: { LIGHT_UP: 100 },
@@ -54,6 +55,7 @@ describe('experimental headless scoring', () => {
     });
     expect(result.scoringConfig.pointsConfig).not.toBe(POINTS_CONFIG);
     expect(Object.isFrozen(result.scoringConfig)).toBe(true);
+    expect(Object.isFrozen(result.scoringConfig.noRarityActions)).toBe(true);
     expect(Object.isFrozen(result.scoringConfig.pointsConfig.ACTION)).toBe(true);
     expect(result.actionRecords[0].scoreChanges[0].amount).toBe(337);
   });
@@ -63,6 +65,8 @@ describe('experimental headless scoring', () => {
     [[]],
     [{ version: 2 }],
     [{ noSelfCostReward: 1 }],
+    [{ noRarityActions: 'BURST' }],
+    [{ noRarityActions: [123] }],
     [{ unknownRule: true }],
     [{ pointsConfig: { ACTION: {} } }]
   ])('rejects illegal scoring configuration %j', scoringConfig => {
@@ -72,6 +76,20 @@ describe('experimental headless scoring', () => {
       name: 'HeadlessMatchError',
       code: 'INVALID_SCORING_CONFIG'
     }));
+  });
+
+  it('supports noRarityActions configuration and marks configuration as experimental', () => {
+    const initialState = currentOpportunity({
+      nodeStates: {
+        ...createInitialHeadlessState().nodeStates,
+        'P1-0': { yang: 1, yin: 0 }
+      }
+    });
+    const result = evaluate(initialState, { noRarityActions: ['BURST', 'BURST_ATK'] }, choose('CONVERT'));
+
+    expect(result.scoringConfig.name).toBe('experimental');
+    expect(result.scoringConfig.noRarityActions).toEqual(['BURST', 'BURST_ATK']);
+    expect(Object.isFrozen(result.scoringConfig.noRarityActions)).toBe(true);
   });
 
   it.each([

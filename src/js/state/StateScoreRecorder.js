@@ -9,8 +9,9 @@ function cleanReason(reason) {
   return match ? match[1].trim() : reason;
 }
 
-function rarityAdjustedScore(score, actionType, scoringConfig = null) {
+export function rarityAdjustedScore(score, actionType, scoringConfig = null) {
   if (scoringConfig?.disableRarityBonus) return score;
+  if (scoringConfig?.noRarityActions?.includes(actionType)) return score;
   return calculateRarityAdjustedScore(
     score,
     actionType,

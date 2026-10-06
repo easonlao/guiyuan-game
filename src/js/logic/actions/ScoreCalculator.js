@@ -134,6 +134,7 @@ const ScoreCalculator = {
    */
   _applyRarityBonus(score, actionType) {
     if (this.scoringConfig?.disableRarityBonus) return score;
+    if (this.scoringConfig?.noRarityActions?.includes(actionType)) return score;
     const multiplier = this.scoringConfig?.pointsConfig?.RARITY_MULTIPLIER ?? POINTS_CONFIG.RARITY_MULTIPLIER;
     return calculateRarityAdjustedScore(score, actionType, multiplier);
   }
