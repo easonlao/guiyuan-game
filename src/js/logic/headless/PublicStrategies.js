@@ -50,6 +50,37 @@ function scoreSituationResponsive(context, candidate) {
   return ({ BURST: 20, CONVERT: 10, TRANS: 10 })[candidate.type] ?? 0;
 }
 
+export function isSituationResponsiveThreatMode(context) {
+  const playerId = context?.playerId;
+  const opponentId = playerId === 'P1' ? 'P2' : 'P1';
+  const nodeStates = context?.state?.nodeStates;
+  return litSideCount(nodeStates, opponentId) >= 8;
+}
+
+export function scoreFixedBuild(candidate) {
+  return ({ BURST: 40, CONVERT: 30, TRANS: 20, BURST_ATK: 15, ATK: 10 })[candidate.type] ?? 0;
+}
+
+export function scoreFixedAttack(context, candidate) {
+  const playerId = context.playerId;
+  const opponentId = playerId === 'P1' ? 'P2' : 'P1';
+  const nodeStates = context.state?.nodeStates;
+  const opponentLitSides = litSideCount(nodeStates, opponentId);
+  if (candidate.type === 'ATK') {
+    const target = candidate.target;
+    const targetValue = target?.playerId === opponentId
+      ? sideValue(nodeStates?.[`${opponentId}-${target.elementIndex}`], target.isYang)
+      : 0;
+    return 30 + (targetValue === 1 ? 10 : 0) + opponentLitSides;
+  }
+  if (candidate.type === 'BURST_ATK') {
+    const target = nodeStates?.[`${opponentId}-${candidate.targetEl}`];
+    const exposedLitSides = Number(target?.yang >= 1) + Number(target?.yin >= 1);
+    return 35 + opponentLitSides + exposedLitSides;
+  }
+  return ({ BURST: 20, CONVERT: 10, TRANS: 10 })[candidate.type] ?? 0;
+}
+
 function scoreCandidate(strategyId, context, candidate) {
   if (strategyId === 'situation-responsive') return scoreSituationResponsive(context, candidate);
   return PRIORITIES[strategyId][candidate.type] ?? 0;
@@ -86,3 +117,48 @@ export function decidePublicStrategy(strategyId, context, random = () => 0) {
   if (!Number.isFinite(draw) || draw < 0 || draw >= 1) return bestCandidates[0];
   return bestCandidates[Math.floor(draw * bestCandidates.length)];
 }
+
+export function decideFixedBuild(context, random = () => 0) {
+  if (!context || !Array.isArray(context.candidates)) {
+    throw new TypeError('strategy context must contain a candidates array');
+  }
+  if (context.candidates.length === 0) return null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  let bestCandidates = [];
+  for (const candidate of context.candidates) {
+    const score = scoreFixedBuild(candidate);
+    if (score > bestScore) {
+      bestScore = score;
+      bestCandidates = [candidate];
+    } else if (score === bestScore) {
+      bestCandidates.push(candidate);
+    }
+  }
+  if (bestCandidates.length === 1) return bestCandidates[0];
+  const draw = random();
+  if (!Number.isFinite(draw) || draw < 0 || draw >= 1) return bestCandidates[0];
+  return bestCandidates[Math.floor(draw * bestCandidates.length)];
+}
+
+export function decideFixedAttack(context, random = () => 0) {
+  if (!context || !Array.isArray(context.candidates)) {
+    throw new TypeError('strategy context must contain a candidates array');
+  }
+  if (context.candidates.length === 0) return null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  let bestCandidates = [];
+  for (const candidate of context.candidates) {
+    const score = scoreFixedAttack(context, candidate);
+    if (score > bestScore) {
+      bestScore = score;
+      bestCandidates = [candidate];
+    } else if (score === bestScore) {
+      bestCandidates.push(candidate);
+    }
+  }
+  if (bestCandidates.length === 1) return bestCandidates[0];
+  const draw = random();
+  if (!Number.isFinite(draw) || draw < 0 || draw >= 1) return bestCandidates[0];
+  return bestCandidates[Math.floor(draw * bestCandidates.length)];
+}
+

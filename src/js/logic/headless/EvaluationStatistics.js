@@ -326,4 +326,4 @@ export function summarizeBatchResults(results, configurations, strategyIds) {
   };
 }
 
-export { boardKeyFor };
+export { boardKeyFor, summarizePairedDeltas };

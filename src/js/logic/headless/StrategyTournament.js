@@ -6,7 +6,8 @@
  */
 
 import { createInitialHeadlessState } from './HeadlessMatch.js';
-import { decidePublicStrategy, PUBLIC_STRATEGIES } from './PublicStrategies.js';
+import { decidePublicStrategy, decideFixedBuild, decideFixedAttack, isSituationResponsiveThreatMode, PUBLIC_STRATEGIES } from './PublicStrategies.js';
+import { summarizePairedDeltas } from './EvaluationStatistics.js';
 import { runSeededMatch } from './SeededMatch.js';
 
 function clone(value) {
@@ -17,8 +18,8 @@ export const TOURNAMENT_STRATEGIES = Object.freeze({
   'build-priority': { id: 'build-priority', version: 1, role: 'primary' },
   'attack-priority': { id: 'attack-priority', version: 1, role: 'primary' },
   'situation-responsive': { id: 'situation-responsive', version: 1, role: 'primary' },
-  'fixed-build': { id: 'fixed-build', version: 1, role: 'fixed-control', baseStrategy: 'build-priority' },
-  'fixed-attack': { id: 'fixed-attack', version: 1, role: 'fixed-control', baseStrategy: 'attack-priority' }
+  'fixed-build': { id: 'fixed-build', version: 1, role: 'fixed-control', baseStrategy: 'situation-responsive' },
+  'fixed-attack': { id: 'fixed-attack', version: 1, role: 'fixed-control', baseStrategy: 'situation-responsive' }
 });
 
 function resolveTournamentStrategy(strategyKey) {
@@ -29,18 +30,19 @@ function resolveTournamentStrategy(strategyKey) {
     return {
       id: 'fixed-build',
       version: 1,
-      decide: (context, random) => decidePublicStrategy('build-priority', context, random)
+      decide: (context, random) => decideFixedBuild(context, random)
     };
   }
   if (strategyKey === 'fixed-attack') {
     return {
       id: 'fixed-attack',
       version: 1,
-      decide: (context, random) => decidePublicStrategy('attack-priority', context, random)
+      decide: (context, random) => decideFixedAttack(context, random)
     };
   }
   throw new TypeError(`unknown tournament strategy: ${strategyKey}`);
 }
+
 
 function computeOutcomeValue(terminalResult, playerId) {
   if (terminalResult.winner === 'DRAW') return 0.5;
@@ -69,6 +71,14 @@ export function runStrategyTournament({ seeds = [202603], maxTurns = 60, scoring
   let totalStarterWins = 0;
   let totalLightingWins = 0;
   let totalTurnLimitWins = 0;
+  let threatModeTriggerCount = 0;
+  const onThreatTrigger = () => {
+    threatModeTriggerCount++;
+  };
+
+  const strategySeedOutcomes = Object.fromEntries(
+    strategyKeys.map(key => [key, Object.fromEntries(seeds.map(s => [s, []]))])
+  );
 
   const strategySummaries = Object.fromEntries(strategyKeys.map(key => [
     key,
@@ -118,9 +128,24 @@ export function runStrategyTournament({ seeds = [202603], maxTurns = 60, scoring
             scoringConfig
           });
 
+          if (p1Key === 'situation-responsive' || p2Key === 'situation-responsive') {
+            for (const record of match.actionRecords) {
+              if (record.action?.type === 'AUTO') continue;
+              const actingStrategy = record.playerId === 'P1' ? p1Key : p2Key;
+              if (actingStrategy === 'situation-responsive') {
+                const turnEntry = match.trajectory.find(t => t.event === 'turn-start' && t.opportunity === record.opportunity);
+                if (turnEntry && isSituationResponsiveThreatMode({ playerId: record.playerId, state: turnEntry.state })) {
+                  threatModeTriggerCount++;
+                }
+              }
+            }
+          }
+
           const term = match.terminalResult;
           const valP1 = computeOutcomeValue(term, 'P1');
           const valP2 = computeOutcomeValue(term, 'P2');
+          strategySeedOutcomes[p1Key][seed].push(valP1);
+          strategySeedOutcomes[p2Key][seed].push(valP2);
           const isLighting = term.reason === '所有天干点亮';
           const terminalCategory = isLighting ? '五行归元' : '回合上限结算';
           const litSides = {
@@ -252,16 +277,33 @@ export function runStrategyTournament({ seeds = [202603], maxTurns = 60, scoring
   const deltaFb = srMean - fbMean;
   const deltaFa = srMean - faMean;
 
-  let switchingInterpretation = '局势切换与固定对照表现相近。';
-  if (deltaFb > 0 && deltaFa > 0) {
-    interpretationText(deltaFb, deltaFa);
+  const seedDeltasFb = [];
+  const seedDeltasFa = [];
+  for (const seed of seeds) {
+    const srVals = strategySeedOutcomes['situation-responsive'][seed];
+    const fbVals = strategySeedOutcomes['fixed-build'][seed];
+    const faVals = strategySeedOutcomes['fixed-attack'][seed];
+    const srSeedMean = srVals.reduce((a, b) => a + b, 0) / (srVals.length || 1);
+    const fbSeedMean = fbVals.reduce((a, b) => a + b, 0) / (fbVals.length || 1);
+    const faSeedMean = faVals.reduce((a, b) => a + b, 0) / (faVals.length || 1);
+    seedDeltasFb.push({ seed, delta: srSeedMean - fbSeedMean });
+    seedDeltasFa.push({ seed, delta: srSeedMean - faSeedMean });
   }
 
-  function interpretationText(dFb, dFa) {
-    switchingInterpretation = `局势响应策略在完整对阵中综合收益优于固定建设(+${dFb.toFixed(3)})与固定进攻(+${dFa.toFixed(3)})，表明根据对手点亮威胁动态调整行为带来了实质胜率增益。`;
-  }
-  if (deltaFb > 0 || deltaFa > 0) {
-    interpretationText(deltaFb, deltaFa);
+  const deltaFbStats = summarizePairedDeltas(seedDeltasFb);
+  const deltaFaStats = summarizePairedDeltas(seedDeltasFa);
+  const ciFb = deltaFbStats.confidenceInterval95;
+  const ciFa = deltaFaStats.confidenceInterval95;
+
+  let switchingInterpretation = '局势切换与固定对照表现相近。';
+  if (threatModeTriggerCount === 0) {
+    switchingInterpretation = '局势响应策略在所有对局中威胁模式触发 0 次；未触发，与建设优先不可区分。';
+  } else if (seeds.length < 6) {
+    switchingInterpretation = `种子样本量不足 (n=${seeds.length} < 6)，证据不足，无法做出方向性推断。`;
+  } else if (ciFb && ciFa && ciFb.lower > 0 && ciFa.lower > 0 && deltaFb > 0 && deltaFa > 0) {
+    switchingInterpretation = `局势响应策略在完整对阵中综合表现优于固定建设 (Δ=+${deltaFb.toFixed(3)}, 95% CI [${ciFb.lower.toFixed(3)}, ${ciFb.upper.toFixed(3)}]) 与固定进攻 (Δ=+${deltaFa.toFixed(3)}, 95% CI [${ciFa.lower.toFixed(3)}, ${ciFa.upper.toFixed(3)}])，置信区间均不跨 0，表明局势响应切换带来了统计上稳健的胜率增益。`;
+  } else {
+    switchingInterpretation = `局势响应策略相对于固定建设 (Δ=${deltaFb.toFixed(3)}, 95% CI [${ciFb ? `${ciFb.lower.toFixed(3)}, ${ciFb.upper.toFixed(3)}` : 'n/a'}]) 或固定进攻 (Δ=${deltaFa.toFixed(3)}, 95% CI [${ciFa ? `${ciFa.lower.toFixed(3)}, ${ciFa.upper.toFixed(3)}` : 'n/a'}]) 未能同时满足置信区间不跨 0（或未能同时优于两对照），证据不足以支持策略切换带来独立超额优势。`;
   }
 
   return {
@@ -286,6 +328,15 @@ export function runStrategyTournament({ seeds = [202603], maxTurns = 60, scoring
       fixedAttackValue: faMean,
       switchingAdvantageOverFixedBuild: deltaFb,
       switchingAdvantageOverFixedAttack: deltaFa,
+      threatModeTriggerCount,
+      deltaFixedBuildStats: deltaFbStats,
+      deltaFixedAttackStats: deltaFaStats,
+      hasSignificantAdvantage: Boolean(
+        threatModeTriggerCount > 0 &&
+        seeds.length >= 6 &&
+        ciFb?.lower > 0 &&
+        ciFa?.lower > 0
+      ),
       interpretation: switchingInterpretation
     },
     inferenceBoundary: '该对阵结果受限于固定的五种公共策略和配置的随机种子；策略切换收益只在包含两类固定对手的混合对阵中成立，不外推为人类最优玩法。'

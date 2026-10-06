@@ -283,52 +283,132 @@ function buildResearchMarkdown(study) {
     '',
     '### 问题一：哪些状态下建设、破坏、调息各有价值？',
     '- **证据与分析：**',
-    '  - **状态结构空间：** 游戏单方拥有 5 个五行节点、每节点阴阳两侧，共 10 个状态位，各侧取值范围为 {-1:道损, 0:虚空, 1:点亮, 2:加持}。单方理论棋盘组合为 $4^{10} = 1,048,576$，按五行相生相克的循环同构($Z_5$群)去重后等价类为 209,728 个；双方理论棋盘组合为 $4^{20} \\approx 1.10 \\times 10^{12}$。',
-    '  - **建设类动作 (AUTO / CONVERT / TRANS)：** 在对局前期与中盘均势时是开辟点亮通路、积累归一节点的基础。吸纳(AUTO)是天干顺应时的免费点亮；化生(TRANS)顺生属性推进点亮，为后续相生链路提供支撑。',
-    '  - **调息动作 (CONVERT)：** 在当前天干对应的本命节点一侧已点亮而另一侧未点亮时，调息提供了极具针对性的单节点内部平衡能力，是达成归一(阴阳皆点亮)的高效手段。',
-    '  - **破坏类动作 (ATK)：** 在对手点亮侧达到 8 侧以上(进入胜势威胁区)或对手拥有关键归一节点时具有决定性打断价值；在对手点亮较低时，进攻的即时边际收益往往不及自身建设。',
-    '- **结论边界：** 动作必要性取决于具体局面上下文(剩余回合、分差、对手点亮进度与天干)，不存在全局绝对最优标签。',
+    `  - **状态结构空间：** 游戏单方拥有 5 个五行节点、每节点阴阳两侧，共 10 个状态位，各侧取值范围为 {-1:道损, 0:虚空, 1:点亮, 2:加持}。单方等价类为 209,728 个；双方理论棋盘组合为 $4^{20} \\approx 1.10 \\times 10^{12}$（字段路径: evaluation.json#/theoreticalStateSpace）。`,
+    `  - **动作分布与固定局面检验：** 本次评估涵盖 ${study.positionAnalyses.length} 个固定基准局面，全运行记录有效动作序列样本数 ${study.summary.effectiveSamples}（字段路径: evaluation.json#/summary/effectiveSamples）。在固定局面评估中，探索阶段发现对数分型为 ${JSON.stringify(study.summary.discoveryClassifications)}，独立确认对数为 ${study.summary.confirmedPairs}（字段路径: evaluation.json#/summary/confirmedPairs）。`
+  ];
+
+  if (study.summary.confirmedPairs > 0) {
+    lines.push(`  - **数据结论：** 观测到 ${study.summary.confirmedPairs} 组经独立确认的动作偏好反转（详见 evaluation.json#/evaluations）。`);
+  } else {
+    lines.push('  - **数据结论：** 在测试的固定局面与策略对阵中，经独立确认的动作偏好反转对数为 0（见 evaluation.json#/summary/confirmedPairs）。数据不足以证明某类动作在特定局面下全局优于另一类动作（证据不足）。');
+  }
+  lines.push(
+    '  - **动作类别说明：** 吸纳(AUTO)对应天干免费点亮；调息(CONVERT)平衡本节点阴阳两侧；化(TRANS)推进相生链路点亮；破坏类(ATK/BURST_ATK)压制对手节点。动作即时改变量详见 evaluation.json#/positionAnalyses。',
+    `- **结论边界：** 动作价值受制于有限基准局面（${study.positionAnalyses.map(p => p.positionId).join(', ')}）及固定公共策略池（build-priority, attack-priority, situation-responsive），不推断人类最优玩法。`,
     '',
     '### 问题二：强化类是否挤压其他选择，额外行动贡献多少？',
     '- **证据与分析：**',
-    '  - **强化机制与代价：** 强化(BURST)与强破(BURST_ATK)必须消耗自身 1 点归一/合一侧状态，换取 2 次生/克属性操作，并在非连动回合中获得额外行动机会。',
-    '  - **次序收益定量分离：** 诊断性对照测试(保留棋盘节点改动但抑制额外行动机会)表明，在有归一支持的合法局面中，额外行动提供了显著的节奏领先(对手响应前立即推进或连续压制)；',
-    '  - **挤压效应边界：** 强化类虽具有高优先级，但其使用受制于苛刻先决条件(必须本节点归一)，且现行规则抑制连锁连动(处于额外行动时再次强化不重复赋予连动)，并未挤死常规建设与调息。',
-    '- **结论边界：** 额外行动的价值高度依赖后续天干与局势，不能简单等同于固定数值点数。',
+    '  - **机制规则：** 强化(BURST)与强破(BURST_ATK)必须消耗自身 1 点归一/合一侧状态，换取 2 次生/克属性操作，并在非连动回合中获得额外行动机会。若已处于连动回合，再次强化不重复赋予额外行动。'
+  );
+
+  if (!study.turnOrderDiagnostics || study.turnOrderDiagnostics.length === 0) {
+    lines.push('  - **次序价值实测：** 本次评估未配置针对强化局面的次序对照诊断（字段路径: evaluation.json#/turnOrderDiagnostics 为空）。');
+  } else {
+    lines.push('  - **次序价值实测：**');
+    for (const [idx, diag] of study.turnOrderDiagnostics.entries()) {
+      const bursts = diag.formalComparison.actions.filter(a => ['BURST', 'BURST_ATK'].includes(a.action.type));
+      if (diag.seeds.length < 6) {
+        lines.push(`    - 局面 ${diag.positionId}（种子数 n=${diag.seeds.length}）：样本量低于门槛 6，证据不足，不输出方向性推断（字段路径: evaluation.json#/turnOrderDiagnostics/${idx}）。`);
+      } else if (bursts.length === 0) {
+        lines.push(`    - 局面 ${diag.positionId}：无合法强化动作（字段路径: evaluation.json#/turnOrderDiagnostics/${idx}）。`);
+      } else {
+        for (const burstAction of bursts) {
+          const contrib = diag.turnOrderContributions.find(c => c.action.type === burstAction.action.type);
+          const delta = contrib?.turnOrderValueDelta ?? 0;
+          if (delta === 0) {
+            lines.push(`    - 局面 ${diag.positionId} [${burstAction.action.type}]：强化动作额外行动价值增量为 0.000（字段路径: evaluation.json#/turnOrderDiagnostics/${idx}）。在测试样本中未改变终局胜负走向（差值为 0）。`);
+          } else {
+            lines.push(`    - 局面 ${diag.positionId} [${burstAction.action.type}]：额外行动价值增量点估计为 ${delta > 0 ? '+' : ''}${delta.toFixed(3)}（字段路径: evaluation.json#/turnOrderDiagnostics/${idx}）。`);
+          }
+        }
+      }
+    }
+  }
+
+  lines.push(
+    '- **结论边界：** 额外行动影响依赖于具体测试局面与天干随机序列，受制于测试样本规模。',
     '',
     '### 问题三：局势切换是否提高获胜机会？',
     '- **证据与分析：**',
-    '  - **全策略循环对阵：** 在包含先手交换的全策略对阵中，局势响应策略(面对对手 >=8 侧点亮时转入防守反击，其余时间专注建设)相较于单一目标的固定建设策略与固定进攻策略，在应对多样化对手时均展现出稳健的胜率收益。',
-    '  - 局势切换避免了固定建设在对手即将点亮时的盲目冒进，也避免了固定进攻在前期缺乏破坏目标时的效率浪费。',
-    '- **结论边界：** 局势切换收益是在混合策略池中测得的相对表现，不代表已经达到全局博弈论均衡。',
+    '  - **对照组设计：** 局势响应策略在对手点亮侧 >= 8 时切换为进攻，其余时段保持建设。对照组为相同偏好表下不切换的固定建设(fixed-build)与固定进攻(fixed-attack)（字段路径: evaluation.json#/tournament/strategies）。',
+    `  - **威胁模式实际触发：** 局势响应策略在所有对局中威胁模式实际触发 ${study.tournament.switchingAnalysis.threatModeTriggerCount} 次（字段路径: evaluation.json#/tournament/switchingAnalysis/threatModeTriggerCount）。`,
+    '  - **统计量引用：**',
+    `    - 局势响应胜负价值: ${study.tournament.switchingAnalysis.situationResponsiveValue.toFixed(3)}（字段路径: evaluation.json#/tournament/switchingAnalysis/situationResponsiveValue）`,
+    `    - 固定建设胜负价值: ${study.tournament.switchingAnalysis.fixedBuildValue.toFixed(3)}，成对差值点估计 Δ=${study.tournament.switchingAnalysis.switchingAdvantageOverFixedBuild > 0 ? '+' : ''}${study.tournament.switchingAnalysis.switchingAdvantageOverFixedBuild.toFixed(3)}，95% CI [${study.tournament.switchingAnalysis.deltaFixedBuildStats?.confidenceInterval95 ? `${study.tournament.switchingAnalysis.deltaFixedBuildStats.confidenceInterval95.lower.toFixed(3)}, ${study.tournament.switchingAnalysis.deltaFixedBuildStats.confidenceInterval95.upper.toFixed(3)}` : 'n/a'}]（字段路径: evaluation.json#/tournament/switchingAnalysis/deltaFixedBuildStats）`,
+    `    - 固定进攻胜负价值: ${study.tournament.switchingAnalysis.fixedAttackValue.toFixed(3)}，成对差值点估计 Δ=${study.tournament.switchingAnalysis.switchingAdvantageOverFixedAttack > 0 ? '+' : ''}${study.tournament.switchingAnalysis.switchingAdvantageOverFixedAttack.toFixed(3)}，95% CI [${study.tournament.switchingAnalysis.deltaFixedAttackStats?.confidenceInterval95 ? `${study.tournament.switchingAnalysis.deltaFixedAttackStats.confidenceInterval95.lower.toFixed(3)}, ${study.tournament.switchingAnalysis.deltaFixedAttackStats.confidenceInterval95.upper.toFixed(3)}` : 'n/a'}]（字段路径: evaluation.json#/tournament/switchingAnalysis/deltaFixedAttackStats）`,
+    `    - 样本数: 锦标赛总场次 ${study.tournament.totalRuns} 局，有效动作序列 ${study.tournament.effectiveSamples}，种子数 ${study.tournament.seeds.length}（字段路径: evaluation.json#/tournament/seeds）。`,
+    `  - **判定结论：** ${study.tournament.switchingAnalysis.interpretation}`,
+    `- **结论边界：** ${study.tournament.inferenceBoundary}`,
     '',
     '### 问题四：现行计分强化已有优势还是补偿真实代价？',
     '- **证据与分析：**',
-    '  - **计分与终局目标：** 现行规则以点亮全部节点(所有阴阳侧至少为 1)为主要胜利条件，分数作为达到回合上限时的兜底判定。',
-    '  - **计分开关对比：** 在消除自身代价奖励、爆发计分一次、取消稀有度加成以及组合开关的对比中，胜负归属在代表性样本中未发生反转；现行计分在过程上对节点点亮与归一分红给予积分激励，起到与棋盘推进方向一致的强化作用。',
-    '- **结论边界：** 当前样本对小分差的影响仍在统计波动范围内，计分体系对胜率的深层塑造仍需更大样本验证。',
+    `  - **终局形式统计：** 游戏以五行归元为主要胜利目标，达到回合上限（${study.summary.maxTurns} 回合）时触发计分结算。在本次锦标赛中，终局分布为：五行归元 ${study.tournament.terminalDistribution['五行归元']} 局，回合上限结算 ${study.tournament.terminalDistribution['回合上限结算']} 局（字段路径: evaluation.json#/tournament/terminalDistribution）。`,
+    '  - **计分变体成对差值：**'
+  );
+
+  let allBatchDeltasZero = true;
+  for (const [idx, comp] of study.batchComparisons.entries()) {
+    const validDeltas = comp.pairedDeltas.filter(d => d.mean !== null);
+    const nonZero = validDeltas.filter(d => Math.abs(d.mean) > 1e-6);
+    if (nonZero.length > 0) allBatchDeltasZero = false;
+    const deltaSummary = comp.pairedDeltas.map(d => `${d.strategies.P1} vs ${d.strategies.P2}: ${d.mean === null ? 'n/a' : d.mean.toFixed(3)} [${d.interval95 ? `${d.interval95.lower.toFixed(3)}, ${d.interval95.upper.toFixed(3)}` : 'n/a'}]`).join('; ');
+    lines.push(`    - ${comp.selection}（相对于基准）: ${deltaSummary}，种子簇数 ${comp.pairedDeltas[0]?.clusters ?? 0}/${comp.pairedDeltas[0]?.plannedClusters ?? 0}（字段路径: evaluation.json#/batchSummaries/${idx}）。`);
+  }
+
+  if (allBatchDeltasZero) {
+    lines.push('  - **数据结论：** 在测试样本中，所有计分变体相对于基准的胜负价值成对差值点估计均为 0.000，未发生胜负反转。数据不足以支持计分变体对终局胜负存在实质改变（差值为 0 / 证据不足）。');
+  } else {
+    lines.push('  - **数据结论：** 计分变体成对差值详见上述统计，置信区间若跨越 0 则不构成统计显著差异。');
+  }
+
+  lines.push(
+    '- **结论边界：** 当前样本对小分差的影响仍在统计波动范围内，计分体系对胜率的深层塑造需更大样本验证。',
     '',
     '### 问题五：哪些问题仍不能判断？',
-    '- 对手变动导致的策略交叉反转在本次样本中因样本量低于统计门槛，仍属于「证据不足」；',
+    study.summary.confirmedPairs > 0
+      ? `- 动作反转覆盖度：虽然观测到 ${study.summary.confirmedPairs} 组确认反转，但未覆盖全部策略对与局势组合（字段路径: evaluation.json#/summary/confirmedPairs）；`
+      : '- 对手变动导致的策略交叉反转在本次样本中确认对数为 0，仍属于「证据不足」（字段路径: evaluation.json#/summary/confirmedPairs）；',
+    study.tournament.switchingAnalysis.hasSignificantAdvantage
+      ? '- 局势切换优势已在测试环境中通过置信区间检验，但仍受限于五种预设策略池，未证明对未知对手的最优性；'
+      : `- 局势切换的独立超额优势在当前数据下仍属于「证据不足」（威胁模式触发 ${study.tournament.switchingAnalysis.threatModeTriggerCount} 次，置信区间跨 0 或样本不足）；`,
     '- 电脑策略的取舍选择不等于真人玩家的直观体验，无法直接推断游戏是否好玩或易学。',
     '',
     '## 2. 状态结构与探索性取舍地图',
     '',
-    '| 局面情境 | 典型特征 | 建设行为价值 | 破坏行为价值 | 调息行为价值 | 强化类行为价值 |',
-    '| --- | --- | --- | --- | --- | --- |',
-    '| 早期均势 (Early) | 双方点亮侧少，无直接威胁 | 极高：快速占领节点 | 极低：缺少有效目标 | 中等：平抑单侧偏向 | 无：尚未达成归一 |',
-    '| 中期发展 (Mid) | 双方形成 1-2 个归一节点 | 高：扩充生属性链路 | 中等：打断对手相生 | 极高：修复道损或促成新归一 | 极高：爆发拉开差距 |',
-    '| 威胁应对 (Disruption) | 对手已点亮 >= 8 侧 | 低：自身推进落后于对手终局 | 极高：唯一阻止落败手段 | 较低：无法即时解围 | 极高：强破直接压退对手 |',
-    '| 临界残局 (Near-Limit) | 接近回合上限，分差微弱 | 中等：争夺分红积分 | 中等：扣除对手被动分 | 中等：平衡状态分 | 高：抢夺额外回合定胜负 |',
+    '| 局面 ID | 局面情境 | 当前天干 | 合法首步动作 | 动作特征概要 | 字段路径 |',
+    '| --- | --- | --- | --- | --- | --- |'
+  );
+
+  for (const [idx, pa] of study.positionAnalyses.entries()) {
+    const actSummary = pa.tradeoffTable?.actions?.map(a => a.action.type).join(', ') || 'none';
+    const tagSummary = [...new Set(pa.tradeoffTable?.actions?.flatMap(a => a.effect?.tags ?? []) ?? [])].join(', ') || 'none';
+    lines.push(`| ${pa.positionId} | ${pa.classification} | ${pa.stateStructure?.currentStem?.name ?? '未知'} | ${actSummary} | ${tagSummary} | evaluation.json#/positionAnalyses/${idx} |`);
+  }
+
+  lines.push(
+    '',
+    '说明：上述取舍基于固定局面下的首步动作即时状态改变量（见 evaluation.json#/positionAnalyses），不构成全局胜负方向性判断。',
     '',
     '## 3. 预先固定的确认实验计划',
     '',
-    '- **假设设定：** 在对手接近点亮(>=8侧)的局面下，破坏类动作的胜负期望价值显著高于建设类动作。',
+    '- **假设设定：** 在对手接近点亮(>=8侧)的局面下，破坏类动作的胜负期望价值高于建设类动作。',
     '- **冻结条件：** 策略版本冻结为 `build-priority@1`、`attack-priority@1`、`situation-responsive@1`；不复用探索阶段的种子。',
-    '- **样本预算：** 探索样本 >= 6 对，独立确认样本 >= 12 对。',
+    `- **样本预算：** 探索样本 >= 6 对，独立确认样本 >= 12 对（字段路径: evaluation.json#/plan）。`,
     '- **停止条件：** 若 95% 置信区间跨越 0 或效果量低于 0.1，判定为无反转或证据不足，不降低门槛制造成功。',
     '',
     '## 4. 真人复核案例与试玩核对问题',
+    ''
+  );
+
+  if (study.humanCases.length === 0) {
+    lines.push('在实际测试记录中，未出现策略首步分歧或条件反转案例（字段路径: evaluation.json#/humanCases 为空）。');
+  } else {
+    for (const [index, item] of study.humanCases.entries()) {
+      lines.push(`- 案例 ${index + 1}: ${item.kind} 于局面 ${item.positionId}；动作为 ${JSON.stringify(item.actions)}。${item.whySelected} 证据边界: ${item.limits}`);
+    }
+  }
+
+  lines.push(
     '',
     '对于实际记录中的策略分歧案例，建议组织真人试玩并核对以下核心问题：',
     '1. 预判对手策略是否改变了你在此局面的首步选择？',
@@ -347,7 +427,7 @@ function buildResearchMarkdown(study) {
     `- Scoring selections: ${study.plan.scoringSelections.map(selection => `${selection.id}=${selection.scoringConfig.name}@${selection.scoringConfig.version}`).join('; ')}.`,
     `- Fixed-position reports: ${study.evaluations.length}; paired batch comparison reports: ${study.batchComparisons.length}; repeated formal-baseline controls retained: ${study.summary.baselineControls}.`,
     `- Human-review cases selected from actual records: ${study.humanCases.length}.`
-  ];
+  );
   for (const comparison of study.batchComparisons) {
     lines.push(`- ${comparison.selection}: paired terminal-value deltas (selection − formal baseline) by ordered strategy assignment: ${comparison.pairedDeltas.map(item => `${item.strategies.P1} vs ${item.strategies.P2} ${item.mean === null ? 'n/a' : item.mean.toFixed(3)} [${item.interval95 ? `${item.interval95.lower.toFixed(3)}, ${item.interval95.upper.toFixed(3)}` : 'n/a'}], seed clusters ${item.clusters}/${item.plannedClusters}`).join('; ')}.`);
     const pointEstimateDeclines = comparison.pairedDeltas.filter(item => item.mean !== null && item.mean < 0);
