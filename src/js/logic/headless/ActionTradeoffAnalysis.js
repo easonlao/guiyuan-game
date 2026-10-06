@@ -162,7 +162,7 @@ function inferPotentialUtility(action, effect) {
   if (!action) return 'none';
   if (action.type === 'AUTO') return '基础吸纳：免费点亮/加持当前天干对应侧';
   if (action.type === 'CONVERT') return '调息平衡：转移天干能量至本节点另一侧，促进归一';
-  if (action.type === 'TRANS') return '化生推进：顺五行相生强化下游节点，加速点亮';
+  if (action.type === 'TRANS') return '化（顺生推进）：顺五行相生强化下游节点，加速点亮';
   if (action.type === 'ATK') return '直接破防：顺五行相克压制对手节点，阻断对手归一';
   if (action.type === 'BURST') return '强化爆发：消耗自身归一节点换取生属性双重加持与额外行动';
   if (action.type === 'BURST_ATK') return '强破爆发：消耗自身归一节点换取克属性双重压制与额外行动';
@@ -229,7 +229,7 @@ export function declareStrategyIntent(strategyId, context) {
       return {
         strategyId,
         primaryObjective: 'develop-nodes',
-        rationale: '静态建设优先级：强化(BURST) > 调息(CONVERT) > 化生(TRANS) > 进攻(ATK)'
+        rationale: '静态建设优先级：强化(BURST) > 调息(CONVERT) > 化(TRANS) > 进攻(ATK)'
       };
     case 'attack-priority':
     case 'fixed-attack':

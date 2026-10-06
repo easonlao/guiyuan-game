@@ -137,12 +137,14 @@ export function runTurnOrderDiagnostic({ position, strategies, seeds, scoringCon
     if (isBurst) {
       if (position.state.isExtraTurn) {
         interpretation = '当前已处于连动回合，正式规则亦不重复授予额外行动，次序加成为 0。';
+      } else if (seeds.length < 6) {
+        interpretation = `证据不足：样本量低于门槛（n=${seeds.length} < 6），不输出方向性结论（当前点估计差值 ${turnOrderDelta.toFixed(3)}）。`;
       } else if (turnOrderDelta > 0) {
         interpretation = `强化获得的额外行动提供了 +${turnOrderDelta.toFixed(3)} 的净胜势价值提升。`;
       } else if (turnOrderDelta < 0) {
-        interpretation = `在当前局势下，连续行动反而导致负面价值变化 (${turnOrderDelta.toFixed(3)})。`;
+        interpretation = `在当前局势下，连续行动导致负面价值变化 (${turnOrderDelta.toFixed(3)})。`;
       } else {
-        interpretation = '在测试的样本种子中，额外行动未改变最终胜负走向。';
+        interpretation = '在测试的样本种子中，额外行动未改变最终胜负走向（差值为 0）。';
       }
     }
 
