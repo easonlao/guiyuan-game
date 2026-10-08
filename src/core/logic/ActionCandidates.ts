@@ -11,7 +11,6 @@ import {
   NodeData,
   Polarity,
   TianGanInfo,
-  WuXing,
   GENERATION_CYCLE,
   OVERCOMING_CYCLE
 } from '../types/domain.js';
@@ -77,17 +76,19 @@ export function getAvailableActions(
   const stemNode = playerBoard[stemElement];
   const stemLevel = stemNode[stemPolarity];
 
-  const actions: ActionPayload[] = [];
-
-  // 1. 若对应节点侧处于虚空 (0) 或道损 (-1)，可以执行自动吸纳 (AUTO)
+  // 1. 若对应节点侧处于虚空 (0) 或道损 (-1)，必须且只能执行自动吸纳 (AUTO)
   if (stemLevel <= 0) {
-    actions.push({
-      actionType: ActionType.AUTO,
-      player: playerId,
-      element: stemElement,
-      polarity: stemPolarity
-    });
+    return [
+      {
+        actionType: ActionType.AUTO,
+        player: playerId,
+        element: stemElement,
+        polarity: stemPolarity
+      }
+    ];
   }
+
+  const actions: ActionPayload[] = [];
 
   // 2. 当对应节点侧已点亮 (1) 或加持 (2) 时
   if (stemLevel >= 1) {
@@ -131,39 +132,34 @@ export function getAvailableActions(
     }
   }
 
-  // 3. 爆发动作：己方任意五行节点处于“归一”（阴阳均 >= 1）时
+  // 3. 爆发动作：规则 A（爆发严格绑定当前天干归一）
+  // 仅当当前抽取的天干所属节点已经达成归一（阴阳两侧均 >= 1）时，才允许基于该天干节点发起强化 (BURST) 或强破 (BURST_ATK)
   // 连动限制：若当前处于 extraTurn，过滤掉 BURST/BURST_ATK，确保一次大回合内禁止二次爆发
-  if (!options?.isExtraTurn) {
-    const wuxingList = Object.keys(playerBoard) as WuXing[];
-    for (const element of wuxingList) {
-      const node = playerBoard[element];
-      if (isNodeGuiYi(node)) {
-        // 3.1 强化 (BURST): 消耗阴侧，强化相生节点
-        const shengEl = GENERATION_CYCLE[element];
-        const shengTargetPolarity = getPlusTargetPolarity(playerBoard[shengEl]);
-        if (shengTargetPolarity !== null) {
-          actions.push({
-            actionType: ActionType.BURST,
-            player: playerId,
-            sourceElement: element,
-            consumePolarity: Polarity.YIN,
-            polarity: shengTargetPolarity
-          });
-        }
+  if (!options?.isExtraTurn && isNodeGuiYi(stemNode)) {
+    // 3.1 强化 (BURST): 消耗阴侧，强化相生节点
+    const shengEl = GENERATION_CYCLE[stemElement];
+    const shengTargetPolarity = getPlusTargetPolarity(playerBoard[shengEl]);
+    if (shengTargetPolarity !== null) {
+      actions.push({
+        actionType: ActionType.BURST,
+        player: playerId,
+        sourceElement: stemElement,
+        consumePolarity: Polarity.YIN,
+        polarity: shengTargetPolarity
+      });
+    }
 
-        // 3.2 强破 (BURST_ATK): 消耗阳侧，削弱相克节点
-        const keEl = OVERCOMING_CYCLE[element];
-        const keTargetPolarity = getMinusTargetPolarity(opponentBoard[keEl]);
-        if (keTargetPolarity !== null) {
-          actions.push({
-            actionType: ActionType.BURST_ATK,
-            player: playerId,
-            sourceElement: element,
-            consumePolarity: Polarity.YANG,
-            polarity: keTargetPolarity
-          });
-        }
-      }
+    // 3.2 强破 (BURST_ATK): 消耗阳侧，削弱相克节点
+    const keEl = OVERCOMING_CYCLE[stemElement];
+    const keTargetPolarity = getMinusTargetPolarity(opponentBoard[keEl]);
+    if (keTargetPolarity !== null) {
+      actions.push({
+        actionType: ActionType.BURST_ATK,
+        player: playerId,
+        sourceElement: stemElement,
+        consumePolarity: Polarity.YANG,
+        polarity: keTargetPolarity
+      });
     }
   }
 
