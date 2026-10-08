@@ -26,7 +26,11 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
     expect(result.nextState.round).toBe(2);
     // Verify immutability of previous state
     expect(initialState.players.P1.board[WuXing.WOOD].yang).toBe(0);
+    // Verify structural sharing: unmodified nodes share reference
+    expect(result.nextState.players.P1.board[WuXing.FIRE]).toBe(initialState.players.P1.board[WuXing.FIRE]);
+    expect(result.nextState.players.P2.board).toBe(initialState.players.P2.board);
   });
+
 
   it('CONVERT (调息): should transfer energy to opposite polarity', () => {
     const initialState = createInitialGameState();

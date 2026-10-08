@@ -10,5 +10,19 @@ describe('HeadlessMatch (Headless Simulation)', () => {
     expect(result.finalState).toBeDefined();
     expect(typeof result.finalP1Score).toBe('number');
     expect(typeof result.finalP2Score).toBe('number');
+    expect(result.record).toBeDefined();
+    expect(result.record.actions.length).toBeGreaterThan(0);
+  });
+
+  it('should reproduce identical match results given the same seed', () => {
+    const match = new HeadlessMatch();
+    const result1 = match.run(undefined, undefined, { seed: 8888, maxRounds: 30 });
+    const result2 = match.run(undefined, undefined, { seed: 8888, maxRounds: 30 });
+
+    expect(result1.roundsPlayed).toBe(result2.roundsPlayed);
+    expect(result1.winner).toBe(result2.winner);
+    expect(result1.finalP1Score).toBe(result2.finalP1Score);
+    expect(result1.finalP2Score).toBe(result2.finalP2Score);
+    expect(result1.record).toEqual(result2.record);
   });
 });

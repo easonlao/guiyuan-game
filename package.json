@@ -10,6 +10,7 @@
     "check:lint": "oxlint src/core src/adapters tests/core",
     "oxlint": "oxlint src/core src/adapters tests/core",
     "check:deps": "depcruise --config .dependency-cruiser.js src",
+    "benchmark:headless": "npx tsx src/core/headless/HeadlessBenchmark.ts",
     "stryker": "stryker run"
   },
   "devDependencies": {
