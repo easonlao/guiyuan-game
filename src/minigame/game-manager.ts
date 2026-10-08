@@ -1,8 +1,9 @@
 import { TurnManager } from '../core/logic/TurnManager';
 import { createPRNG } from '../core/utils/prng';
-import { ActionPayload, ActionType, Polarity, TianGanInfo, WuXing } from '../core/types/domain';
+import { ActionPayload, ActionType, GENERATION_CYCLE, OVERCOMING_CYCLE, Polarity, TianGanInfo, WuXing } from '../core/types/domain';
 import { BALANCED_WEIGHTS, createStrategy } from '../core/ai/Strategy';
 import { AnimationMode, CharacterActionState, FlyingProjectile, ImpactEffect, TouchButton } from './types';
+import { formatActionButton } from './action-button-formatter';
 import {
   drawCenterTianGanRune,
   drawFlyingEnergy,
@@ -128,48 +129,7 @@ export class GameManager {
     const containerW = this.width - 56;
 
     actions.forEach((act, idx) => {
-      let label = '';
-      let sub = '';
-      let color = '#63b3ed';
-      let isBurst = false;
-
-      const elem = act.element ?? act.targetElement ?? act.sourceElement ?? WuXing.WOOD;
-      const elemName = WUXING_PALETTE[elem]?.name ?? '';
-
-      switch (act.actionType) {
-        case ActionType.AUTO:
-          label = '【吸纳】';
-          sub = `${elemName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})+1`;
-          color = '#68d391';
-          break;
-        case ActionType.CONVERT:
-          label = '【调息】';
-          sub = `转同属${act.polarity === Polarity.YANG ? '阳' : '阴'}`;
-          color = '#63b3ed';
-          break;
-        case ActionType.TRANS:
-          label = '【化】';
-          sub = `生${elemName}(阴)+1`;
-          color = '#4fd1c5';
-          break;
-        case ActionType.ATK:
-          label = '【破】';
-          sub = `克敌${elemName}(阳)-1`;
-          color = '#fc8181';
-          break;
-        case ActionType.BURST:
-          label = '【强化】';
-          sub = `生${elemName}+2·再动`;
-          color = '#f6e05e';
-          isBurst = true;
-          break;
-        case ActionType.BURST_ATK:
-          label = '【强破】';
-          sub = `克敌${elemName}-2·再动`;
-          color = '#f56565';
-          isBurst = true;
-          break;
-      }
+      const formatted = formatActionButton(act, count);
 
       let btnX = 0;
       let btnY = 0;
@@ -197,15 +157,15 @@ export class GameManager {
 
       buttons.push({
         id: `btn_${idx}`,
-        label,
-        subLabel: sub,
+        label: formatted.label,
+        subLabel: formatted.subLabel,
         action: act,
         x: btnX,
         y: btnY,
         width: btnW,
         height: btnH,
-        color,
-        isBurst
+        color: formatted.color,
+        isBurst: formatted.isBurst
       });
     });
 
@@ -337,7 +297,14 @@ export class GameManager {
   }
 
   private executePlayerAction(action: ActionPayload): void {
-    const targetElem = action.element ?? action.targetElement ?? action.sourceElement ?? this.currentTianGan?.element ?? WuXing.WOOD;
+    let targetElem = action.element ?? action.targetElement ?? action.sourceElement ?? this.currentTianGan?.element ?? WuXing.WOOD;
+    if (action.actionType === ActionType.TRANS || action.actionType === ActionType.BURST) {
+      const srcElem = action.sourceElement ?? action.element ?? this.currentTianGan?.element ?? WuXing.WOOD;
+      targetElem = action.targetElement ?? GENERATION_CYCLE[srcElem];
+    } else if (action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK) {
+      const srcElem = action.sourceElement ?? action.element ?? this.currentTianGan?.element ?? WuXing.WOOD;
+      targetElem = action.targetElement ?? OVERCOMING_CYCLE[srcElem];
+    }
     const elemCfg = WUXING_PALETTE[targetElem] ?? WUXING_PALETTE[WuXing.WOOD];
 
     this.p1State = action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK ? 'attack' : 'cast';
@@ -463,7 +430,14 @@ export class GameManager {
     const available = this.turnManager.getAvailableActions();
     const action = this.aiStrategy(state, tg, available);
 
-    const targetElem = action.element ?? action.targetElement ?? action.sourceElement ?? tg.element ?? WuXing.WOOD;
+    let targetElem = action.element ?? action.targetElement ?? action.sourceElement ?? tg.element ?? WuXing.WOOD;
+    if (action.actionType === ActionType.TRANS || action.actionType === ActionType.BURST) {
+      const srcElem = action.sourceElement ?? action.element ?? tg.element ?? WuXing.WOOD;
+      targetElem = action.targetElement ?? GENERATION_CYCLE[srcElem];
+    } else if (action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK) {
+      const srcElem = action.sourceElement ?? action.element ?? tg.element ?? WuXing.WOOD;
+      targetElem = action.targetElement ?? OVERCOMING_CYCLE[srcElem];
+    }
     const elemCfg = WUXING_PALETTE[targetElem] ?? WUXING_PALETTE[WuXing.WOOD];
 
     this.p2State = action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK ? 'attack' : 'cast';
