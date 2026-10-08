@@ -54,7 +54,7 @@ export function wilsonScoreInterval(successes, total) {
  * 1. 建设 (Construction): 点亮, 加持, 修复道损
  * 2. 攻击 (Attack): 致道损, 破点亮, 削弱加持
  * 3. 行为分 (Behavior): 动作基础分 (吸纳, 调息, 化, 破, 强化, 强破)
- * 4. 合一分红 (Dividend): 天道分红
+ * 4. 亢极分红 (Dividend): 天道分红
  * 5. 道损扣分 (Penalty): 道损亏损及最终道损惩罚
  * 6. 稀有度加成 (Rarity): 动作稀有度加成
  *
@@ -549,20 +549,20 @@ export function buildScoreUnityOverlapReportMarkdown(diagnosticData, { revision 
     `    - **建设（点亮/加持/修复道损）：** 均值 ${fmtNum(scW.construction.mean)} 分，占比 **${fmtPctDirect(scW.construction.percent)}**。`,
     `    - **行为分：** 均值 ${fmtNum(scW.behavior.mean)} 分，占比 **${fmtPctDirect(scW.behavior.percent)}**。`,
     `    - **稀有度加成：** 均值 ${fmtNum(scW.rarity.mean)} 分，占比 **${fmtPctDirect(scW.rarity.percent)}**。`,
-    `    - **合一分红：** 均值 ${fmtNum(scW.dividend.mean)} 分，占比 **${fmtPctDirect(scW.dividend.percent)}**。`,
+    `    - **亢极分红：** 均值 ${fmtNum(scW.dividend.mean)} 分，占比 **${fmtPctDirect(scW.dividend.percent)}**。`,
     `    - **攻击（致道损/破点亮/削弱加持）：** 均值 ${fmtNum(scW.attack.mean)} 分，占比 **${fmtPctDirect(scW.attack.percent)}**。`,
     `    - **道损扣分：** 均值 ${fmtNum(scW.penalty.mean)} 分，占比 **${fmtPctDirect(scW.penalty.percent)}**。`,
     `  - **输方得分构成（均值 ${fmtNum(scL.total.mean)} 分，数据源: data.json#/overall/scoreComposition/loser）：**`,
     `    - **建设（点亮/加持/修复道损）：** 均值 ${fmtNum(scL.construction.mean)} 分，占比 **${fmtPctDirect(scL.construction.percent)}**。`,
     `    - **行为分：** 均值 ${fmtNum(scL.behavior.mean)} 分，占比 **${fmtPctDirect(scL.behavior.percent)}**。`,
     `    - **稀有度加成：** 均值 ${fmtNum(scL.rarity.mean)} 分，占比 **${fmtPctDirect(scL.rarity.percent)}**。`,
-    `    - **合一分红：** 均值 ${fmtNum(scL.dividend.mean)} 分，占比 **${fmtPctDirect(scL.dividend.percent)}**。`,
+    `    - **亢极分红：** 均值 ${fmtNum(scL.dividend.mean)} 分，占比 **${fmtPctDirect(scL.dividend.percent)}**。`,
     `    - **攻击（致道损/破点亮/削弱加持）：** 均值 ${fmtNum(scL.attack.mean)} 分，占比 **${fmtPctDirect(scL.attack.percent)}**。`,
     `    - **道损扣分：** 均值 ${fmtNum(scL.penalty.mean)} 分，占比 **${fmtPctDirect(scL.penalty.percent)}**。`,
     '  - **分析结论：**',
     `    - 在胜方动作基础分（建设+攻击+行为）中，建设类得分占比高达 **${constructBaseShare.toFixed(1)}%**，而攻击类仅占 **${attackBaseShare.toFixed(1)}%**（攻击收益不足建设收益的三分之一）。`,
     `    - 稀有度加成占据了总分近半（胜方 **${fmtPctDirect(scW.rarity.percent)}**，输方 **${fmtPctDirect(scL.rarity.percent)}**），其主要来源于低执行概率的强化（BURST）动作，该动作同样高度服务于节点点亮与加持。`,
-    '    - **强化（BURST）自耗状态分的特殊说明：** 在现行规则实现中，强化（BURST）动作第一步消耗自身节点本命合一状态（合一降为加持/点亮），在底层计分逻辑中触发了“削弱加持”事件（`WEAKEN`），被计入攻击类（胜方均值 896 分中包含此自耗部分）。即便包含这部分自身消耗所得的分数，胜方攻击得分（896 分）依然不足建设得分（2,664 分）的三分之一，更有力地反向印证了纯粹针对对手的攻击压制在计分上缺乏有效激励。',
+    '    - **强化（BURST）自耗状态分的特殊说明：** 在现行规则实现中，强化（BURST）动作第一步消耗自身节点本命亢极状态（亢极降为加持/点亮），在底层计分逻辑中触发了“削弱加持”事件（`WEAKEN`），被计入攻击类（胜方均值 896 分中包含此自耗部分）。即便包含这部分自身消耗所得的分数，胜方攻击得分（896 分）依然不足建设得分（2,664 分）的三分之一，更有力地反向印证了纯粹针对对手的攻击压制在计分上缺乏有效激励。',
     '    - 这一数据结构有力证实了初始假设：在正式计分基线下，建设类收益压倒攻击类，压制性博弈动作不仅在五行归元进程中属于被动防御，在纯粹的计分回报上也缺乏足够的激励，导致计分无法支撑独立的分数压制流派。',
     '- **结论边界：** 此得分构成基于当前正式计分参数（`POINTS_CONFIG`）；若第二阶段实验放大压制类得分，各部分占比将重构。',
     '',
@@ -608,7 +608,7 @@ export function buildScoreUnityOverlapReportMarkdown(diagnosticData, { revision 
     `| 建设 (点亮/加持/修复道损) | ${fmtNum(scW.construction.mean)} | ${fmtPctDirect(scW.construction.percent)} | ${fmtNum(scL.construction.mean)} | ${fmtPctDirect(scL.construction.percent)} | 点亮(+100)、加持(+200)、修复(+200) |`,
     `| 攻击 (致道损/破点亮/削弱加持) | ${fmtNum(scW.attack.mean)} | ${fmtPctDirect(scW.attack.percent)} | ${fmtNum(scL.attack.mean)} | ${fmtPctDirect(scL.attack.percent)} | 致道损(+100~120)、破点(+60~80)、削弱(+80) |`,
     `| 行为分 | ${fmtNum(scW.behavior.mean)} | ${fmtPctDirect(scW.behavior.percent)} | ${fmtNum(scL.behavior.mean)} | ${fmtPctDirect(scL.behavior.percent)} | 动作基础分 (吸纳0, 调息50, 化30, 破40, 强化100, 强破80) |`,
-    `| 合一分红 | ${fmtNum(scW.dividend.mean)} | ${fmtPctDirect(scW.dividend.percent)} | ${fmtNum(scL.dividend.mean)} | ${fmtPctDirect(scL.dividend.percent)} | 双加持合一节点每回合分红 (+50/点) |`,
+    `| 亢极分红 | ${fmtNum(scW.dividend.mean)} | ${fmtPctDirect(scW.dividend.percent)} | ${fmtNum(scL.dividend.mean)} | ${fmtPctDirect(scL.dividend.percent)} | 双加持亢极节点每回合分红 (+50/点) |`,
     `| 道损扣分 | ${fmtNum(scW.penalty.mean)} | ${fmtPctDirect(scW.penalty.percent)} | ${fmtNum(scL.penalty.mean)} | ${fmtPctDirect(scL.penalty.percent)} | 双道损节点每回合扣分 (-40/点) 及终局道损惩罚 |`,
     `| 稀有度加成 | ${fmtNum(scW.rarity.mean)} | ${fmtPctDirect(scW.rarity.percent)} | ${fmtNum(scL.rarity.mean)} | ${fmtPctDirect(scL.rarity.percent)} | 低概率稀有动作的乘数加成收益 |`,
     `| **合计总分** | **${fmtNum(scW.total.mean)}** | **100.0%** | **${fmtNum(scL.total.mean)}** | **100.0%** | 胜负方实测均值总得分 |`,

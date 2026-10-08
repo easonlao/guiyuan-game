@@ -40,7 +40,7 @@ describe('ActionResolver node actions', () => {
     expect(StateManager.getNodeState('P2', 3)).toEqual({ yang: -1, yin: 0 });
   });
 
-  it('reaches 归一 and 合一 when both yin and yang reach their thresholds', () => {
+  it('reaches 归一 and 亢极 when both yin and yang reach their thresholds', () => {
     ActionResolver.applyPlus('P1', 1, false, 'AUTO', false);
     ActionResolver.applyPlus('P1', 1, true, 'AUTO', false);
     expect(StateManager.getNodeState('P1', 1)).toEqual({ yang: 1, yin: 1 });

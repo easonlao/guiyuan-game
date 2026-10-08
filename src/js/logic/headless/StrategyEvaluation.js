@@ -298,7 +298,7 @@ function buildResearchMarkdown(study) {
     '',
     '### 问题二：强化类是否挤压其他选择，额外行动贡献多少？',
     '- **证据与分析：**',
-    '  - **机制规则：** 强化(BURST)与强破(BURST_ATK)必须消耗自身 1 点归一/合一侧状态，换取 2 次生/克属性操作，并在非连动回合中获得额外行动机会。若已处于连动回合，再次强化不重复赋予额外行动。'
+    '  - **机制规则：** 强化(BURST)与强破(BURST_ATK)必须消耗自身 1 点归一/亢极侧状态，换取 2 次生/克属性操作，并在非连动回合中获得额外行动机会。若已处于连动回合，再次强化不重复赋予额外行动。'
   );
 
   if (!study.turnOrderDiagnostics || study.turnOrderDiagnostics.length === 0) {

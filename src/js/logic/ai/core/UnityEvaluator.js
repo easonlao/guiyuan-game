@@ -3,7 +3,7 @@
 // ============================================
 // 职责：
 // - 评估双方归一进度
-// - 评估双方合一状态
+// - 评估双方亢极状态
 // - 计算道损分布
 // - 提供核心决策指标
 // ============================================
@@ -18,7 +18,7 @@ const UnityEvaluator = {
    */
   evaluatePlayerUnity(playerId) {
     let unityCount = 0;      // 归一数量 (yang>=1 && yin>=1)
-    let harmonyCount = 0;    // 合一数量 (yang=2 && yin=2)
+    let harmonyCount = 0;    // 亢极数量 (yang=2 && yin=2)
     let damageCount = 0;     // 道损数量 (yang=-1 && yin=-1)
     let nearUnityCount = 0;  // 接近归一 (一个1, 另一个>=0)
 
@@ -31,7 +31,7 @@ const UnityEvaluator = {
       // 归一：yang>=1 && yin>=1
       const isUnity = yang >= 1 && yin >= 1;
 
-      // 合一：yang=2 && yin=2
+      // 亢极：yang=2 && yin=2
       const isHarmony = yang === 2 && yin === 2;
 
       // 道损：yang=-1 && yin=-1
@@ -59,7 +59,7 @@ const UnityEvaluator = {
     return {
       playerId,
       unityCount,       // 0-5: 归一进度
-      harmonyCount,     // 0-5: 合一数量
+      harmonyCount,     // 0-5: 亢极数量
       damageCount,      // 0-5: 道损数量
       nearUnityCount,   // 0-5: 接近归一
       unityProgress: unityCount / 5,  // 0-1: 归一进度百分比
@@ -78,7 +78,7 @@ const UnityEvaluator = {
     // 归一优势：正数表示P1领先
     const unityAdvantage = p1.unityCount - p2.unityCount;
 
-    // 合一优势：正数表示P1领先
+    // 亢极优势：正数表示P1领先
     const harmonyAdvantage = p1.harmonyCount - p2.harmonyCount;
 
     // 道损对比
@@ -136,7 +136,7 @@ const UnityEvaluator = {
   },
 
   /**
-   * 检查元素是否合一
+   * 检查元素是否亢极
    * @param {string} playerId - 玩家ID
    * @param {number} elementIndex - 元素索引
    * @returns {boolean}
@@ -188,9 +188,9 @@ const UnityEvaluator = {
   },
 
   /**
-   * 获取合一的元素列表
+   * 获取亢极的元素列表
    * @param {string} playerId - 玩家ID
-   * @returns {Array} 合一的元素索引
+   * @returns {Array} 亢极的元素索引
    */
   getHarmoniedElements(playerId) {
     const harmonied = [];

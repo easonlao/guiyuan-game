@@ -188,7 +188,7 @@ const StrategySelector = {
    * @returns {boolean}
    */
   hasBurstOpportunity(playerId, stemElement) {
-    // 检查是否有合一状态可以消耗
+    // 检查是否有亢极状态可以消耗
     const harmoniedElements = UnityEvaluator.getHarmoniedElements(playerId);
     return harmoniedElements.length > 0;
   },

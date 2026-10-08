@@ -28,8 +28,8 @@ const CURRENT_WEIGHTS = {
   },
   STRATEGIC: {
     BREAK_OPPOSITE_UNITY: 180,     // 破坏对方归一
-    BREAK_OPPOSITE_HARMONY: 150,   // 破坏对方合一
-    CREATE_HARMONY: 50,            // 创建自己的合一
+    BREAK_OPPOSITE_HARMONY: 150,   // 破坏对方亢极
+    CREATE_HARMONY: 50,            // 创建自己的亢极
     BURST_BONUS: 100,              // BURST 爆发推进
     BURST_ATK_BONUS: 120,          // BURST_ATK 双重打击
     DELAY_OPPOSITE: 80             // 延缓对方
@@ -268,7 +268,7 @@ const WeightOptimizer = {
       suggestions.push({
         type: 'WARNING',
         message: 'BURST 从未被使用',
-        action: '需要更多合一状态的游戏，或检查 BURST 触发条件'
+        action: '需要更多亢极状态的游戏，或检查 BURST 触发条件'
       });
     }
 

@@ -66,7 +66,7 @@ const ActionResolver = {
     const targetState = this.stateManager.getNodeState(playerId, targetElement);
     this.log(`[BURST ${myRole}] 开始: playerId=${playerId}, stem=${stemElement}(阴${stemState.yin}阳${stemState.yang}), target=${targetElement}(阴${targetState.yin}阳${targetState.yang})`);
 
-    // 第1步：消耗自身本命的阴（合一状态）
+    // 第1步：消耗自身本命的阴（亢极状态）
     const step1 = this.applyMinus(playerId, stemElement, false, 'BURST', false);
     if (!step1) return { success: false, executedCount: 0 };
     executedCount++;
@@ -108,7 +108,7 @@ const ActionResolver = {
   applyBurstAtk(playerId, stemElement, opponentId, targetElement) {
     let executedCount = 0;
 
-    // 第1步：消耗自身本命的阳（合一状态）
+    // 第1步：消耗自身本命的阳（亢极状态）
     const step1 = this.applyMinus(playerId, stemElement, true, 'BURST_ATK', false);
     if (!step1) return { success: false, executedCount: 0 };
     executedCount++;
