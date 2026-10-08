@@ -28,13 +28,13 @@ const VALUE_CONFIG = {
     COMPLETE_NEW: 200,      // 完成新归一 (未归一 -> 归一)
     CLOSE_TO_UNITY: 100,    // 接近归一 (0->1 或 1->2)
     NORMAL_PROGRESS: 30,    // 普通推进
-    FILL_HARMONY: 60        // 填满合一 (1 -> 2)，从80降至60
+    FILL_HARMONY: 60        // 填满亢极 (1 -> 2)，从80降至60
   },
 
   // 战略分（降低基础值，通过局势系数动态调整）
   STRATEGIC: {
     BREAK_OPPOSITE_UNITY: 150,    // 破坏对方归一，从180降至150
-    BREAK_OPPOSITE_HARMONY: 120,  // 破坏对方合一，从150降至120
+    BREAK_OPPOSITE_HARMONY: 120,  // 破坏对方亢极，从150降至120
     CAUSE_DAMAGE: 100,            // 造成道损（0 -> -1），从120降至100
     BURST_ATK_DOUBLE: 90          // BURST_ATK 双重打击，从120降至90
   },
@@ -283,7 +283,7 @@ const ActionValueCalculator = {
    * @private
    */
   _evaluateBurstAction(action, playerId) {
-    // BURST 消耗合一状态的阴，强化生属性×2
+    // BURST 消耗亢极状态的阴，强化生属性×2
 
     // 计算生属性的当前状态
     const stemElement = action.stemElement || 0;
@@ -353,7 +353,7 @@ const ActionValueCalculator = {
     // 检查目标是否归一
     const isUnity = nodeState.yang >= 1 && nodeState.yin >= 1;
 
-    // 检查目标是否合一
+    // 检查目标是否亢极
     const isHarmony = nodeState.yang === 2 && nodeState.yin === 2;
 
     // 破坏对方归一（1→0）
@@ -361,7 +361,7 @@ const ActionValueCalculator = {
       return VALUE_CONFIG.STRATEGIC.BREAK_OPPOSITE_UNITY;
     }
 
-    // 破坏对方合一（2→1）
+    // 破坏对方亢极（2→1）
     if (isHarmony) {
       return VALUE_CONFIG.STRATEGIC.BREAK_OPPOSITE_HARMONY;
     }
@@ -382,13 +382,13 @@ const ActionValueCalculator = {
     // 检查目标是否归一
     const isUnity = nodeState.yang >= 1 && nodeState.yin >= 1;
 
-    // 检查目标是否合一
+    // 检查目标是否亢极
     const isHarmony = nodeState.yang === 2 && nodeState.yin === 2;
 
     // 双重打击的基础分
     let score = VALUE_CONFIG.STRATEGIC.BURST_ATK_DOUBLE;
 
-    // 破坏对方归一或合一的额外价值
+    // 破坏对方归一或亢极的额外价值
     if (isHarmony) {
       score += VALUE_CONFIG.STRATEGIC.BREAK_OPPOSITE_HARMONY;
     } else if (isUnity) {

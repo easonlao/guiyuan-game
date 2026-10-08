@@ -240,7 +240,7 @@ describe('issue 07: Score and Unity Overlap Diagnostic', () => {
       expect(markdown).toContain('建设');
       expect(markdown).toContain('攻击');
       expect(markdown).toContain('行为分');
-      expect(markdown).toContain('合一分红');
+      expect(markdown).toContain('亢极分红');
       expect(markdown).toContain('道损扣分');
       expect(markdown).toContain('稀有度加成');
       expect(markdown).toContain('## 3. ADR 0001 护栏基线对照');
