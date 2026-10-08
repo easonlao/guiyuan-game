@@ -159,15 +159,15 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         }
       };
 
-      const bingFire = TIAN_GAN_LIST.find((tg) => tg.name === '丙')!;
+      const gengMetal = TIAN_GAN_LIST.find((tg) => tg.name === '庚')!;
 
       // Normal turn: BURST and BURST_ATK are available
-      const normalActions = getAvailableActions(state, bingFire);
+      const normalActions = getAvailableActions(state, gengMetal);
       expect(normalActions.some((a) => a.actionType === ActionType.BURST)).toBe(true);
       expect(normalActions.some((a) => a.actionType === ActionType.BURST_ATK)).toBe(true);
 
       // Extra turn: BURST and BURST_ATK must be filtered out
-      const extraTurnActions = getAvailableActions(state, bingFire, { isExtraTurn: true });
+      const extraTurnActions = getAvailableActions(state, gengMetal, { isExtraTurn: true });
       expect(extraTurnActions.some((a) => a.actionType === ActionType.BURST)).toBe(false);
       expect(extraTurnActions.some((a) => a.actionType === ActionType.BURST_ATK)).toBe(false);
     });
@@ -190,7 +190,14 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         }
       };
 
-      const manager = new TurnManager({ initialState: state });
+      let turnCount = 0;
+      const sequencePrng = {
+        next: () => 0,
+        nextInt: () => (turnCount++ === 0 ? 0 : 6), // turn 1 draws index 0 (甲 WOOD), turn 2 draws index 6 (庚 METAL)
+        getState: () => 0
+      };
+
+      const manager = new TurnManager({ initialState: state, prng: sequencePrng });
       manager.startTurn();
 
       // Execute BURST on WOOD
@@ -343,7 +350,14 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         }
       };
 
-      const manager = new TurnManager({ initialState: state });
+      const manager = new TurnManager({
+        initialState: state,
+        prng: {
+          next: () => 0,
+          nextInt: () => 0, // draws index 0 (甲 WOOD)
+          getState: () => 0
+        }
+      });
       manager.startTurn();
 
       // P2 performs BURST on round 2
@@ -434,7 +448,15 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         }
       };
 
-      const manager = new TurnManager({ initialState: state, eventBus: bus });
+      const manager = new TurnManager({
+        initialState: state,
+        eventBus: bus,
+        prng: {
+          next: () => 0,
+          nextInt: () => 0, // draws index 0 (甲 WOOD)
+          getState: () => 0
+        }
+      });
       manager.startTurn();
 
       manager.executeAction({
