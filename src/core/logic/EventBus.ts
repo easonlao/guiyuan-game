@@ -3,7 +3,7 @@
  * 用于 Layer 1 逻辑层与 Layer 3 Cocos 表现层解耦
  */
 
-import { ActionType, GameState, PlayerId, WuXing, Polarity, NodeLevel } from '../types/domain.js';
+import { ActionPayload, ActionType, GameState, NodeLevel, PlayerId, Polarity, TianGanInfo, WuXing } from '../types/domain.js';
 
 export interface GameEvents {
   'node:stateChanged': {
@@ -22,6 +22,24 @@ export interface GameEvents {
   'game:over': {
     winner: PlayerId | 'DRAW' | null;
     endReason: 'GUI_YUAN' | 'MAX_ROUNDS' | null;
+  };
+  'turn:start': {
+    round: number;
+    player: PlayerId;
+    isExtraTurn: boolean;
+  };
+  'tiangan:draw': {
+    tianGan: TianGanInfo;
+  };
+  'action:execute': {
+    action: ActionPayload;
+  };
+  'burst:extra_turn': {
+    player: PlayerId;
+  };
+  'turn:end': {
+    round: number;
+    player: PlayerId;
   };
 }
 

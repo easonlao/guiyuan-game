@@ -12,9 +12,9 @@ import {
   Polarity,
   GENERATION_CYCLE,
   OVERCOMING_CYCLE,
-  NodeLevel,
   WuXing,
-  BoardState
+  BoardState,
+  NodeData
 } from '../types/domain.js';
 import {
   clampNodeLevel,
@@ -23,8 +23,6 @@ import {
 } from './State.js';
 import { ScoreCalculator } from './ScoreCalculator.js';
 
-type MutableNodeData = { yin: NodeLevel; yang: NodeLevel };
-type MutableBoardState = Record<WuXing, MutableNodeData>;
 
 export class ActionResolver {
   constructor(private readonly scoreCalculator: ScoreCalculator = new ScoreCalculator()) {}
@@ -49,13 +47,32 @@ export class ActionResolver {
     const activePlayer = state.players[activePlayerId];
     const opponentPlayer = state.players[opponentPlayerId];
 
-    // 深拷贝棋盘，确保不可变性
-    const nextActiveBoard: MutableBoardState = Object.fromEntries(
-      Object.entries(activePlayer.board).map(([k, v]) => [k, { ...v }])
-    ) as MutableBoardState;
-    const nextOpponentBoard: MutableBoardState = Object.fromEntries(
-      Object.entries(opponentPlayer.board).map(([k, v]) => [k, { ...v }])
-    ) as MutableBoardState;
+    // 增量状态更新：采用结构共享 (Structural Sharing)
+    // 仅浅拷贝被修改的节点，保持未修改节点的引用不变，消除全局深拷贝 GC 压力
+    let nextActiveBoard: BoardState = activePlayer.board;
+    let nextOpponentBoard: BoardState = opponentPlayer.board;
+
+    const patchActiveNode = (element: WuXing, patch: Partial<NodeData>) => {
+      const current = nextActiveBoard[element];
+      nextActiveBoard = {
+        ...nextActiveBoard,
+        [element]: {
+          ...current,
+          ...patch
+        }
+      };
+    };
+
+    const patchOpponentNode = (element: WuXing, patch: Partial<NodeData>) => {
+      const current = nextOpponentBoard[element];
+      nextOpponentBoard = {
+        ...nextOpponentBoard,
+        [element]: {
+          ...current,
+          ...patch
+        }
+      };
+    };
 
     let scoreDelta = 0;
     let extraTurn = false;
@@ -69,6 +86,7 @@ export class ActionResolver {
         if (!element || !polarity) {
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少天干属性或极性' };
         }
+        scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.AUTO);
         const node = nextActiveBoard[element];
         const prevLevel = node[polarity];
         if (prevLevel >= 2) {
@@ -76,8 +94,8 @@ export class ActionResolver {
           success = true; // 动作仍算完成，但不再提升
         } else {
           const newLevel = clampNodeLevel(prevLevel + 1);
-          node[polarity] = newLevel;
-          scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel);
+          patchActiveNode(element, { [polarity]: newLevel });
+          scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, polarity, false);
           success = true;
         }
         break;
@@ -88,14 +106,15 @@ export class ActionResolver {
         if (!element) {
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少指定元素' };
         }
+        scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.CONVERT);
         // 调息转到相反极性
         const targetPolarity = payload.polarity || (state.currentTianGan?.polarity === Polarity.YANG ? Polarity.YIN : Polarity.YANG);
         const node = nextActiveBoard[element];
         const prevLevel = node[targetPolarity];
         if (prevLevel < 2) {
           const newLevel = clampNodeLevel(prevLevel + 1);
-          node[targetPolarity] = newLevel;
-          scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel);
+          patchActiveNode(element, { [targetPolarity]: newLevel });
+          scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, targetPolarity, false);
         }
         success = true;
         break;
@@ -106,14 +125,15 @@ export class ActionResolver {
         if (!sourceElement) {
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少源五行' };
         }
+        scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.TRANS);
         const targetElement = GENERATION_CYCLE[sourceElement];
         const polarity = payload.polarity || Polarity.YANG;
         const targetNode = nextActiveBoard[targetElement];
         const prevLevel = targetNode[polarity];
         if (prevLevel < 2) {
           const newLevel = clampNodeLevel(prevLevel + 1);
-          targetNode[polarity] = newLevel;
-          scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel);
+          patchActiveNode(targetElement, { [polarity]: newLevel });
+          scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, polarity, false);
         }
         success = true;
         break;
@@ -124,13 +144,14 @@ export class ActionResolver {
         if (!sourceElement) {
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少源五行' };
         }
+        scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.ATK);
         const targetElement = OVERCOMING_CYCLE[sourceElement];
         const polarity = payload.polarity || Polarity.YANG;
         const targetNode = nextOpponentBoard[targetElement];
         const prevLevel = targetNode[polarity];
         const newLevel = clampNodeLevel(prevLevel - 1);
-        targetNode[polarity] = newLevel;
-        scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.ATK);
+        patchOpponentNode(targetElement, { [polarity]: newLevel });
+        scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, polarity, true);
         success = true;
         break;
       }
@@ -145,15 +166,21 @@ export class ActionResolver {
         if (!isNodeGuiYi(sourceNode)) {
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '源节点未达成归一，无法爆发' };
         }
+        scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.BURST);
         // 消耗源节点一侧
-        sourceNode[consumePolarity] = clampNodeLevel(sourceNode[consumePolarity] - 1);
+        patchActiveNode(sourceElement, {
+          [consumePolarity]: clampNodeLevel(sourceNode[consumePolarity] - 1)
+        });
         // 强化相生节点
         const targetElement = GENERATION_CYCLE[sourceElement];
         const targetPolarity = payload.polarity || Polarity.YANG;
         const targetNode = nextActiveBoard[targetElement];
         const prevLevel = targetNode[targetPolarity];
-        targetNode[targetPolarity] = clampNodeLevel(prevLevel + 1);
-        scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.BURST);
+        const newLevel = clampNodeLevel(prevLevel + 1);
+        patchActiveNode(targetElement, {
+          [targetPolarity]: newLevel
+        });
+        scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, targetPolarity, false);
         extraTurn = true;
         success = true;
         break;
@@ -169,14 +196,21 @@ export class ActionResolver {
         if (!isNodeGuiYi(sourceNode)) {
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '源节点未达成归一，无法强破' };
         }
+        scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.BURST_ATK);
         // 消耗源节点一侧
-        sourceNode[consumePolarity] = clampNodeLevel(sourceNode[consumePolarity] - 1);
+        patchActiveNode(sourceElement, {
+          [consumePolarity]: clampNodeLevel(sourceNode[consumePolarity] - 1)
+        });
         // 削弱相克对手节点
         const targetElement = OVERCOMING_CYCLE[sourceElement];
         const targetPolarity = payload.polarity || Polarity.YANG;
         const targetNode = nextOpponentBoard[targetElement];
-        targetNode[targetPolarity] = clampNodeLevel(targetNode[targetPolarity] - 1);
-        scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.BURST_ATK);
+        const prevLevel = targetNode[targetPolarity];
+        const newLevel = clampNodeLevel(prevLevel - 1);
+        patchOpponentNode(targetElement, {
+          [targetPolarity]: newLevel
+        });
+        scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, targetPolarity, true);
         extraTurn = true;
         success = true;
         break;
@@ -190,7 +224,7 @@ export class ActionResolver {
     const nextScore = activePlayer.score + scoreDelta;
 
     // 检查是否达成“五行归元”
-    const hasGuiYuan = isBoardGuiYuan(nextActiveBoard as unknown as BoardState);
+    const hasGuiYuan = isBoardGuiYuan(nextActiveBoard);
     let isGameOver = false;
     let winner: PlayerId | 'DRAW' | null = null;
     let endReason: 'GUI_YUAN' | 'MAX_ROUNDS' | null = null;
@@ -208,7 +242,8 @@ export class ActionResolver {
       } else if (opponentPlayer.score > nextScore) {
         winner = opponentPlayerId;
       } else {
-        winner = 'DRAW';
+        // GDD 规则：若分数相同，则判定后手 (P2) 获胜
+        winner = 'P2';
       }
     }
 
@@ -224,11 +259,11 @@ export class ActionResolver {
         [activePlayerId]: {
           ...activePlayer,
           score: nextScore,
-          board: nextActiveBoard as unknown as BoardState
+          board: nextActiveBoard
         },
         [opponentPlayerId]: {
           ...opponentPlayer,
-          board: nextOpponentBoard as unknown as BoardState
+          board: nextOpponentBoard
         }
       },
       isGameOver,
