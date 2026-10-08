@@ -54,8 +54,9 @@ export class GameManager {
   private bannerText: string = '对局开始 · 双方对峙';
   private bannerSubText: string = '追求五行归元，调和阴阳';
 
-  // AI 思考调度
+  // AI 思考调度与 P1 自动吸纳调度
   private aiThinkingTimer: number = 0;
+  private p1AutoAbsorbTimer: number = 0;
   public safeTop: number = 44;
   public safeBottom: number = 16;
 
@@ -98,10 +99,21 @@ export class GameManager {
     const isExtra = this.turnManager.isExtraTurnActive();
 
     if (currentPlayer === 'P1') {
-      this.bannerText = isExtra ? '【连动回合】玩家额外行动！' : `玩家回合 · 天干【${tg?.name ?? ''}】降临`;
-      this.bannerSubText = `属性: ${tg?.element ?? ''} (${tg?.polarity === Polarity.YANG ? '阳' : '阴'})`;
+      const actions = this.turnManager.getAvailableActions();
+      const isSingleAuto = actions.length === 1 && actions[0].actionType === ActionType.AUTO;
+
+      if (isSingleAuto) {
+        this.p1AutoAbsorbTimer = 45; // 约 0.75 秒倒计时
+        this.bannerText = isExtra ? '【连动回合】玩家额外行动！' : `玩家回合 · 天干【${tg?.name ?? ''}】降临`;
+        this.bannerSubText = '自动吸纳中';
+      } else {
+        this.p1AutoAbsorbTimer = 0;
+        this.bannerText = isExtra ? '【连动回合】玩家额外行动！' : `玩家回合 · 天干【${tg?.name ?? ''}】降临`;
+        this.bannerSubText = `属性: ${tg?.element ?? ''} (${tg?.polarity === Polarity.YANG ? '阳' : '阴'})`;
+      }
       this.updateButtons();
     } else {
+      this.p1AutoAbsorbTimer = 0;
       this.bannerText = isExtra ? '【连动回合】天道施展额外行动！' : `天道回合 · 天干【${tg?.name ?? ''}】降临`;
       this.bannerSubText = '天道推演生克中...';
       this.availableButtons = [];
@@ -118,6 +130,11 @@ export class GameManager {
       return;
     }
 
+    if (actions.length !== 1 || actions[0].actionType !== ActionType.AUTO) {
+      this.p1AutoAbsorbTimer = 0;
+    }
+
+    const isAutoAbsorb = this.p1AutoAbsorbTimer > 0;
     const effectiveTop = this.safeTop + 8;
     const effectiveBottom = this.height - this.safeBottom;
     const playableHeight = effectiveBottom - effectiveTop;
@@ -129,7 +146,7 @@ export class GameManager {
     const containerW = this.width - 56;
 
     actions.forEach((act, idx) => {
-      const formatted = formatActionButton(act);
+      const formatted = formatActionButton(act, isAutoAbsorb);
 
       let btnX = 0;
       let btnY = 0;
@@ -283,6 +300,15 @@ export class GameManager {
     if (this.isAnimating) return;
     if (state.currentPlayer !== 'P1') return;
 
+    // 若正处于 P1 自动吸纳缓冲期，任意触摸（无论屏幕还是按钮）均立即执行吸纳
+    if (this.p1AutoAbsorbTimer > 0) {
+      this.p1AutoAbsorbTimer = 0;
+      if (this.availableButtons.length > 0) {
+        this.executePlayerAction(this.availableButtons[0].action);
+      }
+      return;
+    }
+
     for (const btn of this.availableButtons) {
       if (
         touchX >= btn.x &&
@@ -297,6 +323,7 @@ export class GameManager {
   }
 
   private executePlayerAction(action: ActionPayload): void {
+    this.p1AutoAbsorbTimer = 0;
     this.dispatchAction(action, true);
   }
 
@@ -362,6 +389,18 @@ export class GameManager {
         this.aiThinkingTimer--;
         if (this.aiThinkingTimer === 0) {
           this.executeAIAction();
+        }
+      }
+    }
+
+    // P1 自动吸纳倒计时推进 (仅在没有播放动画且玩家回合时推进)
+    if (!state.isGameOver && state.currentPlayer === 'P1' && !this.isAnimating) {
+      if (this.p1AutoAbsorbTimer > 0) {
+        this.p1AutoAbsorbTimer--;
+        if (this.p1AutoAbsorbTimer === 0) {
+          if (this.availableButtons.length > 0) {
+            this.executePlayerAction(this.availableButtons[0].action);
+          }
         }
       }
     }
@@ -609,6 +648,44 @@ export class GameManager {
         this.animTick
       );
     });
+  }
+
+  // --- 测试与状态观察助手方法 ---
+
+  public getState() {
+    return this.turnManager.getState();
+  }
+
+  public getTurnManager(): TurnManager {
+    return this.turnManager;
+  }
+
+  public getAvailableActions(): ActionPayload[] {
+    return this.turnManager.getAvailableActions();
+  }
+
+  public getAvailableButtons(): TouchButton[] {
+    return this.availableButtons;
+  }
+
+  public getP1AutoTimer(): number {
+    return this.p1AutoAbsorbTimer;
+  }
+
+  public isAutoAbsorbing(): boolean {
+    return this.p1AutoAbsorbTimer > 0;
+  }
+
+  public isAnimatingState(): boolean {
+    return this.isAnimating;
+  }
+
+  public getBannerText(): string {
+    return this.bannerText;
+  }
+
+  public getBannerSubText(): string {
+    return this.bannerSubText;
   }
 }
 
