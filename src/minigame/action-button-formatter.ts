@@ -34,8 +34,9 @@ export function getActionTargetElement(act: ActionPayload, fallbackElement?: WuX
 /**
  * 格式化动作按钮的文本与样式配置
  * @param act 动作载荷
+ * @param isAutoAbsorb 是否处于自动吸纳缓冲期
  */
-export function formatActionButton(act: ActionPayload): FormattedActionButton {
+export function formatActionButton(act: ActionPayload, isAutoAbsorb: boolean = false): FormattedActionButton {
   let label = '';
   let subLabel = '';
   let color = '#63b3ed';
@@ -46,8 +47,8 @@ export function formatActionButton(act: ActionPayload): FormattedActionButton {
 
   switch (act.actionType) {
     case ActionType.AUTO: {
-      label = '【吸纳】';
-      subLabel = '天干能量吸纳（充盈虚空/修复道损）';
+      label = isAutoAbsorb ? '【自动吸纳】' : '【吸纳】';
+      subLabel = isAutoAbsorb ? '天干能量自动吸纳中（点击可立即吸纳）' : '天干能量吸纳（充盈虚空/修复道损）';
       color = '#68d391';
       break;
     }

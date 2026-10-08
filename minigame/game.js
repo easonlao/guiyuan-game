@@ -1568,7 +1568,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     return act.targetElement ?? act.element ?? srcElem;
   }
-  function formatActionButton(act) {
+  function formatActionButton(act, isAutoAbsorb = false) {
     let label = "";
     let subLabel = "";
     let color = "#63b3ed";
@@ -1577,8 +1577,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     const srcName = WUXING_PALETTE[srcElem]?.name ?? "";
     switch (act.actionType) {
       case ActionType.AUTO: {
-        label = "【吸纳】";
-        subLabel = "天干能量吸纳（充盈虚空/修复道损）";
+        label = isAutoAbsorb ? "【自动吸纳】" : "【吸纳】";
+        subLabel = isAutoAbsorb ? "天干能量自动吸纳中（点击可立即吸纳）" : "天干能量吸纳（充盈虚空/修复道损）";
         color = "#68d391";
         break;
       }
@@ -1662,8 +1662,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       // 战斗播报
       __publicField(this, "bannerText", "对局开始 · 双方对峙");
       __publicField(this, "bannerSubText", "追求五行归元，调和阴阳");
-      // AI 思考调度
+      // AI 思考调度与 P1 自动吸纳调度
       __publicField(this, "aiThinkingTimer", 0);
+      __publicField(this, "p1AutoAbsorbTimer", 0);
       __publicField(this, "safeTop", 44);
       __publicField(this, "safeBottom", 16);
       const prng = createPRNG(seed);
@@ -1693,10 +1694,20 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const tg = this.currentTianGan;
       const isExtra = this.turnManager.isExtraTurnActive();
       if (currentPlayer === "P1") {
-        this.bannerText = isExtra ? "【连动回合】玩家额外行动！" : `玩家回合 · 天干【${tg?.name ?? ""}】降临`;
-        this.bannerSubText = `属性: ${tg?.element ?? ""} (${tg?.polarity === Polarity.YANG ? "阳" : "阴"})`;
+        const actions = this.turnManager.getAvailableActions();
+        const isSingleAuto = actions.length === 1 && actions[0].actionType === ActionType.AUTO;
+        if (isSingleAuto) {
+          this.p1AutoAbsorbTimer = 45;
+          this.bannerText = isExtra ? "【连动回合】玩家额外行动！" : `玩家回合 · 天干【${tg?.name ?? ""}】降临`;
+          this.bannerSubText = "自动吸纳中";
+        } else {
+          this.p1AutoAbsorbTimer = 0;
+          this.bannerText = isExtra ? "【连动回合】玩家额外行动！" : `玩家回合 · 天干【${tg?.name ?? ""}】降临`;
+          this.bannerSubText = `属性: ${tg?.element ?? ""} (${tg?.polarity === Polarity.YANG ? "阳" : "阴"})`;
+        }
         this.updateButtons();
       } else {
+        this.p1AutoAbsorbTimer = 0;
         this.bannerText = isExtra ? "【连动回合】天道施展额外行动！" : `天道回合 · 天干【${tg?.name ?? ""}】降临`;
         this.bannerSubText = "天道推演生克中...";
         this.availableButtons = [];
@@ -1711,6 +1722,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         this.availableButtons = [];
         return;
       }
+      if (actions.length !== 1 || actions[0].actionType !== ActionType.AUTO) {
+        this.p1AutoAbsorbTimer = 0;
+      }
+      const isAutoAbsorb = this.p1AutoAbsorbTimer > 0;
       const effectiveTop = this.safeTop + 8;
       const effectiveBottom = this.height - this.safeBottom;
       const playableHeight = effectiveBottom - effectiveTop;
@@ -1721,7 +1736,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const buttons = [];
       const containerW = this.width - 56;
       actions.forEach((act, idx) => {
-        const formatted = formatActionButton(act);
+        const formatted = formatActionButton(act, isAutoAbsorb);
         let btnX = 0;
         let btnY = 0;
         let btnW = 0;
@@ -1852,6 +1867,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       if (this.isAnimating) return;
       if (state.currentPlayer !== "P1") return;
+      if (this.p1AutoAbsorbTimer > 0) {
+        this.p1AutoAbsorbTimer = 0;
+        if (this.availableButtons.length > 0) {
+          this.executePlayerAction(this.availableButtons[0].action);
+        }
+        return;
+      }
       for (const btn of this.availableButtons) {
         if (touchX >= btn.x && touchX <= btn.x + btn.width && touchY >= btn.y && touchY <= btn.y + btn.height) {
           this.executePlayerAction(btn.action);
@@ -1860,6 +1882,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
     }
     executePlayerAction(action) {
+      this.p1AutoAbsorbTimer = 0;
       this.dispatchAction(action, true);
     }
     /** 帧更新 (逻辑时钟) */
@@ -1913,6 +1936,16 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           this.aiThinkingTimer--;
           if (this.aiThinkingTimer === 0) {
             this.executeAIAction();
+          }
+        }
+      }
+      if (!state.isGameOver && state.currentPlayer === "P1" && !this.isAnimating) {
+        if (this.p1AutoAbsorbTimer > 0) {
+          this.p1AutoAbsorbTimer--;
+          if (this.p1AutoAbsorbTimer === 0) {
+            if (this.availableButtons.length > 0) {
+              this.executePlayerAction(this.availableButtons[0].action);
+            }
           }
         }
       }
@@ -2114,6 +2147,34 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           this.animTick
         );
       });
+    }
+    // --- 测试与状态观察助手方法 ---
+    getState() {
+      return this.turnManager.getState();
+    }
+    getTurnManager() {
+      return this.turnManager;
+    }
+    getAvailableActions() {
+      return this.turnManager.getAvailableActions();
+    }
+    getAvailableButtons() {
+      return this.availableButtons;
+    }
+    getP1AutoTimer() {
+      return this.p1AutoAbsorbTimer;
+    }
+    isAutoAbsorbing() {
+      return this.p1AutoAbsorbTimer > 0;
+    }
+    isAnimatingState() {
+      return this.isAnimating;
+    }
+    getBannerText() {
+      return this.bannerText;
+    }
+    getBannerSubText() {
+      return this.bannerSubText;
     }
   }
   function initMiniGame() {
