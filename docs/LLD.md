@@ -13,94 +13,85 @@
 ### 2.1 游戏总状态 (`GameState`)
 ```typescript
 export interface GameState {
-  readonly round: number;                 // 当前回合数 (如 Max: 60)
-  readonly currentPlayerId: PlayerID;     // 当前行动玩家
-  readonly players: Record<PlayerID, PlayerState>; // 双方玩家状态
-  readonly board: BoardState;             // 棋盘五行节点状态
-  readonly status: GameStatus;            // 游戏进程状态 (Playing, Finished)
-  readonly winner: PlayerID | null;       // 获胜方
+  readonly round: number;                                    // 当前回合数 (1 ~ 60)
+  readonly maxRounds: number;                                // 回合上限 (60)
+  readonly currentPlayer: PlayerId;                          // 当前行动玩家 ('P1' | 'P2')
+  readonly players: Readonly<Record<PlayerId, PlayerState>>; // 双方玩家状态
+  readonly currentTianGan: TianGanInfo | null;               // 本回合抽取的天干
+  readonly isGameOver: boolean;                              // 终局标志
+  readonly winner: PlayerId | 'DRAW' | null;                 // 获胜方
+  readonly endReason: 'GUI_YUAN' | 'MAX_ROUNDS' | null;      // 终局原因
 }
 
-export type PlayerID = 'P1' | 'P2';
-export type GameStatus = 'PLAYING' | 'FINISHED';
+export type PlayerId = 'P1' | 'P2';
 
 export interface PlayerState {
-  readonly id: PlayerID;
-  readonly score: number;                 // 玩家当前分数 (用于回合用尽时的判负)
+  readonly id: PlayerId;
+  readonly score: number;                                    // 玩家累计分数
+  readonly board: BoardState;                                // 玩家独立五行棋盘
 }
 ```
 
-### 2.2 棋盘与节点状态 (`BoardState` & `NodeState`)
-棋盘上每一方各有 5 个五行节点。
+### 2.2 棋盘与节点状态 (`BoardState` & `NodeData`)
+双方各自拥有木、火、土、金、水 5 个五行节点。
 ```typescript
-export interface BoardState {
-  // P1 和 P2 各自的五行节点集合
-  readonly p1Nodes: Record<WuXing, NodeData>;
-  readonly p2Nodes: Record<WuXing, NodeData>;
+export type BoardState = Readonly<Record<WuXing, NodeData>>;
+
+export enum WuXing {
+  WOOD = 'WOOD',
+  FIRE = 'FIRE',
+  EARTH = 'EARTH',
+  METAL = 'METAL',
+  WATER = 'WATER'
 }
 
-export type WuXing = 'METAL' | 'WOOD' | 'WATER' | 'FIRE' | 'EARTH';
-
-// 节点状态枚举: 道损 (-1), 虚空 (0), 点亮 (1), 加持 (2)
+// 节点状态: 道损 (-1), 虚空 (0), 点亮 (1), 加持 (2)
 export type NodeLevel = -1 | 0 | 1 | 2;
-export type Polarity = 'YIN' | 'YANG';
+export enum Polarity {
+  YIN = 'yin',
+  YANG = 'yang'
+}
 
 export interface NodeData {
-  readonly element: WuXing;
-  readonly yin: NodeLevel;   // 阴极状态
-  readonly yang: NodeLevel;  // 阳极状态
+  readonly yin: NodeLevel;   // 阴侧状态
+  readonly yang: NodeLevel;  // 阳侧状态
 }
 ```
 
 ## 3. 核心接口与业务契约
 
 ### 3.1 动作类型 (`ActionType` & `ActionPayload`)
-对应 `HLD.md` 中定义的基础动作与爆发动作。
+对应《GDD》与《HLD》定义的基础动作与爆发动作。
 ```typescript
 export enum ActionType {
-  AUTO = 'AUTO',             // 吸纳 (回合开始时的自动动作)
+  AUTO = 'AUTO',             // 吸纳 (基础吸收)
   CONVERT = 'CONVERT',       // 调息 (同节点内阴阳转移)
   TRANS = 'TRANS',           // 化 (相生路径强化己方)
   ATK = 'ATK',               // 破 (相克路径削弱敌方)
-  BURST = 'BURST',           // 强化 (消耗“归一”节点能量强化己方)
-  BURST_ATK = 'BURST_ATK',   // 强破 (消耗“归一”节点能量削弱敌方)
+  BURST = 'BURST',           // 强化 (消耗己方归一节点强化相生，连动)
+  BURST_ATK = 'BURST_ATK',   // 强破 (消耗己方归一节点削弱敌相克，连动)
 }
 
 export interface ActionPayload {
-  readonly type: ActionType;
-  readonly sourceElement?: WuXing;  // 发起动作的五行节点
-  readonly targetElement?: WuXing;  // 目标五行节点 (如相克时的被攻击方)
-  readonly polarity?: Polarity;     // 针对的极性 (调息或强化时可能需要)
+  readonly actionType: ActionType;
+  readonly player: PlayerId;
+  readonly element?: WuXing;
+  readonly targetElement?: WuXing;
+  readonly polarity?: Polarity;
+  readonly sourceElement?: WuXing;
+  readonly consumePolarity?: Polarity;
 }
 ```
 
-### 3.2 动作解析器 (`ActionResolver`)
-它是整个游戏逻辑的心脏，作为一个**纯函数处理器**。它接收当前状态和动作，返回新的状态。
-```typescript
-export class ActionResolver {
-  /**
-   * 执行动作并返回新状态
-   * @param state 变更前的只读状态
-   * @param action 玩家或 AI 提交的动作
-   * @returns 全新的游戏状态 (Immutable)
-   */
-  static execute(state: GameState, action: ActionPayload): GameState;
-  
-  /**
-   * 校验该动作在当前状态下是否合法 (例如：是否越权、是否能量不足)
-   */
-  static isValid(state: GameState, action: ActionPayload): boolean;
-}
-```
+### 3.2 动作解析器 (`ActionResolver`) 与回合调度器 (`TurnManager`)
+- **`ActionResolver`**：纯函数动作处理器，接收 `GameState` 与 `ActionPayload`，基于轻量增量 Patch 与结构共享返回包含 `nextState`、`scoreDelta` 与 `extraTurn` 的 `ActionResult`。
+- **`TurnManager`**：生命周期状态机驱动器，调度抽天干 -> 生成合法候选动作（`ActionCandidates`）-> 校验执行 -> 连动判定 -> 终局检测。
 
-## 4. 与 Cocos 引擎的交互机制 (EventBus)
+## 4. 与表现层的解耦与交互机制 (EventBus & GameManager)
 
-因为核心逻辑抛弃了传统的对象内部修改状态并抛出事件的方式，我们需要一个简单的对比机制来派发 UI 事件给 Cocos：
+核心计算层（Layer 1）与表现层（Layer 3）完全解耦：
 
-1. **指令输入**：UI 按钮点击 或 AI 决策完成，生成 `ActionPayload`。
-2. **状态更新**：调用 `const newState = ActionResolver.execute(oldState, action)`。
-3. **Diff 计算与事件派发 (EventBus)**：系统通过比对 `oldState` 和 `newState`，派发具体的颗粒事件。
-   * `onNodeLevelChanged(playerId, element, polarity, oldLevel, newLevel)`
-   * `onScoreChanged(playerId, newScore)`
-   * `onGameFinished(winnerId)`
-4. **Cocos 监听器**：Layer 3（视图层）仅仅监听这些纯粹的 UI 表现事件并播放特效，**绝不包含任何业务计算**。
+1. **指令输入**：玩家通过微信小游戏触控点击底部动作按钮，或由 `Strategy.ts` 产生 AI 决策，生成 `ActionPayload`。
+2. **状态推进**：通过 `turnManager.executeAction(action)` 驱动核心状态机演进。
+3. **事件总线 (`EventBus`)**：核心层抛出生命周期事件（`turn:start`、`action:executed`、`burst:triggered`、`game:over` 等）。
+4. **小游戏渲染管线 (`GameManager`)**：Layer 3 订阅事件或轮询状态快照，驱动 2D Canvas 进行程序化像素网格重绘、角色动作切换、生克攻击弹道与战报展示。
