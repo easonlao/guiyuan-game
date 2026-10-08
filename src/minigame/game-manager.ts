@@ -1,9 +1,9 @@
 import { TurnManager } from '../core/logic/TurnManager';
 import { createPRNG } from '../core/utils/prng';
-import { ActionPayload, ActionType, GENERATION_CYCLE, OVERCOMING_CYCLE, Polarity, TianGanInfo, WuXing } from '../core/types/domain';
+import { ActionPayload, ActionType, Polarity, TianGanInfo, WuXing } from '../core/types/domain';
 import { BALANCED_WEIGHTS, createStrategy } from '../core/ai/Strategy';
 import { AnimationMode, CharacterActionState, FlyingProjectile, ImpactEffect, TouchButton } from './types';
-import { formatActionButton } from './action-button-formatter';
+import { formatActionButton, getActionTargetElement } from './action-button-formatter';
 import {
   drawCenterTianGanRune,
   drawFlyingEnergy,
@@ -129,7 +129,7 @@ export class GameManager {
     const containerW = this.width - 56;
 
     actions.forEach((act, idx) => {
-      const formatted = formatActionButton(act, count);
+      const formatted = formatActionButton(act);
 
       let btnX = 0;
       let btnY = 0;
@@ -297,64 +297,7 @@ export class GameManager {
   }
 
   private executePlayerAction(action: ActionPayload): void {
-    let targetElem = action.element ?? action.targetElement ?? action.sourceElement ?? this.currentTianGan?.element ?? WuXing.WOOD;
-    if (action.actionType === ActionType.TRANS || action.actionType === ActionType.BURST) {
-      const srcElem = action.sourceElement ?? action.element ?? this.currentTianGan?.element ?? WuXing.WOOD;
-      targetElem = action.targetElement ?? GENERATION_CYCLE[srcElem];
-    } else if (action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK) {
-      const srcElem = action.sourceElement ?? action.element ?? this.currentTianGan?.element ?? WuXing.WOOD;
-      targetElem = action.targetElement ?? OVERCOMING_CYCLE[srcElem];
-    }
-    const elemCfg = WUXING_PALETTE[targetElem] ?? WUXING_PALETTE[WuXing.WOOD];
-
-    this.p1State = action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK ? 'attack' : 'cast';
-    this.p1ActionTimer = 30;
-
-    let startPos = this.getCenterPosition();
-    let targetPos = this.getSealPosition(true, targetElem);
-
-    if (action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK) {
-      this.p2State = 'hurt';
-      this.p2ActionTimer = 25;
-      this.screenShake = action.actionType === ActionType.BURST_ATK ? 8 : 4;
-      const srcElem = action.sourceElement ?? targetElem;
-      startPos = this.getSealPosition(true, srcElem);
-      targetPos = this.getSealPosition(false, targetElem);
-    }
-
-    this.isAnimating = true;
-    this.flyingProjectiles.push({
-      startX: startPos.x,
-      startY: startPos.y,
-      currentX: startPos.x,
-      currentY: startPos.y,
-      targetX: targetPos.x,
-      targetY: targetPos.y,
-      progress: 0,
-      duration: 22,
-      frame: 0,
-      color: elemCfg.main,
-      lightColor: elemCfg.light,
-      mode: this.animMode,
-      trail: [],
-      onComplete: () => {
-        this.impactEffects.push({
-          x: targetPos.x,
-          y: targetPos.y,
-          radius: 4,
-          maxRadius: 28,
-          color: elemCfg.main,
-          lightColor: elemCfg.light,
-          alpha: 1,
-          life: 16,
-          maxLife: 16,
-          mode: this.animMode
-        });
-        this.turnManager.executeAction(action);
-        this.isAnimating = false;
-        this.startNewTurn();
-      }
-    });
+    this.dispatchAction(action, true);
   }
 
   /** 帧更新 (逻辑时钟) */
@@ -429,30 +372,37 @@ export class GameManager {
     const tg = this.turnManager.getCurrentTianGan()!;
     const available = this.turnManager.getAvailableActions();
     const action = this.aiStrategy(state, tg, available);
+    this.dispatchAction(action, false);
+  }
 
-    let targetElem = action.element ?? action.targetElement ?? action.sourceElement ?? tg.element ?? WuXing.WOOD;
-    if (action.actionType === ActionType.TRANS || action.actionType === ActionType.BURST) {
-      const srcElem = action.sourceElement ?? action.element ?? tg.element ?? WuXing.WOOD;
-      targetElem = action.targetElement ?? GENERATION_CYCLE[srcElem];
-    } else if (action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK) {
-      const srcElem = action.sourceElement ?? action.element ?? tg.element ?? WuXing.WOOD;
-      targetElem = action.targetElement ?? OVERCOMING_CYCLE[srcElem];
-    }
+  private dispatchAction(action: ActionPayload, isP1: boolean): void {
+    const targetElem = getActionTargetElement(action, this.currentTianGan?.element);
     const elemCfg = WUXING_PALETTE[targetElem] ?? WUXING_PALETTE[WuXing.WOOD];
+    const isAttack = action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK;
 
-    this.p2State = action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK ? 'attack' : 'cast';
-    this.p2ActionTimer = 30;
+    if (isP1) {
+      this.p1State = isAttack ? 'attack' : 'cast';
+      this.p1ActionTimer = 30;
+    } else {
+      this.p2State = isAttack ? 'attack' : 'cast';
+      this.p2ActionTimer = 30;
+    }
 
     let startPos = this.getCenterPosition();
-    let targetPos = this.getSealPosition(false, targetElem);
+    let targetPos = this.getSealPosition(isP1, targetElem);
 
-    if (action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK) {
-      this.p1State = 'hurt';
-      this.p1ActionTimer = 25;
+    if (isAttack) {
+      if (isP1) {
+        this.p2State = 'hurt';
+        this.p2ActionTimer = 25;
+      } else {
+        this.p1State = 'hurt';
+        this.p1ActionTimer = 25;
+      }
       this.screenShake = action.actionType === ActionType.BURST_ATK ? 8 : 4;
       const srcElem = action.sourceElement ?? targetElem;
-      startPos = this.getSealPosition(false, srcElem);
-      targetPos = this.getSealPosition(true, targetElem);
+      startPos = this.getSealPosition(isP1, srcElem);
+      targetPos = this.getSealPosition(!isP1, targetElem);
     }
 
     this.isAnimating = true;
