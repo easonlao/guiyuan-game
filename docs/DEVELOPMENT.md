@@ -2,15 +2,28 @@
 
 本文只提供代码入口和模块职责；游戏术语见根目录 [`GLOSSARY.md`](../GLOSSARY.md)，玩法说明见 [`README.md`](../README.md)。代码行为以当前实现为准。
 
-## 一局游戏的主要流程
+## 一局游戏的主要流程 (Layer 1: 核心计算与状态层 `src/core/`)
 
-- [`GameEngine`](../src/js/logic/GameEngine.js)：协调游戏事件、回合决策和动作执行。
-- [`GameSequence`](../src/js/logic/flow/GameSequence.js)：管理游戏开始与先手流程。
-- [`TurnManager`](../src/js/logic/flow/TurnManager.js)：推进回合、生成天干并检查游戏结束。
-- [`ActionResolver`](../src/js/logic/actions/ActionResolver.js)：应用游戏动作造成的状态变化。
-- [`StateManager`](../src/js/state/StateManager.js)：保存和更新对局状态，并发出状态变化事件。
+- [`TurnManager`](../src/core/logic/TurnManager.ts)：回合生命周期驱动器，调度天干生成、合法动作过滤、动作执行、连动判定与 60 回合终局判定。
+- [`ActionCandidates`](../src/core/logic/ActionCandidates.ts)：纯函数合法动作候选生成器，对齐吸纳/调息/化/破/强化/强破规则。
+- [`ActionResolver`](../src/core/logic/ActionResolver.ts)：纯函数动作解析器，基于轻量增量 Patch 与结构共享演进 `GameState`。
+- [`State`](../src/core/logic/State.ts)：创建初始棋盘状态（包含五行节点阴阳两仪）与状态校验。
+- [`ScoreCalculator`](../src/core/logic/ScoreCalculator.ts)：基于动作与五行状态变动进行实时计分。
+- [`EventBus`](../src/core/logic/EventBus.ts)：轻量事件总线，用于驱动表现层与视窗解耦渲染。
 
-## 对手与联机
+## 对手与策略推演
 
-- [`AIController`](../src/js/logic/ai/AIController.js)：接入 AI 决策、对局记录与统计。
-- [`SimplifiedPVPManager`](../src/js/network/SimplifiedPVPManager.js)：处理在线 PVP 的消息与状态同步。
+- [`Strategy`](../src/core/ai/Strategy.ts) & [`ActionEvaluator`](../src/core/ai/ActionEvaluator.ts)：纯 TS 策略 AI 与权重估值器，支持多套博弈倾向。
+- [`HeadlessMatch`](../src/core/headless/HeadlessMatch.ts) & [`HeadlessBenchmark`](../src/core/headless/HeadlessBenchmark.ts)：无头推演与万局自动化基线评测。
+- [`TerminalBoardViewer`](../src/core/headless/TerminalBoardViewer.ts)：纯文本控制台 ASCII 棋盘检视器。
+
+## 多端存储适配 (Layer 2: `src/adapters/`)
+
+- [`IStorageManager`](../src/adapters/IStorageManager.ts)：统一持久化接口。
+- [`WechatStorageAdapter`](../src/adapters/WechatStorageAdapter.ts)：微信小游戏本地持久化适配器（`wx.getStorageSync`）。
+- [`LocalStorageAdapter`](../src/adapters/LocalStorageAdapter.ts)：Web 预览环境适配器。
+- [`MockStorage`](../src/adapters/MockStorage.ts)：Node.js 测试环境内存适配器。
+
+## 表现层与小游戏交付 (Layer 3: `src/minigame/` & `minigame/`)
+
+- 纯代码驱动轻量 Canvas 渲染层，直接打包输出至 `minigame/` 目录供微信开发者工具实时加载。

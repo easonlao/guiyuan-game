@@ -58,6 +58,6 @@
 
 **无头推演 (Headless Match)**：在不依赖任何 UI 引擎的环境下（如 Node.js），让 AI 算法或随机策略互相博弈以验证平衡性和性能的测试流程。
 
-**事件总线 (EventBus)**：用于解耦核心逻辑与 Cocos 视图层。通过 Diff 新旧 `GameState`，自动派发细粒度事件供 UI 消费。
+**事件总线 (EventBus)**：用于解耦核心计算逻辑与表现层（View Layer）。通过订阅与发布机制驱动状态变化事件供 UI 消费。
 
 **存储管理器 (`IStorageManager`)**：存储与持久化适配器接口，支持通过依赖注入在测试环境（`MockStorage`）、Web 环境（`LocalStorageAdapter`）与微信小游戏环境（`WechatStorageAdapter`）间无缝切换。

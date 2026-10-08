@@ -11,6 +11,8 @@
     "oxlint": "oxlint src/core src/adapters tests/core",
     "check:deps": "depcruise --config .dependency-cruiser.js src",
     "benchmark:headless": "npx tsx src/core/headless/HeadlessBenchmark.ts",
+    "build:minigame": "node scripts/build-minigame.mjs",
+    "dev:minigame": "node scripts/build-minigame.mjs --watch",
     "stryker": "stryker run"
   },
   "devDependencies": {
