@@ -12,6 +12,20 @@ Canonical labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-hu
 
 Single-context. See `docs/agents/domain.md`.
 
+### Subagents
+
+Role-based delegation across the `/ask-matt` lifecycle (Explore → Execute → Review):
+
+- **`explorer`** (Discovery, research & bug diagnosis):
+  - Dispatches: `research`, `diagnosing-bugs`, CodeGraph MCP (`codegraph_explore`).
+  - Focus: Investigates architecture and primary sources, navigates symbols/call trees, and reproduces tricky defects into a tight, deterministic failing test loop before fixing.
+- **`executor`** (Prototyping & test-driven delivery):
+  - Dispatches: `prototype`, `implement` / `implement-spec`, `tdd`.
+  - Focus: Spikes throwaway prototypes for uncertain UI/state questions, drives implementation through strict red-green-refactor cycles (`tdd`), and delivers scoped ticket changes.
+- **`reviewer`** (Two-axis review & boundary impact analysis):
+  - Dispatches: `code-review`, CodeGraph MCP (`codegraph_explore`).
+  - Focus: Performs two-axis diff reviews (Spec compliance + Coding standards), and audits affected callers and architectural seams via CodeGraph before changes land.
+
 <!-- CODEGRAPH_START -->
 ## CodeGraph
 
