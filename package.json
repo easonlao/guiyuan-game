@@ -9,11 +9,18 @@
     "preview": "vite preview",
     "test": "vitest run",
     "headless:compare": "node scripts/headless-batch-comparison.js",
-    "headless:evaluate": "node scripts/headless-strategy-evaluation.js"
+    "headless:evaluate": "node scripts/headless-strategy-evaluation.js",
+    "lint": "oxlint",
+    "check:deps": "depcruise src"
   },
   "devDependencies": {
+    "@types/node": "^26.6.4",
     "agent-browser": "^0.38.2",
+    "dependency-cruiser": "^18.5.0",
+    "oxlint": "^1.87.0",
     "terser": "^5.46.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
     "vite": "^7.3.6",
     "vitest": "^5.0.3"
   },
