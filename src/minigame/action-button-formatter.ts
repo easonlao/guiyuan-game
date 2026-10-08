@@ -16,11 +16,26 @@ export interface FormattedActionButton {
 }
 
 /**
+ * 解析动作的目标元素
+ * @param act 动作载荷
+ * @param fallbackElement 可选的回退元素（默认木）
+ */
+export function getActionTargetElement(act: ActionPayload, fallbackElement?: WuXing): WuXing {
+  const srcElem = act.sourceElement ?? act.element ?? fallbackElement ?? WuXing.WOOD;
+  if (act.actionType === ActionType.TRANS || act.actionType === ActionType.BURST) {
+    return act.targetElement ?? GENERATION_CYCLE[srcElem];
+  }
+  if (act.actionType === ActionType.ATK || act.actionType === ActionType.BURST_ATK) {
+    return act.targetElement ?? OVERCOMING_CYCLE[srcElem];
+  }
+  return act.targetElement ?? act.element ?? srcElem;
+}
+
+/**
  * 格式化动作按钮的文本与样式配置
  * @param act 动作载荷
- * @param totalCount 当前可用动作总数
  */
-export function formatActionButton(act: ActionPayload, totalCount: number): FormattedActionButton {
+export function formatActionButton(act: ActionPayload): FormattedActionButton {
   let label = '';
   let subLabel = '';
   let color = '#63b3ed';
@@ -32,13 +47,7 @@ export function formatActionButton(act: ActionPayload, totalCount: number): Form
   switch (act.actionType) {
     case ActionType.AUTO: {
       label = '【吸纳】';
-      if (totalCount === 1) {
-        subLabel = '天干能量吸纳（充盈虚空/修复道损）';
-      } else {
-        const elem = act.element ?? WuXing.WOOD;
-        const elemName = WUXING_PALETTE[elem]?.name ?? '';
-        subLabel = `${elemName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})+1`;
-      }
+      subLabel = '天干能量吸纳（充盈虚空/修复道损）';
       color = '#68d391';
       break;
     }
@@ -52,7 +61,7 @@ export function formatActionButton(act: ActionPayload, totalCount: number): Form
 
     case ActionType.TRANS: {
       label = '【化】';
-      const targetElem = act.targetElement ?? GENERATION_CYCLE[srcElem];
+      const targetElem = getActionTargetElement(act);
       const targetName = WUXING_PALETTE[targetElem]?.name ?? '';
       subLabel = `生${targetName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})+1`;
       color = '#4fd1c5';
@@ -61,7 +70,7 @@ export function formatActionButton(act: ActionPayload, totalCount: number): Form
 
     case ActionType.ATK: {
       label = '【破】';
-      const targetElem = act.targetElement ?? OVERCOMING_CYCLE[srcElem];
+      const targetElem = getActionTargetElement(act);
       const targetName = WUXING_PALETTE[targetElem]?.name ?? '';
       subLabel = `克敌${targetName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})-1`;
       color = '#fc8181';
@@ -70,7 +79,7 @@ export function formatActionButton(act: ActionPayload, totalCount: number): Form
 
     case ActionType.BURST: {
       label = '【强化】';
-      const targetElem = act.targetElement ?? GENERATION_CYCLE[srcElem];
+      const targetElem = getActionTargetElement(act);
       const targetName = WUXING_PALETTE[targetElem]?.name ?? '';
       subLabel = `消耗${srcName}·生${targetName}+2`;
       color = '#f6e05e';
@@ -80,7 +89,7 @@ export function formatActionButton(act: ActionPayload, totalCount: number): Form
 
     case ActionType.BURST_ATK: {
       label = '【强破】';
-      const targetElem = act.targetElement ?? OVERCOMING_CYCLE[srcElem];
+      const targetElem = getActionTargetElement(act);
       const targetName = WUXING_PALETTE[targetElem]?.name ?? '';
       subLabel = `消耗${srcName}·克${targetName}-2`;
       color = '#f56565';

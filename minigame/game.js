@@ -1558,7 +1558,17 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     ctx.font = "10px monospace";
     ctx.fillText("⇄ 点此切换", x + w - 12, y + h / 2);
   }
-  function formatActionButton(act, totalCount) {
+  function getActionTargetElement(act, fallbackElement) {
+    const srcElem = act.sourceElement ?? act.element ?? fallbackElement ?? WuXing.WOOD;
+    if (act.actionType === ActionType.TRANS || act.actionType === ActionType.BURST) {
+      return act.targetElement ?? GENERATION_CYCLE[srcElem];
+    }
+    if (act.actionType === ActionType.ATK || act.actionType === ActionType.BURST_ATK) {
+      return act.targetElement ?? OVERCOMING_CYCLE[srcElem];
+    }
+    return act.targetElement ?? act.element ?? srcElem;
+  }
+  function formatActionButton(act) {
     let label = "";
     let subLabel = "";
     let color = "#63b3ed";
@@ -1568,13 +1578,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     switch (act.actionType) {
       case ActionType.AUTO: {
         label = "【吸纳】";
-        if (totalCount === 1) {
-          subLabel = "天干能量吸纳（充盈虚空/修复道损）";
-        } else {
-          const elem = act.element ?? WuXing.WOOD;
-          const elemName = WUXING_PALETTE[elem]?.name ?? "";
-          subLabel = `${elemName}(${act.polarity === Polarity.YANG ? "阳" : "阴"})+1`;
-        }
+        subLabel = "天干能量吸纳（充盈虚空/修复道损）";
         color = "#68d391";
         break;
       }
@@ -1586,7 +1590,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       case ActionType.TRANS: {
         label = "【化】";
-        const targetElem = act.targetElement ?? GENERATION_CYCLE[srcElem];
+        const targetElem = getActionTargetElement(act);
         const targetName = WUXING_PALETTE[targetElem]?.name ?? "";
         subLabel = `生${targetName}(${act.polarity === Polarity.YANG ? "阳" : "阴"})+1`;
         color = "#4fd1c5";
@@ -1594,7 +1598,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       case ActionType.ATK: {
         label = "【破】";
-        const targetElem = act.targetElement ?? OVERCOMING_CYCLE[srcElem];
+        const targetElem = getActionTargetElement(act);
         const targetName = WUXING_PALETTE[targetElem]?.name ?? "";
         subLabel = `克敌${targetName}(${act.polarity === Polarity.YANG ? "阳" : "阴"})-1`;
         color = "#fc8181";
@@ -1602,7 +1606,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       case ActionType.BURST: {
         label = "【强化】";
-        const targetElem = act.targetElement ?? GENERATION_CYCLE[srcElem];
+        const targetElem = getActionTargetElement(act);
         const targetName = WUXING_PALETTE[targetElem]?.name ?? "";
         subLabel = `消耗${srcName}·生${targetName}+2`;
         color = "#f6e05e";
@@ -1611,7 +1615,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       case ActionType.BURST_ATK: {
         label = "【强破】";
-        const targetElem = act.targetElement ?? OVERCOMING_CYCLE[srcElem];
+        const targetElem = getActionTargetElement(act);
         const targetName = WUXING_PALETTE[targetElem]?.name ?? "";
         subLabel = `消耗${srcName}·克${targetName}-2`;
         color = "#f56565";
@@ -1717,7 +1721,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const buttons = [];
       const containerW = this.width - 56;
       actions.forEach((act, idx) => {
-        const formatted = formatActionButton(act, count);
+        const formatted = formatActionButton(act);
         let btnX = 0;
         let btnY = 0;
         let btnW = 0;
@@ -1856,60 +1860,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
     }
     executePlayerAction(action) {
-      let targetElem = action.element ?? action.targetElement ?? action.sourceElement ?? this.currentTianGan?.element ?? WuXing.WOOD;
-      if (action.actionType === ActionType.TRANS || action.actionType === ActionType.BURST) {
-        const srcElem = action.sourceElement ?? action.element ?? this.currentTianGan?.element ?? WuXing.WOOD;
-        targetElem = action.targetElement ?? GENERATION_CYCLE[srcElem];
-      } else if (action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK) {
-        const srcElem = action.sourceElement ?? action.element ?? this.currentTianGan?.element ?? WuXing.WOOD;
-        targetElem = action.targetElement ?? OVERCOMING_CYCLE[srcElem];
-      }
-      const elemCfg = WUXING_PALETTE[targetElem] ?? WUXING_PALETTE[WuXing.WOOD];
-      this.p1State = action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK ? "attack" : "cast";
-      this.p1ActionTimer = 30;
-      let startPos = this.getCenterPosition();
-      let targetPos = this.getSealPosition(true, targetElem);
-      if (action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK) {
-        this.p2State = "hurt";
-        this.p2ActionTimer = 25;
-        this.screenShake = action.actionType === ActionType.BURST_ATK ? 8 : 4;
-        const srcElem = action.sourceElement ?? targetElem;
-        startPos = this.getSealPosition(true, srcElem);
-        targetPos = this.getSealPosition(false, targetElem);
-      }
-      this.isAnimating = true;
-      this.flyingProjectiles.push({
-        startX: startPos.x,
-        startY: startPos.y,
-        currentX: startPos.x,
-        currentY: startPos.y,
-        targetX: targetPos.x,
-        targetY: targetPos.y,
-        progress: 0,
-        duration: 22,
-        frame: 0,
-        color: elemCfg.main,
-        lightColor: elemCfg.light,
-        mode: this.animMode,
-        trail: [],
-        onComplete: () => {
-          this.impactEffects.push({
-            x: targetPos.x,
-            y: targetPos.y,
-            radius: 4,
-            maxRadius: 28,
-            color: elemCfg.main,
-            lightColor: elemCfg.light,
-            alpha: 1,
-            life: 16,
-            maxLife: 16,
-            mode: this.animMode
-          });
-          this.turnManager.executeAction(action);
-          this.isAnimating = false;
-          this.startNewTurn();
-        }
-      });
+      this.dispatchAction(action, true);
     }
     /** 帧更新 (逻辑时钟) */
     update() {
@@ -1971,26 +1922,33 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const tg = this.turnManager.getCurrentTianGan();
       const available = this.turnManager.getAvailableActions();
       const action = this.aiStrategy(state, tg, available);
-      let targetElem = action.element ?? action.targetElement ?? action.sourceElement ?? tg.element ?? WuXing.WOOD;
-      if (action.actionType === ActionType.TRANS || action.actionType === ActionType.BURST) {
-        const srcElem = action.sourceElement ?? action.element ?? tg.element ?? WuXing.WOOD;
-        targetElem = action.targetElement ?? GENERATION_CYCLE[srcElem];
-      } else if (action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK) {
-        const srcElem = action.sourceElement ?? action.element ?? tg.element ?? WuXing.WOOD;
-        targetElem = action.targetElement ?? OVERCOMING_CYCLE[srcElem];
-      }
+      this.dispatchAction(action, false);
+    }
+    dispatchAction(action, isP1) {
+      const targetElem = getActionTargetElement(action, this.currentTianGan?.element);
       const elemCfg = WUXING_PALETTE[targetElem] ?? WUXING_PALETTE[WuXing.WOOD];
-      this.p2State = action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK ? "attack" : "cast";
-      this.p2ActionTimer = 30;
+      const isAttack = action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK;
+      if (isP1) {
+        this.p1State = isAttack ? "attack" : "cast";
+        this.p1ActionTimer = 30;
+      } else {
+        this.p2State = isAttack ? "attack" : "cast";
+        this.p2ActionTimer = 30;
+      }
       let startPos = this.getCenterPosition();
-      let targetPos = this.getSealPosition(false, targetElem);
-      if (action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK) {
-        this.p1State = "hurt";
-        this.p1ActionTimer = 25;
+      let targetPos = this.getSealPosition(isP1, targetElem);
+      if (isAttack) {
+        if (isP1) {
+          this.p2State = "hurt";
+          this.p2ActionTimer = 25;
+        } else {
+          this.p1State = "hurt";
+          this.p1ActionTimer = 25;
+        }
         this.screenShake = action.actionType === ActionType.BURST_ATK ? 8 : 4;
         const srcElem = action.sourceElement ?? targetElem;
-        startPos = this.getSealPosition(false, srcElem);
-        targetPos = this.getSealPosition(true, targetElem);
+        startPos = this.getSealPosition(isP1, srcElem);
+        targetPos = this.getSealPosition(!isP1, targetElem);
       }
       this.isAnimating = true;
       this.flyingProjectiles.push({
