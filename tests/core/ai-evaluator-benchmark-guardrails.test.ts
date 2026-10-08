@@ -203,9 +203,9 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
         strategyP2: balancedStrategy
       });
 
-      // 护栏 1: 同水平五行归元率处于 25% ~ 80%
+      // 护栏 1: 同水平五行归元率处于安全区间 (规则 A 与虚空强制吸纳生效后，归元率基线由 ~71% 提升至 ~82%)
       expect(metrics.guiYuanRate).toBeGreaterThanOrEqual(0.25);
-      expect(metrics.guiYuanRate).toBeLessThanOrEqual(0.80);
+      expect(metrics.guiYuanRate).toBeLessThanOrEqual(0.85);
 
       // 护栏 3: 先手胜率收敛在合理范围 (<= 70%)
       expect(metrics.p1WinRate).toBeLessThan(0.70);

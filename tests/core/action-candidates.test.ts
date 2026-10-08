@@ -27,7 +27,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
     });
   });
 
-  it('2. When stem node is DAMAGE (-1), should also propose AUTO', () => {
+  it('2. When stem node is DAMAGE (-1), should propose AUTO only', () => {
     let state = createInitialGameState();
     state = {
       ...state,
@@ -45,7 +45,8 @@ describe('ActionCandidates (Legal Action Generator)', () => {
 
     const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
     const actions = getAvailableActions(state, jiaWood);
-    expect(actions).toContainEqual({
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).toEqual({
       actionType: ActionType.AUTO,
       player: 'P1',
       element: WuXing.WOOD,
@@ -125,7 +126,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
     });
   });
 
-  it('5. When any node achieves GuiYi (1, 1), should generate BURST and BURST_ATK', () => {
+  it('5. When drawn stem node achieves GuiYi (1, 1), should generate BURST and BURST_ATK for its element', () => {
     let state = createInitialGameState();
     state = {
       ...state,
@@ -141,16 +142,22 @@ describe('ActionCandidates (Legal Action Generator)', () => {
       }
     };
 
-    // Draw Bing Fire (丙 FIRE YANG, level 0)
-    const bingFire = TIAN_GAN_LIST.find((tg) => tg.name === '丙')!;
-    const actions = getAvailableActions(state, bingFire);
+    // Draw Geng Metal (庚 METAL YANG, level 1, node is GuiYi)
+    const gengMetal = TIAN_GAN_LIST.find((tg) => tg.name === '庚')!;
+    const actions = getAvailableActions(state, gengMetal);
 
-    // Regular stem action: AUTO on FIRE YANG
+    // Regular stem actions: CONVERT to YIN and ATK against P2 WOOD
     expect(actions).toContainEqual({
-      actionType: ActionType.AUTO,
+      actionType: ActionType.CONVERT,
       player: 'P1',
-      element: WuXing.FIRE,
-      polarity: Polarity.YANG
+      element: WuXing.METAL,
+      polarity: Polarity.YIN
+    });
+    expect(actions).toContainEqual({
+      actionType: ActionType.ATK,
+      player: 'P1',
+      sourceElement: WuXing.METAL,
+      polarity: Polarity.YIN
     });
 
     // Burst action: METAL GuiYi -> BURST (METAL生WATER) consuming YIN
@@ -191,5 +198,329 @@ describe('ActionCandidates (Legal Action Generator)', () => {
     state = { ...state, isGameOver: true, winner: 'P1' };
     const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!;
     expect(getAvailableActions(state, jiaWood)).toHaveLength(0);
+  });
+
+  describe('8. Comprehensive 5-Element Coverage: Void (0) and Damage (-1) AUTO Exclusivity', () => {
+    const ALL_ELEMENTS = [
+      WuXing.WOOD,
+      WuXing.FIRE,
+      WuXing.EARTH,
+      WuXing.METAL,
+      WuXing.WATER
+    ];
+
+    for (const element of ALL_ELEMENTS) {
+      const yangStem = TIAN_GAN_LIST.find(
+        (tg) => tg.element === element && tg.polarity === Polarity.YANG
+      )!;
+      const yinStem = TIAN_GAN_LIST.find(
+        (tg) => tg.element === element && tg.polarity === Polarity.YIN
+      )!;
+
+      it(`returns EXACTLY 1 action (AUTO) when ${element} YANG stem is VOID (0)`, () => {
+        const state = createInitialGameState();
+        const actions = getAvailableActions(state, yangStem);
+        expect(actions).toHaveLength(1);
+        expect(actions[0]).toEqual({
+          actionType: ActionType.AUTO,
+          player: 'P1',
+          element,
+          polarity: Polarity.YANG
+        });
+      });
+
+      it(`returns EXACTLY 1 action (AUTO) when ${element} YIN stem is VOID (0)`, () => {
+        const state = createInitialGameState();
+        const actions = getAvailableActions(state, yinStem);
+        expect(actions).toHaveLength(1);
+        expect(actions[0]).toEqual({
+          actionType: ActionType.AUTO,
+          player: 'P1',
+          element,
+          polarity: Polarity.YIN
+        });
+      });
+
+      it(`returns EXACTLY 1 action (AUTO) when ${element} YANG stem is DAMAGE (-1)`, () => {
+        let state = createInitialGameState();
+        state = {
+          ...state,
+          players: {
+            ...state.players,
+            P1: {
+              ...state.players.P1,
+              board: {
+                ...state.players.P1.board,
+                [element]: { yin: 0, yang: -1 }
+              }
+            }
+          }
+        };
+        const actions = getAvailableActions(state, yangStem);
+        expect(actions).toHaveLength(1);
+        expect(actions[0]).toEqual({
+          actionType: ActionType.AUTO,
+          player: 'P1',
+          element,
+          polarity: Polarity.YANG
+        });
+      });
+
+      it(`returns EXACTLY 1 action (AUTO) when ${element} YIN stem is DAMAGE (-1)`, () => {
+        let state = createInitialGameState();
+        state = {
+          ...state,
+          players: {
+            ...state.players,
+            P1: {
+              ...state.players.P1,
+              board: {
+                ...state.players.P1.board,
+                [element]: { yin: -1, yang: 0 }
+              }
+            }
+          }
+        };
+        const actions = getAvailableActions(state, yinStem);
+        expect(actions).toHaveLength(1);
+        expect(actions[0]).toEqual({
+          actionType: ActionType.AUTO,
+          player: 'P1',
+          element,
+          polarity: Polarity.YIN
+        });
+      });
+
+      it(`returns EXACTLY 1 action (AUTO) when ${element} is VOID (0) even if all other 4 elements are GuiYi`, () => {
+        let state = createInitialGameState();
+        const boardWithOtherGuiYi = { ...state.players.P1.board };
+        for (const otherEl of ALL_ELEMENTS) {
+          if (otherEl !== element) {
+            boardWithOtherGuiYi[otherEl] = { yin: 1, yang: 1 };
+          }
+        }
+        state = {
+          ...state,
+          players: {
+            ...state.players,
+            P1: {
+              ...state.players.P1,
+              board: boardWithOtherGuiYi
+            }
+          }
+        };
+
+        const actions = getAvailableActions(state, yangStem);
+        expect(actions).toHaveLength(1);
+        expect(actions[0]).toEqual({
+          actionType: ActionType.AUTO,
+          player: 'P1',
+          element,
+          polarity: Polarity.YANG
+        });
+      });
+
+      it(`returns EXACTLY 1 action (AUTO) when ${element} is DAMAGE (-1) even if all other 4 elements are GuiYi`, () => {
+        let state = createInitialGameState();
+        const boardWithOtherGuiYi = { ...state.players.P1.board };
+        for (const otherEl of ALL_ELEMENTS) {
+          if (otherEl !== element) {
+            boardWithOtherGuiYi[otherEl] = { yin: 1, yang: 1 };
+          }
+        }
+        boardWithOtherGuiYi[element] = { yin: 0, yang: -1 };
+        state = {
+          ...state,
+          players: {
+            ...state.players,
+            P1: {
+              ...state.players.P1,
+              board: boardWithOtherGuiYi
+            }
+          }
+        };
+
+        const actions = getAvailableActions(state, yangStem);
+        expect(actions).toHaveLength(1);
+        expect(actions[0]).toEqual({
+          actionType: ActionType.AUTO,
+          player: 'P1',
+          element,
+          polarity: Polarity.YANG
+        });
+      });
+    }
+  });
+
+  describe('9. Comprehensive 5-Element Coverage: Current Drawn TianGan GuiYi Burst Gate (Rule A)', () => {
+    const ALL_ELEMENTS = [
+      WuXing.WOOD,
+      WuXing.FIRE,
+      WuXing.EARTH,
+      WuXing.METAL,
+      WuXing.WATER
+    ];
+
+    for (const element of ALL_ELEMENTS) {
+      const yangStem = TIAN_GAN_LIST.find(
+        (tg) => tg.element === element && tg.polarity === Polarity.YANG
+      )!;
+      const yinStem = TIAN_GAN_LIST.find(
+        (tg) => tg.element === element && tg.polarity === Polarity.YIN
+      )!;
+
+      it(`generates BURST & BURST_ATK for ${element} when drawn YANG stem (${yangStem.name}) node is GuiYi (1, 1)`, () => {
+        let state = createInitialGameState();
+        state = {
+          ...state,
+          players: {
+            ...state.players,
+            P1: {
+              ...state.players.P1,
+              board: {
+                ...state.players.P1.board,
+                [element]: { yin: 1, yang: 1 }
+              }
+            }
+          }
+        };
+
+        const actions = getAvailableActions(state, yangStem);
+
+        const burstActions = actions.filter((a) => a.actionType === ActionType.BURST);
+        expect(burstActions.length).toBeGreaterThan(0);
+        for (const burst of burstActions) {
+          expect(burst.sourceElement).toBe(element);
+          expect(burst.consumePolarity).toBe(Polarity.YIN);
+        }
+
+        const burstAtkActions = actions.filter((a) => a.actionType === ActionType.BURST_ATK);
+        expect(burstAtkActions.length).toBeGreaterThan(0);
+        for (const burstAtk of burstAtkActions) {
+          expect(burstAtk.sourceElement).toBe(element);
+          expect(burstAtk.consumePolarity).toBe(Polarity.YANG);
+        }
+
+        // Must also provide normal actions (CONVERT, ATK)
+        expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(true);
+        expect(actions.some((a) => a.actionType === ActionType.ATK)).toBe(true);
+      });
+
+      it(`generates BURST & BURST_ATK for ${element} when drawn YIN stem (${yinStem.name}) node is GuiYi (1, 1)`, () => {
+        let state = createInitialGameState();
+        state = {
+          ...state,
+          players: {
+            ...state.players,
+            P1: {
+              ...state.players.P1,
+              board: {
+                ...state.players.P1.board,
+                [element]: { yin: 1, yang: 1 }
+              }
+            }
+          }
+        };
+
+        const actions = getAvailableActions(state, yinStem);
+
+        const burstActions = actions.filter((a) => a.actionType === ActionType.BURST);
+        expect(burstActions.length).toBeGreaterThan(0);
+        for (const burst of burstActions) {
+          expect(burst.sourceElement).toBe(element);
+          expect(burst.consumePolarity).toBe(Polarity.YIN);
+        }
+
+        const burstAtkActions = actions.filter((a) => a.actionType === ActionType.BURST_ATK);
+        expect(burstAtkActions.length).toBeGreaterThan(0);
+        for (const burstAtk of burstAtkActions) {
+          expect(burstAtk.sourceElement).toBe(element);
+          expect(burstAtk.consumePolarity).toBe(Polarity.YANG);
+        }
+
+        // Must also provide normal actions (CONVERT, TRANS)
+        expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(true);
+        expect(actions.some((a) => a.actionType === ActionType.TRANS)).toBe(true);
+      });
+    }
+  });
+
+  describe('10. Comprehensive 5-Element Coverage: Single-Lit Non-GuiYi Strictly Excludes Burst Even When Other Elements Are GuiYi', () => {
+    const ALL_ELEMENTS = [
+      WuXing.WOOD,
+      WuXing.FIRE,
+      WuXing.EARTH,
+      WuXing.METAL,
+      WuXing.WATER
+    ];
+
+    for (const element of ALL_ELEMENTS) {
+      const yangStem = TIAN_GAN_LIST.find(
+        (tg) => tg.element === element && tg.polarity === Polarity.YANG
+      )!;
+      const yinStem = TIAN_GAN_LIST.find(
+        (tg) => tg.element === element && tg.polarity === Polarity.YIN
+      )!;
+
+      it(`strictly excludes BURST and BURST_ATK when drawn YANG stem (${yangStem.name}) is single-lit (yang:1, yin:0) and all other 4 elements are GuiYi`, () => {
+        let state = createInitialGameState();
+        const board = { ...state.players.P1.board };
+        for (const otherEl of ALL_ELEMENTS) {
+          board[otherEl] = otherEl === element ? { yin: 0, yang: 1 } : { yin: 1, yang: 1 };
+        }
+        state = {
+          ...state,
+          players: {
+            ...state.players,
+            P1: {
+              ...state.players.P1,
+              board
+            }
+          }
+        };
+
+        const actions = getAvailableActions(state, yangStem);
+
+        // Under Rule A, only current stem's element can burst, and it's not GuiYi!
+        const burstActions = actions.filter(
+          (a) => a.actionType === ActionType.BURST || a.actionType === ActionType.BURST_ATK
+        );
+        expect(burstActions).toHaveLength(0);
+
+        // Normal actions should still be available
+        expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(true);
+        expect(actions.some((a) => a.actionType === ActionType.ATK)).toBe(true);
+      });
+
+      it(`strictly excludes BURST and BURST_ATK when drawn YIN stem (${yinStem.name}) is single-lit (yin:1, yang:0) and all other 4 elements are GuiYi`, () => {
+        let state = createInitialGameState();
+        const board = { ...state.players.P1.board };
+        for (const otherEl of ALL_ELEMENTS) {
+          board[otherEl] = otherEl === element ? { yin: 1, yang: 0 } : { yin: 1, yang: 1 };
+        }
+        state = {
+          ...state,
+          players: {
+            ...state.players,
+            P1: {
+              ...state.players.P1,
+              board
+            }
+          }
+        };
+
+        const actions = getAvailableActions(state, yinStem);
+
+        // Under Rule A, only current stem's element can burst, and it's not GuiYi!
+        const burstActions = actions.filter(
+          (a) => a.actionType === ActionType.BURST || a.actionType === ActionType.BURST_ATK
+        );
+        expect(burstActions).toHaveLength(0);
+
+        // Normal actions should still be available
+        expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(true);
+        expect(actions.some((a) => a.actionType === ActionType.TRANS)).toBe(true);
+      });
+    }
   });
 });
