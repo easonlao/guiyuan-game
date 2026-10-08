@@ -4,16 +4,17 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "headless:compare": "node scripts/headless-batch-comparison.js",
-    "headless:evaluate": "node scripts/headless-strategy-evaluation.js",
-    "lint": "oxlint",
-    "check:deps": "depcruise src"
+    "test": "node scripts/run-tests.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src/core src/adapters tests/core",
+    "check:lint": "oxlint src/core src/adapters tests/core",
+    "oxlint": "oxlint src/core src/adapters tests/core",
+    "check:deps": "depcruise --config .dependency-cruiser.js src",
+    "stryker": "stryker run"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
     "@types/node": "^26.6.4",
     "agent-browser": "^0.38.2",
     "dependency-cruiser": "^18.5.0",

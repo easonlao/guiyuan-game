@@ -1,13 +1,24 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
-  "_comment": "This config is for a quick try without adding to package.json",
+  "_comment": "发布前 (Pre-release) 质量体检配置，针对 Layer 1 纯逻辑层做突变分析",
   "testRunner": "vitest",
-  "reporters": ["progress", "clear-text", "html"],
+  "tempDirName": "/tmp/.stryker-tmp",
+  "ignorePatterns": [
+    ".codegraph/**",
+    ".git/**",
+    ".agents/**",
+    ".scratch/**",
+    ".pi/**",
+    "legacy/**",
+    "dist/**"
+  ],
+  "reporters": ["progress", "clear-text"],
+  "concurrency": 4,
   "coverageAnalysis": "perTest",
   "mutate": [
-    "src/js/logic/**/*.js"
+    "src/core/logic/**/*.ts"
   ],
   "vitest": {
-    "configFile": "vite.config.js"
+    "configFile": "vitest.config.ts"
   }
 }
