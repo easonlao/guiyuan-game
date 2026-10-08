@@ -1,6 +1,6 @@
 # Seeded matches and public strategies
 
-`src/js/logic/headless/SeededMatch.js` exports `runSeededMatch` and `replaySeededMatch`. It layers seeded heavenly-stem generation, versioned public strategies, and recorded-action replay over the deterministic headless evaluator in [headless-match.md](./headless-match.md). Scoring options are described in [experimental-scoring.md](./experimental-scoring.md).
+`src/js/logic/headless/SeededMatch.js` exports `runSeededMatch` and `replaySeededMatch`. It layers seeded heavenly-stem generation, versioned public strategies, and recorded-action replay over the deterministic headless evaluator in [headless-match.md](./headless-match.md). Scoring options are described in [experimental-scoring.md](../archive/experimental-scoring.md).
 
 ## Run a seeded match
 
