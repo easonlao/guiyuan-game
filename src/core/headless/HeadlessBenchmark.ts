@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { HeadlessMatch, DecisionStrategy } from './HeadlessMatch.js';
 import { balancedStrategy } from '../ai/Strategy.js';
+import { PointsConfig } from '../logic/ScoreCalculator.js';
 
 export interface BenchmarkOptions {
   matches: number;
@@ -17,6 +18,8 @@ export interface BenchmarkOptions {
   recordActions?: boolean;
   /** 变体 B：对称低位改道开关，默认关闭 */
   lowStateRedirect?: boolean;
+  /** 批量推演使用的计分配置；不传时沿用 HeadlessMatch 的默认配置 */
+  scoreConfig?: PointsConfig;
 }
 
 export interface BenchmarkMetrics {
@@ -50,6 +53,8 @@ export interface BenchmarkMetrics {
   showdownSuccessRate: number;
   showdownFailCount: number;
   showdownFailRate: number;
+  avgP1Score: number;
+  avgP2Score: number;
   heapUsedDeltaMB: number;
   heapUsedStartMB: number;
   heapUsedEndMB: number;
@@ -70,6 +75,7 @@ export class HeadlessBenchmark {
     const strategyP2 = options?.strategyP2 ?? balancedStrategy;
     const recordActions = options?.recordActions ?? false;
     const lowStateRedirect = options?.lowStateRedirect ?? false;
+    const scoreConfig = options?.scoreConfig;
 
     // 内存检测前置准备（若处于 expose-gc 环境则尽可能触发全量 GC 获得干净初始基线）
     if (typeof globalThis.gc === 'function') {
@@ -91,14 +97,20 @@ export class HeadlessBenchmark {
     let showdownCount = 0;
     let showdownSuccessCount = 0;
     let showdownFailCount = 0;
+    let totalP1Score = 0;
+    let totalP2Score = 0;
 
     for (let i = 0; i < totalMatches; i++) {
       const matchResult = this.headlessMatch.run(strategyP1, strategyP2, {
         seed: baseSeed + i,
         maxRounds,
         recordActions,
-        lowStateRedirect
+        lowStateRedirect,
+        scoreConfig
       });
+
+      totalP1Score += matchResult.finalP1Score;
+      totalP2Score += matchResult.finalP2Score;
 
       if (matchResult.winner === 'P1') {
         p1Wins++;
@@ -159,6 +171,9 @@ export class HeadlessBenchmark {
     const showdownSuccessRate = totalMatches > 0 ? showdownSuccessCount / totalMatches : 0;
     const showdownFailRate = totalMatches > 0 ? showdownFailCount / totalMatches : 0;
 
+    const avgP1Score = totalMatches > 0 ? totalP1Score / totalMatches : 0;
+    const avgP2Score = totalMatches > 0 ? totalP2Score / totalMatches : 0;
+
     const heapUsedStartMB = memStart / (1024 * 1024);
     const heapUsedEndMB = memEnd / (1024 * 1024);
     const heapUsedDeltaMB = (memEnd - memStart) / (1024 * 1024);
@@ -192,6 +207,8 @@ export class HeadlessBenchmark {
       showdownSuccessRate,
       showdownFailCount,
       showdownFailRate,
+      avgP1Score,
+      avgP2Score,
       heapUsedDeltaMB,
       heapUsedStartMB,
       heapUsedEndMB
@@ -232,6 +249,7 @@ export class HeadlessBenchmark {
       ` 天命揭牌 (Showdown)     : ${metrics.showdownCount.toLocaleString()} (${(metrics.showdownRate * 100).toFixed(2)}%)`,
       `   ├─ 绝杀反击成功 (Win)  : ${metrics.showdownSuccessCount.toLocaleString()} (${(metrics.showdownSuccessRate * 100).toFixed(2)}%)`,
       `   └─ 追平失败 (Fail)     : ${metrics.showdownFailCount.toLocaleString()} (${(metrics.showdownFailRate * 100).toFixed(2)}%)`,
+      ` 平均分数 (Avg Score)    : P1 ${metrics.avgP1Score.toFixed(2)} / P2 ${metrics.avgP2Score.toFixed(2)}`,
       ` 达到上限 (Max Rounds)   : ${metrics.maxRoundsCount.toLocaleString()} (${mrPct}%)`,
       ` 平均回合数 (Avg Rounds) : ${metrics.avgRounds.toFixed(2)} 回合`,
       '-----------------------------------------------------------------',

@@ -12,11 +12,23 @@ import {
   clampNodeLevel
 } from '../logic/State.js';
 import { ActionResolver } from '../logic/ActionResolver.js';
+import { ScoreCalculator, PointsConfig } from '../logic/ScoreCalculator.js';
 import { getAvailableActions } from '../logic/ActionCandidates.js';
 import { createPRNG, drawTianGan, PRNG } from '../utils/prng.js';
 import type { DecisionStrategy } from '../ai/types.js';
 
 export type { DecisionStrategy };
+
+/**
+ * 实例级注入配置：可在构造时替换解析器或计分器。
+ * 两者均不传时退化为 new ActionResolver()，与历史行为逐字节一致。
+ */
+export interface HeadlessMatchConfig {
+  /** 直接注入解析器；与 scoreCalculator 同时提供时优先使用 resolver */
+  readonly resolver?: ActionResolver;
+  /** 注入计分器；用于按指定 PointsConfig 结算 */
+  readonly scoreCalculator?: ScoreCalculator;
+}
 
 export interface MatchOptions {
   readonly seed?: number;
@@ -24,6 +36,8 @@ export interface MatchOptions {
   readonly recordActions?: boolean;
   /** 变体 B：对称低位改道开关，默认关闭 */
   readonly lowStateRedirect?: boolean;
+  /** 单局级计分配置覆盖；提供时优先于构造函数注入的解析器 */
+  readonly scoreConfig?: PointsConfig;
 }
 
 export type ClosureType =
@@ -66,7 +80,20 @@ export const defaultBaselineStrategy: DecisionStrategy = (state, tianGan) => {
 };
 
 export class HeadlessMatch {
-  private readonly resolver = new ActionResolver();
+  /**
+   * 计分注入设计（Ticket 01）：构造函数提供实例级注入（resolver / scoreCalculator），
+   * MatchOptions.scoreConfig 提供单局级覆盖。
+   * 之所以同时保留两条路径：批量推演可一次注入、复用同一解析器；
+   * 单局推演则可在不重建实例的情况下临时换一套计分。
+   * 默认不传时两者均退化为 new ActionResolver()，保证默认路径逐字节不变。
+   */
+  private readonly resolver: ActionResolver;
+
+  constructor(config: HeadlessMatchConfig = {}) {
+    this.resolver =
+      config.resolver ??
+      (config.scoreCalculator ? new ActionResolver(config.scoreCalculator) : new ActionResolver());
+  }
 
   run(
     strategyP1: DecisionStrategy = defaultBaselineStrategy,
@@ -82,6 +109,11 @@ export class HeadlessMatch {
     const seed = options.seed ?? 123456789;
     const lowStateRedirect = options.lowStateRedirect ?? false;
     const prng = createPRNG(seed);
+
+    // 单局级计分配置优先：临时构造解析器，不影响实例级注入与默认行为
+    const resolver = options.scoreConfig
+      ? new ActionResolver(new ScoreCalculator(options.scoreConfig))
+      : this.resolver;
 
     let state = createInitialGameState(maxRounds);
     const recordActions = options.recordActions ?? true;
@@ -171,7 +203,7 @@ export class HeadlessMatch {
         });
       }
 
-      const result = this.resolver.resolve(
+      const result = resolver.resolve(
         { ...state, currentTianGan: tianGan },
         action
       );
