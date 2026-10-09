@@ -43,8 +43,9 @@
 *   `WechatStorageAdapter`: 用于实际打包微信小游戏时，调用微信原生 `wx.setStorageSync` 实现本地脱机存档。
 
 #### 🟢 Layer 3: 视图与小游戏交付层 (View Layer)
-纯代码 Canvas 2D 微信小游戏环境（`src/minigame/` -> `minigame/`，对齐 ADR-0004）。
-*   **数据与事件驱动**：纯代码基于原生 Canvas 2D 上下文驱动。消费 Layer 1 抛出的事件总线或状态快照，驱动角色状态、五行灵印以及生克战报动画。
+纯代码 Canvas 2D 微信小游戏环境（`src/minigame/` -> `minigame/`，对齐 ADR-0004 与 ADR-0005）。
+*   **轻量场景树与组件化**：基于轻量纯 TS 场景树架构（`Node`、`Container`、`Button`、`Tween`、`InputManager`），摆脱逐像素点阵硬编码，实现自动化触控命中检测、按压微动与声明式补间动画。
+*   **模块化业务视图**：拆分为 `BoardView`（五行阵盘与生克连线）、`ActionBarView`（可选动作按钮面板）、`CharacterView`（角色化身与表情）以及 `RuneFlightView`（天干轨迹动效），由 `GameScene` 控制器对齐 `TurnManager` 状态进行纯数据驱动投影。
 *   **极速构建管线**：通过 Vite 构建单文件 `minigame/game.js`，Windows 微信开发者工具直连开发与实时仿真调试。
 *   **轻量低消耗**：零重型引擎包袱，首包体积 < 1MB（远低于 4MB 上限），启动秒开。
 

@@ -26,4 +26,9 @@
 
 ## 表现层与小游戏交付 (Layer 3: `src/minigame/` & `minigame/`)
 
-- 纯代码驱动轻量 Canvas 渲染层，直接打包输出至 `minigame/` 目录供微信开发者工具实时加载。
+依据 ADR-0004 与 ADR-0005，表现层采用纯代码轻量场景树与组件化架构，打包输出至 `minigame/`：
+
+- `engine/`：微型场景树与动画基础设施（`Node`、`Container`、`Button`、`Tween`、`InputManager`）。
+- `views/`：数据驱动业务组件（`BoardView` 五行阵盘、`ActionBarView` 动作面板、`CharacterView` 角色化身、`RuneFlightView` 天干流星动效）。
+- `GameScene.ts`：场景总控制器，连接 `TurnManager` 快照并调度交互与动画。
+- `main.ts`：微信小游戏入口（`wx.createCanvas` 初始化与事件挂载）。
