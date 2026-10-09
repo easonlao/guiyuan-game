@@ -19,7 +19,8 @@ import {
 import {
   clampNodeLevel,
   isBoardGuiYuan,
-  isNodeGuiYi
+  isNodeGuiYi,
+  countBoardDamage
 } from './State.js';
 import { ScoreCalculator } from './ScoreCalculator.js';
 
@@ -238,6 +239,20 @@ export class ActionResolver {
       return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message };
     }
 
+    // 检查节点归一里程碑增量 (guiYiDelta)
+    let guiYiDelta = 0;
+    for (const element of Object.values(WuXing)) {
+      const prevGuiYi = isNodeGuiYi(activePlayer.board[element]);
+      const nextGuiYi = isNodeGuiYi(nextActiveBoard[element]);
+      if (!prevGuiYi && nextGuiYi) {
+        guiYiDelta++;
+      }
+    }
+
+    if (guiYiDelta > 0) {
+      scoreDelta += this.scoreCalculator.calculateGuiYiMilestonePoints(guiYiDelta);
+    }
+
     const nextScore = activePlayer.score + scoreDelta;
 
     // 检查是否达成“五行归元”
@@ -246,17 +261,27 @@ export class ActionResolver {
     let winner: PlayerId | 'DRAW' | null = null;
     let endReason: 'GUI_YUAN' | 'MAX_ROUNDS' | null = null;
 
+    let finalActiveScore = nextScore;
+    let finalOpponentScore = opponentPlayer.score;
+
     if (hasGuiYuan) {
       isGameOver = true;
       winner = activePlayerId;
       endReason = 'GUI_YUAN';
     } else if (!extraTurn && state.round >= state.maxRounds) {
-      // 回合上限结算
+      // 回合上限结算：残留道损扣分惩罚 (-50分/道损)
       isGameOver = true;
       endReason = 'MAX_ROUNDS';
-      if (nextScore > opponentPlayer.score) {
+
+      const activeDamage = countBoardDamage(nextActiveBoard);
+      const opponentDamage = countBoardDamage(nextOpponentBoard);
+
+      finalActiveScore -= this.scoreCalculator.calculateDamagePenalty(activeDamage);
+      finalOpponentScore -= this.scoreCalculator.calculateDamagePenalty(opponentDamage);
+
+      if (finalActiveScore > finalOpponentScore) {
         winner = activePlayerId;
-      } else if (opponentPlayer.score > nextScore) {
+      } else if (finalOpponentScore > finalActiveScore) {
         winner = opponentPlayerId;
       } else {
         // GDD 规则：若分数相同，则判定后手 (P2) 获胜
@@ -275,11 +300,12 @@ export class ActionResolver {
         ...state.players,
         [activePlayerId]: {
           ...activePlayer,
-          score: nextScore,
+          score: finalActiveScore,
           board: nextActiveBoard
         },
         [opponentPlayerId]: {
           ...opponentPlayer,
+          score: finalOpponentScore,
           board: nextOpponentBoard
         }
       },

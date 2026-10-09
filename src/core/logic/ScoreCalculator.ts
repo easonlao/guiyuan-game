@@ -30,7 +30,15 @@ export interface PointsConfig {
   readonly STATE_CHANGE: StateChangePointsConfig;
   readonly RARITY_MULTIPLIER: number;
   readonly NO_RARITY_ACTIONS: readonly ActionType[];
+  readonly GUI_YI_MILESTONE?: number;
+  readonly DAMAGE_PENALTY?: number;
 }
+
+/** 节点归一里程碑奖励常量 (+60分) */
+export const GUI_YI_MILESTONE = 60;
+
+/** 终局残留道损惩罚常量 (-50分/道损) */
+export const DAMAGE_PENALTY = 50;
 
 /**
  * ADR 0002 形式化计分配置表
@@ -64,7 +72,13 @@ export const POINTS_CONFIG: PointsConfig = {
   RARITY_MULTIPLIER: 1.5,
 
   // 稀有度黑名单（严禁享受稀有度加成的动作类型）
-  NO_RARITY_ACTIONS: [ActionType.BURST, ActionType.BURST_ATK, ActionType.DISSIPATE]
+  NO_RARITY_ACTIONS: [ActionType.BURST, ActionType.BURST_ATK, ActionType.DISSIPATE],
+
+  // 节点归一里程碑奖励分
+  GUI_YI_MILESTONE: 60,
+
+  // 终局残留道损扣分
+  DAMAGE_PENALTY: 50
 };
 
 /**
@@ -89,6 +103,8 @@ export interface ScoreConfig {
   readonly blessPoints: number;
   readonly damageEnemyPoints: number;
   readonly burstBonusPoints: number;
+  readonly guiYiMilestone?: number;
+  readonly damagePenalty?: number;
 }
 
 export const DEFAULT_SCORE_CONFIG: ScoreConfig = {
@@ -96,11 +112,48 @@ export const DEFAULT_SCORE_CONFIG: ScoreConfig = {
   lightUpPoints: 100,
   blessPoints: 200,
   damageEnemyPoints: 40,
-  burstBonusPoints: 100
+  burstBonusPoints: 100,
+  guiYiMilestone: 60,
+  damagePenalty: 50
 };
 
 export class ScoreCalculator {
+  static readonly GUI_YI_MILESTONE = 60;
+  static readonly DAMAGE_PENALTY = 50;
+
   constructor(public readonly config: PointsConfig = POINTS_CONFIG) {}
+
+  get guiYiMilestone(): number {
+    return this.config.GUI_YI_MILESTONE ?? GUI_YI_MILESTONE;
+  }
+
+  get damagePenalty(): number {
+    return this.config.DAMAGE_PENALTY ?? DAMAGE_PENALTY;
+  }
+
+  /**
+   * 计算节点归一里程碑奖励分
+   * @param count 达成归一的节点数量（增量）
+   */
+  calculateGuiYiMilestonePoints(count: number): number {
+    return count * this.guiYiMilestone;
+  }
+
+  calculateGuiYiMilestone(count: number): number {
+    return this.calculateGuiYiMilestonePoints(count);
+  }
+
+  /**
+   * 计算终局道损扣分
+   * @param damageCount 残留道损总数量（每个阴或阳为 -1 记 1 个道损）
+   */
+  calculateDamagePenalty(damageCount: number): number {
+    return damageCount * this.damagePenalty;
+  }
+
+  calculateEndgameDamagePenalty(damageCount: number): number {
+    return this.calculateDamagePenalty(damageCount);
+  }
 
   /**
    * 计算指定动作的行为基础分
