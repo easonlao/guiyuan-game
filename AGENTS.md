@@ -14,7 +14,7 @@ Single-context. See `docs/agents/domain.md`.
 
 ### Subagents
 
-Research and exploration run in a background subagent, which reaches the code through the CodeGraph MCP tool (`codegraph_explore`). Implementing a ticket explores the relevant code the same way before changing it. A read the main thread can finish in one step — one known file, one CodeGraph call — stays inline.
+Open every code question with CodeGraph, and dispatch the `Explorer` subagent for anything that spans more than one file or one lookup. Route architecture, "how does X work", bug diagnosis, and the reconnaissance before a ticket to `Explorer`, briefed with the question and the symbols you already know; it runs in the background and returns findings with file paths. Implementing a ticket dispatches `Explorer` the same way before changing code. Keep inline only a read the main thread finishes in one step: one known file, one CodeGraph call.
 
 <!-- CODEGRAPH_START -->
 ## CodeGraph
