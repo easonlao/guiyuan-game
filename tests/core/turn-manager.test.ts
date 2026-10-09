@@ -38,7 +38,7 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
       expect(manager.getAvailableActions()).toEqual(actions);
     });
 
-    it('executeAction() resolves action, increments round, switches player, and transitions to END_TURN', () => {
+    it('executeAction() resolves action, switches player to P2 within round, and transitions to END_TURN', () => {
       const manager = new TurnManager();
       const actions = manager.startTurn();
       const action = actions[0];
@@ -46,7 +46,7 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
       const result = manager.executeAction(action);
       expect(result.success).toBe(true);
       expect(manager.getCurrentPhase()).toBe(TurnPhase.END_TURN);
-      expect(manager.getState().round).toBe(2);
+      expect(manager.getState().round).toBe(1);
       expect(manager.getState().currentPlayer).toBe('P2');
     });
 
@@ -55,7 +55,7 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
       const result = manager.step(); // Default chooses first candidate (AUTO)
 
       expect(result.success).toBe(true);
-      expect(manager.getState().round).toBe(2);
+      expect(manager.getState().round).toBe(1);
       expect(manager.getState().currentPlayer).toBe('P2');
     });
 
@@ -64,7 +64,7 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
       const result = manager.executeTurn((_state, _tg, actions) => actions[0]);
 
       expect(result.success).toBe(true);
-      expect(manager.getState().round).toBe(2);
+      expect(manager.getState().round).toBe(1);
       expect(manager.getState().currentPlayer).toBe('P2');
     });
 
@@ -237,7 +237,7 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
       const secondResult = manager.executeAction(legalAction);
       expect(secondResult.success).toBe(true);
       expect(manager.isExtraTurnActive()).toBe(false);
-      expect(manager.getState().round).toBe(2);
+      expect(manager.getState().round).toBe(1);
       expect(manager.getState().currentPlayer).toBe('P2');
     });
   });
@@ -289,17 +289,18 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
     });
 
     it('at maxRounds limit, strictly awards victory to P2 (后手) when scores are tied', () => {
-      // 2 rounds game: round 1 P1 acts, round 2 P2 acts
-      const initialState = createInitialGameState(2);
+      // 1 round game: P1 acts, then P2 acts to close round 1
+      const initialState = createInitialGameState(1);
       const manager = new TurnManager({ initialState });
 
-      // Round 1: P1 AUTO (+1 pt)
+      // Round 1 P1: AUTO (+1 pt)
       const res1 = manager.step();
       expect(res1.success).toBe(true);
-      expect(manager.getState().round).toBe(2);
+      expect(manager.getState().round).toBe(1);
       expect(manager.getState().currentPlayer).toBe('P2');
+      expect(manager.getState().isGameOver).toBe(false);
 
-      // Round 2: P2 AUTO (+1 pt) -> scores are equal (1 vs 1)
+      // Round 1 P2: AUTO (+1 pt) -> scores are equal (1 vs 1), round 1 completes, game over!
       const res2 = manager.step();
       expect(res2.success).toBe(true);
       expect(manager.getCurrentPhase()).toBe(TurnPhase.GAME_OVER);
@@ -313,12 +314,13 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
 
     it('at maxRounds limit, P1 wins when P1 score > P2 score', () => {
       let state = createInitialGameState(1);
-      // Give P1 higher score
+      // Give P1 higher score, start at P2's turn in round 1
       state = {
         ...state,
+        currentPlayer: 'P2',
         players: {
           ...state.players,
-          P1: { ...state.players.P1, score: 50 },
+          P1: { ...state.players.P1, score: 200 },
           P2: { ...state.players.P2, score: 10 }
         }
       };
@@ -475,7 +477,10 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
       const onGameOver = vi.fn();
       bus.on('game:over', onGameOver);
 
-      const state = createInitialGameState(1);
+      const state = {
+        ...createInitialGameState(1),
+        currentPlayer: 'P2' as const
+      };
       const manager = new TurnManager({ initialState: state, eventBus: bus });
       manager.step();
 

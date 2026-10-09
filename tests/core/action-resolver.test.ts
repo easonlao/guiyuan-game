@@ -23,7 +23,7 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
     expect(result.nextState.players.P1.board[WuXing.WOOD].yang).toBe(1);
     expect(result.nextState.players.P1.score).toBeGreaterThan(0);
     expect(result.nextState.currentPlayer).toBe('P2');
-    expect(result.nextState.round).toBe(2);
+    expect(result.nextState.round).toBe(1);
     // Verify immutability of previous state
     expect(initialState.players.P1.board[WuXing.WOOD].yang).toBe(0);
     // Verify structural sharing: unmodified nodes share reference
@@ -178,6 +178,6 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
     expect(result.nextState.players.P1.board[WuXing.WOOD].yang).toBe(1);
     expect(result.nextState.players.P1.board[WuXing.WOOD].yin).toBe(2);
     expect(result.nextState.currentPlayer).toBe('P2');
-    expect(result.nextState.round).toBe(2);
+    expect(result.nextState.round).toBe(1);
   });
 });

@@ -268,8 +268,9 @@ export class ActionResolver {
       isGameOver = true;
       winner = activePlayerId;
       endReason = 'GUI_YUAN';
-    } else if (!extraTurn && state.round >= state.maxRounds) {
-      // 回合上限结算：残留道损扣分惩罚 (-50分/道损)
+    } else if (!extraTurn && activePlayerId === 'P2' && state.round >= state.maxRounds) {
+      // 大回合闭合结算：在 P2 完成常规行动且达到回合上限时，触发 MAX_ROUNDS 终局结算
+      // 残留道损扣分惩罚 (-50分/道损)
       isGameOver = true;
       endReason = 'MAX_ROUNDS';
 
@@ -289,8 +290,26 @@ export class ActionResolver {
       }
     }
 
-    const nextRound = (!extraTurn && !isGameOver) ? state.round + 1 : state.round;
-    const nextCurrentPlayer = (!extraTurn && !isGameOver) ? opponentPlayerId : activePlayerId;
+    let nextRound = state.round;
+    let nextCurrentPlayer: PlayerId = activePlayerId;
+
+    if (extraTurn) {
+      nextRound = state.round;
+      nextCurrentPlayer = activePlayerId;
+    } else if (isGameOver) {
+      nextRound = state.round;
+      nextCurrentPlayer = activePlayerId;
+    } else {
+      if (activePlayerId === 'P1') {
+        // 半回合交接：大回合不递增，切换到 P2
+        nextRound = state.round;
+        nextCurrentPlayer = 'P2';
+      } else {
+        // P2 常规行动完毕且未终局：大回合闭合，进入下一大回合，切换回 P1
+        nextRound = state.round + 1;
+        nextCurrentPlayer = 'P1';
+      }
+    }
 
     const nextState: GameState = {
       ...state,

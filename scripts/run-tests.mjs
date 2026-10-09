@@ -11,11 +11,13 @@ if (!existsSync(tmpNodeModules)) {
     if (existsSync(realNodeModules)) {
       const items = readdirSync(realNodeModules);
       for (const item of items) {
+        if (item === '.vite-temp') continue;
         try {
           symlinkSync(join(realNodeModules, item), join(tmpNodeModules, item));
         } catch {}
       }
     }
+    mkdirSync(join(tmpNodeModules, '.vite-temp'), { recursive: true });
   } catch {}
 }
 

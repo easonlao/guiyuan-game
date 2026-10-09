@@ -47,7 +47,7 @@ export class HeadlessBenchmark {
   run(options?: Partial<BenchmarkOptions>): BenchmarkMetrics {
     const totalMatches = options?.matches ?? 10000;
     const baseSeed = options?.baseSeed ?? 10000;
-    const maxRounds = options?.maxRounds ?? 60;
+    const maxRounds = options?.maxRounds ?? 30;
     const strategyP1 = options?.strategyP1 ?? balancedStrategy;
     const strategyP2 = options?.strategyP2 ?? balancedStrategy;
     const recordActions = options?.recordActions ?? false;

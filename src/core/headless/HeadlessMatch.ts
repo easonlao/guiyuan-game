@@ -54,14 +54,14 @@ export class HeadlessMatch {
   run(
     strategyP1: DecisionStrategy = defaultBaselineStrategy,
     strategyP2: DecisionStrategy = defaultBaselineStrategy,
-    optionsOrMaxRounds: number | MatchOptions = 60
+    optionsOrMaxRounds: number | MatchOptions = 30
   ): MatchResult {
     const options: MatchOptions =
       typeof optionsOrMaxRounds === 'number'
         ? { maxRounds: optionsOrMaxRounds }
         : optionsOrMaxRounds;
 
-    const maxRounds = options.maxRounds ?? 60;
+    const maxRounds = options.maxRounds ?? 30;
     const seed = options.seed ?? 123456789;
     const prng = createPRNG(seed);
 

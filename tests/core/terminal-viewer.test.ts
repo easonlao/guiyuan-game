@@ -23,7 +23,7 @@ describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
       const state = createInitialGameState();
       const output = viewer.formatBoard(state);
 
-      expect(output).toContain('归元弈棋盘 [回合: 1/60] [当前行动: P1]');
+      expect(output).toContain('归元弈棋盘 [回合: 1/30] [当前行动: P1]');
       expect(output).toContain('[P1] 得分: 0 | 归一进度: 0/5');
       expect(output).toContain('[P2] 得分: 0 | 归一进度: 0/5');
       expect(output).toContain('木    空     空');
