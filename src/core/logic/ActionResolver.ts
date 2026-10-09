@@ -20,7 +20,8 @@ import {
   clampNodeLevel,
   isBoardGuiYuan,
   isNodeGuiYi,
-  countBoardDamage
+  countBoardDamage,
+  isBoardTingPai
 } from './State.js';
 import { ScoreCalculator } from './ScoreCalculator.js';
 
@@ -257,6 +258,17 @@ export class ActionResolver {
 
     // 检查是否达成“五行归元”
     const hasGuiYuan = isBoardGuiYuan(nextActiveBoard);
+    const prevLockedGuiYuan: Readonly<Record<PlayerId, boolean>> = state.lockedGuiYuan ?? {
+      P1: false,
+      P2: false
+    };
+
+    // 五行归元为不可逆终极里程碑成就：一旦在行动中达成即锁定记录（后续受攻击降级不撤销）
+    const nextLockedGuiYuan: Record<PlayerId, boolean> = {
+      P1: prevLockedGuiYuan.P1 || (activePlayerId === 'P1' && hasGuiYuan),
+      P2: prevLockedGuiYuan.P2 || (activePlayerId === 'P2' && hasGuiYuan)
+    };
+
     let isGameOver = false;
     let winner: PlayerId | 'DRAW' | null = null;
     let endReason: 'GUI_YUAN' | 'MAX_ROUNDS' | null = null;
@@ -264,39 +276,69 @@ export class ActionResolver {
     let finalActiveScore = nextScore;
     let finalOpponentScore = opponentPlayer.score;
 
-    if (hasGuiYuan) {
-      isGameOver = true;
-      winner = activePlayerId;
-      endReason = 'GUI_YUAN';
-    } else if (!extraTurn && activePlayerId === 'P2' && state.round >= state.maxRounds) {
-      // 大回合闭合结算：在 P2 完成常规行动且达到回合上限时，触发 MAX_ROUNDS 终局结算
-      // 残留道损扣分惩罚 (-50分/道损)
-      isGameOver = true;
-      endReason = 'MAX_ROUNDS';
-
-      const activeDamage = countBoardDamage(nextActiveBoard);
-      const opponentDamage = countBoardDamage(nextOpponentBoard);
-
-      finalActiveScore -= this.scoreCalculator.calculateDamagePenalty(activeDamage);
-      finalOpponentScore -= this.scoreCalculator.calculateDamagePenalty(opponentDamage);
-
-      if (finalActiveScore > finalOpponentScore) {
-        winner = activePlayerId;
-      } else if (finalOpponentScore > finalActiveScore) {
-        winner = opponentPlayerId;
-      } else {
-        // GDD 规则：若分数相同，则判定后手 (P2) 获胜
+    if (activePlayerId === 'P1') {
+      // 先手 (P1) 行动阶段
+      if (nextLockedGuiYuan.P1) {
+        // P1 已达成五行归元成就
+        if (!isBoardTingPai(nextOpponentBoard)) {
+          // 常规秒结 (后手未听牌，占 ~93%)：系统即刻当场判定先手获胜，对局立即终结
+          isGameOver = true;
+          winner = 'P1';
+          endReason = 'GUI_YUAN';
+          extraTurn = false;
+        } else {
+          // 终轮追平 (后手已听牌，占 ~7%)：后手处于听牌临界态，获得完成本大回合行动的追平机会
+          // 对局暂时不结束，保留 P1 可能的爆发连动额外行动，若无额外行动则半回合交接给 P2
+          isGameOver = false;
+        }
+      }
+    } else {
+      // 后手 (P2) 行动阶段
+      if (nextLockedGuiYuan.P2) {
+        // 后手达成归元：
+        // 1. 若 P1 此前已锁定归元，根据平局后手胜原则 (后发制人)，判定后手获胜
+        // 2. 若后手先达成归元，因本大回合已然闭合，直接判定后手获胜
+        isGameOver = true;
         winner = 'P2';
+        endReason = 'GUI_YUAN';
+        extraTurn = false;
+      } else if (!extraTurn) {
+        // P2 未达成归元，且完成了非连动常规行动 (大回合闭合)
+        if (nextLockedGuiYuan.P1) {
+          // P1 此前已锁定归元，P2 追平失败 -> 判定先手获胜
+          isGameOver = true;
+          winner = 'P1';
+          endReason = 'GUI_YUAN';
+        } else if (state.round >= state.maxRounds) {
+          // 双方均未归元，且达到回合上限 -> MAX_ROUNDS 终局结算
+          isGameOver = true;
+          endReason = 'MAX_ROUNDS';
+
+          const activeDamage = countBoardDamage(nextActiveBoard);
+          const opponentDamage = countBoardDamage(nextOpponentBoard);
+
+          finalActiveScore -= this.scoreCalculator.calculateDamagePenalty(activeDamage);
+          finalOpponentScore -= this.scoreCalculator.calculateDamagePenalty(opponentDamage);
+
+          if (finalActiveScore > finalOpponentScore) {
+            winner = activePlayerId;
+          } else if (finalOpponentScore > finalActiveScore) {
+            winner = opponentPlayerId;
+          } else {
+            // 平局后手胜
+            winner = 'P2';
+          }
+        }
       }
     }
 
     let nextRound = state.round;
     let nextCurrentPlayer: PlayerId = activePlayerId;
 
-    if (extraTurn) {
+    if (isGameOver) {
       nextRound = state.round;
       nextCurrentPlayer = activePlayerId;
-    } else if (isGameOver) {
+    } else if (extraTurn) {
       nextRound = state.round;
       nextCurrentPlayer = activePlayerId;
     } else {
@@ -330,7 +372,8 @@ export class ActionResolver {
       },
       isGameOver,
       winner,
-      endReason
+      endReason,
+      lockedGuiYuan: nextLockedGuiYuan
     };
 
     return {

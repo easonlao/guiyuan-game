@@ -45,7 +45,11 @@ export function createInitialGameState(maxRounds = 30): GameState {
     currentTianGan: null,
     isGameOver: false,
     winner: null,
-    endReason: null
+    endReason: null,
+    lockedGuiYuan: {
+      P1: false,
+      P2: false
+    }
   };
 }
 
