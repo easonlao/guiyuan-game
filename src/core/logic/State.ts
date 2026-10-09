@@ -4,12 +4,15 @@
 
 import {
   WuXing,
+  Polarity,
   NodeData,
   BoardState,
   PlayerId,
   PlayerState,
   GameState,
-  NodeLevel
+  NodeLevel,
+  TianGanInfo,
+  GENERATION_CYCLE
 } from '../types/domain.js';
 
 /** 创建空白五行棋盘 (所有节点阴阳均为虚空 0) */
@@ -91,11 +94,89 @@ export function countUnlightedSides(board: BoardState): number {
 
 /**
  * 判定盘面是否处于“听牌临界态” (TingPai)
- * GDD 规则：己方盘面剩余未点亮侧数 (即等级 < 1 的侧数) <= 2 时，判定为听牌临界态
- * （在单回合配合抽卡与爆发具备理论归元可能）
+ * ADR 0007 规范：己方盘面剩余未点亮侧数 (即等级 < 1 的侧数) 严格等于 1 时，判定为听牌临界态
+ * （在终轮天命揭牌中单抽具备理论归元可能；未点亮侧数 >= 2 时单抽在数学上无法归元，判定为未听牌）
  */
 export function isBoardTingPai(board: BoardState): boolean {
-  return countUnlightedSides(board) <= 2;
+  return countUnlightedSides(board) === 1;
+}
+
+/**
+ * 获取盘面上唯一未点亮侧的信息
+ * 仅当未点亮侧数严格等于 1 时返回该侧的五行属性与极性；否则返回 null
+ */
+export function getUnlightedSide(board: BoardState): { element: WuXing; polarity: Polarity } | null {
+  let unlighted: { element: WuXing; polarity: Polarity } | null = null;
+  let count = 0;
+  for (const element of Object.values(WuXing)) {
+    if (board[element].yin < 1) {
+      unlighted = { element, polarity: Polarity.YIN };
+      count++;
+    }
+    if (board[element].yang < 1) {
+      unlighted = { element, polarity: Polarity.YANG };
+      count++;
+    }
+  }
+  return count === 1 ? unlighted : null;
+}
+
+/**
+ * 判定抽取的天干是否能通过合法操作（自动吸纳 AUTO、调息 CONVERT、化气 TRANS）
+ * 补全点亮盘面上唯一的未点亮侧（使其等级达到 >= 1）
+ *
+ * 规则（遵循 ADR 0007 与 GDD 规则）：
+ * 1. 目标侧当前等级提升 1 级后必须 >= 1（若当前为道损 -1，提升 1 级仅为 0 仍未点亮，故道损无法单抽点亮）
+ * 2. 自动吸纳 (AUTO)：天干五行与极性与未点亮侧完全相同
+ * 3. 调息 (CONVERT)：天干五行与未点亮侧相同但极性相反，且天干所在极性侧处于中位态 (>= 1)
+ * 4. 化气 (TRANS)：天干为阴天干 (polarity === YIN)，且相生目标五行等于未点亮侧五行 (GENERATION_CYCLE[stemElement] === targetElement)：
+ *    - 阴干优先原则：若未点亮侧为阴极（且 < 2），化气优先提升阴极，点亮成功；
+ *    - 若未点亮侧为阳极，则只有在目标节点阴极已满 2 时，化气才会提升阳极并点亮。
+ */
+export function canTianGanLightUnlightedSide(board: BoardState, tianGan: TianGanInfo): boolean {
+  const unlighted = getUnlightedSide(board);
+  if (!unlighted) {
+    return false;
+  }
+  const { element: targetElement, polarity: targetPolarity } = unlighted;
+  const targetCurrentLevel = board[targetElement][targetPolarity];
+
+  // 若当前等级提升 1 级后依然 < 1（例如道损 -1 提升至 0），单抽天干无法点亮
+  if (targetCurrentLevel + 1 < 1) {
+    return false;
+  }
+
+  // 1. AUTO (自动吸纳): 天干五行与极性与未点亮侧完全一致
+  if (tianGan.element === targetElement && tianGan.polarity === targetPolarity) {
+    return true;
+  }
+
+  // 2. CONVERT (调息): 同五行但相反极性，且天干所在极性侧处于中位态 (>= 1)
+  if (
+    tianGan.element === targetElement &&
+    tianGan.polarity !== targetPolarity &&
+    board[targetElement][tianGan.polarity] >= 1
+  ) {
+    return true;
+  }
+
+  // 3. TRANS (化气): 抽中阴天干，且相生目标为未点亮侧五行
+  if (
+    tianGan.polarity === Polarity.YIN &&
+    GENERATION_CYCLE[tianGan.element] === targetElement
+  ) {
+    // 阴干优先原则：
+    // 若未点亮侧是阴极 (当前等级 < 1 < 2)，化气优先提升阴极
+    if (targetPolarity === Polarity.YIN) {
+      return true;
+    }
+    // 若未点亮侧是阳极，只有在阴极已满 2 时，化气才会强化阳极
+    if (targetPolarity === Polarity.YANG && board[targetElement].yin === 2) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**

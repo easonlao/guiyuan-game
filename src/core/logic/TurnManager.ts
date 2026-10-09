@@ -9,9 +9,15 @@ import {
   ActionResult,
   ActionType,
   GameState,
+  PlayerId,
   TianGanInfo
 } from '../types/domain.js';
-import { createInitialGameState } from './State.js';
+import {
+  createInitialGameState,
+  canTianGanLightUnlightedSide,
+  getUnlightedSide,
+  clampNodeLevel
+} from './State.js';
 import { ActionResolver } from './ActionResolver.js';
 import { EventBus } from './EventBus.js';
 import { PRNG, createPRNG, drawTianGan } from '../utils/prng.js';
@@ -124,6 +130,95 @@ export class TurnManager {
     if (this.state.isGameOver) {
       this.phase = TurnPhase.GAME_OVER;
       this.candidateActions = [];
+      return [];
+    }
+
+    // 终轮天命揭牌决胜阶段判定：先手 P1 已锁定五行归元且当前轮到后手 P2
+    if (this.state.lockedGuiYuan?.P1 && this.state.currentPlayer === 'P2') {
+      this.phase = TurnPhase.START_TURN;
+      this.eventBus.emit('turn:start', {
+        round: this.state.round,
+        player: 'P2',
+        isExtraTurn: false
+      });
+
+      // 确定性抽取天干
+      const tianGan = drawTianGan(this.prng);
+      this.currentTianGan = tianGan;
+      this.state = {
+        ...this.state,
+        currentTianGan: tianGan
+      };
+      this.eventBus.emit('tiangan:draw', {
+        tianGan
+      });
+
+      const p2Board = this.state.players.P2.board;
+      const success = canTianGanLightUnlightedSide(p2Board, tianGan);
+
+      let nextP2Board = p2Board;
+      let nextLockedGuiYuan = {
+        P1: true,
+        P2: false
+      };
+      let winner: PlayerId = 'P1';
+
+      if (success) {
+        winner = 'P2';
+        nextLockedGuiYuan = {
+          P1: true,
+          P2: true
+        };
+        // 成功时将最后一侧点亮
+        const unlighted = getUnlightedSide(p2Board);
+        if (unlighted) {
+          nextP2Board = {
+            ...p2Board,
+            [unlighted.element]: {
+              ...p2Board[unlighted.element],
+              [unlighted.polarity]: clampNodeLevel(p2Board[unlighted.element][unlighted.polarity] + 1)
+            }
+          };
+        }
+      } else {
+        winner = 'P1';
+      }
+
+      // 派发 showdown:draw 事件
+      this.eventBus.emit('showdown:draw', {
+        round: this.state.round,
+        player: 'P2',
+        tianGan,
+        success,
+        winner
+      });
+
+      const prevState = this.state;
+      this.state = {
+        ...this.state,
+        isGameOver: true,
+        winner,
+        endReason: 'GUI_YUAN',
+        lockedGuiYuan: nextLockedGuiYuan,
+        players: {
+          ...this.state.players,
+          P2: {
+            ...this.state.players.P2,
+            board: nextP2Board
+          }
+        }
+      };
+
+      this.phase = TurnPhase.GAME_OVER;
+      this.candidateActions = [];
+      this.isExtraTurn = false;
+
+      this.eventBus.diffAndEmit(prevState, this.state);
+      this.eventBus.emit('turn:end', {
+        round: prevState.round,
+        player: 'P2'
+      });
+
       return [];
     }
 
@@ -302,6 +397,16 @@ export class TurnManager {
       this.startTurn();
     }
 
+    if (this.state.isGameOver) {
+      return {
+        nextState: this.state,
+        success: true,
+        scoreDelta: 0,
+        extraTurn: false,
+        message: '终轮天命揭牌决胜已完成'
+      };
+    }
+
     const actionToExecute = action ?? this.candidateActions[0];
     if (!actionToExecute) {
       return {
@@ -333,6 +438,16 @@ export class TurnManager {
 
     if (this.phase === TurnPhase.START_TURN || this.phase === TurnPhase.END_TURN) {
       this.startTurn();
+    }
+
+    if (this.state.isGameOver) {
+      return {
+        nextState: this.state,
+        success: true,
+        scoreDelta: 0,
+        extraTurn: false,
+        message: '终轮天命揭牌决胜已完成'
+      };
     }
 
     const chosenAction = strategy(this.state, this.currentTianGan!, this.candidateActions);

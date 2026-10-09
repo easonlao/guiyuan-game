@@ -50,7 +50,7 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
       expect(countUnlightedSides(boardDamage)).toBe(9);
     });
 
-    it('isBoardTingPai boundary conditions (7 sides -> false, 8 sides -> true, 9 sides -> true, 10 sides -> true)', () => {
+    it('isBoardTingPai boundary conditions (7 sides -> false, 8 sides -> false, 9 sides -> true, 10 sides -> false/GuiYuan)', () => {
       const board = createEmptyBoard();
 
       // 7 sides lighted (3 unlighted sides) -> NOT TingPai
@@ -66,16 +66,16 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
       expect(countUnlightedSides(board7)).toBe(3);
       expect(isBoardTingPai(board7)).toBe(false);
 
-      // 8 sides lighted (2 unlighted sides) -> TingPai临界态
+      // 8 sides lighted (2 unlighted sides) -> NOT TingPai (ADR 0007: 差2侧单抽无法归元，未听牌)
       const board8: BoardState = {
         ...board7,
         [WuXing.METAL]: { yin: 1, yang: 1 } // unlighted: WATER yin (0), WATER yang (0)
       };
       expect(countLightedSides(board8)).toBe(8);
       expect(countUnlightedSides(board8)).toBe(2);
-      expect(isBoardTingPai(board8)).toBe(true);
+      expect(isBoardTingPai(board8)).toBe(false);
 
-      // 9 sides lighted (1 unlighted side) -> TingPai临界态
+      // 9 sides lighted (1 unlighted side) -> TingPai临界态 (ADR 0007: 严格差1侧)
       const board9: BoardState = {
         ...board8,
         [WuXing.WATER]: { yin: 1, yang: 0 } // unlighted: WATER yang (0)
@@ -84,20 +84,20 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
       expect(countUnlightedSides(board9)).toBe(1);
       expect(isBoardTingPai(board9)).toBe(true);
 
-      // 10 sides lighted (0 unlighted side) -> GuiYuan (all 10 sides lighted >= 1)
+      // 10 sides lighted (0 unlighted side) -> NOT TingPai (GuiYuan 已全点亮归元，非听牌)
       const board10: BoardState = {
         ...board9,
         [WuXing.WATER]: { yin: 1, yang: 1 }
       };
       expect(countLightedSides(board10)).toBe(10);
       expect(countUnlightedSides(board10)).toBe(0);
-      expect(isBoardTingPai(board10)).toBe(true);
+      expect(isBoardTingPai(board10)).toBe(false);
     });
 
     it('isBoardTingPai correctly handles damage (-1) sides as unlighted', () => {
       const board = createEmptyBoard();
-      // 8 sides lighted, 1 void (0), 1 damaged (-1) -> unlighted = 2 sides -> TingPai!
-      const boardWithDamage: BoardState = {
+      // 8 sides lighted, 1 void (0), 1 damaged (-1) -> unlighted = 2 sides -> NOT TingPai
+      const boardWith2DamageOrVoid: BoardState = {
         ...board,
         [WuXing.WOOD]: { yin: 1, yang: 1 },
         [WuXing.FIRE]: { yin: 1, yang: 1 },
@@ -105,9 +105,18 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
         [WuXing.METAL]: { yin: 1, yang: 1 },
         [WuXing.WATER]: { yin: -1, yang: 0 }
       };
-      expect(countLightedSides(boardWithDamage)).toBe(8);
-      expect(countUnlightedSides(boardWithDamage)).toBe(2);
-      expect(isBoardTingPai(boardWithDamage)).toBe(true);
+      expect(countLightedSides(boardWith2DamageOrVoid)).toBe(8);
+      expect(countUnlightedSides(boardWith2DamageOrVoid)).toBe(2);
+      expect(isBoardTingPai(boardWith2DamageOrVoid)).toBe(false);
+
+      // 9 sides lighted, 1 damaged (-1) -> unlighted = 1 side -> TingPai!
+      const boardWith1Damage: BoardState = {
+        ...boardWith2DamageOrVoid,
+        [WuXing.WATER]: { yin: -1, yang: 1 }
+      };
+      expect(countLightedSides(boardWith1Damage)).toBe(9);
+      expect(countUnlightedSides(boardWith1Damage)).toBe(1);
+      expect(isBoardTingPai(boardWith1Damage)).toBe(true);
 
       // 7 sides lighted, 2 void (0), 1 damaged (-1) -> unlighted = 3 sides -> NOT TingPai
       const boardNotTing: BoardState = {

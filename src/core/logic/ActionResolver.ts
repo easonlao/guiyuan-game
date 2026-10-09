@@ -292,15 +292,15 @@ export class ActionResolver {
       if (nextLockedGuiYuan.P1) {
         // P1 已达成五行归元成就
         if (!isBoardTingPai(nextOpponentBoard)) {
-          // 常规秒结 (后手未听牌，占 ~93%)：系统即刻当场判定先手获胜，对局立即终结
+          // 常规秒结 (后手未听牌，即未点亮侧数 != 1，占 ~97%)：系统即刻当场判定先手获胜，对局立即终结
           isGameOver = true;
           winner = 'P1';
           endReason = 'GUI_YUAN';
           extraTurn = false;
         } else {
-          // 终轮追平 (后手已听牌，占 ~7%)：后手处于听牌临界态，获得完成本大回合行动的追平机会
-          // 对局暂时不结束，保留 P1 可能的爆发连动额外行动，若无额外行动则半回合交接给 P2
+          // 终轮天命揭牌决胜 (后手严格差 1 侧听牌)：对局流转至 P2 进行天命揭牌决胜，不派发常规候选动作
           isGameOver = false;
+          extraTurn = false;
         }
       }
     } else {
