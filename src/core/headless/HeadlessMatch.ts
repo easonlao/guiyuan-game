@@ -5,7 +5,12 @@
 
 import { ActionType, GameState, PlayerId, TianGanInfo } from '../types/domain.js';
 import { GameRecord, ActionRecord } from '../types/record.js';
-import { createInitialGameState } from '../logic/State.js';
+import {
+  createInitialGameState,
+  canTianGanLightUnlightedSide,
+  getUnlightedSide,
+  clampNodeLevel
+} from '../logic/State.js';
 import { ActionResolver } from '../logic/ActionResolver.js';
 import { getAvailableActions } from '../logic/ActionCandidates.js';
 import { createPRNG, drawTianGan, PRNG } from '../utils/prng.js';
@@ -30,6 +35,8 @@ export interface MatchResult {
   readonly winner: PlayerId | 'DRAW' | null;
   readonly endReason: 'GUI_YUAN' | 'MAX_ROUNDS' | null;
   readonly closureType?: ClosureType;
+  readonly showdownOccurred?: boolean;
+  readonly showdownSuccess?: boolean;
   readonly roundsPlayed: number;
   readonly finalP1Score: number;
   readonly finalP2Score: number;
@@ -77,9 +84,64 @@ export class HeadlessMatch {
     const recordActions = options.recordActions ?? true;
     const actionRecords: ActionRecord[] = [];
     let isExtraTurn = false;
-    let lastActor: PlayerId | null = null;
+    let isShowdown = false;
+    let showdownSuccess = false;
 
     while (!state.isGameOver && state.round <= maxRounds) {
+      // 终轮天命揭牌决胜阶段判定：先手 P1 已锁定五行归元且当前轮到后手 P2 (听牌临界态)
+      if (state.lockedGuiYuan?.P1 && state.currentPlayer === 'P2') {
+        const tianGan = drawTianGan(prng);
+        const p2Board = state.players.P2.board;
+        const success = canTianGanLightUnlightedSide(p2Board, tianGan);
+
+        let nextP2Board = p2Board;
+        let nextLockedGuiYuan = {
+          P1: true,
+          P2: false
+        };
+        let winner: PlayerId = 'P1';
+
+        if (success) {
+          winner = 'P2';
+          nextLockedGuiYuan = {
+            P1: true,
+            P2: true
+          };
+          const unlighted = getUnlightedSide(p2Board);
+          if (unlighted) {
+            nextP2Board = {
+              ...p2Board,
+              [unlighted.element]: {
+                ...p2Board[unlighted.element],
+                [unlighted.polarity]: clampNodeLevel(p2Board[unlighted.element][unlighted.polarity] + 1)
+              }
+            };
+          }
+        } else {
+          winner = 'P1';
+        }
+
+        state = {
+          ...state,
+          currentTianGan: tianGan,
+          isGameOver: true,
+          winner,
+          endReason: 'GUI_YUAN',
+          lockedGuiYuan: nextLockedGuiYuan,
+          players: {
+            ...state.players,
+            P2: {
+              ...state.players.P2,
+              board: nextP2Board
+            }
+          }
+        };
+
+        isShowdown = true;
+        showdownSuccess = success;
+        break;
+      }
+
       const tianGan = drawTianGan(prng);
       const candidates = getAvailableActions(state, tianGan, { isExtraTurn });
       const currentStrategy = state.currentPlayer === 'P1' ? strategyP1 : strategyP2;
@@ -105,8 +167,6 @@ export class HeadlessMatch {
           action
         });
       }
-
-      lastActor = state.currentPlayer;
 
       const result = this.resolver.resolve(
         { ...state, currentTianGan: tianGan },
@@ -134,7 +194,7 @@ export class HeadlessMatch {
       } else if (!p1Gui && p2Gui) {
         closureType = 'P2_DIRECT_GUIYUAN';
       } else if (p1Gui && !p2Gui) {
-        closureType = lastActor === 'P1' ? 'SUDDEN_DEATH' : 'CATCHUP_FAIL';
+        closureType = isShowdown ? 'CATCHUP_FAIL' : 'SUDDEN_DEATH';
       }
     }
 
@@ -148,6 +208,8 @@ export class HeadlessMatch {
       winner: state.winner,
       endReason: state.endReason,
       closureType,
+      showdownOccurred: isShowdown,
+      showdownSuccess: isShowdown ? showdownSuccess : undefined,
       roundsPlayed: state.round,
       finalP1Score: state.players.P1.score,
       finalP2Score: state.players.P2.score,

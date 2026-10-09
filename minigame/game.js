@@ -195,7 +195,48 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     return 10 - countLightedSides(board);
   }
   function isBoardTingPai(board) {
-    return countUnlightedSides(board) <= 2;
+    return countUnlightedSides(board) === 1;
+  }
+  function getUnlightedSide(board) {
+    let unlighted = null;
+    let count = 0;
+    for (const element of Object.values(WuXing)) {
+      if (board[element].yin < 1) {
+        unlighted = { element, polarity: Polarity.YIN };
+        count++;
+      }
+      if (board[element].yang < 1) {
+        unlighted = { element, polarity: Polarity.YANG };
+        count++;
+      }
+    }
+    return count === 1 ? unlighted : null;
+  }
+  function canTianGanLightUnlightedSide(board, tianGan) {
+    const unlighted = getUnlightedSide(board);
+    if (!unlighted) {
+      return false;
+    }
+    const { element: targetElement, polarity: targetPolarity } = unlighted;
+    const targetCurrentLevel = board[targetElement][targetPolarity];
+    if (targetCurrentLevel + 1 < 1) {
+      return false;
+    }
+    if (tianGan.element === targetElement && tianGan.polarity === targetPolarity) {
+      return true;
+    }
+    if (tianGan.element === targetElement && tianGan.polarity !== targetPolarity && board[targetElement][tianGan.polarity] >= 1) {
+      return true;
+    }
+    if (tianGan.polarity === Polarity.YIN && GENERATION_CYCLE[tianGan.element] === targetElement) {
+      if (targetPolarity === Polarity.YIN) {
+        return true;
+      }
+      if (targetPolarity === Polarity.YANG && board[targetElement].yin === 2) {
+        return true;
+      }
+    }
+    return false;
   }
   function clampNodeLevel(level) {
     if (level <= -1) return -1;
@@ -587,6 +628,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
             extraTurn = false;
           } else {
             isGameOver = false;
+            extraTurn = false;
           }
         }
       } else {
@@ -948,6 +990,81 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         this.candidateActions = [];
         return [];
       }
+      if (this.state.lockedGuiYuan?.P1 && this.state.currentPlayer === "P2") {
+        this.phase = "START_TURN";
+        this.eventBus.emit("turn:start", {
+          round: this.state.round,
+          player: "P2",
+          isExtraTurn: false
+        });
+        const tianGan = drawTianGan(this.prng);
+        this.currentTianGan = tianGan;
+        this.state = {
+          ...this.state,
+          currentTianGan: tianGan
+        };
+        this.eventBus.emit("tiangan:draw", {
+          tianGan
+        });
+        const p2Board = this.state.players.P2.board;
+        const success = canTianGanLightUnlightedSide(p2Board, tianGan);
+        let nextP2Board = p2Board;
+        let nextLockedGuiYuan = {
+          P1: true,
+          P2: false
+        };
+        let winner = "P1";
+        if (success) {
+          winner = "P2";
+          nextLockedGuiYuan = {
+            P1: true,
+            P2: true
+          };
+          const unlighted = getUnlightedSide(p2Board);
+          if (unlighted) {
+            nextP2Board = {
+              ...p2Board,
+              [unlighted.element]: {
+                ...p2Board[unlighted.element],
+                [unlighted.polarity]: clampNodeLevel(p2Board[unlighted.element][unlighted.polarity] + 1)
+              }
+            };
+          }
+        } else {
+          winner = "P1";
+        }
+        this.eventBus.emit("showdown:draw", {
+          round: this.state.round,
+          player: "P2",
+          tianGan,
+          success,
+          winner
+        });
+        const prevState = this.state;
+        this.state = {
+          ...this.state,
+          isGameOver: true,
+          winner,
+          endReason: "GUI_YUAN",
+          lockedGuiYuan: nextLockedGuiYuan,
+          players: {
+            ...this.state.players,
+            P2: {
+              ...this.state.players.P2,
+              board: nextP2Board
+            }
+          }
+        };
+        this.phase = "GAME_OVER";
+        this.candidateActions = [];
+        this.isExtraTurn = false;
+        this.eventBus.diffAndEmit(prevState, this.state);
+        this.eventBus.emit("turn:end", {
+          round: prevState.round,
+          player: "P2"
+        });
+        return [];
+      }
       this.phase = "START_TURN";
       this.eventBus.emit("turn:start", {
         round: this.state.round,
@@ -1087,6 +1204,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       if (this.phase === "START_TURN" || this.phase === "END_TURN") {
         this.startTurn();
       }
+      if (this.state.isGameOver) {
+        return {
+          nextState: this.state,
+          success: true,
+          scoreDelta: 0,
+          extraTurn: false,
+          message: "终轮天命揭牌决胜已完成"
+        };
+      }
       const actionToExecute = action ?? this.candidateActions[0];
       if (!actionToExecute) {
         return {
@@ -1115,6 +1241,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       if (this.phase === "START_TURN" || this.phase === "END_TURN") {
         this.startTurn();
+      }
+      if (this.state.isGameOver) {
+        return {
+          nextState: this.state,
+          success: true,
+          scoreDelta: 0,
+          extraTurn: false,
+          message: "终轮天命揭牌决胜已完成"
+        };
       }
       const chosenAction = strategy(this.state, this.currentTianGan, this.candidateActions);
       return this.executeAction(chosenAction);
@@ -1813,7 +1948,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     WuXing.WATER
   ];
   class GameManager {
-    constructor(seed = Date.now()) {
+    constructor(seedOrOptions = Date.now()) {
       __publicField(this, "turnManager");
       __publicField(this, "aiStrategy", createStrategy(BALANCED_WEIGHTS));
       __publicField(this, "currentTianGan", null);
@@ -1837,14 +1972,30 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       // 战斗播报
       __publicField(this, "bannerText", "对局开始 · 双方对峙");
       __publicField(this, "bannerSubText", "追求五行归元，调和阴阳");
+      // 天命揭牌事件记录
+      __publicField(this, "lastShowdownInfo", null);
       // AI 思考调度与 P1 自动吸纳调度
       __publicField(this, "aiThinkingTimer", 0);
       __publicField(this, "p1AutoAbsorbTimer", 0);
       __publicField(this, "safeTop", 44);
       __publicField(this, "safeBottom", 16);
-      const prng = createPRNG(seed);
-      this.turnManager = new TurnManager({ prng });
+      let prng;
+      let initialState;
+      if (typeof seedOrOptions === "number") {
+        prng = createPRNG(seedOrOptions);
+      } else {
+        prng = seedOrOptions.prng ?? createPRNG(seedOrOptions.seed ?? Date.now());
+        initialState = seedOrOptions.initialState;
+      }
+      this.initTurnManager(prng, initialState);
       this.startNewTurn();
+    }
+    initTurnManager(prng, initialState) {
+      this.turnManager = new TurnManager({ prng, initialState });
+      this.lastShowdownInfo = null;
+      this.turnManager.getEventBus().on("showdown:draw", (data) => {
+        this.lastShowdownInfo = data;
+      });
     }
     resize(width, height, pixelRatio, safeTop = 44, safeBottom = 16) {
       this.width = width;
@@ -1860,9 +2011,51 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.currentTianGan = this.turnManager.getCurrentTianGan();
       const state = this.turnManager.getState();
       if (state.isGameOver) {
-        this.bannerText = state.winner === "P1" ? "★ 五行归元 ★ 玩家大胜！" : "天道通玄 · 遗憾惜败！";
-        this.bannerSubText = state.endReason ?? "对局结束";
         this.availableButtons = [];
+        this.p1AutoAbsorbTimer = 0;
+        this.aiThinkingTimer = 0;
+        if (this.lastShowdownInfo) {
+          const info = this.lastShowdownInfo;
+          const elemName = WUXING_PALETTE[info.tianGan.element]?.name ?? "";
+          const tgLabel = `${info.tianGan.name}${elemName}`;
+          this.bannerText = "【终轮绝杀·天命抽牌】";
+          if (info.success) {
+            this.bannerSubText = `【天命逆转】五行归元·后发制人！(抽中【${tgLabel}】)`;
+            const elemCfg = WUXING_PALETTE[info.tianGan.element] ?? WUXING_PALETTE[WuXing.WOOD];
+            const sealPos = this.getSealPosition(false, info.tianGan.element);
+            this.impactEffects.push({
+              x: sealPos.x,
+              y: sealPos.y,
+              radius: 8,
+              maxRadius: 36,
+              color: elemCfg.main,
+              lightColor: elemCfg.light,
+              alpha: 1,
+              life: 24,
+              maxLife: 24,
+              mode: this.animMode
+            });
+            this.screenShake = 6;
+          } else {
+            this.bannerSubText = `【天命难违】差之一线·先手锁定胜局！(抽中【${tgLabel}】)`;
+            const centerPos = this.getCenterPosition();
+            this.impactEffects.push({
+              x: centerPos.x,
+              y: centerPos.y,
+              radius: 4,
+              maxRadius: 20,
+              color: "#718096",
+              lightColor: "#a0aec0",
+              alpha: 0.8,
+              life: 18,
+              maxLife: 18,
+              mode: this.animMode
+            });
+          }
+        } else {
+          this.bannerText = state.winner === "P1" ? "★ 五行归元 ★ 玩家大胜！" : "天道通玄 · 遗憾惜败！";
+          this.bannerSubText = state.endReason ?? "对局结束";
+        }
         return;
       }
       const currentPlayer = state.currentPlayer;
@@ -2028,7 +2221,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const state = this.turnManager.getState();
       if (state.isGameOver) {
         const prng = createPRNG(Date.now());
-        this.turnManager = new TurnManager({ prng });
+        this.initTurnManager(prng);
         this.startNewTurn();
         return;
       }
@@ -2293,7 +2486,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         ctx.fillStyle = "#f6e05e";
         ctx.font = "bold 15px monospace";
         ctx.textAlign = "center";
-        ctx.fillText(state.winner === "P1" ? "★ 恭喜！五行圆满大获全胜 ★" : "天道终局 · 比分结算完毕", this.width / 2, consoleY + 68);
+        if (this.lastShowdownInfo) {
+          ctx.fillText(
+            this.lastShowdownInfo.success ? "★【天命逆转】五行归元·后发制人！★" : "★【天命难违】差之一线·先手锁定胜局！★",
+            this.width / 2,
+            consoleY + 68
+          );
+        } else {
+          ctx.fillText(state.winner === "P1" ? "★ 恭喜！五行圆满大获全胜 ★" : "天道终局 · 比分结算完毕", this.width / 2, consoleY + 68);
+        }
         ctx.fillStyle = "#63b3ed";
         ctx.font = "12px monospace";
         ctx.fillText("【 点击屏幕任意区域 重新开局 】", this.width / 2, consoleY + 95);
@@ -2356,6 +2557,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     getBannerSubText() {
       return this.bannerSubText;
+    }
+    getLastShowdownInfo() {
+      return this.lastShowdownInfo;
     }
   }
   function initMiniGame() {
