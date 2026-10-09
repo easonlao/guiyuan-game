@@ -41,6 +41,13 @@ export interface BenchmarkMetrics {
   catchupFailRate: number;
   p2DirectCount: number;
   p2DirectRate: number;
+  // 天命揭牌专属度量
+  showdownCount: number;
+  showdownRate: number;
+  showdownSuccessCount: number;
+  showdownSuccessRate: number;
+  showdownFailCount: number;
+  showdownFailRate: number;
   heapUsedDeltaMB: number;
   heapUsedStartMB: number;
   heapUsedEndMB: number;
@@ -78,6 +85,9 @@ export class HeadlessBenchmark {
     let suddenDeathCount = 0;
     let catchupFailCount = 0;
     let p2DirectCount = 0;
+    let showdownCount = 0;
+    let showdownSuccessCount = 0;
+    let showdownFailCount = 0;
 
     for (let i = 0; i < totalMatches; i++) {
       const matchResult = this.headlessMatch.run(strategyP1, strategyP2, {
@@ -110,6 +120,15 @@ export class HeadlessBenchmark {
         p2DirectCount++;
       }
 
+      if (matchResult.showdownOccurred) {
+        showdownCount++;
+        if (matchResult.showdownSuccess) {
+          showdownSuccessCount++;
+        } else {
+          showdownFailCount++;
+        }
+      }
+
       totalRounds += matchResult.roundsPlayed;
     }
 
@@ -131,6 +150,10 @@ export class HeadlessBenchmark {
     const suddenDeathRate = totalMatches > 0 ? suddenDeathCount / totalMatches : 0;
     const catchupFailRate = totalMatches > 0 ? catchupFailCount / totalMatches : 0;
     const p2DirectRate = totalMatches > 0 ? p2DirectCount / totalMatches : 0;
+
+    const showdownRate = totalMatches > 0 ? showdownCount / totalMatches : 0;
+    const showdownSuccessRate = totalMatches > 0 ? showdownSuccessCount / totalMatches : 0;
+    const showdownFailRate = totalMatches > 0 ? showdownFailCount / totalMatches : 0;
 
     const heapUsedStartMB = memStart / (1024 * 1024);
     const heapUsedEndMB = memEnd / (1024 * 1024);
@@ -159,6 +182,12 @@ export class HeadlessBenchmark {
       catchupFailRate,
       p2DirectCount,
       p2DirectRate,
+      showdownCount,
+      showdownRate,
+      showdownSuccessCount,
+      showdownSuccessRate,
+      showdownFailCount,
+      showdownFailRate,
       heapUsedDeltaMB,
       heapUsedStartMB,
       heapUsedEndMB
@@ -196,6 +225,9 @@ export class HeadlessBenchmark {
       `   ├─ 常规秒结 (Sudden)   : ${metrics.suddenDeathCount.toLocaleString()} (${(metrics.suddenDeathRate * 100).toFixed(2)}%)`,
       `   ├─ 追平失败 (Catchup)  : ${metrics.catchupFailCount.toLocaleString()} (${(metrics.catchupFailRate * 100).toFixed(2)}%)`,
       `   └─ 后手直接 (P2 Direct): ${metrics.p2DirectCount.toLocaleString()} (${(metrics.p2DirectRate * 100).toFixed(2)}%)`,
+      ` 天命揭牌 (Showdown)     : ${metrics.showdownCount.toLocaleString()} (${(metrics.showdownRate * 100).toFixed(2)}%)`,
+      `   ├─ 绝杀反击成功 (Win)  : ${metrics.showdownSuccessCount.toLocaleString()} (${(metrics.showdownSuccessRate * 100).toFixed(2)}%)`,
+      `   └─ 追平失败 (Fail)     : ${metrics.showdownFailCount.toLocaleString()} (${(metrics.showdownFailRate * 100).toFixed(2)}%)`,
       ` 达到上限 (Max Rounds)   : ${metrics.maxRoundsCount.toLocaleString()} (${mrPct}%)`,
       ` 平均回合数 (Avg Rounds) : ${metrics.avgRounds.toFixed(2)} 回合`,
       '-----------------------------------------------------------------',

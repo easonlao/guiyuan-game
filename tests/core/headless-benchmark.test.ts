@@ -52,6 +52,12 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     expect(metrics.catchupFailRate).toBeCloseTo(metrics.catchupFailCount / 100, 5);
     expect(metrics.p2DirectRate).toBeCloseTo(metrics.p2DirectCount / 100, 5);
 
+    // 天命揭牌度量守恒
+    expect(metrics.showdownCount).toBe(metrics.showdownSuccessCount + metrics.showdownFailCount);
+    expect(metrics.showdownRate).toBeCloseTo(metrics.showdownCount / 100, 5);
+    expect(metrics.showdownSuccessRate).toBeCloseTo(metrics.showdownSuccessCount / 100, 5);
+    expect(metrics.showdownFailRate).toBeCloseTo(metrics.showdownFailCount / 100, 5);
+
     // 回合数与内存指标
     expect(metrics.avgRounds).toBeGreaterThan(0);
     expect(metrics.avgRounds).toBeLessThanOrEqual(60);
@@ -82,6 +88,7 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     expect(report).toContain('常规秒结');
     expect(report).toContain('追平失败');
     expect(report).toContain('后手直接');
+    expect(report).toContain('天命揭牌');
     expect(report).toContain('达到上限');
     expect(report).toContain('【内存与 GC 指标】');
     expect(report).toContain('堆内存增量');
@@ -127,6 +134,9 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     expect(run1.suddenDeathCount).toBe(run2.suddenDeathCount);
     expect(run1.catchupFailCount).toBe(run2.catchupFailCount);
     expect(run1.p2DirectCount).toBe(run2.p2DirectCount);
+    expect(run1.showdownCount).toBe(run2.showdownCount);
+    expect(run1.showdownSuccessCount).toBe(run2.showdownSuccessCount);
+    expect(run1.showdownFailCount).toBe(run2.showdownFailCount);
     expect(run1.avgRounds).toBe(run2.avgRounds);
   });
 
@@ -155,6 +165,10 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     expect(metrics.suddenDeathRate).toBeGreaterThanOrEqual(0);
     expect(metrics.catchupFailRate).toBeGreaterThanOrEqual(0);
     expect(metrics.p2DirectRate).toBeGreaterThanOrEqual(0);
+    expect(metrics.showdownCount).toBe(metrics.showdownSuccessCount + metrics.showdownFailCount);
+    expect(metrics.showdownRate).toBeGreaterThanOrEqual(0);
+    expect(metrics.showdownSuccessRate).toBeGreaterThanOrEqual(0);
+    expect(metrics.showdownFailRate).toBeGreaterThanOrEqual(0);
   });
 
   it('should handle recordActions option properly', () => {
@@ -189,6 +203,9 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     expect(metrics.suddenDeathRate).toBe(0);
     expect(metrics.catchupFailRate).toBe(0);
     expect(metrics.p2DirectRate).toBe(0);
+    expect(metrics.showdownRate).toBe(0);
+    expect(metrics.showdownSuccessRate).toBe(0);
+    expect(metrics.showdownFailRate).toBe(0);
 
     const report = benchmark.formatReport(metrics);
     expect(typeof report).toBe('string');

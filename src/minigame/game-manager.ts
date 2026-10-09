@@ -1,6 +1,6 @@
 import { TurnManager } from '../core/logic/TurnManager';
-import { createPRNG } from '../core/utils/prng';
-import { ActionPayload, ActionType, Polarity, TianGanInfo, WuXing } from '../core/types/domain';
+import { createPRNG, PRNG } from '../core/utils/prng';
+import { ActionPayload, ActionType, GameState, PlayerId, Polarity, TianGanInfo, WuXing } from '../core/types/domain';
 import { BALANCED_WEIGHTS, createStrategy } from '../core/ai/Strategy';
 import { AnimationMode, CharacterActionState, FlyingProjectile, ImpactEffect, TouchButton } from './types';
 import { formatActionButton, getActionTargetElement } from './action-button-formatter';
@@ -25,8 +25,14 @@ const ELEMENTS_ORDER: WuXing[] = [
   WuXing.WATER
 ];
 
+export interface GameManagerOptions {
+  readonly seed?: number;
+  readonly initialState?: GameState;
+  readonly prng?: PRNG;
+}
+
 export class GameManager {
-  private turnManager: TurnManager;
+  private turnManager!: TurnManager;
   private readonly aiStrategy = createStrategy(BALANCED_WEIGHTS);
   private currentTianGan: TianGanInfo | null = null;
   private availableButtons: TouchButton[] = [];
@@ -54,16 +60,40 @@ export class GameManager {
   private bannerText: string = '对局开始 · 双方对峙';
   private bannerSubText: string = '追求五行归元，调和阴阳';
 
+  // 天命揭牌事件记录
+  private lastShowdownInfo: {
+    round: number;
+    player: PlayerId;
+    tianGan: TianGanInfo;
+    success: boolean;
+    winner: PlayerId;
+  } | null = null;
+
   // AI 思考调度与 P1 自动吸纳调度
   private aiThinkingTimer: number = 0;
   private p1AutoAbsorbTimer: number = 0;
   public safeTop: number = 44;
   public safeBottom: number = 16;
 
-  constructor(seed: number = Date.now()) {
-    const prng = createPRNG(seed);
-    this.turnManager = new TurnManager({ prng });
+  constructor(seedOrOptions: number | GameManagerOptions = Date.now()) {
+    let prng: PRNG;
+    let initialState: GameState | undefined;
+    if (typeof seedOrOptions === 'number') {
+      prng = createPRNG(seedOrOptions);
+    } else {
+      prng = seedOrOptions.prng ?? createPRNG(seedOrOptions.seed ?? Date.now());
+      initialState = seedOrOptions.initialState;
+    }
+    this.initTurnManager(prng, initialState);
     this.startNewTurn();
+  }
+
+  private initTurnManager(prng: PRNG, initialState?: GameState): void {
+    this.turnManager = new TurnManager({ prng, initialState });
+    this.lastShowdownInfo = null;
+    this.turnManager.getEventBus().on('showdown:draw', (data) => {
+      this.lastShowdownInfo = data;
+    });
   }
 
   public resize(
@@ -88,9 +118,53 @@ export class GameManager {
     const state = this.turnManager.getState();
 
     if (state.isGameOver) {
-      this.bannerText = state.winner === 'P1' ? '★ 五行归元 ★ 玩家大胜！' : '天道通玄 · 遗憾惜败！';
-      this.bannerSubText = state.endReason ?? '对局结束';
       this.availableButtons = [];
+      this.p1AutoAbsorbTimer = 0;
+      this.aiThinkingTimer = 0;
+
+      if (this.lastShowdownInfo) {
+        const info = this.lastShowdownInfo;
+        const elemName = WUXING_PALETTE[info.tianGan.element]?.name ?? '';
+        const tgLabel = `${info.tianGan.name}${elemName}`;
+        this.bannerText = '【终轮绝杀·天命抽牌】';
+        if (info.success) {
+          this.bannerSubText = `【天命逆转】五行归元·后发制人！(抽中【${tgLabel}】)`;
+          // 视觉定格与冲击动效
+          const elemCfg = WUXING_PALETTE[info.tianGan.element] ?? WUXING_PALETTE[WuXing.WOOD];
+          const sealPos = this.getSealPosition(false, info.tianGan.element);
+          this.impactEffects.push({
+            x: sealPos.x,
+            y: sealPos.y,
+            radius: 8,
+            maxRadius: 36,
+            color: elemCfg.main,
+            lightColor: elemCfg.light,
+            alpha: 1,
+            life: 24,
+            maxLife: 24,
+            mode: this.animMode
+          });
+          this.screenShake = 6;
+        } else {
+          this.bannerSubText = `【天命难违】差之一线·先手锁定胜局！(抽中【${tgLabel}】)`;
+          const centerPos = this.getCenterPosition();
+          this.impactEffects.push({
+            x: centerPos.x,
+            y: centerPos.y,
+            radius: 4,
+            maxRadius: 20,
+            color: '#718096',
+            lightColor: '#a0aec0',
+            alpha: 0.8,
+            life: 18,
+            maxLife: 18,
+            mode: this.animMode
+          });
+        }
+      } else {
+        this.bannerText = state.winner === 'P1' ? '★ 五行归元 ★ 玩家大胜！' : '天道通玄 · 遗憾惜败！';
+        this.bannerSubText = state.endReason ?? '对局结束';
+      }
       return;
     }
 
@@ -283,7 +357,7 @@ export class GameManager {
     if (state.isGameOver) {
       // 游戏结束点击任意位置重新开局
       const prng = createPRNG(Date.now());
-      this.turnManager = new TurnManager({ prng });
+      this.initTurnManager(prng);
       this.startNewTurn();
       return;
     }
@@ -618,7 +692,17 @@ export class GameManager {
       ctx.fillStyle = '#f6e05e';
       ctx.font = 'bold 15px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(state.winner === 'P1' ? '★ 恭喜！五行圆满大获全胜 ★' : '天道终局 · 比分结算完毕', this.width / 2, consoleY + 68);
+      if (this.lastShowdownInfo) {
+        ctx.fillText(
+          this.lastShowdownInfo.success
+            ? '★【天命逆转】五行归元·后发制人！★'
+            : '★【天命难违】差之一线·先手锁定胜局！★',
+          this.width / 2,
+          consoleY + 68
+        );
+      } else {
+        ctx.fillText(state.winner === 'P1' ? '★ 恭喜！五行圆满大获全胜 ★' : '天道终局 · 比分结算完毕', this.width / 2, consoleY + 68);
+      }
       ctx.fillStyle = '#63b3ed';
       ctx.font = '12px monospace';
       ctx.fillText('【 点击屏幕任意区域 重新开局 】', this.width / 2, consoleY + 95);
@@ -701,6 +785,10 @@ export class GameManager {
 
   public getBannerSubText(): string {
     return this.bannerSubText;
+  }
+
+  public getLastShowdownInfo() {
+    return this.lastShowdownInfo;
   }
 }
 
