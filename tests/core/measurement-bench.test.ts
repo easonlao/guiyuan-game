@@ -5,10 +5,16 @@ import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
 import {
   runMeasurementMatrix,
   runAiPreferenceScan,
+  runScoreLeverScan,
+  runHeadToHeadScan,
   formatAiPreferenceReport,
+  formatScoreLeverReport,
+  formatHeadToHeadReport,
   formatMeasurementReport,
   DEFAULT_STRATEGY_VARIANTS,
-  DEFAULT_SCORE_CONFIG_VARIANTS
+  DEFAULT_SCORE_CONFIG_VARIANTS,
+  SCORE_LEVER_CONFIG_VARIANTS,
+  SCORE_LEVER_STRATEGY_TEMPLATES
 } from '../../src/core/headless/MeasurementBench.js';
 import { balancedStrategy, pureSuppressStrategy } from '../../src/core/ai/Strategy.js';
 
@@ -222,6 +228,173 @@ describe('MeasurementBench (Ticket 03 matrix)', () => {
   it('is deterministic given the same seed', () => {
     const first = runMeasurementMatrix({ matches: 30, baseSeed: 4242, maxRounds: 30 });
     const second = runMeasurementMatrix({ matches: 30, baseSeed: 4242, maxRounds: 30 });
+    expect(first.cells).toEqual(second.cells);
+  });
+});
+
+describe('MeasurementBench score-lever scan (Ticket 05)', () => {
+  it('cross-products every candidate config × strategy × mode', () => {
+    const report = runScoreLeverScan({ matches: 5, baseSeed: 10000, maxRounds: 30 });
+
+    expect(report.modes).toEqual(['off', 'full']);
+    expect(report.scoreConfigNames).toEqual([
+      '现状',
+      '撤销攻击强化',
+      '道损惩罚下调',
+      '组合',
+      '攻击净收益归零',
+      '组合·攻击归零'
+    ]);
+    expect(report.strategyNames).toEqual([
+      '平衡',
+      '归元冲刺',
+      '激进压制',
+      '保守自保',
+      '纯推进',
+      '纯压制'
+    ]);
+    expect(report.cells).toHaveLength(
+      report.scoreConfigNames.length * report.strategyNames.length * report.modes.length
+    );
+  });
+
+  it('reproduces the existing matrix result for the 现状 config (binding the default config is a no-op)', () => {
+    const baseline = DEFAULT_SCORE_CONFIG_VARIANTS.find(variant => variant.name === 'default')!;
+    const balanced = DEFAULT_STRATEGY_VARIANTS.find(variant => variant.name === '平衡')!;
+    const matrix = runMeasurementMatrix({
+      modes: ['off'],
+      scoreConfigs: [baseline],
+      strategies: [balanced],
+      matches: 200,
+      baseSeed: 10000,
+      maxRounds: 30
+    });
+
+    const lever = runScoreLeverScan({
+      modes: ['off'],
+      scoreConfigs: [SCORE_LEVER_CONFIG_VARIANTS[0]],
+      strategyTemplates: [SCORE_LEVER_STRATEGY_TEMPLATES[0]],
+      matches: 200,
+      baseSeed: 10000,
+      maxRounds: 30
+    });
+
+    expect(lever.cells).toHaveLength(1);
+    const { scoreConfigName: _matrixConfigName, ...matrixCell } = matrix.cells[0];
+    const { scoreConfigName: _leverConfigName, ...leverCell } = lever.cells[0];
+    expect(leverCell).toEqual(matrixCell);
+  });
+
+  it('wires the candidate config into the AI evaluator so the rule change moves behavior', () => {
+    // 关键回归：若计分配置只影响终局判据而不影响 AI 估值，归元率会逐格相同。
+    // 攻击净收益归零后，full 模式的平衡策略应显著回升（远离 30 回合分数结算）。
+    const report = runScoreLeverScan({
+      modes: ['full'],
+      scoreConfigs: [SCORE_LEVER_CONFIG_VARIANTS[0], SCORE_LEVER_CONFIG_VARIANTS[4]],
+      strategyTemplates: [SCORE_LEVER_STRATEGY_TEMPLATES[0]],
+      matches: 400,
+      baseSeed: 10000,
+      maxRounds: 30
+    });
+
+    const baseline = report.cells.find(cell => cell.scoreConfigName === '现状')!;
+    const attackZero = report.cells.find(cell => cell.scoreConfigName === '攻击净收益归零')!;
+    expect(attackZero.guiYuanRate).toBeGreaterThan(baseline.guiYuanRate);
+    expect(attackZero.avgRounds).toBeLessThan(baseline.avgRounds);
+  });
+
+  it('formats a markdown report with per-config detail and full-mode strategy matrices', () => {
+    const report = runScoreLeverScan({ matches: 3, baseSeed: 10000, maxRounds: 30 });
+    const markdown = formatScoreLeverReport(report);
+
+    expect(markdown).toContain('| 计分配置 | 策略 | 模式 | 归元率 |');
+    expect(markdown).toContain('full 模式归元率矩阵');
+    expect(markdown).toContain('full 模式回合上限率矩阵');
+    for (const name of report.scoreConfigNames) {
+      expect(markdown).toContain(`| ${name} |`);
+    }
+    for (const name of report.strategyNames) {
+      expect(markdown).toContain(`| ${name} |`);
+    }
+    expect(markdown).toContain('种子基数: 10000');
+  });
+
+  it('is deterministic given the same seed', () => {
+    const options = {
+      scoreConfigs: SCORE_LEVER_CONFIG_VARIANTS.slice(0, 2),
+      strategyTemplates: SCORE_LEVER_STRATEGY_TEMPLATES.slice(0, 2),
+      matches: 10,
+      baseSeed: 4242,
+      maxRounds: 30
+    } as const;
+    const first = runScoreLeverScan(options);
+    const second = runScoreLeverScan(options);
+    expect(first.cells).toEqual(second.cells);
+  });
+});
+
+describe('MeasurementBench head-to-head scan (Ticket 05 pure-strategy dominance)', () => {
+  it('cross-products every ordered strategy pair × config × mode', () => {
+    const report = runHeadToHeadScan({ matches: 3, baseSeed: 10000, maxRounds: 30 });
+
+    const strategies = SCORE_LEVER_STRATEGY_TEMPLATES.length;
+    const pairs = strategies * (strategies - 1);
+    expect(report.cells).toHaveLength(
+      report.scoreConfigNames.length * report.modes.length * pairs
+    );
+    // 每个有序对都在场，且 A ≠ B
+    for (const cell of report.cells) {
+      expect(cell.strategyA).not.toBe(cell.strategyB);
+      expect(cell.aWinRate + cell.bWinRate + cell.drawRate).toBeCloseTo(1, 6);
+    }
+  });
+
+  it('carries cross-play signal: pure rush beats balanced in full mode under 现状', () => {
+    const report = runHeadToHeadScan({
+      modes: ['full'],
+      scoreConfigs: [SCORE_LEVER_CONFIG_VARIANTS[0]],
+      strategyTemplates: SCORE_LEVER_STRATEGY_TEMPLATES.filter(
+        template => template.name === '纯推进' || template.name === '平衡'
+      ),
+      matches: 400,
+      baseSeed: 10000,
+      maxRounds: 30
+    });
+
+    const pureRushVsBalanced = report.cells.find(
+      cell => cell.strategyA === '纯推进' && cell.strategyB === '平衡'
+    )!;
+    expect(pureRushVsBalanced.aWinRate).toBeGreaterThan(0.5);
+  });
+
+  it('formats a head-to-head matrix per config and mode', () => {
+    const report = runHeadToHeadScan({
+      scoreConfigs: SCORE_LEVER_CONFIG_VARIANTS.slice(0, 1),
+      strategyTemplates: SCORE_LEVER_STRATEGY_TEMPLATES.slice(0, 3),
+      matches: 3,
+      baseSeed: 10000,
+      maxRounds: 30
+    });
+    const markdown = formatHeadToHeadReport(report);
+
+    expect(markdown).toContain('策略对拼矩阵');
+    expect(markdown).toContain('现状 · off · 原始');
+    expect(markdown).toContain('现状 · full · 原始');
+    expect(markdown).toContain('座次平衡');
+    expect(markdown).toContain('| A \\ B |');
+  });
+
+  it('is deterministic given the same seed', () => {
+    const options = {
+      modes: ['off'] as const,
+      scoreConfigs: SCORE_LEVER_CONFIG_VARIANTS.slice(0, 1),
+      strategyTemplates: SCORE_LEVER_STRATEGY_TEMPLATES.slice(0, 2),
+      matches: 10,
+      baseSeed: 4242,
+      maxRounds: 30
+    };
+    const first = runHeadToHeadScan(options);
+    const second = runHeadToHeadScan(options);
     expect(first.cells).toEqual(second.cells);
   });
 });
