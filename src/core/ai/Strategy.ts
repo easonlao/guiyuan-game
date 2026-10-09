@@ -63,6 +63,44 @@ export const AGGRESSIVE_WEIGHTS: StrategyWeights = {
 };
 
 /**
+ * 纯推进策略权重 (Ticket 03)：只最大化自身点亮/归一进度，完全关闭压制轴与规则得分轴。
+ * 压制类权重全部为 0、scoreDeltaWeight 为 0，确保计分系统不会把跨轴价值泄漏进决策。
+ */
+export const PURE_RUSH_WEIGHTS: StrategyWeights = {
+  repairDamage: 120,
+  reachGuiYi: 300,
+  lightVoid: 120,
+  reachKangJi: 60,
+  guiyuanProgress: 200,
+  burstExtraTurn: 120,
+  breakOpponentGuiYi: 0,
+  causeDamage: 0,
+  suppressNode: 0,
+  scoreDeltaWeight: 0,
+  winReward: 10000,
+  baseActionBias: {}
+};
+
+/**
+ * 纯压制策略权重 (Ticket 03)：只最大化对对手的削弱，完全关闭自身建设轴与规则得分轴。
+ * 建设类权重全部为 0、scoreDeltaWeight 为 0，确保计分系统不会把跨轴价值泄漏进决策。
+ */
+export const PURE_SUPPRESS_WEIGHTS: StrategyWeights = {
+  repairDamage: 0,
+  reachGuiYi: 0,
+  lightVoid: 0,
+  reachKangJi: 0,
+  guiyuanProgress: 0,
+  burstExtraTurn: 0,
+  breakOpponentGuiYi: 300,
+  causeDamage: 200,
+  suppressNode: 100,
+  scoreDeltaWeight: 0,
+  winReward: 0,
+  baseActionBias: {}
+};
+
+/**
  * 保守防御策略权重 (偏防御自保，极高优先级修复道损，稳固阵地)
  */
 export const DEFENSIVE_WEIGHTS: StrategyWeights = {
@@ -150,3 +188,9 @@ export const aggressiveStrategy: DecisionStrategy = createStrategy(AGGRESSIVE_WE
 
 /** 预设策略：保守自保 */
 export const defensiveStrategy: DecisionStrategy = createStrategy(DEFENSIVE_WEIGHTS);
+
+/** 预设策略：纯推进（只最大化自身点亮/归一进度，压制轴与得分轴归零） */
+export const pureRushStrategy: DecisionStrategy = createStrategy(PURE_RUSH_WEIGHTS);
+
+/** 预设策略：纯压制（只最大化对对手的削弱，建设轴与得分轴归零） */
+export const pureSuppressStrategy: DecisionStrategy = createStrategy(PURE_SUPPRESS_WEIGHTS);
