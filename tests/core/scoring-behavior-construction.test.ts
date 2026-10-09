@@ -23,6 +23,7 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
       expect(POINTS_CONFIG.ACTION.ATK).toBe(40);
       expect(POINTS_CONFIG.ACTION.BURST).toBe(100);
       expect(POINTS_CONFIG.ACTION.BURST_ATK).toBe(80);
+      expect(POINTS_CONFIG.ACTION.PASS).toBe(0);
     });
 
     it('defines accurate STATE_CHANGE construction points', () => {
@@ -48,6 +49,7 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
       expect(calculator.calculateActionPoints(ActionType.ATK)).toBe(40);
       expect(calculator.calculateActionPoints(ActionType.BURST)).toBe(100);
       expect(calculator.calculateActionPoints(ActionType.BURST_ATK)).toBe(80);
+      expect(calculator.calculateActionPoints(ActionType.PASS)).toBe(0);
     });
 
     it('calculates construction state transitions correctly', () => {
