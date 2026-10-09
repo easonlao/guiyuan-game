@@ -180,4 +180,98 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
     expect(result.nextState.currentPlayer).toBe('P2');
     expect(result.nextState.round).toBe(1);
   });
+
+  describe('Ticket 01: CONVERT Gate Defensive Check & PASS Resolution', () => {
+    it('defensively rejects CONVERT if target polarity level is already LIT (1)', () => {
+      let state = createInitialGameState();
+      state = {
+        ...state,
+        players: {
+          ...state.players,
+          P1: {
+            ...state.players.P1,
+            board: {
+              ...state.players.P1.board,
+              [WuXing.WOOD]: { yin: 1, yang: 1 }
+            }
+          }
+        }
+      };
+
+      const result = resolver.resolve(state, {
+        actionType: ActionType.CONVERT,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YIN
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.scoreDelta).toBe(0);
+      expect(result.message).toContain('严禁调息');
+      expect(result.nextState.players.P1.board[WuXing.WOOD].yin).toBe(1);
+    });
+
+    it('defensively rejects CONVERT if target polarity level is already BLESSED (2)', () => {
+      let state = createInitialGameState();
+      state = {
+        ...state,
+        players: {
+          ...state.players,
+          P1: {
+            ...state.players.P1,
+            board: {
+              ...state.players.P1.board,
+              [WuXing.WOOD]: { yin: 2, yang: 1 }
+            }
+          }
+        }
+      };
+
+      const result = resolver.resolve(state, {
+        actionType: ActionType.CONVERT,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YIN
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.scoreDelta).toBe(0);
+      expect(result.message).toContain('严禁调息');
+      expect(result.nextState.players.P1.board[WuXing.WOOD].yin).toBe(2);
+    });
+
+    it('resolves PASS with scoreDelta 0, success true, unchanged boards, and hands over turn', () => {
+      let state = createInitialGameState();
+      state = {
+        ...state,
+        players: {
+          ...state.players,
+          P1: {
+            ...state.players.P1,
+            score: 120,
+            board: {
+              ...state.players.P1.board,
+              [WuXing.WOOD]: { yin: 1, yang: 1 }
+            }
+          }
+        }
+      };
+
+      const result = resolver.resolve(state, {
+        actionType: ActionType.PASS,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YANG
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.scoreDelta).toBe(0);
+      expect(result.extraTurn).toBe(false);
+      expect(result.nextState.players.P1.score).toBe(120);
+      expect(result.nextState.players.P1.board[WuXing.WOOD]).toEqual({ yin: 1, yang: 1 });
+      expect(result.nextState.currentPlayer).toBe('P2');
+      expect(result.nextState.round).toBe(1);
+    });
+  });
 });
+

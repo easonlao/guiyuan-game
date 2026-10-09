@@ -140,6 +140,14 @@ describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
       // 水克火
       expect(viewer.formatAction(action)).toBe('P2 执行 [强破 BURST_ATK] 水 -> 火 (阳)');
     });
+
+    it('formats PASS action', () => {
+      const action = {
+        actionType: ActionType.PASS,
+        player: 'P1' as const
+      };
+      expect(viewer.formatAction(action)).toBe('P1 执行 [消散 PASS]');
+    });
   });
 
   describe('3. EventBus Subscription & History Tracking', () => {

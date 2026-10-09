@@ -146,13 +146,8 @@ describe('ActionCandidates (Legal Action Generator)', () => {
     const gengMetal = TIAN_GAN_LIST.find((tg) => tg.name === '庚')!;
     const actions = getAvailableActions(state, gengMetal);
 
-    // Regular stem actions: CONVERT to YIN and ATK against P2 WOOD
-    expect(actions).toContainEqual({
-      actionType: ActionType.CONVERT,
-      player: 'P1',
-      element: WuXing.METAL,
-      polarity: Polarity.YIN
-    });
+    // Opposite polarity is LIT (1), so CONVERT is strictly prohibited under tightened gate
+    expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(false);
     expect(actions).toContainEqual({
       actionType: ActionType.ATK,
       player: 'P1',
@@ -401,8 +396,8 @@ describe('ActionCandidates (Legal Action Generator)', () => {
           expect(burstAtk.consumePolarity).toBe(Polarity.YANG);
         }
 
-        // Must also provide normal actions (CONVERT, ATK)
-        expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(true);
+        // CONVERT is prohibited because opposite is LIT (1); ATK remains available
+        expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(false);
         expect(actions.some((a) => a.actionType === ActionType.ATK)).toBe(true);
       });
 
@@ -438,8 +433,8 @@ describe('ActionCandidates (Legal Action Generator)', () => {
           expect(burstAtk.consumePolarity).toBe(Polarity.YANG);
         }
 
-        // Must also provide normal actions (CONVERT, TRANS)
-        expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(true);
+        // CONVERT is prohibited because opposite is LIT (1); TRANS remains available
+        expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(false);
         expect(actions.some((a) => a.actionType === ActionType.TRANS)).toBe(true);
       });
     }
@@ -601,7 +596,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
       const actions = getAvailableActions(state, jiaWood);
 
       expect(actions.some((a) => a.actionType === ActionType.DISSIPATE)).toBe(false);
-      expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(true);
+      expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(false);
       expect(actions.some((a) => a.actionType === ActionType.ATK)).toBe(true);
       expect(actions.some((a) => a.actionType === ActionType.BURST)).toBe(true);
       expect(actions.some((a) => a.actionType === ActionType.BURST_ATK)).toBe(true);
@@ -633,4 +628,132 @@ describe('ActionCandidates (Legal Action Generator)', () => {
       expect(actions.some((a) => a.actionType === ActionType.ATK)).toBe(true);
     });
   });
+
+  describe('Ticket 01: CONVERT Gate Tightening & PASS Resolution', () => {
+    it('prohibits CONVERT when opposite polarity is LIT (1)', () => {
+      let state = createInitialGameState();
+      state = {
+        ...state,
+        players: {
+          ...state.players,
+          P1: {
+            ...state.players.P1,
+            board: {
+              ...state.players.P1.board,
+              [WuXing.WOOD]: { yin: 1, yang: 1 }
+            }
+          }
+        }
+      };
+
+      const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
+      const actions = getAvailableActions(state, jiaWood);
+      expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(false);
+    });
+
+    it('prohibits CONVERT when opposite polarity is BLESSED (2)', () => {
+      let state = createInitialGameState();
+      state = {
+        ...state,
+        players: {
+          ...state.players,
+          P1: {
+            ...state.players.P1,
+            board: {
+              ...state.players.P1.board,
+              [WuXing.WOOD]: { yin: 2, yang: 1 }
+            }
+          }
+        }
+      };
+
+      const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
+      const actions = getAvailableActions(state, jiaWood);
+      expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(false);
+    });
+
+    it('allows CONVERT when opposite polarity is VOID (0)', () => {
+      let state = createInitialGameState();
+      state = {
+        ...state,
+        players: {
+          ...state.players,
+          P1: {
+            ...state.players.P1,
+            board: {
+              ...state.players.P1.board,
+              [WuXing.WOOD]: { yin: 0, yang: 1 }
+            }
+          }
+        }
+      };
+
+      const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
+      const actions = getAvailableActions(state, jiaWood);
+      expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(true);
+    });
+
+    it('allows CONVERT when opposite polarity is DAMAGE (-1)', () => {
+      let state = createInitialGameState();
+      state = {
+        ...state,
+        players: {
+          ...state.players,
+          P1: {
+            ...state.players.P1,
+            board: {
+              ...state.players.P1.board,
+              [WuXing.WOOD]: { yin: -1, yang: 1 }
+            }
+          }
+        }
+      };
+
+      const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
+      const actions = getAvailableActions(state, jiaWood);
+      expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(true);
+    });
+
+    it('generates PASS (and strictly NOT AUTO) when mid-state player has no legal actions', () => {
+      let state = createInitialGameState();
+      // P1 has WOOD at (1, 1), P2 has EARTH (WOOD overcomes EARTH) at (-1, -1)
+      // Burst actions are disabled during extra turn
+      state = {
+        ...state,
+        players: {
+          P1: {
+            ...state.players.P1,
+            board: {
+              ...state.players.P1.board,
+              [WuXing.WOOD]: { yin: 1, yang: 1 }
+            }
+          },
+          P2: {
+            ...state.players.P2,
+            board: {
+              ...state.players.P2.board,
+              [WuXing.EARTH]: { yin: -1, yang: -1 }
+            }
+          }
+        }
+      };
+
+      const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
+      // In extraTurn, burst is prohibited
+      const actions = getAvailableActions(state, jiaWood, { isExtraTurn: true });
+
+      // No CONVERT because yin = 1
+      // No ATK because P2 EARTH is (-1, -1)
+      // No BURST because isExtraTurn: true
+      // Therefore, actions MUST be PASS!
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({
+        actionType: ActionType.PASS,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YANG
+      });
+    });
+  });
 });
+

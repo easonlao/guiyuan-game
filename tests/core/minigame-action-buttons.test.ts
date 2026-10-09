@@ -192,5 +192,18 @@ describe('Minigame Action Button Presentation Logic', () => {
       };
       expect(getActionTargetElement(explicitAct)).toBe(WuXing.METAL);
     });
+
+    it('formats PASS action button presentation', () => {
+      const passAct: ActionPayload = {
+        actionType: ActionType.PASS,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YANG
+      };
+      const formatted = formatActionButton(passAct);
+      expect(formatted.label).toBe('【消散】');
+      expect(formatted.isBurst).toBe(false);
+      expect(formatted.subLabel).toContain('消散过牌');
+    });
   });
 });
