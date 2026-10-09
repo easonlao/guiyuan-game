@@ -11,10 +11,6 @@
     "oxlint": "oxlint src/core src/adapters tests/core",
     "check:deps": "depcruise --config .dependency-cruiser.js src",
     "benchmark:headless": "npx tsx src/core/headless/HeadlessBenchmark.ts",
-    "benchmark:matrix": "npx tsx src/core/headless/MeasurementBench.ts",
-    "benchmark:ai-preference": "npx tsx src/core/headless/MeasurementBench.ts --scan ai-preference",
-    "benchmark:score-lever": "npx tsx src/core/headless/MeasurementBench.ts --scan score-lever",
-    "benchmark:head-to-head": "npx tsx src/core/headless/MeasurementBench.ts --scan head-to-head",
     "build:minigame": "node scripts/build-minigame.mjs",
     "dev:minigame": "node scripts/build-minigame.mjs --watch",
     "stryker": "stryker run"

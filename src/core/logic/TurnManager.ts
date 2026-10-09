@@ -42,8 +42,6 @@ export interface TurnManagerOptions {
   readonly prng?: PRNG;
   readonly resolver?: ActionResolver;
   readonly eventBus?: EventBus;
-  /** 变体 B：对称低位改道开关，默认关闭 */
-  readonly lowStateRedirect?: boolean;
 }
 
 /**
@@ -60,7 +58,6 @@ export class TurnManager {
   private readonly prng: PRNG;
   private readonly resolver: ActionResolver;
   private readonly eventBus: EventBus;
-  private readonly lowStateRedirect: boolean;
 
   private phase: TurnPhase;
   private currentTianGan: TianGanInfo | null = null;
@@ -72,7 +69,6 @@ export class TurnManager {
     this.prng = options.prng ?? createPRNG();
     this.resolver = options.resolver ?? new ActionResolver();
     this.eventBus = options.eventBus ?? new EventBus();
-    this.lowStateRedirect = options.lowStateRedirect ?? false;
     this.phase = this.state.isGameOver ? TurnPhase.GAME_OVER : TurnPhase.START_TURN;
     this.currentTianGan = this.state.currentTianGan ?? null;
   }
@@ -244,10 +240,9 @@ export class TurnManager {
       tianGan: this.currentTianGan
     });
 
-    // 生成合法候选列表，若为连动额外行动则严格过滤爆发动作；低位改道开关仅影响非连动回合
+    // 生成合法候选列表，若为连动额外行动则严格过滤爆发动作
     this.candidateActions = getAvailableActions(this.state, this.currentTianGan, {
-      isExtraTurn: this.isExtraTurn,
-      lowStateRedirect: this.lowStateRedirect
+      isExtraTurn: this.isExtraTurn
     });
 
     this.phase = TurnPhase.EXECUTE_ACTION;

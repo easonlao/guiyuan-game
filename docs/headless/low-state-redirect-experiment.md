@@ -1,6 +1,8 @@
 # 低位改道（变体 B）× 计分实验
 
-本文件记录"低位改道（变体 B）"平衡性实验的实测数据与结论。工单 04（只调 AI 偏好）写第 1 节；工单 05（规则计分数值）将在本文件末尾追加第 2 节。
+本文件记录"低位改道（变体 B）"平衡性实验的实测数据与结论。工单 04（只调 AI 偏好）写第 1 节；工单 05（规则计分数值）写第 2 节；工单 06（采纳或回退）的最终结论见第 3 节。
+
+> 结论：**否决变体 B，并回退全部实验计分改动**（见第 3 节与 `docs/adr/0010-reject-low-state-redirect-variant-b.md`）。第 1、2 节保留为证伪记录。
 
 - 变体 B：抽中天干对应侧处于低位态（虚空 0 / 道损 -1）时，除原地【吸纳】外，阴天干可【化】向相生节点、阳天干可【破】向相克节点，代价是放弃本次原地 +1。默认关闭（`lowStateRedirect`）。
 - 本票（04）只调 AI 决策权重，**不改动任何规则或计分默认**：计分始终为生产默认 `POINTS_CONFIG`，变体 B 仍默认关闭。
@@ -361,3 +363,25 @@
 - **不建议**把 `道损惩罚下调` 作为恢复归元率的手段（行为零贡献）；若 06 想保留"打残对手转化为得分"的威慑，应把道损惩罚接入 AI 估值，这属于新机制，超出本实验范围。
 - **必须处理纯竞速单一解**：两个候选都会让 `纯推进` 头名。若要保留攻防双轨，06 应设计"抑制 + 反制"的组合改动（例如保留部分攻击收益、或让纯竞速暴露可被压制的弱点），而不是只做单轴归零。
 - 无论选哪个，都要复跑 ADR 0001 三条护栏与"计分路线独立性"（中盘背离胜率）指标，再翻转生产默认值。
+
+---
+
+## 3. 工单 06：结论——否决变体 B 并回退全部计分改动
+
+### 3.1 决定
+
+**否决变体 B。** 低位态维持 ADR 0006 的"仅【吸纳】"；移除 `lowStateRedirect` 开关与全部仅为实验存在的计分注入／测量／扫描代码。生产 `POINTS_CONFIG` 与 GDD／GLOSSARY 均不改动。完整论证与被否决备选见 `docs/adr/0010-reject-low-state-redirect-variant-b.md`。
+
+### 3.2 支撑数据
+
+1. **默认计分下开启变体 B 直接失衡**：`full` 平衡归元率 21.18%（off 88.64%）、回合上限率 78.82%、平均回合 29.01（第 1.2 节）。
+2. **AI 偏好杠杆修不好**：4 组预设置最好为归元冲刺 73.18%（< 80%）；唯一 ≥80% 的 `纯推进` 是关掉压制／计分轴的退化策略（第 1.5 节）。
+3. **计分杠杆能修但代价更大**：`撤销攻击强化` 把 `full` 平衡拉回 85.72%，却把 `off` 平衡推到 99.90%，且令 `纯推进` 在两种候选改动下都头名（第 2.5、2.4 节）；`道损惩罚下调` 被证伪为行为零贡献（第 2.5 节）。
+4. **采纳会破坏护栏**：任一计分候选都会让 `off` 平衡归元率突破 `ai-evaluator-benchmark-guardrails` 的 0.95 上限，无法满足工单 06"护栏测试全绿"的要求。
+
+### 3.3 回退范围与验证
+
+- 回退文件（相对实验开始前 `bbce7df` 逐字节还原）：`package.json`、`src/core/ai/Strategy.ts`、`src/core/headless/HeadlessBenchmark.ts`、`src/core/headless/HeadlessMatch.ts`、`src/core/headless/index.ts`、`src/core/logic/ActionCandidates.ts`、`src/core/logic/State.ts`、`src/core/logic/TurnManager.ts`、`src/minigame/game-manager.ts` 及对应测试。
+- 删除文件：`src/core/headless/MeasurementBench.ts`、`tests/core/headless-score-config.test.ts`、`tests/core/measurement-bench.test.ts`、`tests/core/pure-strategy.test.ts`。
+- 保留：本文件（证伪记录）、`docs/adr/0010-reject-low-state-redirect-variant-b.md`。
+- 验证：`npm run typecheck` 通过；`npm test` 24 个文件、413 个测试全绿（含 ADR 0001 护栏测试）。

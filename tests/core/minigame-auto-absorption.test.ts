@@ -306,22 +306,6 @@ describe('GameManager - P1 First-Turn & Single AUTO Auto-Absorption Scheduler', 
 
     tmSpy.mockRestore();
   });
-
-  it('Ticket 02: injects lowStateRedirect into the in-game TurnManager (default OFF, opt-in ON)', () => {
-    // 默认关闭：低位态首回合仅【吸纳】，触发自动吸纳倒计时
-    const off = new GameManager({ seed: 12345 });
-    expect(off.getAvailableActions()).toHaveLength(1);
-    expect(off.getAvailableActions()[0].actionType).toBe(ActionType.AUTO);
-    expect(off.isAutoAbsorbing()).toBe(true);
-
-    // 开启：低位态首回合【吸纳】+ 改道（阴【化】/ 阳【破】），不再自动吸纳
-    const on = new GameManager({ seed: 12345, lowStateRedirect: true });
-    const actions = on.getAvailableActions();
-    expect(actions).toHaveLength(2);
-    expect(actions[0].actionType).toBe(ActionType.AUTO);
-    expect([ActionType.TRANS, ActionType.ATK]).toContain(actions[1].actionType);
-    expect(on.isAutoAbsorbing()).toBe(false);
-  });
 });
 
 
