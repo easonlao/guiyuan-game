@@ -51,7 +51,8 @@ export enum ActionType {
   ATK = 'ATK',               // 破 (相克)
   BURST = 'BURST',           // 强化 (归一消耗相生)
   BURST_ATK = 'BURST_ATK',   // 强破 (归一消耗相克)
-  DISSIPATE = 'DISSIPATE'    // 亢极散气 (满溢回落)
+  DISSIPATE = 'DISSIPATE',   // 亢极散气 (满溢回落)
+  PASS = 'PASS'              // 消散过牌 (无合法动作时流转)
 }
 
 /** 玩家代号 */

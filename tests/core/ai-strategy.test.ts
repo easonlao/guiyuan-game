@@ -90,7 +90,7 @@ describe('AI Strategy Engine (src/core/ai)', () => {
 
     it('rewards reaching KangJi / blessing (1 -> 2)', () => {
       const baseState = createInitialGameState();
-      // P1 木已归一 (1, 1)
+      // P1 木已归一 (1, 1)，水已点亮 (1, 0)
       const stateGuiYi: GameState = {
         ...baseState,
         players: {
@@ -99,21 +99,23 @@ describe('AI Strategy Engine (src/core/ai)', () => {
             ...baseState.players.P1,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 1, yang: 1 }
+              [WuXing.WOOD]: { yin: 1, yang: 1 },
+              [WuXing.WATER]: { yin: 1, yang: 0 }
             }
           }
         }
       };
 
-      // 再次调息到阳，使其成为加持 2
-      const convertAction = {
-        actionType: ActionType.CONVERT,
+      // 水生木 (TRANS)，强化木阳侧使其成为加持 2
+      const transAction = {
+        actionType: ActionType.TRANS,
         player: 'P1' as const,
-        element: WuXing.WOOD,
+        sourceElement: WuXing.WATER,
         polarity: Polarity.YANG
       };
 
-      const score = evaluator.evaluate(stateGuiYi, yiWoodYin, convertAction);
+      const guiWaterYin = TIAN_GAN_LIST.find((tg) => tg.name === '癸')!;
+      const score = evaluator.evaluate(stateGuiYi, guiWaterYin, transAction);
       expect(score.breakdown.unityScore).toBeGreaterThan(0);
     });
 

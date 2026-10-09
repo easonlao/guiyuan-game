@@ -104,9 +104,9 @@ export function getAvailableActions(
 
   // 3. 中位态：当对应节点侧已点亮 (1) 或加持 (2) 时，玩家享有完整自主决策权
   if (stemLevel >= 1) {
-    // 2.1 调息 (CONVERT): 转到同一元素的另一极性
+    // 2.1 调息 (CONVERT): 仅当对侧处于低位态 (<= 0) 时转到同一元素的另一极性
     const oppositePolarity = stemPolarity === Polarity.YANG ? Polarity.YIN : Polarity.YANG;
-    if (stemNode[oppositePolarity] < 2) {
+    if (stemNode[oppositePolarity] <= 0) {
       actions.push({
         actionType: ActionType.CONVERT,
         player: playerId,
@@ -175,10 +175,10 @@ export function getAvailableActions(
     }
   }
 
-  // 兜底：如果因特殊状态（如节点已满或无法调息等）没有任何动作可选，但满足 AUTO 规则，允许 AUTO 保持心跳
+  // 兜底：中位态下若所有合法行动（调息、化、破、爆发）皆不可行，生成消散过牌 (PASS) 动作
   if (actions.length === 0) {
     actions.push({
-      actionType: ActionType.AUTO,
+      actionType: ActionType.PASS,
       player: playerId,
       element: stemElement,
       polarity: stemPolarity

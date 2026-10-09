@@ -108,16 +108,18 @@ export class ActionResolver {
         if (!element) {
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少指定元素' };
         }
-        scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.CONVERT);
         // 调息转到相反极性
         const targetPolarity = payload.polarity || (state.currentTianGan?.polarity === Polarity.YANG ? Polarity.YIN : Polarity.YANG);
         const node = nextActiveBoard[element];
         const prevLevel = node[targetPolarity];
-        if (prevLevel < 2) {
-          const newLevel = clampNodeLevel(prevLevel + 1);
-          patchActiveNode(element, { [targetPolarity]: newLevel });
-          scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, targetPolarity, false);
+        // 防御性拦截：目标侧若已处于点亮 (1) 或加持 (2)，严禁调息
+        if (prevLevel >= 1) {
+          return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '目标极性已处于点亮或加持状态，严禁调息' };
         }
+        scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.CONVERT);
+        const newLevel = clampNodeLevel(prevLevel + 1);
+        patchActiveNode(element, { [targetPolarity]: newLevel });
+        scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, targetPolarity, false);
         success = true;
         break;
       }
@@ -232,6 +234,14 @@ export class ActionResolver {
         scoreDelta = 0;
         success = true;
         message = '亢极散气：极位能量满溢回落';
+        break;
+      }
+
+      case ActionType.PASS: {
+        // 消散过牌：计 0 分，不修改盘面，自然交接回合
+        scoreDelta = 0;
+        success = true;
+        message = '消散过牌：无有效动作，流转回合';
         break;
       }
     }

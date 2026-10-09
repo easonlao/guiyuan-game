@@ -174,6 +174,9 @@ export class TerminalBoardViewer {
         const targetName = targetEl ? WUXING_NAMES[targetEl] : '?';
         return `${p} 执行 [强破 BURST_ATK] ${srcName} -> ${targetName} ${polarityStr}`;
       }
+      case ActionType.PASS: {
+        return `${p} 执行 [消散 PASS]`;
+      }
       default:
         return `${p} 执行 [${String(type)}]`;
     }

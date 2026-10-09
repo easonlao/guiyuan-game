@@ -104,6 +104,13 @@ export function formatActionButton(act: ActionPayload, isAutoAbsorb: boolean = f
       color = '#e2e8f0';
       break;
     }
+
+    case ActionType.PASS: {
+      label = '【消散】';
+      subLabel = '无有效动作·消散过牌交接回合';
+      color = '#a0aec0';
+      break;
+    }
   }
 
   return {
