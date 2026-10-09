@@ -16,6 +16,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     Polarity2["YANG"] = "yang";
     return Polarity2;
   })(Polarity || {});
+  function getOppositePolarity(polarity) {
+    return polarity === "yang" ? "yin" : "yang";
+  }
   var ActionType = /* @__PURE__ */ ((ActionType2) => {
     ActionType2["AUTO"] = "AUTO";
     ActionType2["CONVERT"] = "CONVERT";
@@ -24,6 +27,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     ActionType2["BURST"] = "BURST";
     ActionType2["BURST_ATK"] = "BURST_ATK";
     ActionType2["DISSIPATE"] = "DISSIPATE";
+    ActionType2["PASS"] = "PASS";
     return ActionType2;
   })(ActionType || {});
   const TIAN_GAN_LIST = [
@@ -217,7 +221,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ATK: 40,
       BURST: 100,
       BURST_ATK: 80,
-      DISSIPATE: 0
+      DISSIPATE: 0,
+      PASS: 0
     },
     // 【状态分】节点状态变化的分数（已硬编码 2.5 倍攻击压制得分）
     STATE_CHANGE: {
@@ -239,7 +244,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     // 稀有度乘数
     RARITY_MULTIPLIER: 1.5,
     // 稀有度黑名单（严禁享受稀有度加成的动作类型）
-    NO_RARITY_ACTIONS: [ActionType.BURST, ActionType.BURST_ATK, ActionType.DISSIPATE],
+    NO_RARITY_ACTIONS: [ActionType.BURST, ActionType.BURST_ATK, ActionType.DISSIPATE, ActionType.PASS],
     // 节点归一里程碑奖励分
     GUI_YI_MILESTONE: 60,
     // 终局残留道损扣分
@@ -252,7 +257,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     [ActionType.CONVERT]: 0.167,
     [ActionType.BURST]: 0.035,
     [ActionType.BURST_ATK]: 0.036,
-    [ActionType.DISSIPATE]: 0.02
+    [ActionType.DISSIPATE]: 0.02,
+    [ActionType.PASS]: 0
   };
   class ScoreCalculator {
     constructor(config = POINTS_CONFIG) {
@@ -420,15 +426,16 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           if (!element) {
             return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: "缺少指定元素" };
           }
-          scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.CONVERT);
-          const targetPolarity = payload.polarity || (state.currentTianGan?.polarity === Polarity.YANG ? Polarity.YIN : Polarity.YANG);
+          const targetPolarity = payload.polarity || (state.currentTianGan ? getOppositePolarity(state.currentTianGan.polarity) : Polarity.YANG);
           const node = nextActiveBoard[element];
           const prevLevel = node[targetPolarity];
-          if (prevLevel < 2) {
-            const newLevel = clampNodeLevel(prevLevel + 1);
-            patchActiveNode(element, { [targetPolarity]: newLevel });
-            scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, targetPolarity, false);
+          if (prevLevel >= 1) {
+            return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: "目标极性已处于点亮或加持状态，严禁调息" };
           }
+          scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.CONVERT);
+          const newLevel = clampNodeLevel(prevLevel + 1);
+          patchActiveNode(element, { [targetPolarity]: newLevel });
+          scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, targetPolarity, false);
           success = true;
           break;
         }
@@ -533,6 +540,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           scoreDelta = 0;
           success = true;
           message = "亢极散气：极位能量满溢回落";
+          break;
+        }
+        case ActionType.PASS: {
+          scoreDelta = 0;
+          success = true;
+          message = "消散过牌：无有效动作，流转回合";
           break;
         }
       }
@@ -798,8 +811,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     const actions = [];
     if (stemLevel >= 1) {
-      const oppositePolarity = stemPolarity === Polarity.YANG ? Polarity.YIN : Polarity.YANG;
-      if (stemNode[oppositePolarity] < 2) {
+      const oppositePolarity = getOppositePolarity(stemPolarity);
+      if (stemNode[oppositePolarity] <= 0) {
         actions.push({
           actionType: ActionType.CONVERT,
           player: playerId,
@@ -858,7 +871,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     if (actions.length === 0) {
       actions.push({
-        actionType: ActionType.AUTO,
+        actionType: ActionType.PASS,
         player: playerId,
         element: stemElement,
         polarity: stemPolarity
@@ -1778,6 +1791,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         color = "#e2e8f0";
         break;
       }
+      case ActionType.PASS: {
+        label = "【消散】";
+        subLabel = "无有效动作·消散过牌交接回合";
+        color = "#a0aec0";
+        break;
+      }
     }
     return {
       label,
@@ -1851,11 +1870,17 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const isExtra = this.turnManager.isExtraTurnActive();
       if (currentPlayer === "P1") {
         const actions = this.turnManager.getAvailableActions();
-        const isSingleAuto = actions.length === 1 && (actions[0].actionType === ActionType.AUTO || actions[0].actionType === ActionType.DISSIPATE);
+        const isSingleAuto = actions.length === 1 && (actions[0].actionType === ActionType.AUTO || actions[0].actionType === ActionType.DISSIPATE || actions[0].actionType === ActionType.PASS);
         if (isSingleAuto) {
           this.p1AutoAbsorbTimer = 45;
           this.bannerText = isExtra ? "【连动回合】玩家额外行动！" : `玩家回合 · 天干【${tg?.name ?? ""}】降临`;
-          this.bannerSubText = actions[0].actionType === ActionType.DISSIPATE ? "亢极满溢·散气回落中" : "自动吸纳中";
+          if (actions[0].actionType === ActionType.DISSIPATE) {
+            this.bannerSubText = "亢极满溢·散气回落中";
+          } else if (actions[0].actionType === ActionType.PASS) {
+            this.bannerSubText = "道法受阻·消散过牌中";
+          } else {
+            this.bannerSubText = "自动吸纳中";
+          }
         } else {
           this.p1AutoAbsorbTimer = 0;
           this.bannerText = isExtra ? "【连动回合】玩家额外行动！" : `玩家回合 · 天干【${tg?.name ?? ""}】降临`;
@@ -1878,7 +1903,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         this.availableButtons = [];
         return;
       }
-      if (actions.length !== 1 || actions[0].actionType !== ActionType.AUTO && actions[0].actionType !== ActionType.DISSIPATE) {
+      if (actions.length !== 1 || actions[0].actionType !== ActionType.AUTO && actions[0].actionType !== ActionType.DISSIPATE && actions[0].actionType !== ActionType.PASS) {
         this.p1AutoAbsorbTimer = 0;
       }
       const isAutoAbsorb = this.p1AutoAbsorbTimer > 0;
