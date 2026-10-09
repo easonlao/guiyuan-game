@@ -22,6 +22,8 @@ export interface MatchOptions {
   readonly seed?: number;
   readonly maxRounds?: number;
   readonly recordActions?: boolean;
+  /** 变体 B：对称低位改道开关，默认关闭 */
+  readonly lowStateRedirect?: boolean;
 }
 
 export type ClosureType =
@@ -78,6 +80,7 @@ export class HeadlessMatch {
 
     const maxRounds = options.maxRounds ?? 30;
     const seed = options.seed ?? 123456789;
+    const lowStateRedirect = options.lowStateRedirect ?? false;
     const prng = createPRNG(seed);
 
     let state = createInitialGameState(maxRounds);
@@ -143,7 +146,7 @@ export class HeadlessMatch {
       }
 
       const tianGan = drawTianGan(prng);
-      const candidates = getAvailableActions(state, tianGan, { isExtraTurn });
+      const candidates = getAvailableActions(state, tianGan, { isExtraTurn, lowStateRedirect });
       const currentStrategy = state.currentPlayer === 'P1' ? strategyP1 : strategyP2;
       let action = currentStrategy(state, tianGan, candidates);
 

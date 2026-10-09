@@ -49,6 +49,12 @@ export function getMinusTargetPolarity(node: NodeData): Polarity | null {
 
 export interface ActionCandidatesOptions {
   readonly isExtraTurn?: boolean;
+  /**
+   * 变体 B：对称低位改道开关（默认关闭）。
+   * 开启后，抽中天干对应侧处于低位态（虚空 0 / 道损 -1）时，
+   * 除原地【吸纳】外，阴天干可【化】向相生节点，阳天干可【破】向相克节点。
+   */
+  readonly lowStateRedirect?: boolean;
 }
 
 /**
@@ -79,7 +85,7 @@ export function getAvailableActions(
 
   // 1. 低位态：若对应节点侧处于虚空 (0) 或道损 (-1)，必须且只能执行自动吸纳 (AUTO)
   if (stemLevel <= 0) {
-    return [
+    const lowStateActions: ActionPayload[] = [
       {
         actionType: ActionType.AUTO,
         player: playerId,
@@ -87,6 +93,37 @@ export function getAvailableActions(
         polarity: stemPolarity
       }
     ];
+
+    // 变体 B（对称低位改道，默认关闭）：低位态除原地【吸纳】外，允许改道，
+    // 代价即放弃本次原地 +1。阴天干 → 相生节点【化】；阳天干 → 相克节点【破】。
+    // 连动额外回合不引入新分支，行为与关闭时完全一致。
+    if (options?.lowStateRedirect && !options?.isExtraTurn) {
+      if (stemPolarity === Polarity.YIN) {
+        const shengEl = GENERATION_CYCLE[stemElement];
+        const targetPolarity = getPlusTargetPolarity(playerBoard[shengEl]);
+        if (targetPolarity !== null) {
+          lowStateActions.push({
+            actionType: ActionType.TRANS,
+            player: playerId,
+            sourceElement: stemElement,
+            polarity: targetPolarity
+          });
+        }
+      } else {
+        const keEl = OVERCOMING_CYCLE[stemElement];
+        const targetPolarity = getMinusTargetPolarity(opponentBoard[keEl]);
+        if (targetPolarity !== null) {
+          lowStateActions.push({
+            actionType: ActionType.ATK,
+            player: playerId,
+            sourceElement: stemElement,
+            polarity: targetPolarity
+          });
+        }
+      }
+    }
+
+    return lowStateActions;
   }
 
   // 2. 极位态：若节点已达成“亢极”(2, 2)，天道满溢则亏，无法选择其他动作，强制触发“亢极散气”

@@ -15,6 +15,8 @@ export interface BenchmarkOptions {
   strategyP1?: DecisionStrategy;
   strategyP2?: DecisionStrategy;
   recordActions?: boolean;
+  /** 变体 B：对称低位改道开关，默认关闭 */
+  lowStateRedirect?: boolean;
 }
 
 export interface BenchmarkMetrics {
@@ -67,6 +69,7 @@ export class HeadlessBenchmark {
     const strategyP1 = options?.strategyP1 ?? balancedStrategy;
     const strategyP2 = options?.strategyP2 ?? balancedStrategy;
     const recordActions = options?.recordActions ?? false;
+    const lowStateRedirect = options?.lowStateRedirect ?? false;
 
     // 内存检测前置准备（若处于 expose-gc 环境则尽可能触发全量 GC 获得干净初始基线）
     if (typeof globalThis.gc === 'function') {
@@ -93,7 +96,8 @@ export class HeadlessBenchmark {
       const matchResult = this.headlessMatch.run(strategyP1, strategyP2, {
         seed: baseSeed + i,
         maxRounds,
-        recordActions
+        recordActions,
+        lowStateRedirect
       });
 
       if (matchResult.winner === 'P1') {
