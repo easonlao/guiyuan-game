@@ -206,4 +206,131 @@ describe('Minigame Action Button Presentation Logic', () => {
       expect(formatted.subLabel).toContain('消散过牌');
     });
   });
+
+  describe('f) isAutoAbsorb = true formatting across all action types', () => {
+    it('formats AUTO with countdown hints', () => {
+      const act: ActionPayload = {
+        actionType: ActionType.AUTO,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YANG
+      };
+      const formatted = formatActionButton(act, true);
+      expect(formatted.label).toBe('【自动吸纳】');
+      expect(formatted.subLabel).toBe('天干能量自动吸纳中（点击可立即吸纳）');
+      expect(formatted.color).toBe('#68d391');
+      expect(formatted.isBurst).toBe(false);
+    });
+
+    it('formats CONVERT with auto hints for both polarities', () => {
+      const actYang: ActionPayload = {
+        actionType: ActionType.CONVERT,
+        player: 'P1',
+        element: WuXing.FIRE,
+        polarity: Polarity.YANG
+      };
+      expect(formatActionButton(actYang, true)).toEqual({
+        label: '【自动调息】',
+        subLabel: '转同属阳（点击立即调息）',
+        color: '#63b3ed',
+        isBurst: false
+      });
+
+      const actYin: ActionPayload = {
+        actionType: ActionType.CONVERT,
+        player: 'P1',
+        element: WuXing.FIRE,
+        polarity: Polarity.YIN
+      };
+      expect(formatActionButton(actYin, true).subLabel).toBe('转同属阴（点击立即调息）');
+    });
+
+    it('formats TRANS with auto hints', () => {
+      const act: ActionPayload = {
+        actionType: ActionType.TRANS,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        polarity: Polarity.YANG
+      };
+      const formatted = formatActionButton(act, true);
+      expect(formatted.label).toBe('【自动化气】');
+      expect(formatted.subLabel).toBe('生火(阳)+1（点击立即化气）');
+      expect(formatted.color).toBe('#4fd1c5');
+      expect(formatted.isBurst).toBe(false);
+    });
+
+    it('formats ATK with auto hints', () => {
+      const act: ActionPayload = {
+        actionType: ActionType.ATK,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        polarity: Polarity.YIN
+      };
+      const formatted = formatActionButton(act, true);
+      expect(formatted.label).toBe('【自动击破】');
+      expect(formatted.subLabel).toBe('克敌土(阴)-1（点击立即击破）');
+      expect(formatted.color).toBe('#fc8181');
+      expect(formatted.isBurst).toBe(false);
+    });
+
+    it('formats BURST with auto hints', () => {
+      const act: ActionPayload = {
+        actionType: ActionType.BURST,
+        player: 'P1',
+        sourceElement: WuXing.WATER,
+        polarity: Polarity.YANG
+      };
+      const formatted = formatActionButton(act, true);
+      expect(formatted.label).toBe('【自动强化】');
+      expect(formatted.subLabel).toBe('消耗水·生木+2（点击立即强化）');
+      expect(formatted.color).toBe('#f6e05e');
+      expect(formatted.isBurst).toBe(true);
+    });
+
+    it('formats BURST_ATK with auto hints', () => {
+      const act: ActionPayload = {
+        actionType: ActionType.BURST_ATK,
+        player: 'P1',
+        sourceElement: WuXing.METAL,
+        polarity: Polarity.YIN
+      };
+      const formatted = formatActionButton(act, true);
+      expect(formatted.label).toBe('【自动强破】');
+      expect(formatted.subLabel).toBe('消耗金·克木-2（点击立即强破）');
+      expect(formatted.color).toBe('#f56565');
+      expect(formatted.isBurst).toBe(true);
+    });
+
+    it('formats DISSIPATE with auto hints', () => {
+      const act: ActionPayload = {
+        actionType: ActionType.DISSIPATE,
+        player: 'P1',
+        element: WuXing.EARTH,
+        polarity: Polarity.YANG
+      };
+      const formatted = formatActionButton(act, true);
+      expect(formatted.label).toBe('【亢极散气】');
+      expect(formatted.subLabel).toBe('亢极满溢自动散气中（点击立即散气）');
+      expect(formatted.color).toBe('#e2e8f0');
+      expect(formatted.isBurst).toBe(false);
+    });
+
+    it('formats PASS with auto hints vs non-auto hints', () => {
+      const act: ActionPayload = {
+        actionType: ActionType.PASS,
+        player: 'P1',
+        element: WuXing.EARTH,
+        polarity: Polarity.YANG
+      };
+      const formattedAuto = formatActionButton(act, true);
+      expect(formattedAuto.label).toBe('【消散】');
+      expect(formattedAuto.subLabel).toBe('无有效动作·消散过牌中（点击立即消散）');
+      expect(formattedAuto.color).toBe('#a0aec0');
+      expect(formattedAuto.isBurst).toBe(false);
+
+      const formattedManual = formatActionButton(act, false);
+      expect(formattedManual.label).toBe('【消散】');
+      expect(formattedManual.subLabel).toBe('无有效动作·消散过牌交接回合');
+    });
+  });
 });

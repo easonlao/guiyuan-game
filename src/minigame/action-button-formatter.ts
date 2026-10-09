@@ -54,45 +54,55 @@ export function formatActionButton(act: ActionPayload, isAutoAbsorb: boolean = f
     }
 
     case ActionType.CONVERT: {
-      label = '【调息】';
-      subLabel = `转同属${act.polarity === Polarity.YANG ? '阳' : '阴'}`;
+      label = isAutoAbsorb ? '【自动调息】' : '【调息】';
+      subLabel = isAutoAbsorb
+        ? `转同属${act.polarity === Polarity.YANG ? '阳' : '阴'}（点击立即调息）`
+        : `转同属${act.polarity === Polarity.YANG ? '阳' : '阴'}`;
       color = '#63b3ed';
       break;
     }
 
     case ActionType.TRANS: {
-      label = '【化】';
+      label = isAutoAbsorb ? '【自动化气】' : '【化】';
       const targetElem = getActionTargetElement(act);
       const targetName = WUXING_PALETTE[targetElem]?.name ?? '';
-      subLabel = `生${targetName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})+1`;
+      subLabel = isAutoAbsorb
+        ? `生${targetName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})+1（点击立即化气）`
+        : `生${targetName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})+1`;
       color = '#4fd1c5';
       break;
     }
 
     case ActionType.ATK: {
-      label = '【破】';
+      label = isAutoAbsorb ? '【自动击破】' : '【破】';
       const targetElem = getActionTargetElement(act);
       const targetName = WUXING_PALETTE[targetElem]?.name ?? '';
-      subLabel = `克敌${targetName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})-1`;
+      subLabel = isAutoAbsorb
+        ? `克敌${targetName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})-1（点击立即击破）`
+        : `克敌${targetName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})-1`;
       color = '#fc8181';
       break;
     }
 
     case ActionType.BURST: {
-      label = '【强化】';
+      label = isAutoAbsorb ? '【自动强化】' : '【强化】';
       const targetElem = getActionTargetElement(act);
       const targetName = WUXING_PALETTE[targetElem]?.name ?? '';
-      subLabel = `消耗${srcName}·生${targetName}+2`;
+      subLabel = isAutoAbsorb
+        ? `消耗${srcName}·生${targetName}+2（点击立即强化）`
+        : `消耗${srcName}·生${targetName}+2`;
       color = '#f6e05e';
       isBurst = true;
       break;
     }
 
     case ActionType.BURST_ATK: {
-      label = '【强破】';
+      label = isAutoAbsorb ? '【自动强破】' : '【强破】';
       const targetElem = getActionTargetElement(act);
       const targetName = WUXING_PALETTE[targetElem]?.name ?? '';
-      subLabel = `消耗${srcName}·克${targetName}-2`;
+      subLabel = isAutoAbsorb
+        ? `消耗${srcName}·克${targetName}-2（点击立即强破）`
+        : `消耗${srcName}·克${targetName}-2`;
       color = '#f56565';
       isBurst = true;
       break;
@@ -107,7 +117,7 @@ export function formatActionButton(act: ActionPayload, isAutoAbsorb: boolean = f
 
     case ActionType.PASS: {
       label = '【消散】';
-      subLabel = '无有效动作·消散过牌交接回合';
+      subLabel = isAutoAbsorb ? '无有效动作·消散过牌中（点击立即消散）' : '无有效动作·消散过牌交接回合';
       color = '#a0aec0';
       break;
     }

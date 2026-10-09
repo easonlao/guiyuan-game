@@ -118,12 +118,192 @@ describe('GameManager - P1 First-Turn & Single AUTO Auto-Absorption Scheduler', 
 
     const gm = new GameManager(12345);
 
-    expect(gm.getP1AutoTimer()).toBeGreaterThan(0);
+    expect(gm.getP1AutoTimer()).toBe(45);
     expect(gm.isAutoAbsorbing()).toBe(true);
     expect(gm.getBannerSubText()).toBe('道法受阻·消散过牌中');
     const buttons = gm.getAvailableButtons();
     expect(buttons.length).toBe(1);
     expect(buttons[0].label).toBe('【消散】');
+    expect(buttons[0].subLabel).toContain('点击立即消散');
+    tmSpy.mockRestore();
+  });
+
+  it('activates auto timer and auto-executes when P1 encounters single ATK action', () => {
+    const tmSpy = vi.spyOn(TurnManager.prototype, 'getAvailableActions').mockReturnValue([
+      {
+        actionType: ActionType.ATK,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        polarity: Polarity.YANG
+      }
+    ]);
+
+    const gm = new GameManager(12345);
+
+    expect(gm.getP1AutoTimer()).toBe(45);
+    expect(gm.isAutoAbsorbing()).toBe(true);
+    expect(gm.getBannerSubText()).toBe('唯一机缘·破');
+    const buttons = gm.getAvailableButtons();
+    expect(buttons.length).toBe(1);
+    expect(buttons[0].label).toBe('【自动击破】');
+    expect(buttons[0].subLabel).toContain('点击立即击破');
+
+    // Countdown ticks down to 0 and automatically triggers execution
+    while (gm.getP1AutoTimer() > 0) {
+      gm.update();
+    }
+    expect(gm.getP1AutoTimer()).toBe(0);
+    expect(gm.isAnimatingState()).toBe(true);
+
+    tmSpy.mockRestore();
+  });
+
+  it('activates auto timer and displays correct subtext/labels for single TRANS action', () => {
+    const tmSpy = vi.spyOn(TurnManager.prototype, 'getAvailableActions').mockReturnValue([
+      {
+        actionType: ActionType.TRANS,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        polarity: Polarity.YIN
+      }
+    ]);
+
+    const gm = new GameManager(12345);
+
+    expect(gm.getP1AutoTimer()).toBe(45);
+    expect(gm.isAutoAbsorbing()).toBe(true);
+    expect(gm.getBannerSubText()).toBe('唯一机缘·化');
+    const buttons = gm.getAvailableButtons();
+    expect(buttons.length).toBe(1);
+    expect(buttons[0].label).toBe('【自动化气】');
+    expect(buttons[0].subLabel).toContain('点击立即化气');
+
+    tmSpy.mockRestore();
+  });
+
+  it('activates auto timer and displays correct subtext/labels for single CONVERT action', () => {
+    const tmSpy = vi.spyOn(TurnManager.prototype, 'getAvailableActions').mockReturnValue([
+      {
+        actionType: ActionType.CONVERT,
+        player: 'P1',
+        element: WuXing.FIRE,
+        polarity: Polarity.YANG
+      }
+    ]);
+
+    const gm = new GameManager(12345);
+
+    expect(gm.getP1AutoTimer()).toBe(45);
+    expect(gm.isAutoAbsorbing()).toBe(true);
+    expect(gm.getBannerSubText()).toBe('势在必行·调息');
+    const buttons = gm.getAvailableButtons();
+    expect(buttons.length).toBe(1);
+    expect(buttons[0].label).toBe('【自动调息】');
+    expect(buttons[0].subLabel).toContain('点击立即调息');
+
+    tmSpy.mockRestore();
+  });
+
+  it('activates auto timer and immediately executes when touched for single BURST action', () => {
+    const tmSpy = vi.spyOn(TurnManager.prototype, 'getAvailableActions').mockReturnValue([
+      {
+        actionType: ActionType.BURST,
+        player: 'P1',
+        sourceElement: WuXing.WATER,
+        polarity: Polarity.YANG
+      }
+    ]);
+
+    const gm = new GameManager(12345);
+
+    expect(gm.getP1AutoTimer()).toBe(45);
+    expect(gm.isAutoAbsorbing()).toBe(true);
+    expect(gm.getBannerSubText()).toBe('势在必行·强化');
+    const buttons = gm.getAvailableButtons();
+    expect(buttons.length).toBe(1);
+    expect(buttons[0].label).toBe('【自动强化】');
+    expect(buttons[0].subLabel).toContain('点击立即强化');
+
+    // Touching anywhere immediately executes action and cancels countdown
+    gm.handleTouch(150, 250);
+    expect(gm.getP1AutoTimer()).toBe(0);
+    expect(gm.isAnimatingState()).toBe(true);
+
+    tmSpy.mockRestore();
+  });
+
+  it('activates auto timer and displays correct subtext/labels for single BURST_ATK action', () => {
+    const tmSpy = vi.spyOn(TurnManager.prototype, 'getAvailableActions').mockReturnValue([
+      {
+        actionType: ActionType.BURST_ATK,
+        player: 'P1',
+        sourceElement: WuXing.METAL,
+        polarity: Polarity.YIN
+      }
+    ]);
+
+    const gm = new GameManager(12345);
+
+    expect(gm.getP1AutoTimer()).toBe(45);
+    expect(gm.isAutoAbsorbing()).toBe(true);
+    expect(gm.getBannerSubText()).toBe('势在必行·强破');
+    const buttons = gm.getAvailableButtons();
+    expect(buttons.length).toBe(1);
+    expect(buttons[0].label).toBe('【自动强破】');
+    expect(buttons[0].subLabel).toContain('点击立即强破');
+
+    tmSpy.mockRestore();
+  });
+
+  it('activates auto timer and displays correct subtext/labels for single DISSIPATE action', () => {
+    const tmSpy = vi.spyOn(TurnManager.prototype, 'getAvailableActions').mockReturnValue([
+      {
+        actionType: ActionType.DISSIPATE,
+        player: 'P1',
+        element: WuXing.EARTH,
+        polarity: Polarity.YANG
+      }
+    ]);
+
+    const gm = new GameManager(12345);
+
+    expect(gm.getP1AutoTimer()).toBe(45);
+    expect(gm.isAutoAbsorbing()).toBe(true);
+    expect(gm.getBannerSubText()).toBe('亢极满溢·散气回落中');
+    const buttons = gm.getAvailableButtons();
+    expect(buttons.length).toBe(1);
+    expect(buttons[0].label).toBe('【亢极散气】');
+    expect(buttons[0].subLabel).toContain('点击立即散气');
+
+    tmSpy.mockRestore();
+  });
+
+  it('does NOT activate auto timer when multiple non-auto actions are available at start of turn', () => {
+    const tmSpy = vi.spyOn(TurnManager.prototype, 'getAvailableActions').mockReturnValue([
+      {
+        actionType: ActionType.ATK,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        polarity: Polarity.YANG
+      },
+      {
+        actionType: ActionType.CONVERT,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YIN
+      }
+    ]);
+
+    const gm = new GameManager(12345);
+
+    expect(gm.getP1AutoTimer()).toBe(0);
+    expect(gm.isAutoAbsorbing()).toBe(false);
+    expect(gm.getBannerSubText()).toMatch(/属性:/);
+    const buttons = gm.getAvailableButtons();
+    expect(buttons.length).toBe(2);
+    expect(buttons[0].label).toBe('【破】');
+    expect(buttons[1].label).toBe('【调息】');
+
     tmSpy.mockRestore();
   });
 });

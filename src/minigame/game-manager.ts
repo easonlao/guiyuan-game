@@ -174,21 +174,35 @@ export class GameManager {
 
     if (currentPlayer === 'P1') {
       const actions = this.turnManager.getAvailableActions();
-      const isSingleAuto =
-        actions.length === 1 &&
-        (actions[0].actionType === ActionType.AUTO ||
-          actions[0].actionType === ActionType.DISSIPATE ||
-          actions[0].actionType === ActionType.PASS);
-
-      if (isSingleAuto) {
+      if (actions.length === 1) {
         this.p1AutoAbsorbTimer = 45; // 约 0.75 秒倒计时
         this.bannerText = isExtra ? '【连动回合】玩家额外行动！' : `玩家回合 · 天干【${tg?.name ?? ''}】降临`;
-        if (actions[0].actionType === ActionType.DISSIPATE) {
-          this.bannerSubText = '亢极满溢·散气回落中';
-        } else if (actions[0].actionType === ActionType.PASS) {
-          this.bannerSubText = '道法受阻·消散过牌中';
-        } else {
-          this.bannerSubText = '自动吸纳中';
+        const actType = actions[0].actionType;
+        switch (actType) {
+          case ActionType.AUTO:
+            this.bannerSubText = '自动吸纳中';
+            break;
+          case ActionType.DISSIPATE:
+            this.bannerSubText = '亢极满溢·散气回落中';
+            break;
+          case ActionType.PASS:
+            this.bannerSubText = '道法受阻·消散过牌中';
+            break;
+          case ActionType.ATK:
+            this.bannerSubText = '唯一机缘·破';
+            break;
+          case ActionType.TRANS:
+            this.bannerSubText = '唯一机缘·化';
+            break;
+          case ActionType.CONVERT:
+            this.bannerSubText = '势在必行·调息';
+            break;
+          case ActionType.BURST:
+            this.bannerSubText = '势在必行·强化';
+            break;
+          case ActionType.BURST_ATK:
+            this.bannerSubText = '势在必行·强破';
+            break;
         }
       } else {
         this.p1AutoAbsorbTimer = 0;
@@ -214,12 +228,7 @@ export class GameManager {
       return;
     }
 
-    if (
-      actions.length !== 1 ||
-      (actions[0].actionType !== ActionType.AUTO &&
-        actions[0].actionType !== ActionType.DISSIPATE &&
-        actions[0].actionType !== ActionType.PASS)
-    ) {
+    if (actions.length !== 1) {
       this.p1AutoAbsorbTimer = 0;
     }
 
@@ -378,6 +387,15 @@ export class GameManager {
       return;
     }
 
+    // 若正处于 P1 单动作缓冲倒计时，点击屏幕任意区域或按钮立即加速执行该动作
+    if (this.p1AutoAbsorbTimer > 0) {
+      this.p1AutoAbsorbTimer = 0;
+      if (this.availableButtons.length > 0) {
+        this.executePlayerAction(this.availableButtons[0].action);
+      }
+      return;
+    }
+
     // 2. 检查是否点击了中央天干（允许直接点击预览吸收效果）
     const centerPos = this.getCenterPosition();
     const distSq = (touchX - centerPos.x) ** 2 + (touchY - centerPos.y) ** 2;
@@ -388,15 +406,6 @@ export class GameManager {
 
     if (this.isAnimating) return;
     if (state.currentPlayer !== 'P1') return;
-
-    // 若正处于 P1 自动吸纳缓冲期，任意触摸（无论屏幕还是按钮）均立即执行吸纳
-    if (this.p1AutoAbsorbTimer > 0) {
-      this.p1AutoAbsorbTimer = 0;
-      if (this.availableButtons.length > 0) {
-        this.executePlayerAction(this.availableButtons[0].action);
-      }
-      return;
-    }
 
     for (const btn of this.availableButtons) {
       if (
