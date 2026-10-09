@@ -523,4 +523,114 @@ describe('ActionCandidates (Legal Action Generator)', () => {
       });
     }
   });
+
+  describe('KangJi Dissipation (亢极散气 - 极位态强制流转)', () => {
+    it('forces DISSIPATE on YANG side when node is at (2, 2) and YANG stem is drawn', () => {
+      let state = createInitialGameState();
+      state = {
+        ...state,
+        players: {
+          ...state.players,
+          P1: {
+            ...state.players.P1,
+            board: {
+              ...state.players.P1.board,
+              [WuXing.WOOD]: { yin: 2, yang: 2 }
+            }
+          }
+        }
+      };
+
+      const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
+      const actions = getAvailableActions(state, jiaWood);
+
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({
+        actionType: ActionType.DISSIPATE,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YANG
+      });
+    });
+
+    it('forces DISSIPATE on YIN side when node is at (2, 2) and YIN stem is drawn', () => {
+      let state = createInitialGameState();
+      state = {
+        ...state,
+        players: {
+          ...state.players,
+          P1: {
+            ...state.players.P1,
+            board: {
+              ...state.players.P1.board,
+              [WuXing.FIRE]: { yin: 2, yang: 2 }
+            }
+          }
+        }
+      };
+
+      const dingFire = TIAN_GAN_LIST.find((tg) => tg.name === '丁')!; // FIRE, YIN
+      const actions = getAvailableActions(state, dingFire);
+
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({
+        actionType: ActionType.DISSIPATE,
+        player: 'P1',
+        element: WuXing.FIRE,
+        polarity: Polarity.YIN
+      });
+    });
+
+    it('does NOT trigger DISSIPATE when node is at intermediate state with single blessed side (1, 2)', () => {
+      let state = createInitialGameState();
+      state = {
+        ...state,
+        players: {
+          ...state.players,
+          P1: {
+            ...state.players.P1,
+            board: {
+              ...state.players.P1.board,
+              [WuXing.WOOD]: { yin: 1, yang: 2 }
+            }
+          }
+        }
+      };
+
+      const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
+      const actions = getAvailableActions(state, jiaWood);
+
+      expect(actions.some((a) => a.actionType === ActionType.DISSIPATE)).toBe(false);
+      expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(true);
+      expect(actions.some((a) => a.actionType === ActionType.ATK)).toBe(true);
+      expect(actions.some((a) => a.actionType === ActionType.BURST)).toBe(true);
+      expect(actions.some((a) => a.actionType === ActionType.BURST_ATK)).toBe(true);
+    });
+
+    it('does NOT trigger DISSIPATE or BURST when node is at (2, 0)', () => {
+      let state = createInitialGameState();
+      state = {
+        ...state,
+        players: {
+          ...state.players,
+          P1: {
+            ...state.players.P1,
+            board: {
+              ...state.players.P1.board,
+              [WuXing.WOOD]: { yin: 0, yang: 2 }
+            }
+          }
+        }
+      };
+
+      const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
+      const actions = getAvailableActions(state, jiaWood);
+
+      expect(actions.some((a) => a.actionType === ActionType.DISSIPATE)).toBe(false);
+      expect(actions.some((a) => a.actionType === ActionType.BURST)).toBe(false);
+      expect(actions.some((a) => a.actionType === ActionType.BURST_ATK)).toBe(false);
+      expect(actions.some((a) => a.actionType === ActionType.CONVERT)).toBe(true);
+      expect(actions.some((a) => a.actionType === ActionType.ATK)).toBe(true);
+    });
+  });
 });
