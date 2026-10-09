@@ -87,11 +87,17 @@ export interface ActionPayload {
 - **`ActionResolver`**：纯函数动作处理器，接收 `GameState` 与 `ActionPayload`，基于轻量增量 Patch 与结构共享返回包含 `nextState`、`scoreDelta` 与 `extraTurn` 的 `ActionResult`。
 - **`TurnManager`**：生命周期状态机驱动器，调度抽天干 -> 生成合法候选动作（`ActionCandidates`）-> 校验执行 -> 连动判定 -> 终局检测。
 
-## 4. 与表现层的解耦与交互机制 (EventBus & GameManager)
+## 4. 与表现层的解耦与交互机制 (EventBus & Scene Graph Architecture)
 
-核心计算层（Layer 1）与表现层（Layer 3）完全解耦：
+核心计算层（Layer 1）与表现层（Layer 3）完全解耦（对齐 ADR-0004 与 ADR-0005）：
 
-1. **指令输入**：玩家通过微信小游戏触控点击底部动作按钮，或由 `Strategy.ts` 产生 AI 决策，生成 `ActionPayload`。
-2. **状态推进**：通过 `turnManager.executeAction(action)` 驱动核心状态机演进。
-3. **事件总线 (`EventBus`)**：核心层抛出生命周期事件（`turn:start`、`action:executed`、`burst:triggered`、`game:over` 等）。
-4. **小游戏渲染管线 (`GameManager`)**：Layer 3 订阅事件或轮询状态快照，驱动 2D Canvas 进行程序化像素网格重绘、角色动作切换、生克攻击弹道与战报展示。
+1. **指令输入与派发**：
+   - 微信触摸输入通过 `InputManager` 捕获，并映射至场景树根节点（`Stage`），沿节点层级逆序递归判定 `hitTest`；
+   - 按钮组件（`Button`）触发 `onTap` 回调，向控制器提供合法的 `ActionPayload`。
+2. **状态推进与单向数据流**：
+   - 场景控制器（`GameScene`）调用 `turnManager.executeAction(action)` 驱动核心状态机演进；
+   - `GameScene` 获取最新只读快照 `turnManager.getState()`，单向投影至 `BoardView`、`ActionBarView`、`CharacterView` 等各子视图。
+3. **表现层微型场景树与动画管线 (`src/minigame/engine/`)**：
+   - **`Node` & `Container`**：承载局部矩阵变换（位置、缩放、透明度、可见性）与递归绘制（`render(ctx)`）；
+   - **`Button`**：声明式交互组件，内置尺寸自动判定、按压缩小微动反馈与置灰禁用态；
+   - **`Tween`**：轻量级补间缓动系统，负责天干流星飞行、五行法阵发光弧线、受击顿帧与震屏效果，彻底从业务帧步进循环中解耦。
