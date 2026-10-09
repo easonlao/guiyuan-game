@@ -13,6 +13,7 @@ export interface ActionPointsConfig {
   readonly ATK: number;
   readonly BURST: number;
   readonly BURST_ATK: number;
+  readonly DISSIPATE: number;
 }
 
 export interface StateChangePointsConfig {
@@ -42,7 +43,8 @@ export const POINTS_CONFIG: PointsConfig = {
     TRANS: 30,
     ATK: 40,
     BURST: 100,
-    BURST_ATK: 80
+    BURST_ATK: 80,
+    DISSIPATE: 0
   },
 
   // 【状态分】节点状态变化的分数（已硬编码 2.5 倍攻击压制得分）
@@ -62,7 +64,7 @@ export const POINTS_CONFIG: PointsConfig = {
   RARITY_MULTIPLIER: 1.5,
 
   // 稀有度黑名单（严禁享受稀有度加成的动作类型）
-  NO_RARITY_ACTIONS: [ActionType.BURST, ActionType.BURST_ATK]
+  NO_RARITY_ACTIONS: [ActionType.BURST, ActionType.BURST_ATK, ActionType.DISSIPATE]
 };
 
 /**
@@ -74,7 +76,8 @@ export const ACTION_PROBABILITY: Readonly<Record<ActionType, number>> = {
   [ActionType.TRANS]: 0.243,
   [ActionType.CONVERT]: 0.167,
   [ActionType.BURST]: 0.035,
-  [ActionType.BURST_ATK]: 0.036
+  [ActionType.BURST_ATK]: 0.036,
+  [ActionType.DISSIPATE]: 0.02
 };
 
 /**

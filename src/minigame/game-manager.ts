@@ -100,12 +100,14 @@ export class GameManager {
 
     if (currentPlayer === 'P1') {
       const actions = this.turnManager.getAvailableActions();
-      const isSingleAuto = actions.length === 1 && actions[0].actionType === ActionType.AUTO;
+      const isSingleAuto =
+        actions.length === 1 &&
+        (actions[0].actionType === ActionType.AUTO || actions[0].actionType === ActionType.DISSIPATE);
 
       if (isSingleAuto) {
         this.p1AutoAbsorbTimer = 45; // 约 0.75 秒倒计时
         this.bannerText = isExtra ? '【连动回合】玩家额外行动！' : `玩家回合 · 天干【${tg?.name ?? ''}】降临`;
-        this.bannerSubText = '自动吸纳中';
+        this.bannerSubText = actions[0].actionType === ActionType.DISSIPATE ? '亢极满溢·散气回落中' : '自动吸纳中';
       } else {
         this.p1AutoAbsorbTimer = 0;
         this.bannerText = isExtra ? '【连动回合】玩家额外行动！' : `玩家回合 · 天干【${tg?.name ?? ''}】降临`;
@@ -130,7 +132,10 @@ export class GameManager {
       return;
     }
 
-    if (actions.length !== 1 || actions[0].actionType !== ActionType.AUTO) {
+    if (
+      actions.length !== 1 ||
+      (actions[0].actionType !== ActionType.AUTO && actions[0].actionType !== ActionType.DISSIPATE)
+    ) {
       this.p1AutoAbsorbTimer = 0;
     }
 

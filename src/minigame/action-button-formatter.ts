@@ -97,6 +97,13 @@ export function formatActionButton(act: ActionPayload, isAutoAbsorb: boolean = f
       isBurst = true;
       break;
     }
+
+    case ActionType.DISSIPATE: {
+      label = isAutoAbsorb ? '【亢极散气】' : '【散气】';
+      subLabel = isAutoAbsorb ? '亢极满溢自动散气中（点击立即散气）' : `天道满溢则亏·${act.polarity === Polarity.YANG ? '阳' : '阴'}回落至加持(-1)`;
+      color = '#e2e8f0';
+      break;
+    }
   }
 
   return {

@@ -14,7 +14,7 @@ import {
   GENERATION_CYCLE,
   OVERCOMING_CYCLE
 } from '../types/domain.js';
-import { isNodeGuiYi } from './State.js';
+import { isNodeGuiYi, isNodeKangJi } from './State.js';
 
 /**
  * 获取加法（相生）候选目标极性
@@ -76,7 +76,7 @@ export function getAvailableActions(
   const stemNode = playerBoard[stemElement];
   const stemLevel = stemNode[stemPolarity];
 
-  // 1. 若对应节点侧处于虚空 (0) 或道损 (-1)，必须且只能执行自动吸纳 (AUTO)
+  // 1. 低位态：若对应节点侧处于虚空 (0) 或道损 (-1)，必须且只能执行自动吸纳 (AUTO)
   if (stemLevel <= 0) {
     return [
       {
@@ -88,9 +88,21 @@ export function getAvailableActions(
     ];
   }
 
+  // 2. 极位态：若节点已达成“亢极”(2, 2)，天道满溢则亏，无法选择其他动作，强制触发“亢极散气”
+  if (isNodeKangJi(stemNode)) {
+    return [
+      {
+        actionType: ActionType.DISSIPATE,
+        player: playerId,
+        element: stemElement,
+        polarity: stemPolarity
+      }
+    ];
+  }
+
   const actions: ActionPayload[] = [];
 
-  // 2. 当对应节点侧已点亮 (1) 或加持 (2) 时
+  // 3. 中位态：当对应节点侧已点亮 (1) 或加持 (2) 时，玩家享有完整自主决策权
   if (stemLevel >= 1) {
     // 2.1 调息 (CONVERT): 转到同一元素的另一极性
     const oppositePolarity = stemPolarity === Polarity.YANG ? Polarity.YIN : Polarity.YANG;

@@ -215,6 +215,23 @@ export class ActionResolver {
         success = true;
         break;
       }
+
+      case ActionType.DISSIPATE: {
+        const element = payload.element || state.currentTianGan?.element;
+        const polarity = payload.polarity || state.currentTianGan?.polarity;
+        if (!element || !polarity) {
+          return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少天干属性或极性' };
+        }
+        const node = nextActiveBoard[element];
+        const prevLevel = node[polarity];
+        const newLevel = clampNodeLevel(prevLevel - 1);
+        patchActiveNode(element, { [polarity]: newLevel });
+        // 亢极散气：计 0 分，不消耗/获得额外行动
+        scoreDelta = 0;
+        success = true;
+        message = '亢极散气：极位能量满溢回落';
+        break;
+      }
     }
 
     if (!success) {

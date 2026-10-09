@@ -146,4 +146,38 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
     expect(finalResult.nextState.winner).toBe('P1');
     expect(finalResult.nextState.endReason).toBe('GUI_YUAN');
   });
+
+  it('DISSIPATE (亢极散气): should reduce KangJi side from 2 to 1 with 0 score and hand over turn', () => {
+    let state = createInitialGameState();
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        P1: {
+          ...state.players.P1,
+          score: 500,
+          board: {
+            ...state.players.P1.board,
+            [WuXing.WOOD]: { yin: 2, yang: 2 }
+          }
+        }
+      }
+    };
+
+    const result = resolver.resolve(state, {
+      actionType: ActionType.DISSIPATE,
+      player: 'P1',
+      element: WuXing.WOOD,
+      polarity: Polarity.YANG
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.scoreDelta).toBe(0);
+    expect(result.extraTurn).toBe(false);
+    expect(result.nextState.players.P1.score).toBe(500);
+    expect(result.nextState.players.P1.board[WuXing.WOOD].yang).toBe(1);
+    expect(result.nextState.players.P1.board[WuXing.WOOD].yin).toBe(2);
+    expect(result.nextState.currentPlayer).toBe('P2');
+    expect(result.nextState.round).toBe(2);
+  });
 });
