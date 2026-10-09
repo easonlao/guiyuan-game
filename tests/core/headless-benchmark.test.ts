@@ -174,7 +174,6 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     expect(metricsWithRecord.p1Wins).toBe(metricsWithoutRecord.p1Wins);
     expect(metricsWithRecord.p2Wins).toBe(metricsWithoutRecord.p2Wins);
     expect(metricsWithRecord.guiYuanCount).toBe(metricsWithoutRecord.guiYuanCount);
-    expect(metricsWithRecord.closureType ?? 'OK').toBeDefined();
   });
 
   it('should handle zero matches edge case safely without dividing by zero', () => {
