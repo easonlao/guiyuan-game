@@ -74,3 +74,23 @@ export function clampNodeLevel(level: number): NodeLevel {
   if (level >= 2) return 2;
   return level as NodeLevel;
 }
+
+/** 计算盘面上的残留道损总数 (阴阳两侧为 -1 的数量之和) */
+export function countBoardDamage(board: BoardState): number {
+  let count = 0;
+  for (const element of Object.values(WuXing)) {
+    if (board[element].yin === -1) count++;
+    if (board[element].yang === -1) count++;
+  }
+  return count;
+}
+
+/** 计算盘面上已达成归一的节点数量 */
+export function countBoardGuiYi(board: BoardState): number {
+  let count = 0;
+  for (const element of Object.values(WuXing)) {
+    if (isNodeGuiYi(board[element])) count++;
+  }
+  return count;
+}
+
