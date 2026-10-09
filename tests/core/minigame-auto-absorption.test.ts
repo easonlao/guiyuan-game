@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { GameManager } from '../../src/minigame/game-manager';
+import { TurnManager } from '../../src/core/logic/TurnManager';
 import { ActionType, WuXing, Polarity } from '../../src/core/types/domain';
 
 describe('GameManager - P1 First-Turn & Single AUTO Auto-Absorption Scheduler', () => {
@@ -104,4 +105,27 @@ describe('GameManager - P1 First-Turn & Single AUTO Auto-Absorption Scheduler', 
     // Countdown should not decrement or trigger auto absorption while animating
     expect(gm.getP1AutoTimer()).toBe(timerBefore);
   });
+
+  it('activates auto timer and sets subtext when P1 encounters single PASS action', () => {
+    const tmSpy = vi.spyOn(TurnManager.prototype, 'getAvailableActions').mockReturnValue([
+      {
+        actionType: ActionType.PASS,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YANG
+      }
+    ]);
+
+    const gm = new GameManager(12345);
+
+    expect(gm.getP1AutoTimer()).toBeGreaterThan(0);
+    expect(gm.isAutoAbsorbing()).toBe(true);
+    expect(gm.getBannerSubText()).toBe('道法受阻·消散过牌中');
+    const buttons = gm.getAvailableButtons();
+    expect(buttons.length).toBe(1);
+    expect(buttons[0].label).toBe('【消散】');
+    tmSpy.mockRestore();
+  });
 });
+
+

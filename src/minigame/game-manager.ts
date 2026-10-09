@@ -102,12 +102,20 @@ export class GameManager {
       const actions = this.turnManager.getAvailableActions();
       const isSingleAuto =
         actions.length === 1 &&
-        (actions[0].actionType === ActionType.AUTO || actions[0].actionType === ActionType.DISSIPATE);
+        (actions[0].actionType === ActionType.AUTO ||
+          actions[0].actionType === ActionType.DISSIPATE ||
+          actions[0].actionType === ActionType.PASS);
 
       if (isSingleAuto) {
         this.p1AutoAbsorbTimer = 45; // 约 0.75 秒倒计时
         this.bannerText = isExtra ? '【连动回合】玩家额外行动！' : `玩家回合 · 天干【${tg?.name ?? ''}】降临`;
-        this.bannerSubText = actions[0].actionType === ActionType.DISSIPATE ? '亢极满溢·散气回落中' : '自动吸纳中';
+        if (actions[0].actionType === ActionType.DISSIPATE) {
+          this.bannerSubText = '亢极满溢·散气回落中';
+        } else if (actions[0].actionType === ActionType.PASS) {
+          this.bannerSubText = '道法受阻·消散过牌中';
+        } else {
+          this.bannerSubText = '自动吸纳中';
+        }
       } else {
         this.p1AutoAbsorbTimer = 0;
         this.bannerText = isExtra ? '【连动回合】玩家额外行动！' : `玩家回合 · 天干【${tg?.name ?? ''}】降临`;
@@ -134,7 +142,9 @@ export class GameManager {
 
     if (
       actions.length !== 1 ||
-      (actions[0].actionType !== ActionType.AUTO && actions[0].actionType !== ActionType.DISSIPATE)
+      (actions[0].actionType !== ActionType.AUTO &&
+        actions[0].actionType !== ActionType.DISSIPATE &&
+        actions[0].actionType !== ActionType.PASS)
     ) {
       this.p1AutoAbsorbTimer = 0;
     }
