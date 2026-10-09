@@ -5,7 +5,8 @@ import {
   GENERATION_CYCLE,
   OVERCOMING_CYCLE,
   TIAN_GAN_LIST,
-  NodeLevelEnum
+  NodeLevelEnum,
+  getOppositePolarity
 } from '../../src/core/types/index.js';
 
 describe('Domain Model Contracts (GLOSSARY.md)', () => {
@@ -38,5 +39,10 @@ describe('Domain Model Contracts (GLOSSARY.md)', () => {
     expect(NodeLevelEnum.VOID).toBe(0);
     expect(NodeLevelEnum.LIT).toBe(1);
     expect(NodeLevelEnum.BLESSED).toBe(2);
+  });
+
+  it('should invert polarity correctly with getOppositePolarity', () => {
+    expect(getOppositePolarity(Polarity.YANG)).toBe(Polarity.YIN);
+    expect(getOppositePolarity(Polarity.YIN)).toBe(Polarity.YANG);
   });
 });

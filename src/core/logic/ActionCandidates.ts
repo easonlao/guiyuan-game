@@ -11,6 +11,7 @@ import {
   NodeData,
   Polarity,
   TianGanInfo,
+  getOppositePolarity,
   GENERATION_CYCLE,
   OVERCOMING_CYCLE
 } from '../types/domain.js';
@@ -105,7 +106,7 @@ export function getAvailableActions(
   // 3. 中位态：当对应节点侧已点亮 (1) 或加持 (2) 时，玩家享有完整自主决策权
   if (stemLevel >= 1) {
     // 2.1 调息 (CONVERT): 仅当对侧处于低位态 (<= 0) 时转到同一元素的另一极性
-    const oppositePolarity = stemPolarity === Polarity.YANG ? Polarity.YIN : Polarity.YANG;
+    const oppositePolarity = getOppositePolarity(stemPolarity);
     if (stemNode[oppositePolarity] <= 0) {
       actions.push({
         actionType: ActionType.CONVERT,

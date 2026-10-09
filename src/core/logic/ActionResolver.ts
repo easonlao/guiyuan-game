@@ -10,6 +10,7 @@ import {
   GameState,
   PlayerId,
   Polarity,
+  getOppositePolarity,
   GENERATION_CYCLE,
   OVERCOMING_CYCLE,
   WuXing,
@@ -109,7 +110,7 @@ export class ActionResolver {
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少指定元素' };
         }
         // 调息转到相反极性
-        const targetPolarity = payload.polarity || (state.currentTianGan?.polarity === Polarity.YANG ? Polarity.YIN : Polarity.YANG);
+        const targetPolarity = payload.polarity || (state.currentTianGan ? getOppositePolarity(state.currentTianGan.polarity) : Polarity.YANG);
         const node = nextActiveBoard[element];
         const prevLevel = node[targetPolarity];
         // 防御性拦截：目标侧若已处于点亮 (1) 或加持 (2)，严禁调息
