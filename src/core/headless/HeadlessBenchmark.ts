@@ -16,6 +16,8 @@ export interface BenchmarkOptions {
   strategyP1?: DecisionStrategy;
   strategyP2?: DecisionStrategy;
   recordActions?: boolean;
+  /** 变体 B：对称低位改道开关，默认关闭 */
+  lowStateRedirect?: boolean;
   /** 批量推演使用的计分配置；不传时沿用 HeadlessMatch 的默认配置 */
   scoreConfig?: PointsConfig;
 }
@@ -72,6 +74,7 @@ export class HeadlessBenchmark {
     const strategyP1 = options?.strategyP1 ?? balancedStrategy;
     const strategyP2 = options?.strategyP2 ?? balancedStrategy;
     const recordActions = options?.recordActions ?? false;
+    const lowStateRedirect = options?.lowStateRedirect ?? false;
     const scoreConfig = options?.scoreConfig;
 
     // 内存检测前置准备（若处于 expose-gc 环境则尽可能触发全量 GC 获得干净初始基线）
@@ -102,6 +105,7 @@ export class HeadlessBenchmark {
         seed: baseSeed + i,
         maxRounds,
         recordActions,
+        lowStateRedirect,
         scoreConfig
       });
 

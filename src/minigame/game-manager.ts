@@ -29,10 +29,13 @@ export interface GameManagerOptions {
   readonly seed?: number;
   readonly initialState?: GameState;
   readonly prng?: PRNG;
+  /** 变体 B：对称低位改道开关，默认关闭 */
+  readonly lowStateRedirect?: boolean;
 }
 
 export class GameManager {
   private turnManager!: TurnManager;
+  private readonly lowStateRedirect: boolean = false;
   private readonly aiStrategy = createStrategy(BALANCED_WEIGHTS);
   private currentTianGan: TianGanInfo | null = null;
   private availableButtons: TouchButton[] = [];
@@ -83,13 +86,18 @@ export class GameManager {
     } else {
       prng = seedOrOptions.prng ?? createPRNG(seedOrOptions.seed ?? Date.now());
       initialState = seedOrOptions.initialState;
+      this.lowStateRedirect = seedOrOptions.lowStateRedirect ?? false;
     }
     this.initTurnManager(prng, initialState);
     this.startNewTurn();
   }
 
   private initTurnManager(prng: PRNG, initialState?: GameState): void {
-    this.turnManager = new TurnManager({ prng, initialState });
+    this.turnManager = new TurnManager({
+      prng,
+      initialState,
+      lowStateRedirect: this.lowStateRedirect
+    });
     this.lastShowdownInfo = null;
     this.turnManager.getEventBus().on('showdown:draw', (data) => {
       this.lastShowdownInfo = data;

@@ -34,6 +34,8 @@ export interface MatchOptions {
   readonly seed?: number;
   readonly maxRounds?: number;
   readonly recordActions?: boolean;
+  /** 变体 B：对称低位改道开关，默认关闭 */
+  readonly lowStateRedirect?: boolean;
   /** 单局级计分配置覆盖；提供时优先于构造函数注入的解析器 */
   readonly scoreConfig?: PointsConfig;
 }
@@ -105,6 +107,7 @@ export class HeadlessMatch {
 
     const maxRounds = options.maxRounds ?? 30;
     const seed = options.seed ?? 123456789;
+    const lowStateRedirect = options.lowStateRedirect ?? false;
     const prng = createPRNG(seed);
 
     // 单局级计分配置优先：临时构造解析器，不影响实例级注入与默认行为
@@ -175,7 +178,7 @@ export class HeadlessMatch {
       }
 
       const tianGan = drawTianGan(prng);
-      const candidates = getAvailableActions(state, tianGan, { isExtraTurn });
+      const candidates = getAvailableActions(state, tianGan, { isExtraTurn, lowStateRedirect });
       const currentStrategy = state.currentPlayer === 'P1' ? strategyP1 : strategyP2;
       let action = currentStrategy(state, tianGan, candidates);
 
