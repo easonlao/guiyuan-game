@@ -70,6 +70,8 @@ export enum ActionType {
   ATK = 'ATK',               // 破 (相克路径削弱敌方)
   BURST = 'BURST',           // 强化 (消耗己方归一节点强化相生，连动)
   BURST_ATK = 'BURST_ATK',   // 强破 (消耗己方归一节点削弱敌相克，连动)
+  DISSIPATE = 'DISSIPATE',   // 亢极散气 (满溢回落)
+  PASS = 'PASS'              // 消散过牌 (无合法动作时流转)
 }
 
 export interface ActionPayload {
@@ -89,15 +91,18 @@ export interface ActionPayload {
 
 ## 4. 与表现层的解耦与交互机制 (EventBus & Scene Graph Architecture)
 
-核心计算层（Layer 1）与表现层（Layer 3）完全解耦（对齐 ADR-0004 与 ADR-0005）：
+核心计算层（Layer 1）与表现层（Layer 3）完全解耦（对齐 ADR-0004、ADR-0005 与 ADR-0008）：
 
 1. **指令输入与派发**：
    - 微信触摸输入通过 `InputManager` 捕获，并映射至场景树根节点（`Stage`），沿节点层级逆序递归判定 `hitTest`；
    - 按钮组件（`Button`）触发 `onTap` 回调，向控制器提供合法的 `ActionPayload`。
-2. **状态推进与单向数据流**：
+2. **唯一候选动作自动流转（ADR-0008 契约）**：
+   - 当 `turnManager.getAvailableActions().length === 1` 时，表现层判定为无分叉确定性流转，启动 0.75s 缓冲倒计时后自动触发调度执行，玩家亦可轻触屏幕/按钮直接加速触发；
+   - 仅当候选动作数量 $\ge 2$ 时，要求玩家进行手动选择决策。
+3. **状态推进与单向数据流**：
    - 场景控制器（`GameScene`）调用 `turnManager.executeAction(action)` 驱动核心状态机演进；
    - `GameScene` 获取最新只读快照 `turnManager.getState()`，单向投影至 `BoardView`、`ActionBarView`、`CharacterView` 等各子视图。
-3. **表现层微型场景树与动画管线 (`src/minigame/engine/`)**：
+4. **表现层微型场景树与动画管线 (`src/minigame/engine/`)**：
    - **`Node` & `Container`**：承载局部矩阵变换（位置、缩放、透明度、可见性）与递归绘制（`render(ctx)`）；
    - **`Button`**：声明式交互组件，内置尺寸自动判定、按压缩小微动反馈与置灰禁用态；
    - **`Tween`**：轻量级补间缓动系统，负责天干流星飞行、五行法阵发光弧线、受击顿帧与震屏效果，彻底从业务帧步进循环中解耦。

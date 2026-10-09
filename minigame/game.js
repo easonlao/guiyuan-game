@@ -1881,41 +1881,41 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         break;
       }
       case ActionType.CONVERT: {
-        label = "【调息】";
-        subLabel = `转同属${act.polarity === Polarity.YANG ? "阳" : "阴"}`;
+        label = isAutoAbsorb ? "【自动调息】" : "【调息】";
+        subLabel = isAutoAbsorb ? `转同属${act.polarity === Polarity.YANG ? "阳" : "阴"}（点击立即调息）` : `转同属${act.polarity === Polarity.YANG ? "阳" : "阴"}`;
         color = "#63b3ed";
         break;
       }
       case ActionType.TRANS: {
-        label = "【化】";
+        label = isAutoAbsorb ? "【自动化气】" : "【化】";
         const targetElem = getActionTargetElement(act);
         const targetName = WUXING_PALETTE[targetElem]?.name ?? "";
-        subLabel = `生${targetName}(${act.polarity === Polarity.YANG ? "阳" : "阴"})+1`;
+        subLabel = isAutoAbsorb ? `生${targetName}(${act.polarity === Polarity.YANG ? "阳" : "阴"})+1（点击立即化气）` : `生${targetName}(${act.polarity === Polarity.YANG ? "阳" : "阴"})+1`;
         color = "#4fd1c5";
         break;
       }
       case ActionType.ATK: {
-        label = "【破】";
+        label = isAutoAbsorb ? "【自动击破】" : "【破】";
         const targetElem = getActionTargetElement(act);
         const targetName = WUXING_PALETTE[targetElem]?.name ?? "";
-        subLabel = `克敌${targetName}(${act.polarity === Polarity.YANG ? "阳" : "阴"})-1`;
+        subLabel = isAutoAbsorb ? `克敌${targetName}(${act.polarity === Polarity.YANG ? "阳" : "阴"})-1（点击立即击破）` : `克敌${targetName}(${act.polarity === Polarity.YANG ? "阳" : "阴"})-1`;
         color = "#fc8181";
         break;
       }
       case ActionType.BURST: {
-        label = "【强化】";
+        label = isAutoAbsorb ? "【自动强化】" : "【强化】";
         const targetElem = getActionTargetElement(act);
         const targetName = WUXING_PALETTE[targetElem]?.name ?? "";
-        subLabel = `消耗${srcName}·生${targetName}+2`;
+        subLabel = isAutoAbsorb ? `消耗${srcName}·生${targetName}+2（点击立即强化）` : `消耗${srcName}·生${targetName}+2`;
         color = "#f6e05e";
         isBurst = true;
         break;
       }
       case ActionType.BURST_ATK: {
-        label = "【强破】";
+        label = isAutoAbsorb ? "【自动强破】" : "【强破】";
         const targetElem = getActionTargetElement(act);
         const targetName = WUXING_PALETTE[targetElem]?.name ?? "";
-        subLabel = `消耗${srcName}·克${targetName}-2`;
+        subLabel = isAutoAbsorb ? `消耗${srcName}·克${targetName}-2（点击立即强破）` : `消耗${srcName}·克${targetName}-2`;
         color = "#f56565";
         isBurst = true;
         break;
@@ -1928,7 +1928,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       case ActionType.PASS: {
         label = "【消散】";
-        subLabel = "无有效动作·消散过牌交接回合";
+        subLabel = isAutoAbsorb ? "无有效动作·消散过牌中（点击立即消散）" : "无有效动作·消散过牌交接回合";
         color = "#a0aec0";
         break;
       }
@@ -2063,16 +2063,35 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const isExtra = this.turnManager.isExtraTurnActive();
       if (currentPlayer === "P1") {
         const actions = this.turnManager.getAvailableActions();
-        const isSingleAuto = actions.length === 1 && (actions[0].actionType === ActionType.AUTO || actions[0].actionType === ActionType.DISSIPATE || actions[0].actionType === ActionType.PASS);
-        if (isSingleAuto) {
+        if (actions.length === 1) {
           this.p1AutoAbsorbTimer = 45;
           this.bannerText = isExtra ? "【连动回合】玩家额外行动！" : `玩家回合 · 天干【${tg?.name ?? ""}】降临`;
-          if (actions[0].actionType === ActionType.DISSIPATE) {
-            this.bannerSubText = "亢极满溢·散气回落中";
-          } else if (actions[0].actionType === ActionType.PASS) {
-            this.bannerSubText = "道法受阻·消散过牌中";
-          } else {
-            this.bannerSubText = "自动吸纳中";
+          const actType = actions[0].actionType;
+          switch (actType) {
+            case ActionType.AUTO:
+              this.bannerSubText = "自动吸纳中";
+              break;
+            case ActionType.DISSIPATE:
+              this.bannerSubText = "亢极满溢·散气回落中";
+              break;
+            case ActionType.PASS:
+              this.bannerSubText = "道法受阻·消散过牌中";
+              break;
+            case ActionType.ATK:
+              this.bannerSubText = "唯一机缘·破";
+              break;
+            case ActionType.TRANS:
+              this.bannerSubText = "唯一机缘·化";
+              break;
+            case ActionType.CONVERT:
+              this.bannerSubText = "势在必行·调息";
+              break;
+            case ActionType.BURST:
+              this.bannerSubText = "势在必行·强化";
+              break;
+            case ActionType.BURST_ATK:
+              this.bannerSubText = "势在必行·强破";
+              break;
           }
         } else {
           this.p1AutoAbsorbTimer = 0;
@@ -2096,7 +2115,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         this.availableButtons = [];
         return;
       }
-      if (actions.length !== 1 || actions[0].actionType !== ActionType.AUTO && actions[0].actionType !== ActionType.DISSIPATE && actions[0].actionType !== ActionType.PASS) {
+      if (actions.length !== 1) {
         this.p1AutoAbsorbTimer = 0;
       }
       const isAutoAbsorb = this.p1AutoAbsorbTimer > 0;
@@ -2233,6 +2252,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         this.animMode = this.animMode === "pixel" ? "flow" : "pixel";
         return;
       }
+      if (this.p1AutoAbsorbTimer > 0) {
+        this.p1AutoAbsorbTimer = 0;
+        if (this.availableButtons.length > 0) {
+          this.executePlayerAction(this.availableButtons[0].action);
+        }
+        return;
+      }
       const centerPos = this.getCenterPosition();
       const distSq = (touchX - centerPos.x) ** 2 + (touchY - centerPos.y) ** 2;
       if (distSq <= 30 * 30 && !this.isAnimating) {
@@ -2241,13 +2267,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       if (this.isAnimating) return;
       if (state.currentPlayer !== "P1") return;
-      if (this.p1AutoAbsorbTimer > 0) {
-        this.p1AutoAbsorbTimer = 0;
-        if (this.availableButtons.length > 0) {
-          this.executePlayerAction(this.availableButtons[0].action);
-        }
-        return;
-      }
       for (const btn of this.availableButtons) {
         if (touchX >= btn.x && touchX <= btn.x + btn.width && touchY >= btn.y && touchY <= btn.y + btn.height) {
           this.executePlayerAction(btn.action);
