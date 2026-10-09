@@ -76,12 +76,24 @@ export interface PlayerMatchStats {
   readonly scoreComposition: ScoreComposition;
 }
 
+/** 按动作类型计数的分布（Ticket 04） */
+export type ActionTypeCounts = Readonly<Record<ActionType, number>>;
+
 /** 单局聚合统计；仅在 MatchOptions.collectStats 为 true 时返回 */
 export interface MatchStats {
   readonly P1: PlayerMatchStats;
   readonly P2: PlayerMatchStats;
   /** 终局时各玩家己方盘面的残留道损 */
   readonly residualDamage: Readonly<Record<PlayerId, number>>;
+  /** 全局动作类型分布（Ticket 04）：本局实际执行的动作按类型计数 */
+  readonly actionTypeCounts: ActionTypeCounts;
+  /**
+   * 低位态决策分布（Ticket 04）：抽中天干对应侧在结算前处于低位态
+   * （playerBoard[tianGan.element][tianGan.polarity] <= 0）时实际选择的动作类型计数。
+   */
+  readonly lowStateChoices: ActionTypeCounts;
+  /** 低位态决策总次数（Ticket 04） */
+  readonly lowStateDecisions: number;
 }
 
 export interface MatchResult {
@@ -117,6 +129,37 @@ function createEmptyMutablePlayerStats(): MutablePlayerStats {
     suppressionPoints: 0,
     milestonePoints: 0,
     damagePenalty: 0
+  };
+}
+
+/** 全动作类型计数表；显式列出以保持键集合稳定 */
+function createEmptyActionTypeCounts(): Record<ActionType, number> {
+  return {
+    [ActionType.AUTO]: 0,
+    [ActionType.CONVERT]: 0,
+    [ActionType.TRANS]: 0,
+    [ActionType.ATK]: 0,
+    [ActionType.BURST]: 0,
+    [ActionType.BURST_ATK]: 0,
+    [ActionType.DISSIPATE]: 0,
+    [ActionType.PASS]: 0
+  };
+}
+
+/** 单局统计的可变累加器（Ticket 04 扩展动作类型分布） */
+interface MutableMatchStatsAccumulator {
+  readonly players: Record<PlayerId, MutablePlayerStats>;
+  readonly actionTypeCounts: Record<ActionType, number>;
+  readonly lowStateChoices: Record<ActionType, number>;
+  lowStateDecisions: number;
+}
+
+function createEmptyMatchStatsAccumulator(): MutableMatchStatsAccumulator {
+  return {
+    players: { P1: createEmptyMutablePlayerStats(), P2: createEmptyMutablePlayerStats() },
+    actionTypeCounts: createEmptyActionTypeCounts(),
+    lowStateChoices: createEmptyActionTypeCounts(),
+    lowStateDecisions: 0
   };
 }
 
@@ -262,8 +305,8 @@ export class HeadlessMatch {
     let state = createInitialGameState(maxRounds);
     const recordActions = options.recordActions ?? true;
     const actionRecords: ActionRecord[] = [];
-    const statsAcc: Record<PlayerId, MutablePlayerStats> | null = collectStats
-      ? { P1: createEmptyMutablePlayerStats(), P2: createEmptyMutablePlayerStats() }
+    const statsAcc: MutableMatchStatsAccumulator | null = collectStats
+      ? createEmptyMatchStatsAccumulator()
       : null;
     let isExtraTurn = false;
     let isShowdown = false;
@@ -305,7 +348,7 @@ export class HeadlessMatch {
 
         // 天命揭牌使 P2 盘面点亮一侧属建设行为，纳入统计（该路径无计分）
         if (statsAcc) {
-          statsAcc.P2.constructionLevels += measureBoardDiff(p2Board, nextP2Board).constructionLevels;
+          statsAcc.players.P2.constructionLevels += measureBoardDiff(p2Board, nextP2Board).constructionLevels;
         }
 
         state = {
@@ -330,6 +373,10 @@ export class HeadlessMatch {
       }
 
       const tianGan = drawTianGan(prng);
+      // 低位态判定必须在结算前取样：抽中天干对应侧处于虚空/道损（<= 0）
+      const isLowStateDecision = statsAcc
+        ? state.players[state.currentPlayer].board[tianGan.element][tianGan.polarity] <= 0
+        : false;
       const candidates = getAvailableActions(state, tianGan, { isExtraTurn, lowStateRedirect });
       const currentStrategy = state.currentPlayer === 'P1' ? strategyP1 : strategyP2;
       let action = currentStrategy(state, tianGan, candidates);
@@ -361,7 +408,12 @@ export class HeadlessMatch {
       );
 
       if (statsAcc) {
-        accumulateActionStats(statsAcc, state, action, result, statsCalculator);
+        statsAcc.actionTypeCounts[action.actionType]++;
+        if (isLowStateDecision) {
+          statsAcc.lowStateChoices[action.actionType]++;
+          statsAcc.lowStateDecisions++;
+        }
+        accumulateActionStats(statsAcc.players, state, action, result, statsCalculator);
       }
 
       // 处理连动状态追踪
@@ -402,16 +454,19 @@ export class HeadlessMatch {
         const penaltyPerDamage = statsCalculator.damagePenalty;
         for (const id of ['P1', 'P2'] as const) {
           const damage = countBoardDamage(state.players[id].board);
-          statsAcc[id].damagePenalty -= damage * penaltyPerDamage;
+          statsAcc.players[id].damagePenalty -= damage * penaltyPerDamage;
         }
       }
       stats = {
-        P1: finalizePlayerStats(statsAcc.P1),
-        P2: finalizePlayerStats(statsAcc.P2),
+        P1: finalizePlayerStats(statsAcc.players.P1),
+        P2: finalizePlayerStats(statsAcc.players.P2),
         residualDamage: {
           P1: countBoardDamage(state.players.P1.board),
           P2: countBoardDamage(state.players.P2.board)
-        }
+        },
+        actionTypeCounts: { ...statsAcc.actionTypeCounts },
+        lowStateChoices: { ...statsAcc.lowStateChoices },
+        lowStateDecisions: statsAcc.lowStateDecisions
       };
     }
 

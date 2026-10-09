@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
 import { ActionType } from '../../src/core/types/domain.js';
+import { balancedStrategy } from '../../src/core/ai/Strategy.js';
 import type { DecisionStrategy } from '../../src/core/ai/types.js';
 
 describe('HeadlessMatch (Headless Simulation)', () => {
@@ -66,5 +67,69 @@ describe('HeadlessMatch (Headless Simulation)', () => {
       lowStateRedirect: true
     });
     expect(onAgain.record).toEqual(on.record);
+  });
+});
+
+describe('HeadlessMatch low-state choice instrumentation (Ticket 04)', () => {
+  it('leaves the new distributions undefined when collectStats is off (default path untouched)', () => {
+    const result = new HeadlessMatch().run(undefined, undefined, { seed: 24680, maxRounds: 30 });
+    expect(result.stats).toBeUndefined();
+  });
+
+  it('records an action-type distribution summing to the number of resolved actions', () => {
+    const result = new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
+      seed: 24680,
+      maxRounds: 30,
+      collectStats: true
+    });
+    const stats = result.stats!;
+    const total = Object.values(stats.actionTypeCounts).reduce((sum, count) => sum + count, 0);
+
+    expect(total).toBe(result.record.actions.length);
+    expect(stats.lowStateDecisions).toBeGreaterThan(0);
+    expect(stats.lowStateDecisions).toBeLessThanOrEqual(total);
+  });
+
+  it('with the redirect switch OFF every low-state decision resolves to AUTO', () => {
+    const result = new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
+      seed: 24680,
+      maxRounds: 30,
+      collectStats: true
+    });
+    const stats = result.stats!;
+
+    expect(stats.lowStateDecisions).toBeGreaterThan(0);
+    expect(stats.lowStateChoices[ActionType.AUTO]).toBe(stats.lowStateDecisions);
+    expect(stats.lowStateChoices[ActionType.TRANS]).toBe(0);
+    expect(stats.lowStateChoices[ActionType.ATK]).toBe(0);
+  });
+
+  it('with the redirect switch ON a low-state decision can resolve to TRANS or ATK', () => {
+    // 偏好改道的策略：优先选【化】/【破】，否则退回首个合法动作
+    const redirectPreferred: DecisionStrategy = (_state, _tianGan, actions) => {
+      const candidates = actions ?? [];
+      return (
+        candidates.find(
+          (a) => a.actionType === ActionType.TRANS || a.actionType === ActionType.ATK
+        ) ?? candidates[0]
+      );
+    };
+
+    const result = new HeadlessMatch().run(redirectPreferred, redirectPreferred, {
+      seed: 24680,
+      maxRounds: 30,
+      lowStateRedirect: true,
+      collectStats: true
+    });
+    const stats = result.stats!;
+    const redirectCount =
+      stats.lowStateChoices[ActionType.TRANS] + stats.lowStateChoices[ActionType.ATK];
+
+    expect(stats.lowStateDecisions).toBeGreaterThan(0);
+    expect(redirectCount).toBeGreaterThan(0);
+    // 每个低位态决策恰好落入一个动作类型
+    expect(stats.lowStateChoices[ActionType.AUTO]).toBe(stats.lowStateDecisions - redirectCount);
+    const lowStateTotal = Object.values(stats.lowStateChoices).reduce((sum, count) => sum + count, 0);
+    expect(lowStateTotal).toBe(stats.lowStateDecisions);
   });
 });
