@@ -12,6 +12,7 @@
     "check:deps": "depcruise --config .dependency-cruiser.js src",
     "benchmark:headless": "npx tsx src/core/headless/HeadlessBenchmark.ts",
     "benchmark:matrix": "npx tsx src/core/headless/MeasurementBench.ts",
+    "benchmark:ai-preference": "npx tsx src/core/headless/MeasurementBench.ts --scan ai-preference",
     "build:minigame": "node scripts/build-minigame.mjs",
     "dev:minigame": "node scripts/build-minigame.mjs --watch",
     "stryker": "stryker run"

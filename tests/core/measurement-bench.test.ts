@@ -4,6 +4,8 @@ import { measureBoardDiff, countBoardDamage } from '../../src/core/logic/State.j
 import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
 import {
   runMeasurementMatrix,
+  runAiPreferenceScan,
+  formatAiPreferenceReport,
   formatMeasurementReport,
   DEFAULT_STRATEGY_VARIANTS,
   DEFAULT_SCORE_CONFIG_VARIANTS
@@ -220,6 +222,49 @@ describe('MeasurementBench (Ticket 03 matrix)', () => {
   it('is deterministic given the same seed', () => {
     const first = runMeasurementMatrix({ matches: 30, baseSeed: 4242, maxRounds: 30 });
     const second = runMeasurementMatrix({ matches: 30, baseSeed: 4242, maxRounds: 30 });
+    expect(first.cells).toEqual(second.cells);
+  });
+});
+
+describe('MeasurementBench AI-preference scan (Ticket 04)', () => {
+  it('scans the four weight presets across off/full with supplementary pure strategies', () => {
+    const report = runAiPreferenceScan({ matches: 20, baseSeed: 10000, maxRounds: 30 });
+
+    expect(report.modes).toEqual(['off', 'full']);
+    expect(report.strategyNames).toEqual(['平衡', '归元冲刺', '激进压制', '保守自保', '纯推进', '纯压制']);
+    expect(report.cells).toHaveLength(report.modes.length * report.strategyNames.length);
+
+    for (const cell of report.cells) {
+      expect(cell.lowStateDecisions).toBeGreaterThan(0);
+      const lowStateTotal = Object.values(cell.lowStateChoices).reduce(
+        (sum, count) => sum + count,
+        0
+      );
+      expect(lowStateTotal).toBeCloseTo(cell.lowStateDecisions, 6);
+      const actionTotal = Object.values(cell.actionTypeCounts).reduce((sum, count) => sum + count, 0);
+      expect(actionTotal).toBeGreaterThan(0);
+    }
+  });
+
+  it('formats a preset comparison table with off-to-full deltas and a low-state distribution', () => {
+    const report = runAiPreferenceScan({ matches: 5, baseSeed: 10000, maxRounds: 30 });
+    const markdown = formatAiPreferenceReport(report);
+
+    expect(markdown).toContain('| 策略 | 模式 | 归元率 |');
+    expect(markdown).toContain('off→full');
+    expect(markdown).toContain('低位态决策分布');
+    expect(markdown).toContain('| 平衡 |');
+    expect(markdown).toContain('| 归元冲刺 |');
+    expect(markdown).toContain('| 激进压制 |');
+    expect(markdown).toContain('| 保守自保 |');
+    expect(markdown).toContain('| 纯推进 |');
+    expect(markdown).toContain('| 纯压制 |');
+    expect(markdown).toContain('种子基数: 10000');
+  });
+
+  it('is deterministic given the same seed', () => {
+    const first = runAiPreferenceScan({ matches: 15, baseSeed: 4242, maxRounds: 30 });
+    const second = runAiPreferenceScan({ matches: 15, baseSeed: 4242, maxRounds: 30 });
     expect(first.cells).toEqual(second.cells);
   });
 });
