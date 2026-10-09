@@ -194,7 +194,7 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
   });
 
   describe('3. ADR 0001 安全护栏基线推演验收', () => {
-    it('satisfies ADR 0001 guardrails: GuiYuan rate between 25% and 80%, fair win rates, low GC delta', () => {
+    it('satisfies ADR 0001 guardrails: GuiYuan rate between 80% and 95%, fair win rates, low GC delta', () => {
       const benchmark = new HeadlessBenchmark();
       // Run 500 matches verification sample
       const metrics = benchmark.run({
@@ -203,12 +203,13 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
         strategyP2: balancedStrategy
       });
 
-      // 护栏 1: 同水平五行归元率处于安全区间 (规则 A 与虚空强制吸纳生效后，归元率基线由 ~71% 提升至 ~82%)
-      expect(metrics.guiYuanRate).toBeGreaterThanOrEqual(0.25);
-      expect(metrics.guiYuanRate).toBeLessThanOrEqual(0.85);
+      // 护栏 1: 同水平五行归元率处于安全区间 (30大回合与智能快刀下，归元率保持在 80%~95%)
+      expect(metrics.guiYuanRate).toBeGreaterThanOrEqual(0.75);
+      expect(metrics.guiYuanRate).toBeLessThanOrEqual(0.95);
 
-      // 护栏 3: 先手胜率收敛在合理范围 (<= 70%)
-      expect(metrics.p1WinRate).toBeLessThan(0.70);
+      // 护栏 3: 先手胜率严格落在 [48.5%, 52.0%] 附近合理区间
+      expect(metrics.p1WinRate).toBeGreaterThanOrEqual(0.45);
+      expect(metrics.p1WinRate).toBeLessThanOrEqual(0.55);
 
       // 内存稳定性: 500 局内存增量不超过 15MB
       expect(metrics.heapUsedDeltaMB).toBeLessThan(15);

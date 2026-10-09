@@ -23,6 +23,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     ActionType2["ATK"] = "ATK";
     ActionType2["BURST"] = "BURST";
     ActionType2["BURST_ATK"] = "BURST_ATK";
+    ActionType2["DISSIPATE"] = "DISSIPATE";
     return ActionType2;
   })(ActionType || {});
   const TIAN_GAN_LIST = [
@@ -149,7 +150,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       board: createEmptyBoard()
     };
   }
-  function createInitialGameState(maxRounds = 60) {
+  function createInitialGameState(maxRounds = 30) {
     return {
       round: 1,
       maxRounds,
@@ -161,7 +162,11 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       currentTianGan: null,
       isGameOver: false,
       winner: null,
-      endReason: null
+      endReason: null,
+      lockedGuiYuan: {
+        P1: false,
+        P2: false
+      }
     };
   }
   function isNodeGuiYi(node) {
@@ -174,11 +179,35 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     const elements = Object.values(WuXing);
     return elements.every((element) => isNodeGuiYi(board[element]));
   }
+  function countLightedSides(board) {
+    let count = 0;
+    for (const element of Object.values(WuXing)) {
+      if (board[element].yin >= 1) count++;
+      if (board[element].yang >= 1) count++;
+    }
+    return count;
+  }
+  function countUnlightedSides(board) {
+    return 10 - countLightedSides(board);
+  }
+  function isBoardTingPai(board) {
+    return countUnlightedSides(board) <= 2;
+  }
   function clampNodeLevel(level) {
     if (level <= -1) return -1;
     if (level >= 2) return 2;
     return level;
   }
+  function countBoardDamage(board) {
+    let count = 0;
+    for (const element of Object.values(WuXing)) {
+      if (board[element].yin === -1) count++;
+      if (board[element].yang === -1) count++;
+    }
+    return count;
+  }
+  const GUI_YI_MILESTONE = 60;
+  const DAMAGE_PENALTY = 50;
   const POINTS_CONFIG = {
     // 【行为分】执行动作的基础分
     ACTION: {
@@ -187,7 +216,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       TRANS: 30,
       ATK: 40,
       BURST: 100,
-      BURST_ATK: 80
+      BURST_ATK: 80,
+      DISSIPATE: 0
     },
     // 【状态分】节点状态变化的分数（已硬编码 2.5 倍攻击压制得分）
     STATE_CHANGE: {
@@ -209,7 +239,11 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     // 稀有度乘数
     RARITY_MULTIPLIER: 1.5,
     // 稀有度黑名单（严禁享受稀有度加成的动作类型）
-    NO_RARITY_ACTIONS: [ActionType.BURST, ActionType.BURST_ATK]
+    NO_RARITY_ACTIONS: [ActionType.BURST, ActionType.BURST_ATK, ActionType.DISSIPATE],
+    // 节点归一里程碑奖励分
+    GUI_YI_MILESTONE: 60,
+    // 终局残留道损扣分
+    DAMAGE_PENALTY: 50
   };
   const ACTION_PROBABILITY = {
     [ActionType.AUTO]: 1,
@@ -217,12 +251,39 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     [ActionType.TRANS]: 0.243,
     [ActionType.CONVERT]: 0.167,
     [ActionType.BURST]: 0.035,
-    [ActionType.BURST_ATK]: 0.036
+    [ActionType.BURST_ATK]: 0.036,
+    [ActionType.DISSIPATE]: 0.02
   };
   class ScoreCalculator {
     constructor(config = POINTS_CONFIG) {
       __publicField(this, "config");
       this.config = config;
+    }
+    get guiYiMilestone() {
+      return this.config.GUI_YI_MILESTONE ?? GUI_YI_MILESTONE;
+    }
+    get damagePenalty() {
+      return this.config.DAMAGE_PENALTY ?? DAMAGE_PENALTY;
+    }
+    /**
+     * 计算节点归一里程碑奖励分
+     * @param count 达成归一的节点数量（增量）
+     */
+    calculateGuiYiMilestonePoints(count) {
+      return count * this.guiYiMilestone;
+    }
+    calculateGuiYiMilestone(count) {
+      return this.calculateGuiYiMilestonePoints(count);
+    }
+    /**
+     * 计算终局道损扣分
+     * @param damageCount 残留道损总数量（每个阴或阳为 -1 记 1 个道损）
+     */
+    calculateDamagePenalty(damageCount) {
+      return damageCount * this.damagePenalty;
+    }
+    calculateEndgameDamagePenalty(damageCount) {
+      return this.calculateDamagePenalty(damageCount);
     }
     /**
      * 计算指定动作的行为基础分
@@ -283,6 +344,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       return Math.round(score + rarityBonus);
     }
   }
+  __publicField(ScoreCalculator, "GUI_YI_MILESTONE", 60);
+  __publicField(ScoreCalculator, "DAMAGE_PENALTY", 50);
   class ActionResolver {
     constructor(scoreCalculator = new ScoreCalculator()) {
       __publicField(this, "scoreCalculator");
@@ -457,32 +520,107 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           success = true;
           break;
         }
+        case ActionType.DISSIPATE: {
+          const element = payload.element || state.currentTianGan?.element;
+          const polarity = payload.polarity || state.currentTianGan?.polarity;
+          if (!element || !polarity) {
+            return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: "缺少天干属性或极性" };
+          }
+          const node = nextActiveBoard[element];
+          const prevLevel = node[polarity];
+          const newLevel = clampNodeLevel(prevLevel - 1);
+          patchActiveNode(element, { [polarity]: newLevel });
+          scoreDelta = 0;
+          success = true;
+          message = "亢极散气：极位能量满溢回落";
+          break;
+        }
       }
       if (!success) {
         return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message };
       }
+      let guiYiDelta = 0;
+      for (const element of Object.values(WuXing)) {
+        const prevGuiYi = isNodeGuiYi(activePlayer.board[element]);
+        const nextGuiYi = isNodeGuiYi(nextActiveBoard[element]);
+        if (!prevGuiYi && nextGuiYi) {
+          guiYiDelta++;
+        }
+      }
+      if (guiYiDelta > 0) {
+        scoreDelta += this.scoreCalculator.calculateGuiYiMilestonePoints(guiYiDelta);
+      }
       const nextScore = activePlayer.score + scoreDelta;
       const hasGuiYuan = isBoardGuiYuan(nextActiveBoard);
+      const prevLockedGuiYuan = state.lockedGuiYuan ?? {
+        P1: false,
+        P2: false
+      };
+      const nextLockedGuiYuan = {
+        P1: prevLockedGuiYuan.P1 || activePlayerId === "P1" && hasGuiYuan,
+        P2: prevLockedGuiYuan.P2 || activePlayerId === "P2" && hasGuiYuan
+      };
       let isGameOver = false;
       let winner = null;
       let endReason = null;
-      if (hasGuiYuan) {
-        isGameOver = true;
-        winner = activePlayerId;
-        endReason = "GUI_YUAN";
-      } else if (!extraTurn && state.round >= state.maxRounds) {
-        isGameOver = true;
-        endReason = "MAX_ROUNDS";
-        if (nextScore > opponentPlayer.score) {
-          winner = activePlayerId;
-        } else if (opponentPlayer.score > nextScore) {
-          winner = opponentPlayerId;
-        } else {
+      let finalActiveScore = nextScore;
+      let finalOpponentScore = opponentPlayer.score;
+      if (activePlayerId === "P1") {
+        if (nextLockedGuiYuan.P1) {
+          if (!isBoardTingPai(nextOpponentBoard)) {
+            isGameOver = true;
+            winner = "P1";
+            endReason = "GUI_YUAN";
+            extraTurn = false;
+          } else {
+            isGameOver = false;
+          }
+        }
+      } else {
+        if (nextLockedGuiYuan.P2) {
+          isGameOver = true;
           winner = "P2";
+          endReason = "GUI_YUAN";
+          extraTurn = false;
+        } else if (!extraTurn) {
+          if (nextLockedGuiYuan.P1) {
+            isGameOver = true;
+            winner = "P1";
+            endReason = "GUI_YUAN";
+          } else if (state.round >= state.maxRounds) {
+            isGameOver = true;
+            endReason = "MAX_ROUNDS";
+            const activeDamage = countBoardDamage(nextActiveBoard);
+            const opponentDamage = countBoardDamage(nextOpponentBoard);
+            finalActiveScore -= this.scoreCalculator.calculateDamagePenalty(activeDamage);
+            finalOpponentScore -= this.scoreCalculator.calculateDamagePenalty(opponentDamage);
+            if (finalActiveScore > finalOpponentScore) {
+              winner = activePlayerId;
+            } else if (finalOpponentScore > finalActiveScore) {
+              winner = opponentPlayerId;
+            } else {
+              winner = "P2";
+            }
+          }
         }
       }
-      const nextRound = !extraTurn && !isGameOver ? state.round + 1 : state.round;
-      const nextCurrentPlayer = !extraTurn && !isGameOver ? opponentPlayerId : activePlayerId;
+      let nextRound = state.round;
+      let nextCurrentPlayer = activePlayerId;
+      if (isGameOver) {
+        nextRound = state.round;
+        nextCurrentPlayer = activePlayerId;
+      } else if (extraTurn) {
+        nextRound = state.round;
+        nextCurrentPlayer = activePlayerId;
+      } else {
+        if (activePlayerId === "P1") {
+          nextRound = state.round;
+          nextCurrentPlayer = "P2";
+        } else {
+          nextRound = state.round + 1;
+          nextCurrentPlayer = "P1";
+        }
+      }
       const nextState = {
         ...state,
         round: nextRound,
@@ -491,17 +629,19 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           ...state.players,
           [activePlayerId]: {
             ...activePlayer,
-            score: nextScore,
+            score: finalActiveScore,
             board: nextActiveBoard
           },
           [opponentPlayerId]: {
             ...opponentPlayer,
+            score: finalOpponentScore,
             board: nextOpponentBoard
           }
         },
         isGameOver,
         winner,
-        endReason
+        endReason,
+        lockedGuiYuan: nextLockedGuiYuan
       };
       return {
         nextState,
@@ -640,6 +780,16 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       return [
         {
           actionType: ActionType.AUTO,
+          player: playerId,
+          element: stemElement,
+          polarity: stemPolarity
+        }
+      ];
+    }
+    if (isNodeKangJi(stemNode)) {
+      return [
+        {
+          actionType: ActionType.DISSIPATE,
           player: playerId,
           element: stemElement,
           polarity: stemPolarity
@@ -1149,7 +1299,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     lightVoid: 100,
     reachKangJi: 50,
     guiyuanProgress: 140,
-    burstExtraTurn: 100,
+    burstExtraTurn: 120,
     breakOpponentGuiYi: 100,
     causeDamage: 60,
     suppressNode: 30,
@@ -1622,6 +1772,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         isBurst = true;
         break;
       }
+      case ActionType.DISSIPATE: {
+        label = isAutoAbsorb ? "【亢极散气】" : "【散气】";
+        subLabel = isAutoAbsorb ? "亢极满溢自动散气中（点击立即散气）" : `天道满溢则亏·${act.polarity === Polarity.YANG ? "阳" : "阴"}回落至加持(-1)`;
+        color = "#e2e8f0";
+        break;
+      }
     }
     return {
       label,
@@ -1695,11 +1851,11 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const isExtra = this.turnManager.isExtraTurnActive();
       if (currentPlayer === "P1") {
         const actions = this.turnManager.getAvailableActions();
-        const isSingleAuto = actions.length === 1 && actions[0].actionType === ActionType.AUTO;
+        const isSingleAuto = actions.length === 1 && (actions[0].actionType === ActionType.AUTO || actions[0].actionType === ActionType.DISSIPATE);
         if (isSingleAuto) {
           this.p1AutoAbsorbTimer = 45;
           this.bannerText = isExtra ? "【连动回合】玩家额外行动！" : `玩家回合 · 天干【${tg?.name ?? ""}】降临`;
-          this.bannerSubText = "自动吸纳中";
+          this.bannerSubText = actions[0].actionType === ActionType.DISSIPATE ? "亢极满溢·散气回落中" : "自动吸纳中";
         } else {
           this.p1AutoAbsorbTimer = 0;
           this.bannerText = isExtra ? "【连动回合】玩家额外行动！" : `玩家回合 · 天干【${tg?.name ?? ""}】降临`;
@@ -1722,7 +1878,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         this.availableButtons = [];
         return;
       }
-      if (actions.length !== 1 || actions[0].actionType !== ActionType.AUTO) {
+      if (actions.length !== 1 || actions[0].actionType !== ActionType.AUTO && actions[0].actionType !== ActionType.DISSIPATE) {
         this.p1AutoAbsorbTimer = 0;
       }
       const isAutoAbsorb = this.p1AutoAbsorbTimer > 0;
