@@ -18,6 +18,11 @@ export enum Polarity {
   YANG = 'yang'
 }
 
+/** 获取相反极性 */
+export function getOppositePolarity(polarity: Polarity): Polarity {
+  return polarity === Polarity.YANG ? Polarity.YIN : Polarity.YANG;
+}
+
 /**
  * 节点一侧的状态数值 (NodeLevel)
  * -1: 道损 (DAMAGE)
