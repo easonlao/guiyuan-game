@@ -113,6 +113,7 @@ export interface GameState {
   readonly isGameOver: boolean;
   readonly winner: PlayerId | 'DRAW' | null;
   readonly endReason: 'GUI_YUAN' | 'MAX_ROUNDS' | null;
+  readonly lockedGuiYuan?: Readonly<Record<PlayerId, boolean>>;
 }
 
 /** 动作参数 */
