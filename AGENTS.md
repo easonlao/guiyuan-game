@@ -14,7 +14,13 @@ Single-context. See `docs/agents/domain.md`.
 
 ### Subagents
 
-Open every code question with CodeGraph, and dispatch the `Explorer` subagent for anything that spans more than one file or one lookup. Route architecture, "how does X work", bug diagnosis, and the reconnaissance before a ticket to `Explorer`, briefed with the question and the symbols you already know; it runs in the background and returns findings with file paths. Implementing a ticket dispatches `Explorer` the same way before changing code. Keep inline only a read the main thread finishes in one step: one known file, one CodeGraph call.
+The main thread dispatches and aggregates; it does not read or crawl code itself. Dispatch the `Explorer` subagent for anything spanning more than one file or one lookup — architecture, "how does X work", bug diagnosis, and the reconnaissance before a ticket. Brief it to open with CodeGraph, and with the question and the symbols you already know; it runs in the background and returns a conclusion plus `file:line` references, not a source dump.
+
+The `code-review` skill's two axes (Standards, Spec) both dispatch as `Reviewer`.
+
+Inside a subagent (no nested dispatch), skip the dispatch step and call the CodeGraph MCP tool directly — see CodeGraph below.
+
+These rules also bind the exploration/research steps of the workflow skills (implement, code-review, …). They live only in this file: `.pi/skills/` is installed from upstream and overwritten on update.
 
 <!-- CODEGRAPH_START -->
 ## CodeGraph
