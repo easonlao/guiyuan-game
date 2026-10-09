@@ -32,6 +32,15 @@ export interface BenchmarkMetrics {
   maxRoundsCount: number;
   maxRoundsRate: number;
   avgRounds: number;
+  // 智能快刀与终局形态细分度量
+  doubleGuiYuanCount: number;
+  doubleGuiYuanRate: number;
+  suddenDeathCount: number;
+  suddenDeathRate: number;
+  catchupFailCount: number;
+  catchupFailRate: number;
+  p2DirectCount: number;
+  p2DirectRate: number;
   heapUsedDeltaMB: number;
   heapUsedStartMB: number;
   heapUsedEndMB: number;
@@ -65,6 +74,10 @@ export class HeadlessBenchmark {
     let guiYuanCount = 0;
     let maxRoundsCount = 0;
     let totalRounds = 0;
+    let doubleGuiYuanCount = 0;
+    let suddenDeathCount = 0;
+    let catchupFailCount = 0;
+    let p2DirectCount = 0;
 
     for (let i = 0; i < totalMatches; i++) {
       const matchResult = this.headlessMatch.run(strategyP1, strategyP2, {
@@ -87,6 +100,16 @@ export class HeadlessBenchmark {
         maxRoundsCount++;
       }
 
+      if (matchResult.closureType === 'DOUBLE_GUIYUAN') {
+        doubleGuiYuanCount++;
+      } else if (matchResult.closureType === 'SUDDEN_DEATH') {
+        suddenDeathCount++;
+      } else if (matchResult.closureType === 'CATCHUP_FAIL') {
+        catchupFailCount++;
+      } else if (matchResult.closureType === 'P2_DIRECT_GUIYUAN') {
+        p2DirectCount++;
+      }
+
       totalRounds += matchResult.roundsPlayed;
     }
 
@@ -103,6 +126,11 @@ export class HeadlessBenchmark {
     const guiYuanRate = totalMatches > 0 ? guiYuanCount / totalMatches : 0;
     const maxRoundsRate = totalMatches > 0 ? maxRoundsCount / totalMatches : 0;
     const avgRounds = totalMatches > 0 ? totalRounds / totalMatches : 0;
+
+    const doubleGuiYuanRate = totalMatches > 0 ? doubleGuiYuanCount / totalMatches : 0;
+    const suddenDeathRate = totalMatches > 0 ? suddenDeathCount / totalMatches : 0;
+    const catchupFailRate = totalMatches > 0 ? catchupFailCount / totalMatches : 0;
+    const p2DirectRate = totalMatches > 0 ? p2DirectCount / totalMatches : 0;
 
     const heapUsedStartMB = memStart / (1024 * 1024);
     const heapUsedEndMB = memEnd / (1024 * 1024);
@@ -123,6 +151,14 @@ export class HeadlessBenchmark {
       maxRoundsCount,
       maxRoundsRate,
       avgRounds,
+      doubleGuiYuanCount,
+      doubleGuiYuanRate,
+      suddenDeathCount,
+      suddenDeathRate,
+      catchupFailCount,
+      catchupFailRate,
+      p2DirectCount,
+      p2DirectRate,
       heapUsedDeltaMB,
       heapUsedStartMB,
       heapUsedEndMB
@@ -156,6 +192,10 @@ export class HeadlessBenchmark {
       '-----------------------------------------------------------------',
       ' 【终局形态与回合】',
       ` 五行归元 (Gui Yuan)     : ${metrics.guiYuanCount.toLocaleString()} (${gyPct}%)`,
+      `   ├─ 同轮双归元 (Double) : ${metrics.doubleGuiYuanCount.toLocaleString()} (${(metrics.doubleGuiYuanRate * 100).toFixed(2)}%)`,
+      `   ├─ 常规秒结 (Sudden)   : ${metrics.suddenDeathCount.toLocaleString()} (${(metrics.suddenDeathRate * 100).toFixed(2)}%)`,
+      `   ├─ 追平失败 (Catchup)  : ${metrics.catchupFailCount.toLocaleString()} (${(metrics.catchupFailRate * 100).toFixed(2)}%)`,
+      `   └─ 后手直接 (P2 Direct): ${metrics.p2DirectCount.toLocaleString()} (${(metrics.p2DirectRate * 100).toFixed(2)}%)`,
       ` 达到上限 (Max Rounds)   : ${metrics.maxRoundsCount.toLocaleString()} (${mrPct}%)`,
       ` 平均回合数 (Avg Rounds) : ${metrics.avgRounds.toFixed(2)} 回合`,
       '-----------------------------------------------------------------',

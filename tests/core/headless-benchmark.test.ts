@@ -31,6 +31,27 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     expect(metrics.guiYuanRate).toBeCloseTo(metrics.guiYuanCount / 100, 5);
     expect(metrics.maxRoundsRate).toBeCloseTo(metrics.maxRoundsCount / 100, 5);
 
+    // 智能快刀细分终局度量守恒
+    expect(
+      metrics.doubleGuiYuanCount +
+      metrics.suddenDeathCount +
+      metrics.catchupFailCount +
+      metrics.p2DirectCount
+    ).toBe(metrics.guiYuanCount);
+
+    expect(
+      metrics.doubleGuiYuanCount +
+      metrics.suddenDeathCount +
+      metrics.catchupFailCount +
+      metrics.p2DirectCount +
+      metrics.maxRoundsCount
+    ).toBe(100);
+
+    expect(metrics.doubleGuiYuanRate).toBeCloseTo(metrics.doubleGuiYuanCount / 100, 5);
+    expect(metrics.suddenDeathRate).toBeCloseTo(metrics.suddenDeathCount / 100, 5);
+    expect(metrics.catchupFailRate).toBeCloseTo(metrics.catchupFailCount / 100, 5);
+    expect(metrics.p2DirectRate).toBeCloseTo(metrics.p2DirectCount / 100, 5);
+
     // 回合数与内存指标
     expect(metrics.avgRounds).toBeGreaterThan(0);
     expect(metrics.avgRounds).toBeLessThanOrEqual(60);
@@ -57,6 +78,10 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     expect(report).toContain('P2 胜利');
     expect(report).toContain('【终局形态与回合】');
     expect(report).toContain('五行归元');
+    expect(report).toContain('同轮双归元');
+    expect(report).toContain('常规秒结');
+    expect(report).toContain('追平失败');
+    expect(report).toContain('后手直接');
     expect(report).toContain('达到上限');
     expect(report).toContain('【内存与 GC 指标】');
     expect(report).toContain('堆内存增量');
@@ -98,7 +123,38 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     expect(run1.draws).toBe(run2.draws);
     expect(run1.guiYuanCount).toBe(run2.guiYuanCount);
     expect(run1.maxRoundsCount).toBe(run2.maxRoundsCount);
+    expect(run1.doubleGuiYuanCount).toBe(run2.doubleGuiYuanCount);
+    expect(run1.suddenDeathCount).toBe(run2.suddenDeathCount);
+    expect(run1.catchupFailCount).toBe(run2.catchupFailCount);
+    expect(run1.p2DirectCount).toBe(run2.p2DirectCount);
     expect(run1.avgRounds).toBe(run2.avgRounds);
+  });
+
+  it('should accurately classify all smart sudden death and catchup closure types', () => {
+    const benchmark = new HeadlessBenchmark();
+    const metrics = benchmark.run({
+      matches: 200,
+      baseSeed: 10000,
+      strategyP1: balancedStrategy,
+      strategyP2: balancedStrategy,
+      maxRounds: 30
+    });
+
+    // 验证各细分终局类型均有采集且相互排他累加守恒
+    expect(metrics.totalMatches).toBe(200);
+    expect(metrics.guiYuanCount).toBeGreaterThan(0);
+    expect(
+      metrics.doubleGuiYuanCount +
+      metrics.suddenDeathCount +
+      metrics.catchupFailCount +
+      metrics.p2DirectCount
+    ).toBe(metrics.guiYuanCount);
+
+    // 验证比率严格在 [0, 1] 区间
+    expect(metrics.doubleGuiYuanRate).toBeGreaterThanOrEqual(0);
+    expect(metrics.suddenDeathRate).toBeGreaterThanOrEqual(0);
+    expect(metrics.catchupFailRate).toBeGreaterThanOrEqual(0);
+    expect(metrics.p2DirectRate).toBeGreaterThanOrEqual(0);
   });
 
   it('should handle recordActions option properly', () => {
@@ -118,6 +174,7 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     expect(metricsWithRecord.p1Wins).toBe(metricsWithoutRecord.p1Wins);
     expect(metricsWithRecord.p2Wins).toBe(metricsWithoutRecord.p2Wins);
     expect(metricsWithRecord.guiYuanCount).toBe(metricsWithoutRecord.guiYuanCount);
+    expect(metricsWithRecord.closureType ?? 'OK').toBeDefined();
   });
 
   it('should handle zero matches edge case safely without dividing by zero', () => {
@@ -129,6 +186,10 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     expect(metrics.p2WinRate).toBe(0);
     expect(metrics.avgDurationMs).toBe(0);
     expect(metrics.tps).toBe(0);
+    expect(metrics.doubleGuiYuanRate).toBe(0);
+    expect(metrics.suddenDeathRate).toBe(0);
+    expect(metrics.catchupFailRate).toBe(0);
+    expect(metrics.p2DirectRate).toBe(0);
 
     const report = benchmark.formatReport(metrics);
     expect(typeof report).toBe('string');

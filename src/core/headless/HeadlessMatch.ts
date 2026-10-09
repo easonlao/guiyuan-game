@@ -19,9 +19,17 @@ export interface MatchOptions {
   readonly recordActions?: boolean;
 }
 
+export type ClosureType =
+  | 'DOUBLE_GUIYUAN'
+  | 'SUDDEN_DEATH'
+  | 'CATCHUP_FAIL'
+  | 'P2_DIRECT_GUIYUAN'
+  | 'MAX_ROUNDS';
+
 export interface MatchResult {
   readonly winner: PlayerId | 'DRAW' | null;
   readonly endReason: 'GUI_YUAN' | 'MAX_ROUNDS' | null;
+  readonly closureType?: ClosureType;
   readonly roundsPlayed: number;
   readonly finalP1Score: number;
   readonly finalP2Score: number;
@@ -69,6 +77,7 @@ export class HeadlessMatch {
     const recordActions = options.recordActions ?? true;
     const actionRecords: ActionRecord[] = [];
     let isExtraTurn = false;
+    let lastActor: PlayerId | null = null;
 
     while (!state.isGameOver && state.round <= maxRounds) {
       const tianGan = drawTianGan(prng);
@@ -97,6 +106,8 @@ export class HeadlessMatch {
         });
       }
 
+      lastActor = state.currentPlayer;
+
       const result = this.resolver.resolve(
         { ...state, currentTianGan: tianGan },
         action
@@ -112,6 +123,21 @@ export class HeadlessMatch {
       state = result.nextState;
     }
 
+    let closureType: ClosureType | undefined;
+    if (state.endReason === 'MAX_ROUNDS') {
+      closureType = 'MAX_ROUNDS';
+    } else if (state.endReason === 'GUI_YUAN') {
+      const p1Gui = state.lockedGuiYuan?.P1 ?? false;
+      const p2Gui = state.lockedGuiYuan?.P2 ?? false;
+      if (p1Gui && p2Gui) {
+        closureType = 'DOUBLE_GUIYUAN';
+      } else if (!p1Gui && p2Gui) {
+        closureType = 'P2_DIRECT_GUIYUAN';
+      } else if (p1Gui && !p2Gui) {
+        closureType = lastActor === 'P1' ? 'SUDDEN_DEATH' : 'CATCHUP_FAIL';
+      }
+    }
+
     const record: GameRecord = {
       seed,
       maxRounds,
@@ -121,6 +147,7 @@ export class HeadlessMatch {
     return {
       winner: state.winner,
       endReason: state.endReason,
+      closureType,
       roundsPlayed: state.round,
       finalP1Score: state.players.P1.score,
       finalP2Score: state.players.P2.score,

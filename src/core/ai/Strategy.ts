@@ -17,7 +17,7 @@ export const BALANCED_WEIGHTS: StrategyWeights = {
   lightVoid: 100,
   reachKangJi: 50,
   guiyuanProgress: 140,
-  burstExtraTurn: 100,
+  burstExtraTurn: 120,
   breakOpponentGuiYi: 100,
   causeDamage: 60,
   suppressNode: 30,

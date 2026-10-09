@@ -10,6 +10,7 @@ describe('HeadlessMatch (Headless Simulation)', () => {
     expect(result.finalState).toBeDefined();
     expect(typeof result.finalP1Score).toBe('number');
     expect(typeof result.finalP2Score).toBe('number');
+    expect(result.closureType).toBeDefined();
     expect(result.record).toBeDefined();
     expect(result.record.actions.length).toBeGreaterThan(0);
   });
@@ -21,6 +22,8 @@ describe('HeadlessMatch (Headless Simulation)', () => {
 
     expect(result1.roundsPlayed).toBe(result2.roundsPlayed);
     expect(result1.winner).toBe(result2.winner);
+    expect(result1.endReason).toBe(result2.endReason);
+    expect(result1.closureType).toBe(result2.closureType);
     expect(result1.finalP1Score).toBe(result2.finalP1Score);
     expect(result1.finalP2Score).toBe(result2.finalP2Score);
     expect(result1.record).toEqual(result2.record);
