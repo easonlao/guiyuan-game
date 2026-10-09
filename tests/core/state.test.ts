@@ -53,7 +53,7 @@ describe('State Management & Boundary Rules', () => {
   it('should create initial game state with round 1 and P1 active', () => {
     const state = createInitialGameState();
     expect(state.round).toBe(1);
-    expect(state.maxRounds).toBe(60);
+    expect(state.maxRounds).toBe(30);
     expect(state.currentPlayer).toBe('P1');
     expect(state.isGameOver).toBe(false);
     expect(state.winner).toBeNull();

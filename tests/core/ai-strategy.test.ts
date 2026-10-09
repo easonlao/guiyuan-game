@@ -446,7 +446,7 @@ describe('AI Strategy Engine (src/core/ai)', () => {
       const result = turnManager.executeTurnWithStrategy(rushGuiyuanStrategy);
 
       expect(result.success).toBe(true);
-      expect(turnManager.getState().round).toBe(2);
+      expect(turnManager.getState().round).toBe(1);
       expect(turnManager.getState().currentPlayer).toBe('P2');
     });
   });

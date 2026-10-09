@@ -335,57 +335,57 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
     it('damage penalty flips victory when leader has heavy damage', () => {
       let state = createInitialGameState(1);
       // P1 has 2 damages, P2 has 0 damage.
-      // P1 score: 200 raw, P2 score: 120.
+      // P1 score: 200 raw, P2 score: 20 raw.
       state = {
         ...state,
         round: 1,
-        currentPlayer: 'P1',
+        currentPlayer: 'P2',
         players: {
           P1: {
             id: 'P1',
             score: 200,
             board: {
               ...createEmptyBoard(),
-              [WuXing.WOOD]: { yin: -1 as const, yang: -1 as const } // 2 damages => -100
+              [WuXing.WOOD]: { yin: -1 as const, yang: -1 as const } // 2 damages => -100 => 100
             }
           },
           P2: {
             id: 'P2',
-            score: 120,
+            score: 20,
             board: createEmptyBoard() // 0 damage
           }
         }
       };
 
-      // P1 does AUTO on FIRE (not repairing WOOD), score delta = 100
-      // P1 raw score: 300 - 100 (damage) = 200
-      // P2 score: 120 - 0 = 120
-      // P1 wins with 200 vs 120
+      // P2 does AUTO on FIRE yang, score delta = 100
+      // P1 score: 200 - 100 (damage) = 100
+      // P2 score: 20 + 100 - 0 = 120
+      // P2 wins with 120 vs 100
       const result = resolver.resolve(state, {
         actionType: ActionType.AUTO,
-        player: 'P1',
+        player: 'P2',
         element: WuXing.FIRE,
         polarity: Polarity.YANG
       });
 
-      expect(result.nextState.players.P1.score).toBe(200);
+      expect(result.nextState.players.P1.score).toBe(100);
       expect(result.nextState.players.P2.score).toBe(120);
-      expect(result.nextState.winner).toBe('P1');
+      expect(result.nextState.winner).toBe('P2');
     });
 
     it('ties after damage penalty result in P2 (后手) winning', () => {
       let state = createInitialGameState(1);
       // P1 has 1 damage: score 200 -> 150.
-      // P2 has 0 damage: score 150 -> 150.
+      // P2 has 0 damage: score 50 + 100 -> 150.
       // Equal score (150 vs 150) => P2 wins!
       state = {
         ...state,
         round: 1,
-        currentPlayer: 'P1',
+        currentPlayer: 'P2',
         players: {
           P1: {
             id: 'P1',
-            score: 100, // will get +100 from AUTO => 200 raw
+            score: 200,
             board: {
               ...createEmptyBoard(),
               [WuXing.EARTH]: { yin: -1 as const, yang: 0 as const } // 1 damage => -50 => 150
@@ -393,7 +393,7 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
           },
           P2: {
             id: 'P2',
-            score: 150,
+            score: 50, // will get +100 from AUTO => 150
             board: createEmptyBoard() // 0 damage => 150
           }
         }
@@ -401,7 +401,7 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
 
       const result = resolver.resolve(state, {
         actionType: ActionType.AUTO,
-        player: 'P1',
+        player: 'P2',
         element: WuXing.WOOD,
         polarity: Polarity.YANG
       });

@@ -33,7 +33,7 @@ export function createInitialPlayer(id: PlayerId): PlayerState {
 }
 
 /** 创建初始全局游戏状态 */
-export function createInitialGameState(maxRounds = 60): GameState {
+export function createInitialGameState(maxRounds = 30): GameState {
   return {
     round: 1,
     maxRounds,
@@ -66,6 +66,35 @@ export function isBoardGuiYuan(board: BoardState): boolean {
 }
 
 /**
+ * 统计盘面上已点亮 (>= 1) 的侧数
+ * 盘面总共有 5 个五行节点 * 2 侧 (阴/阳) = 10 侧
+ */
+export function countLightedSides(board: BoardState): number {
+  let count = 0;
+  for (const element of Object.values(WuXing)) {
+    if (board[element].yin >= 1) count++;
+    if (board[element].yang >= 1) count++;
+  }
+  return count;
+}
+
+/**
+ * 统计盘面上未点亮 (< 1，包含虚空 0 与道损 -1) 的侧数
+ */
+export function countUnlightedSides(board: BoardState): number {
+  return 10 - countLightedSides(board);
+}
+
+/**
+ * 判定盘面是否处于“听牌临界态” (TingPai)
+ * GDD 规则：己方盘面剩余未点亮侧数 (即等级 < 1 的侧数) <= 2 时，判定为听牌临界态
+ * （在单回合配合抽卡与爆发具备理论归元可能）
+ */
+export function isBoardTingPai(board: BoardState): boolean {
+  return countUnlightedSides(board) <= 2;
+}
+
+/**
  * 调整节点一侧等级，严格限制在 [-1, 2] 范围内
  * -1: 道损, 0: 虚空, 1: 点亮, 2: 加持
  */
@@ -75,7 +104,7 @@ export function clampNodeLevel(level: number): NodeLevel {
   return level as NodeLevel;
 }
 
-/** 计算盘面上的残留道损总数 (阴阳两侧为 -1 的数量之和) */
+/** 计算盘面的残留道损总数 (阴阳两侧为 -1 的数量之和) */
 export function countBoardDamage(board: BoardState): number {
   let count = 0;
   for (const element of Object.values(WuXing)) {
@@ -93,4 +122,5 @@ export function countBoardGuiYi(board: BoardState): number {
   }
   return count;
 }
+
 
