@@ -41,6 +41,13 @@ export interface GameEvents {
     round: number;
     player: PlayerId;
   };
+  'showdown:draw': {
+    round: number;
+    player: PlayerId;
+    tianGan: TianGanInfo;
+    success: boolean;
+    winner: PlayerId;
+  };
 }
 
 export type EventKey = keyof GameEvents;
