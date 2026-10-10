@@ -12,6 +12,10 @@ Canonical labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-hu
 
 Single-context. See `docs/agents/domain.md`.
 
+### Mutation testing
+
+门禁与做法见 `docs/MUTATION-TESTING.md`。
+
 ### Subagents
 
 The main thread dispatches and aggregates; code questions go to `Explore`.
