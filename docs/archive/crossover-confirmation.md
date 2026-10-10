@@ -1,5 +1,7 @@
 # Crossover detection and confirmation
 
+> **已归档（2026-10-10）**：本文描述的是已归档的旧 JS 实现（`legacy/src/logic/headless/`）。其中的模块名、导出符号（如 `runHeadlessMatch`）与 npm 脚本（如 `headless:compare` / `headless:evaluate`）均已不存在。现行 TS 实现见 `src/core/headless/`；现行口径见 `docs/headless/candidate-search.md`、`docs/headless/candidate-rule-design-and-screening.md` 与 `docs/GDD.md`。
+
 `src/js/logic/headless/CrossoverConfirmation.js` exposes three public seams:
 
 - `classifyPayoffCrossover({ criteria, opponents })` classifies paired terminal-value differences for two actions against exactly two opponents.
