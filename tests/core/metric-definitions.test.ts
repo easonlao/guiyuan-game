@@ -99,6 +99,76 @@ describe('陷阱 B: 占优结论必须附带跨策略对拼矩阵', () => {
     expect(() => assertDominanceVerdictHasMatrix(verdict, complete)).not.toThrow();
     expect(formatDominanceVerdict(verdict, complete)).toContain('激进压制');
   });
+
+  const matrixWith = (rate: number, matches = 2000): HeadToHeadMatrix => ({
+    strategies: ['激进压制', '平衡'],
+    cells: [
+      { p1Strategy: '激进压制', p2Strategy: '平衡', matches, seatBalancedWinRate: rate }
+    ]
+  });
+
+  it('真结论通过：矩阵实测显著高于 50% 时放行', () => {
+    expect(() => assertDominanceVerdictHasMatrix(verdict, matrixWith(0.7))).not.toThrow();
+  });
+
+  it('假结论被拒：矩阵实测低于 50% 时指出是哪一对、实际值多少', () => {
+    expect(() => assertDominanceVerdictHasMatrix(verdict, matrixWith(0.4))).toThrow(
+      /激进压制 vs 平衡.*40\.00%/
+    );
+  });
+
+  it('缺格被拒：结论点名的对手不在矩阵中时拒绝', () => {
+    const incomplete: HeadToHeadMatrix = {
+      strategies: ['激进压制', '纯推进'],
+      cells: [
+        {
+          p1Strategy: '激进压制',
+          p2Strategy: '纯推进',
+          matches: 2000,
+          seatBalancedWinRate: 0.7
+        }
+      ]
+    };
+    expect(() => assertDominanceVerdictHasMatrix(verdict, incomplete)).toThrow(/平衡/);
+  });
+
+  it('临界格不可判定：与 50% 无法区分的格子不能作为占优证据', () => {
+    // 审计中的真实临界格：归元冲刺 vs 纯推进 board-only 50.21%，每座次 2000 局。
+    const criticalVerdict: DominanceVerdict = { strategy: '归元冲刺', dominates: ['纯推进'] };
+    const matrix: HeadToHeadMatrix = {
+      strategies: ['归元冲刺', '纯推进'],
+      cells: [
+        {
+          p1Strategy: '归元冲刺',
+          p2Strategy: '纯推进',
+          matches: 4000,
+          seatBalancedWinRate: 0.5021
+        }
+      ]
+    };
+    expect(() => assertDominanceVerdictHasMatrix(criticalVerdict, matrix)).toThrow(/无法判定/);
+  });
+
+  it('样本不足被拒：高胜率但样本量不足时不能作为占优证据', () => {
+    expect(() => assertDominanceVerdictHasMatrix(verdict, matrixWith(0.9, 10))).toThrow(
+      /样本不足/
+    );
+  });
+
+  it('反向格按互补胜率读取：矩阵只存 B 对 A 时也能判定', () => {
+    const reversed: HeadToHeadMatrix = {
+      strategies: ['平衡', '激进压制'],
+      cells: [
+        {
+          p1Strategy: '平衡',
+          p2Strategy: '激进压制',
+          matches: 2000,
+          seatBalancedWinRate: 0.3
+        }
+      ]
+    };
+    expect(() => assertDominanceVerdictHasMatrix(verdict, reversed)).not.toThrow();
+  });
 });
 
 describe('陷阱 C: 流局率必须与先后手胜率成对输出', () => {
