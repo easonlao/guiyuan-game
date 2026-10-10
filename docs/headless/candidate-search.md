@@ -102,7 +102,7 @@ factor = floor + span × (countBoardGuiYi(行动前对手盘面) / 5)
 ```
 
 四舍五入取整。`countBoardGuiYi` 取**行动前**的对手盘面（`state.players[opponent].board`）。
-系数从 0.3（对手 0 个归一节点）到**有效上限 1.02**（对手 4 个归一节点）；`countBoardGuiYi === 5` 等价于该方已达成五行归元、对局当场判定（`State.ts:70,239`、`ActionResolver.ts:326,352-353,368-369`），故行动时对手最多 4 个。1.2 只在揭牌分支可达（对手已锁定归元、己方听牌揭牌）。**过零点**在 `0.3 + 0.9n/5 = 1` ⇒ `n ≈ 3.89`：对手 0–3 个归一节点是打折，只有 4 个才是加成。
+系数从 0.3（对手 0 个归一节点）到**有效上限 1.02**（对手 4 个归一节点）；`countBoardGuiYi === 5` 等价于该方已达成五行归元、对局当场判定（`State.ts:70,239`、`ActionResolver.ts:326,347-369`），故行动时对手最多 4 个。公式在 `count = 5` 时的端点 **1.2 规则上不可达**：该盘面即对手已归元、对局当场判定；若对手听牌则进入**不计分的**揭牌分支（`TurnManager.ts:141-226` 直接写 `isGameOver` / `winner` / `endReason` 并返回空，不调用 `resolver.resolve`）。1.2 只会被 headless 普查与测试夹具求值到（`ActionValueCensus.ts:218-241,276-280`、`tests/core/attack-progress-scale.test.ts:105-108`）。**过零点**在 `0.3 + 0.9n/5 = 1` ⇒ `n ≈ 3.89`：对手 0–3 个归一节点是打折，只有 4 个才是加成。
 
 **不缩放**：`ACTION.ATK` / `ACTION.BURST_ATK` 行为分、`GUI_YI_MILESTONE`、己方建设分
 （`REPAIR_DMG` / `LIGHT_UP` / `BLESSING`）。AI 估值器通过 `scoreDelta` 自动看到该变化。
@@ -176,7 +176,7 @@ export const TUNED_DYNAMIC_POLICY: DynamicSwitchPolicy = {
 | DISSIPATE | 是 | 6 | 3 | 0 | 否 |
 | PASS | 是 | 2 | 1 | 0 | 否 |
 
-没有动作在所有被测盘面上都被支配。压制侧价值沿 `oppGuiYiNodes` 轴从 0.3× 到有效上限 1.02×（揭牌分支 1.2×）单调上升，
+没有动作在所有被测盘面上都被支配。压制侧价值沿 `oppGuiYiNodes` 轴从 0.3× 到有效上限 1.02× 单调上升（公式端点 1.2× 规则上不可达，只被 headless 普查与测试夹具求值到），
 【破】在 `kangji/*` 盘面仍为最优档。
 
 ### 4.3 标准 3 — 护栏全绿：通过
