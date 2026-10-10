@@ -273,5 +273,232 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
       expect(result.nextState.round).toBe(1);
     });
   });
+
+  describe('Ticket 04: 终局、封顶与失败路径的真实行为', () => {
+    it('rejects every action once the game is already over, without mutating state', () => {
+      const gameOverState = {
+        ...createInitialGameState(),
+        isGameOver: true,
+        winner: 'P1' as const,
+        endReason: 'GUI_YUAN' as const
+      };
+
+      const result = resolver.resolve(gameOverState, {
+        actionType: ActionType.AUTO,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YANG
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.nextState).toBe(gameOverState);
+      expect(result.extraTurn).toBe(false);
+      expect(result.scoreDelta).toBe(0);
+    });
+
+    it('CONVERT gate: rejects a target side that is already lit, without granting an extra turn', () => {
+      const base = createInitialGameState();
+      const state = {
+        ...base,
+        players: {
+          ...base.players,
+          P1: {
+            ...base.players.P1,
+            board: {
+              ...base.players.P1.board,
+              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const }
+            }
+          }
+        }
+      };
+
+      const result = resolver.resolve(state, {
+        actionType: ActionType.CONVERT,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YIN
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.extraTurn).toBe(false);
+      expect(result.nextState).toBe(state);
+    });
+
+    it('AUTO on an already-blessed node (level 2) still succeeds but does not raise the level', () => {
+      const base = createInitialGameState();
+      const state = {
+        ...base,
+        players: {
+          ...base.players,
+          P1: {
+            ...base.players.P1,
+            board: {
+              ...base.players.P1.board,
+              [WuXing.WOOD]: { yin: 0 as const, yang: 2 as const }
+            }
+          }
+        }
+      };
+
+      const result = resolver.resolve(state, {
+        actionType: ActionType.AUTO,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YANG
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.nextState.players.P1.board[WuXing.WOOD].yang).toBe(2);
+    });
+
+    it('BURST consumes the requested YANG side of the source node', () => {
+      const base = createInitialGameState();
+      const state = {
+        ...base,
+        players: {
+          ...base.players,
+          P1: {
+            ...base.players.P1,
+            board: {
+              ...base.players.P1.board,
+              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const }
+            }
+          }
+        }
+      };
+
+      const result = resolver.resolve(state, {
+        actionType: ActionType.BURST,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        consumePolarity: Polarity.YANG,
+        polarity: Polarity.YANG
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.nextState.players.P1.board[WuXing.WOOD].yang).toBe(0);
+      expect(result.nextState.players.P1.board[WuXing.WOOD].yin).toBe(1);
+    });
+
+    it('BURST rejects a source node that is not yet GuiYi', () => {
+      const base = createInitialGameState();
+      const state = {
+        ...base,
+        players: {
+          ...base.players,
+          P1: {
+            ...base.players.P1,
+            board: {
+              ...base.players.P1.board,
+              [WuXing.WOOD]: { yin: 1 as const, yang: 0 as const }
+            }
+          }
+        }
+      };
+
+      const result = resolver.resolve(state, {
+        actionType: ActionType.BURST,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        consumePolarity: Polarity.YIN,
+        polarity: Polarity.YANG
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.extraTurn).toBe(false);
+      expect(result.nextState).toBe(state);
+    });
+
+    it('BURST_ATK rejects a source node that is not yet GuiYi', () => {
+      const base = createInitialGameState();
+      const state = {
+        ...base,
+        players: {
+          ...base.players,
+          P1: {
+            ...base.players.P1,
+            board: {
+              ...base.players.P1.board,
+              [WuXing.WOOD]: { yin: 1 as const, yang: 0 as const }
+            }
+          }
+        }
+      };
+
+      const result = resolver.resolve(state, {
+        actionType: ActionType.BURST_ATK,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        consumePolarity: Polarity.YANG,
+        polarity: Polarity.YANG
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.extraTurn).toBe(false);
+      expect(result.nextState).toBe(state);
+    });
+
+    it('BURST_ATK consumes the requested YIN side of the source node', () => {
+      const base = createInitialGameState();
+      const state = {
+        ...base,
+        players: {
+          ...base.players,
+          P1: {
+            ...base.players.P1,
+            board: {
+              ...base.players.P1.board,
+              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const }
+            }
+          }
+        }
+      };
+
+      const result = resolver.resolve(state, {
+        actionType: ActionType.BURST_ATK,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        consumePolarity: Polarity.YIN,
+        polarity: Polarity.YANG
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.nextState.players.P1.board[WuXing.WOOD].yin).toBe(0);
+      expect(result.nextState.players.P1.board[WuXing.WOOD].yang).toBe(1);
+    });
+
+    it('MAX_ROUNDS: deducts the damage penalty from the acting player (P2) score', () => {
+      const base = createInitialGameState(30);
+      const state = {
+        ...base,
+        round: 30,
+        currentPlayer: 'P2' as const,
+        players: {
+          P1: { ...base.players.P1, score: 500 },
+          P2: {
+            ...base.players.P2,
+            score: 500,
+            board: {
+              ...base.players.P2.board,
+              [WuXing.WOOD]: { yin: -1 as const, yang: 0 as const }
+            }
+          }
+        }
+      };
+
+      const result = resolver.resolve(state, {
+        actionType: ActionType.PASS,
+        player: 'P2'
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.nextState.isGameOver).toBe(true);
+      expect(result.nextState.endReason).toBe('MAX_ROUNDS');
+      // 行动方 P2 带 1 个道损：500 - 50 = 450；P1 无道损保持 500
+      expect(result.nextState.players.P2.score).toBe(450);
+      expect(result.nextState.players.P1.score).toBe(500);
+      expect(result.nextState.winner).toBe('P1');
+    });
+  });
 });
 
