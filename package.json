@@ -13,6 +13,7 @@
     "benchmark:headless": "npx tsx src/core/headless/HeadlessBenchmark.ts",
     "benchmark:experiment": "npx tsx src/core/headless/ExperimentRunner.ts",
     "benchmark:head-to-head": "npx tsx src/core/headless/ExperimentRunner.ts --scan head-to-head",
+    "benchmark:atk-marginal": "npx tsx src/core/headless/AtkMarginalReturn.ts",
     "build:minigame": "node scripts/build-minigame.mjs",
     "dev:minigame": "node scripts/build-minigame.mjs --watch",
     "stryker": "stryker run"
