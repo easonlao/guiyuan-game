@@ -24,7 +24,7 @@ Open the brief with: **"Start with `codegraph_explore`; use `read`/`grep` only f
 |---|---|---|
 | `Explore` | code questions, recon | `research`, `diagnosing-bugs`, `codebase-design` |
 | `Reviewer` | the two `code-review` axes, verification of landed work | `code-review` |
-| `Executor` | implementing one ticket | `implement`, `implement-spec`, `tdd` |
+| `Executor` | implementing one ticket | `implement`, `tdd` |
 | `ExpertAdvisor` | design and modeling decisions | — (`skills: false`) |
 
 Inside a subagent there is no nested dispatch, so it calls `codegraph_explore` directly.
