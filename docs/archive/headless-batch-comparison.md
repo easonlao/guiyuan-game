@@ -1,5 +1,7 @@
 # Headless batch strategy comparison
 
+> **已归档（2026-10-10）**：本文描述的是已归档的旧 JS 实现（`legacy/src/logic/headless/`）。其中的模块名、导出符号（如 `runHeadlessMatch`）与 npm 脚本（如 `headless:compare` / `headless:evaluate`）均已不存在。现行 TS 实现见 `src/core/headless/`；现行口径见 `docs/headless/candidate-search.md`、`docs/headless/candidate-rule-design-and-screening.md` 与 `docs/GDD.md`。
+
 `src/js/logic/headless/BatchComparison.js` exports `runBatchComparison`. It compares one formal scoring baseline with one selected scoring configuration by replaying paired seeded matches. The executable CLI writes the complete JSON report and prints a short human-readable summary.
 
 ## Run from the command line
