@@ -60,3 +60,18 @@ status: accepted
 本文档成文时，`round` 每名玩家行动一次即加 1。本文档的「60 回合上限」指 **60 次行动机会**，即今日的 **30 大回合**。游戏长度未变，仅计数单位改为大回合。换算依据与交叉验证见 ADR 0001 的「术语说明」节。
 
 - 「数据支撑」第 2 条「在第 30 回合分数与点亮进展发生背离的 453 局」同样使用旧单位：其「第 30 回合」= 第 30 次行动机会 = 今日的**第 15 大回合**（中盘），并非回合上限结算时的第 30 大回合。原文「中盘背离」的定位与此一致。
+
+## 勘误：稀有度路径已是死代码（后续修订追加）
+
+本节只记录现状，不改变上述决策本身。
+
+本文「决定 1」描述的稀有度黑名单与稀有度加成机制，**在当前 TS 核心中已无生产消费者**：
+
+- `ScoreCalculator.applyRarityBonus`（`src/core/logic/ScoreCalculator.ts:297`）与 `isNoRarityAction`（`:290`）在生产路径**无调用点**，仅被 `tests/core/scoring-attack-buff-rarity.test.ts` 与死旋钮普查引用；
+- 因此 `RARITY_MULTIPLIER`（`:104`）、`NO_RARITY_ACTIONS`（`:107`）、`ACTION_PROBABILITY`（`:125`）均不生效；
+- `NO_RARITY_ACTIONS` 的实际取值也已扩为 `[BURST, BURST_ATK, DISSIPATE, PASS]`，多于本文原文的 `['BURST', 'BURST_ATK']`；
+- 本文「决定 1」提到的 `StateScoreRecorder` 从未存在于 `src/`，仅存于旧 JS 路径 `legacy/src/state/StateScoreRecorder.js`。
+
+**本文「决定 2」（攻击压制状态分 2.5× 硬编码）仍然有效**：`CAUSE_DMG` 阳 300 / 阴 250、`BREAK_LIGHT` 阳 200 / 阴 150、`WEAKEN` 200 与生产 `POINTS_CONFIG` 一致（`src/core/logic/ScoreCalculator.ts:98-100`）。后续攻击进度定价（ADR 0011「采纳记录」）在此基础上对攻击状态分做进度缩放。
+
+稀有度链的处置（接线或删除）由 ADR 0011「决策 3」定为「另立工单」；删除工单见本地 issue tracker `.scratch/dead-scoring-code-removal/`（该目录不入版本库）。逐参数证据见 `docs/headless/knob-census.md`。
