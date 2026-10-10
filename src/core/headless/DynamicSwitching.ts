@@ -339,6 +339,32 @@ export const DEFAULT_DYNAMIC_POLICY: DynamicSwitchPolicy = {
   suppressWeights: AGGRESSIVE_WEIGHTS
 };
 
+/**
+ * Ticket 05 调优动态策略（dyn-v3-self7）。
+ *
+ * 候选 A（攻击进度定价）下 `DEFAULT_DYNAMIC_POLICY` 的推进模式（归元冲刺权重）打不过平衡，
+ * 属「该实现不足」而非「设计意图不成立」。把推进模式换成「激进骨架 + 建设项上调」，
+ * 并放宽切换阈值（己方还差行动 <= 7 即推进）后，动态策略对全部 7 个静态预设显著全胜。
+ * 只使用既有旋钮；不进入 `ALL_DYNAMIC_POLICIES`，不改动生产默认。
+ */
+export const TUNED_DYNAMIC_POLICY: DynamicSwitchPolicy = {
+  name: '动态切换(调优v3)',
+  advanceSelfMax: 7,
+  minLeadForAdvance: 0,
+  advanceWhenOpponentActionsAtLeast: Number.POSITIVE_INFINITY,
+  advanceWhenLeadAtLeast: Number.POSITIVE_INFINITY,
+  shouldAdvanceWhenNoAtkTempo: false,
+  shouldAdvanceWhenAtkTempoZero: true,
+  advanceWeights: {
+    ...AGGRESSIVE_WEIGHTS,
+    repairDamage: 100,
+    lightVoid: 100,
+    reachGuiYi: 100,
+    guiyuanProgress: 80
+  },
+  suppressWeights: AGGRESSIVE_WEIGHTS
+};
+
 /** 对照策略 A：只看赛跑（己方快归一且领先才推进），忽略【破】节奏。 */
 export const RACE_ONLY_POLICY: DynamicSwitchPolicy = {
   name: '动态切换(仅赛跑)',

@@ -66,6 +66,7 @@ import {
 } from './ActionValueCensus.js';
 import {
   DEFAULT_DYNAMIC_POLICY,
+  TUNED_DYNAMIC_POLICY,
   runDynamicSwitchingExperiment,
   type DynamicPolicyReport,
   type DynamicSwitchPolicy,
@@ -152,6 +153,44 @@ export const PRODUCTION_CANDIDATE: CandidateSpec = {
   pointsConfig: POINTS_CONFIG,
   rules: {},
   settlementMode: 'scoring'
+};
+
+/**
+ * Ticket 05 候选 A 的计分配置：攻击进度定价。
+ * 生产 `POINTS_CONFIG` 不设置该字段，未启用时行为逐字节不变。
+ */
+export const ATTACK_PROGRESS_SCALE_POINTS_CONFIG: PointsConfig = {
+  ...POINTS_CONFIG,
+  ATTACK_PROGRESS_SCALE: { floor: 0.3, span: 0.9 }
+};
+
+/** Ticket 05 候选 A（进度定价）的完整声明。 */
+export const TICKET_05_CANDIDATE: CandidateSpec = {
+  name: 'progress-pricing',
+  description: '攻击进度定价（floor=0.3 / span=0.9）：压制的相对回报随对手归一进度上升',
+  pointsConfig: ATTACK_PROGRESS_SCALE_POINTS_CONFIG,
+  settlementMode: 'scoring'
+};
+
+/** CLI 可选择的注册候选：候选声明 + 标准 4 使用的动态策略。 */
+export interface RegisteredCandidate {
+  readonly spec: CandidateSpec;
+  readonly dynamicPolicies: readonly DynamicSwitchPolicy[];
+}
+
+/**
+ * 已登记候选。默认生产配置 + 默认动态策略；`progress-pricing` 为 ticket 05 候选 A，
+ * 标准 4 使用其调优动态策略（dyn-v3-self7）。默认行为不被改变。
+ */
+export const CANDIDATE_REGISTRY: Readonly<Record<string, RegisteredCandidate>> = {
+  [PRODUCTION_CANDIDATE.name]: {
+    spec: PRODUCTION_CANDIDATE,
+    dynamicPolicies: [DEFAULT_DYNAMIC_POLICY]
+  },
+  [TICKET_05_CANDIDATE.name]: {
+    spec: TICKET_05_CANDIDATE,
+    dynamicPolicies: [TUNED_DYNAMIC_POLICY]
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -943,8 +982,9 @@ const HELP_TEXT = `归元弈 (Guiyuan) 候选验证命令 (Ticket 05)
   npm run benchmark:candidate-validation -- [选项]
 
 选项:
-  --name <name>         候选名称 (默认 production)
-  --description <text>  候选说明
+  --candidate <name>    注册候选: production (默认) / progress-pricing (ticket 05 候选 A)
+  --name <name>         报告标题覆盖 (默认取注册候选名)
+  --description <text>  候选说明覆盖
   --mode <mode>         终局结算方式: scoring (默认) / board-only
   --matches <N>         对拼矩阵每座次样本量 (默认 ${DEFAULT_VALIDATION_MATCHES_PER_SEAT})
   --seed <N>            对拼矩阵种子基数 (默认 ${DEFAULT_BASE_SEED})
@@ -964,6 +1004,8 @@ const HELP_TEXT = `归元弈 (Guiyuan) 候选验证命令 (Ticket 05)
 
 export interface ParsedCandidateArgs {
   readonly isHelp: boolean;
+  /** 注册候选名；默认 `production`。 */
+  readonly candidate: string;
   readonly name: string;
   readonly description: string;
   readonly mode: SettlementMode;
@@ -977,6 +1019,7 @@ export interface ParsedCandidateArgs {
 /** 解析 CLI 参数；未知参数或非法值抛错。 */
 export function parseCandidateArgs(argv: readonly string[]): ParsedCandidateArgs {
   let isHelp = false;
+  let candidate = PRODUCTION_CANDIDATE.name;
   let name = PRODUCTION_CANDIDATE.name;
   let description = PRODUCTION_CANDIDATE.description;
   let mode: SettlementMode = 'scoring';
@@ -990,6 +1033,16 @@ export function parseCandidateArgs(argv: readonly string[]): ParsedCandidateArgs
     const arg = argv[i];
     if (arg === '--help' || arg === '-h') {
       isHelp = true;
+      continue;
+    }
+    if (arg === '--candidate') {
+      const value = argv[++i];
+      if (!value || !CANDIDATE_REGISTRY[value]) {
+        throw new Error(
+          `未知候选: ${value}（可选: ${Object.keys(CANDIDATE_REGISTRY).join(' / ')}）`
+        );
+      }
+      candidate = value;
       continue;
     }
     if (arg === '--name') {
@@ -1043,7 +1096,7 @@ export function parseCandidateArgs(argv: readonly string[]): ParsedCandidateArgs
     throw new Error(`未知参数: ${arg}`);
   }
 
-  return { isHelp, name, description, mode, matches, seed, maxRounds, guardrailMatches, guardrailSeed };
+  return { isHelp, candidate, name, description, mode, matches, seed, maxRounds, guardrailMatches, guardrailSeed };
 }
 
 runCliIfDirect(import.meta.url, () => {
@@ -1055,13 +1108,21 @@ runCliIfDirect(import.meta.url, () => {
   const matches = parsed.matches ?? DEFAULT_VALIDATION_MATCHES_PER_SEAT;
   const seed = parsed.seed ?? DEFAULT_BASE_SEED;
   const maxRounds = parsed.maxRounds ?? DEFAULT_MAX_ROUNDS;
+  const registered = CANDIDATE_REGISTRY[parsed.candidate];
+  const name =
+    parsed.name !== PRODUCTION_CANDIDATE.name ? parsed.name : registered.spec.name;
+  const description =
+    parsed.description !== PRODUCTION_CANDIDATE.description
+      ? parsed.description
+      : registered.spec.description;
   console.log(
-    `🚀 候选验证 (${parsed.name}, ${parsed.mode}): 对拼 ${matches} 局/座次, 种子 ${seed}, 回合上限 ${maxRounds}...`
+    `🚀 候选验证 (${name}, ${parsed.mode}): 对拼 ${matches} 局/座次, 种子 ${seed}, 回合上限 ${maxRounds}...`
   );
   const report = validateCandidate(
     {
-      name: parsed.name,
-      description: parsed.description,
+      ...registered.spec,
+      name,
+      description,
       settlementMode: parsed.mode
     },
     {
@@ -1069,7 +1130,8 @@ runCliIfDirect(import.meta.url, () => {
       seed,
       maxRounds,
       guardrailMatches: parsed.guardrailMatches,
-      guardrailSeed: parsed.guardrailSeed
+      guardrailSeed: parsed.guardrailSeed,
+      dynamicPolicies: registered.dynamicPolicies
     }
   );
   console.log(formatCandidateValidationReport(report));

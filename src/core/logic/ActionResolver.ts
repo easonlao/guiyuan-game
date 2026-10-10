@@ -15,13 +15,15 @@ import {
   OVERCOMING_CYCLE,
   WuXing,
   BoardState,
-  NodeData
+  NodeData,
+  NodeLevel
 } from '../types/domain.js';
 import {
   clampNodeLevel,
   isBoardGuiYuan,
   isNodeGuiYi,
   countBoardDamage,
+  countBoardGuiYi,
   isBoardTingPai
 } from './State.js';
 import { ScoreCalculator } from './ScoreCalculator.js';
@@ -29,6 +31,30 @@ import { ScoreCalculator } from './ScoreCalculator.js';
 
 export class ActionResolver {
   constructor(private readonly scoreCalculator: ScoreCalculator = new ScoreCalculator()) {}
+
+  /**
+   * 攻击状态分按行动前对手盘面归一进度定价（ticket 05 候选 A）。
+   *
+   * 只缩放攻击状态分（CAUSE_DMG / BREAK_LIGHT / WEAKEN）；行为分、里程碑与
+   * 己方建设分不受影响。`ATTACK_PROGRESS_SCALE` 未配置时恒等。
+   */
+  private scaledAttackTransitionPoints(
+    prevLevel: NodeLevel,
+    newLevel: NodeLevel,
+    polarity: Polarity,
+    opponentBoardBeforeAction: BoardState
+  ): number {
+    const points = this.scoreCalculator.calculateTransitionPoints(
+      prevLevel,
+      newLevel,
+      polarity,
+      true
+    );
+    const scale = this.scoreCalculator.attackProgressScale(
+      countBoardGuiYi(opponentBoardBeforeAction)
+    );
+    return Math.round(points * scale);
+  }
 
   /**
    * 解析动作执行
@@ -156,7 +182,12 @@ export class ActionResolver {
         const prevLevel = targetNode[polarity];
         const newLevel = clampNodeLevel(prevLevel - 1);
         patchOpponentNode(targetElement, { [polarity]: newLevel });
-        scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, polarity, true);
+        scoreDelta += this.scaledAttackTransitionPoints(
+          prevLevel,
+          newLevel,
+          polarity,
+          opponentPlayer.board
+        );
         success = true;
         break;
       }
@@ -215,7 +246,12 @@ export class ActionResolver {
         patchOpponentNode(targetElement, {
           [targetPolarity]: newLevel
         });
-        scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, targetPolarity, true);
+        scoreDelta += this.scaledAttackTransitionPoints(
+          prevLevel,
+          newLevel,
+          targetPolarity,
+          opponentPlayer.board
+        );
         extraTurn = true;
         success = true;
         break;

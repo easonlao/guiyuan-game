@@ -26,6 +26,18 @@ export interface StateChangePointsConfig {
   readonly WEAKEN: number;
 }
 
+/**
+ * 攻击进度定价（ticket 05 候选 A）。
+ *
+ * 攻击状态分（CAUSE_DMG / BREAK_LIGHT / WEAKEN）乘以
+ *   `floor + span × (行动前对手盘面归一节点数 / 5)`。
+ * 未配置时恒等（factor = 1），生产行为逐字节不变。
+ */
+export interface AttackProgressScale {
+  readonly floor: number;
+  readonly span: number;
+}
+
 export interface PointsConfig {
   readonly ACTION: ActionPointsConfig;
   readonly STATE_CHANGE: StateChangePointsConfig;
@@ -33,6 +45,8 @@ export interface PointsConfig {
   readonly NO_RARITY_ACTIONS: readonly ActionType[];
   readonly GUI_YI_MILESTONE?: number;
   readonly DAMAGE_PENALTY?: number;
+  /** 攻击进度定价；缺省不配置（恒等）。见 `AttackProgressScale`。 */
+  readonly ATTACK_PROGRESS_SCALE?: AttackProgressScale;
 }
 
 /** 节点归一里程碑奖励常量 (+60分) */
@@ -163,6 +177,20 @@ export class ScoreCalculator {
    */
   calculateActionPoints(actionType: ActionType): number {
     return this.config.ACTION[actionType] ?? 0;
+  }
+
+  /**
+   * 攻击进度定价系数（ticket 05 候选 A）。
+   *
+   * 以行动前对手盘面已归一节点数（0–5）线性插值：`floor + span × (count / 5)`。
+   * 未配置 `ATTACK_PROGRESS_SCALE` 时返回恒等 1。调用方负责四舍五入与只作用于攻击状态分。
+   */
+  attackProgressScale(opponentGuiYiCount: number): number {
+    const scale = this.config.ATTACK_PROGRESS_SCALE;
+    if (!scale) {
+      return 1;
+    }
+    return scale.floor + scale.span * (opponentGuiYiCount / 5);
   }
 
   /**
