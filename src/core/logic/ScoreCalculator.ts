@@ -1,7 +1,7 @@
 /**
  * 归元弈 (Guiyuan) - 双轨制计分器 (ScoreCalculator)
  * 纯 TS 规范，实现 ADR 0002 规定的行为分与状态分双轨制结算、
- * 2.5 倍攻击压制加成以及爆发动作稀有度黑名单过滤
+ * 2.5 倍攻击压制加成
  */
 
 import { ActionType, NodeLevel, Polarity } from '../types/domain.js';
@@ -13,8 +13,6 @@ export interface ActionPointsConfig {
   readonly ATK: number;
   readonly BURST: number;
   readonly BURST_ATK: number;
-  readonly DISSIPATE: number;
-  readonly PASS: number;
 }
 
 export interface StateChangePointsConfig {
@@ -55,8 +53,6 @@ export interface RaceDiffPricing {
 export interface PointsConfig {
   readonly ACTION: ActionPointsConfig;
   readonly STATE_CHANGE: StateChangePointsConfig;
-  readonly RARITY_MULTIPLIER: number;
-  readonly NO_RARITY_ACTIONS: readonly ActionType[];
   readonly GUI_YI_MILESTONE?: number;
   readonly DAMAGE_PENALTY?: number;
   /** 攻击进度定价；缺省不配置（恒等）。见 `AttackProgressScale`。 */
@@ -82,9 +78,7 @@ export const POINTS_CONFIG: PointsConfig = {
     TRANS: 30,
     ATK: 40,
     BURST: 100,
-    BURST_ATK: 80,
-    DISSIPATE: 0,
-    PASS: 0
+    BURST_ATK: 80
   },
 
   // 【状态分】节点状态变化的分数（已硬编码 2.5 倍攻击压制得分）
@@ -100,12 +94,6 @@ export const POINTS_CONFIG: PointsConfig = {
     WEAKEN: 200                           // 2 -> 1 削弱加持
   },
 
-  // 稀有度乘数
-  RARITY_MULTIPLIER: 1.5,
-
-  // 稀有度黑名单（严禁享受稀有度加成的动作类型）
-  NO_RARITY_ACTIONS: [ActionType.BURST, ActionType.BURST_ATK, ActionType.DISSIPATE, ActionType.PASS],
-
   // 节点归一里程碑奖励分
   GUI_YI_MILESTONE: 60,
 
@@ -117,43 +105,6 @@ export const POINTS_CONFIG: PointsConfig = {
   // 让压制的相对回报随对手归一进度上升、在对手尚未归一时下降。
   // 采纳记录与四标准证据见 docs/adr/0011-balance-route-fix-rules.md 追加节。
   ATTACK_PROGRESS_SCALE: { floor: 0.3, span: 0.9 }
-};
-
-/**
- * 动作基础发生概率（用于稀有度加成计算）
- */
-export const ACTION_PROBABILITY: Readonly<Record<ActionType, number>> = {
-  [ActionType.AUTO]: 1.0,
-  [ActionType.ATK]: 0.518,
-  [ActionType.TRANS]: 0.243,
-  [ActionType.CONVERT]: 0.167,
-  [ActionType.BURST]: 0.035,
-  [ActionType.BURST_ATK]: 0.036,
-  [ActionType.DISSIPATE]: 0.02,
-  [ActionType.PASS]: 0
-};
-
-/**
- * 向后兼容的简单配置接口
- */
-export interface ScoreConfig {
-  readonly repairPoints: number;
-  readonly lightUpPoints: number;
-  readonly blessPoints: number;
-  readonly damageEnemyPoints: number;
-  readonly burstBonusPoints: number;
-  readonly guiYiMilestone?: number;
-  readonly damagePenalty?: number;
-}
-
-export const DEFAULT_SCORE_CONFIG: ScoreConfig = {
-  repairPoints: 200,
-  lightUpPoints: 100,
-  blessPoints: 200,
-  damageEnemyPoints: 40,
-  burstBonusPoints: 100,
-  guiYiMilestone: 60,
-  damagePenalty: 50
 };
 
 export class ScoreCalculator {
@@ -198,7 +149,10 @@ export class ScoreCalculator {
    * 计算指定动作的行为基础分
    */
   calculateActionPoints(actionType: ActionType): number {
-    return this.config.ACTION[actionType] ?? 0;
+    // `ACTION` 只声明有基础分的动作；消散 (DISSIPATE) 与过牌 (PASS) 由规则
+    // 强制计 0 分，不在配置内，查不到即回退 0。
+    const actionPoints: Partial<Record<ActionType, number>> = this.config.ACTION;
+    return actionPoints[actionType] ?? 0;
   }
 
   /**
@@ -282,29 +236,5 @@ export class ScoreCalculator {
     }
 
     return 0;
-  }
-
-  /**
-   * 判断动作是否命中稀有度黑名单
-   */
-  isNoRarityAction(actionType: ActionType): boolean {
-    return this.config.NO_RARITY_ACTIONS.includes(actionType);
-  }
-
-  /**
-   * 应用稀有度加成：命中黑名单动作直接返回原分值
-   */
-  applyRarityBonus(
-    score: number,
-    actionType: ActionType,
-    multiplier: number = this.config.RARITY_MULTIPLIER
-  ): number {
-    if (score === 0) return 0;
-    if (this.isNoRarityAction(actionType)) {
-      return score;
-    }
-    const probability = ACTION_PROBABILITY[actionType] ?? 0.5;
-    const rarityBonus = score * (1 - probability) * multiplier;
-    return Math.round(score + rarityBonus);
   }
 }
