@@ -4,8 +4,11 @@ import {
   runHeadToHeadMatrix,
   findSeatBalancedWinRate,
   toHeadToHeadMatrix,
+  computeDominanceVerdicts,
+  compareHeadToHeadMatrices,
   formatExperimentReport,
   formatHeadToHeadReport,
+  formatHeadToHeadComparisonReport,
   formatDominanceSection,
   formatCombinedReport,
   parseExperimentArgs,
@@ -14,6 +17,11 @@ import {
   DEFAULT_SCORE_CONFIG_VARIANTS,
   DEFAULT_RULE_MODES,
   DEFAULT_MATCHES_PER_CELL
+} from '../../src/core/headless/ExperimentRunner.js';
+import type {
+  HeadToHeadMatchup,
+  HeadToHeadReport,
+  RuleMode
 } from '../../src/core/headless/ExperimentRunner.js';
 import {
   balancedStrategy,
@@ -26,6 +34,44 @@ import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
 
 const MAX_ROUNDS = 30;
 const BASE_SEED = 10000;
+
+/** 构造一个仅用于逐格对照纯函数测试的合成对拼矩阵。 */
+function syntheticMatchup(strategyA: string, strategyB: string, rate: number): HeadToHeadMatchup {
+  return {
+    strategyA,
+    strategyB,
+    matches: 100,
+    matchesPerSeat: 50,
+    seatBalancedWinRate: rate,
+    aWinRateAsP1: rate,
+    aWinRateAsP2: rate,
+    bWinRateAsP1: 1 - rate,
+    bWinRateAsP2: 1 - rate,
+    drawRate: 0,
+    trueDrawRate: 0,
+    guiYuanRate: 1,
+    avgRounds: 20,
+    p1WinRate: 0.5,
+    p2WinRate: 0.5,
+    opponentResidualDamage: 0
+  };
+}
+
+function syntheticReport(
+  mode: RuleMode,
+  pairs: readonly (readonly [string, string, number])[]
+): HeadToHeadReport {
+  const strategies = [...new Set(pairs.flatMap(([a, b]) => [a, b]))];
+  return {
+    strategies,
+    matchups: pairs.map(([a, b, rate]) => syntheticMatchup(a, b, rate)),
+    matchesPerSeat: 50,
+    baseSeed: 1,
+    maxRounds: MAX_ROUNDS,
+    mode,
+    scoreConfigName: 'default'
+  };
+}
 
 describe('Ticket 06 - 策略族 (strategy family)', () => {
   it('把四个权重预设、纯推进、纯压制与剥离计分并列为七个一等策略', () => {
@@ -259,11 +305,37 @@ describe('Ticket 06 - 对拼矩阵座次平衡 (seat balancing)', () => {
     });
     const matchup = report.matchups[0];
 
-    // 座次平衡胜率 = 两个座次胜率的平均 + 半场流局（保证互补）
+    // 座次平衡胜率 = 两个座次胜率的平均 + 半场平局（保证互补）
     expect(matchup.seatBalancedWinRate).toBeCloseTo(
-      (matchup.aWinRateAsP1 + matchup.aWinRateAsP2) / 2 + 0.5 * matchup.drawRate,
+      (matchup.aWinRateAsP1 + matchup.aWinRateAsP2) / 2 + 0.5 * matchup.trueDrawRate,
       10
     );
+  });
+
+  it('对拼矩阵的 drawRate 是流局率（= 1 - 归元率），不是平局率', () => {
+    const report = runHeadToHeadMatrix({
+      strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 3),
+      matches: 100,
+      baseSeed: BASE_SEED,
+      maxRounds: MAX_ROUNDS
+    });
+
+    for (const matchup of report.matchups) {
+      expect(matchup.drawRate).toBeCloseTo(1 - matchup.guiYuanRate, 10);
+    }
+    // 压制型对局存在回合上限结算，流局率必须非零（旧实现误报为 0）
+    expect(report.matchups.some(matchup => matchup.drawRate > 0)).toBe(true);
+  });
+
+  it('对拼矩阵可指定 board-only 规则模式', () => {
+    const report = runHeadToHeadMatrix({
+      strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 2),
+      matches: 5,
+      baseSeed: BASE_SEED,
+      maxRounds: MAX_ROUNDS,
+      mode: 'board-only'
+    });
+    expect(report.mode).toBe('board-only');
   });
 
   it('对拼报告可适配为 Metrics.ts 的 HeadToHeadMatrix，覆盖每个有序对', () => {
@@ -361,23 +433,110 @@ describe('Ticket 06 - 报告输出 (paste-able markdown)', () => {
     expect(markdown).toContain('跨策略对拼矩阵');
   });
 
-  it('CLI 参数解析：默认 all、支持 --scan/--matches/--seed/--max-rounds，未知参数抛错', () => {
+  it('CLI 参数解析：默认 all/scoring、支持 --scan/--mode/--matches/--seed/--max-rounds，未知参数抛错', () => {
     expect(parseExperimentArgs([])).toEqual({
       help: false,
       scan: 'all',
+      mode: 'scoring',
       matches: undefined,
       baseSeed: undefined,
       maxRounds: undefined
     });
     expect(
       parseExperimentArgs(['--scan', 'head-to-head', '--matches', '50', '--seed', '7', '--max-rounds', '30'])
-    ).toEqual({ help: false, scan: 'head-to-head', matches: 50, baseSeed: 7, maxRounds: 30 });
+    ).toEqual({
+      help: false,
+      scan: 'head-to-head',
+      mode: 'scoring',
+      matches: 50,
+      baseSeed: 7,
+      maxRounds: 30
+    });
+    expect(parseExperimentArgs(['--mode', 'board-only']).mode).toBe('board-only');
+    expect(parseExperimentArgs(['--mode', 'both']).mode).toBe('both');
     expect(parseExperimentArgs(['--help']).help).toBe(true);
     expect(() => parseExperimentArgs(['--scan', 'nope'])).toThrow(/未知扫描类型/);
+    expect(() => parseExperimentArgs(['--mode', 'nope'])).toThrow(/未知规则模式/);
     expect(() => parseExperimentArgs(['--bogus'])).toThrow(/未知参数/);
   });
 
   it('默认每格样本量足以复现基线且 CLI 默认值有定义', () => {
     expect(DEFAULT_MATCHES_PER_CELL).toBeGreaterThanOrEqual(2000);
+  });
+});
+
+describe('Ticket 09 - 计分轴开启 vs 关闭 (board-only) 逐格对照', () => {
+  const scoringPairs = [
+    ['A', 'B', 0.6],
+    ['B', 'A', 0.4],
+    ['A', 'C', 0.5],
+    ['C', 'A', 0.5],
+    ['B', 'C', 0.7],
+    ['C', 'B', 0.3]
+  ] as const;
+  const boardPairs = [
+    ['A', 'B', 0.4],
+    ['B', 'A', 0.6],
+    ['A', 'C', 0.5],
+    ['C', 'A', 0.5],
+    ['B', 'C', 0.7],
+    ['C', 'B', 0.3]
+  ] as const;
+
+  it('逐格对照识别强弱翻转，tie 保持不变，互补对同时翻转', () => {
+    const comparison = compareHeadToHeadMatrices(
+      syntheticReport('scoring', scoringPairs),
+      syntheticReport('board-only', boardPairs)
+    );
+
+    expect(comparison.matchups).toHaveLength(6);
+    expect(comparison.flips.map(flip => `${flip.strategyA}->${flip.strategyB}`)).toEqual([
+      'A->B',
+      'B->A'
+    ]);
+    const ab = comparison.flips.find(flip => flip.strategyA === 'A')!;
+    expect(ab.scoringRelation).toBe('strong');
+    expect(ab.boardOnlyRelation).toBe('weak');
+    expect(ab.delta).toBeCloseTo(-0.2, 10);
+    // A 对 C 两模式都是 50%，不是翻转
+    expect(comparison.flips.some(flip => flip.strategyB === 'C')).toBe(false);
+  });
+
+  it('逐格对照的占优集合与矩阵一致，并由矩阵守卫支撑', () => {
+    const comparison = compareHeadToHeadMatrices(
+      syntheticReport('scoring', scoringPairs),
+      syntheticReport('board-only', boardPairs)
+    );
+    const b = comparison.dominance.find(verdict => verdict.strategy === 'B')!;
+    expect(b.scoringDominates).toEqual(['C']);
+    expect(b.boardOnlyDominates).toEqual(['A', 'C']);
+    expect(b.scoringDominatesAll).toBe(false);
+    expect(b.boardOnlyDominatesAll).toBe(true);
+
+    const markdown = formatHeadToHeadComparisonReport(comparison);
+    expect(markdown).toContain('计分轴开启 (scoring)');
+    expect(markdown).toContain('计分轴关闭 (board-only)');
+    expect(markdown).toContain('强弱关系翻转');
+    expect(markdown).toContain('流局率与先手胜率对照');
+    expect(markdown).toContain('占优结论对照');
+    expect(markdown).toContain('| A | B |');
+  });
+
+  it('computeDominanceVerdicts 为每个策略给出严格占优对象', () => {
+    const verdicts = computeDominanceVerdicts(
+      syntheticReport('scoring', scoringPairs)
+    );
+    expect(verdicts.map(verdict => verdict.strategy)).toEqual(['A', 'B', 'C']);
+    const c = verdicts.find(verdict => verdict.strategy === 'C')!;
+    expect(c.dominates).toEqual([]);
+  });
+
+  it('策略族不一致时拒绝逐格对照', () => {
+    expect(() =>
+      compareHeadToHeadMatrices(
+        syntheticReport('scoring', [['A', 'B', 0.6], ['B', 'A', 0.4]]),
+        syntheticReport('board-only', [['A', 'C', 0.4], ['C', 'A', 0.6]])
+      )
+    ).toThrow(/同一策略族/);
   });
 });
