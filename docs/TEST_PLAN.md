@@ -38,10 +38,14 @@
 
 由于 AI 生成的代码有时会看似通过了测试，但实际上只是“侥幸通过”（比如测试断言写得太宽泛），我们需要引入**突变测试 (Mutation Testing)** 来检验测试本身的健壮性。
 
-* **测试工具**：[Stryker.js](https://stryker-mutator.io/) (`npm run stryker`)
+* **测试工具**：[Stryker.js](https://stryker-mutator.io/) (`npm run stryker`)，配置见 `stryker.config.json`（`mutate` 覆盖 `src/core/logic/**/*.ts`）。
 * **执行时机**：**发布前 (Pre-release) 或 核心模块重构完毕后**。日常高频开发无需运行。
 * **运行机制**：Stryker 会故意修改你的业务代码（例如把 `if (score >= 1)` 改成 `if (score > 1)`），然后运行 Vitest。如果测试仍然通过，说明这个“突变体存活了”，意味着你的测试用例存在漏洞（没有覆盖到边界值）。
-* **准入红线**：核心计算逻辑的 **Mutation Score 必须 >= 80%**。
+* **准入红线**：核心计算逻辑的 **Mutation Score 目标 >= 80%**。
+
+> **现状（2026-10-10）**：这条 80% 红线**未被强制**——`stryker.config.json` 未配置任何 `thresholds`。已修两个阻断问题：(1) `tests/core/candidate-validation.test.ts` 的重仿真用例在插桩下超过默认 `hookTimeout`，已通过 `vitest.stryker.config.ts` 将其排除出 Stryker 测试集；(2) `coverageAnalysis: "perTest"` 在 Stryker 10 + Vitest 5 下退化为「0 个测试/突变体」（全部误报存活），已改为 `"off"`。
+>
+> **实测分数偏低**：修复后单文件实测 `src/core/logic/ScoreCalculator.ts` 突变分为 **60.63%**（77 杀 / 45 存活 / 5 无覆盖），低于本文的 80% 目标。因此**未接 `thresholds`**：直接写 `break = 80` 会让 `npm run stryker` 当场变红。是「把红线降到 60 做防回退棘轮」还是「先补测试再维持 80」，属政策决定，待定。
 
 ---
 
