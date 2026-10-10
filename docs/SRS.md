@@ -70,7 +70,7 @@
 系统必须完整支持 `ScoreCalculator` 定义的双轨计分机制，用于终局仲裁：
 *   **FR-2.1 行为分 (Action Score)**：每种动作具有明确的基础动作分（`POINTS_CONFIG.ACTION`）。
 *   **FR-2.2 状态分 (State Score)**：根据动作改变前后棋盘状态（修复道损、达成点亮、达成归一、造成对手道损）进行累积分值（`POINTS_CONFIG.STATE_CHANGE`）。
-*   **FR-2.3 稀有度与乘区加成 (Rarity Multipliers)**：根据天干出现概率与复合动作达成难度计算动态稀有度加成（Rarity Bonus）。**当前该机制未接线**：`applyRarityBonus` / `isNoRarityAction` 在生产路径无调用点（死代码），详见 `docs/headless/knob-census.md` 与 ADR 0002 勘误。
+*   **FR-2.3 稀有度与乘区加成 (Rarity Multipliers)**：原设计根据天干出现概率与复合动作达成难度计算动态稀有度加成（Rarity Bonus），但该机制**从未在生产路径接线**。相关符号（`applyRarityBonus` / `isNoRarityAction`）与配置字段（`RARITY_MULTIPLIER` / `NO_RARITY_ACTIONS` / `ACTION_PROBABILITY`）已随 `078c240` 删除，机制不再存在于 `src/`。详见 `docs/headless/knob-census.md` §5 与 ADR 0002 勘误。
 
 ### 3.3 分层 AI 决策系统 (FR-3: AI Decision)
 系统必须提供开销可控的本地启发式 AI（对应 `src/core/ai/` 的 `Strategy`, `ActionEvaluator`）：

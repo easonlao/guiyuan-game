@@ -24,7 +24,7 @@
   - **总回合定义**：正式对局上限为 **30 大回合（Round）**（每个大回合双方轮流各行动一次，**双方合计 60 次常规行动机会**）。爆发触发的连动额外回合为独立奖励行动，**不计入 30 大回合计数**。
   - **终局计分决胜**：若达到 30 大回合上限仍无人五行归元，扣除终局残留道损后比较双方累计总分，高者获胜；若分数相同，判定后手获胜。
   - **详细计分规则**（数值以 `src/core/logic/ScoreCalculator.ts` 的 `POINTS_CONFIG` 为准；行为分与状态分双轨制、2.5 倍攻击强化见 ADR 0002，攻击进度定价见 ADR 0011 采纳记录）：
-    1. **动作基础分（`ACTION`）**：调息 CONVERT +50分，化 TRANS +30分，破 ATK +40分，强化 BURST +100分，强破 BURST_ATK +80分，自动吸纳 AUTO 0分，亢极散气 DISSIPATE 0分，消散过牌 PASS 0分。
+    1. **动作基础分（`ACTION`）**：调息 CONVERT +50分，化 TRANS +30分，破 ATK +40分，强化 BURST +100分，强破 BURST_ATK +80分，自动吸纳 AUTO 0分。亢极散气 DISSIPATE 与消散过牌 PASS **不属于 `ACTION` 配置**，其行为分恒为 0（由 `ActionResolver` 的 `DISSIPATE` / `PASS` 分支直接置 `scoreDelta = 0` 保证，`calculateActionPoints` 对二者回退 0）。
     2. **状态转移分（`STATE_CHANGE`）**：
        - **己方建设提升**：疗伤修复 REPAIR_DMG（-1 → 0）+200分，点亮 LIGHT_UP（0 → 1）+100分，加持 BLESSING（1 → 2）+200分。
        - **敌方状态破坏**（按 ADR 0002 硬编码的 2.5 倍攻击强化，再按下方攻击进度定价缩放）：致道损 CAUSE_DMG（0 → -1）阳 +300分 / 阴 +250分，破点亮 BREAK_LIGHT（1 → 0）阳 +200分 / 阴 +150分，削弱加持 WEAKEN（2 → 1）+200分。

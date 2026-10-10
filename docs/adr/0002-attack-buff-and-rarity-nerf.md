@@ -67,9 +67,9 @@ status: accepted
 
 本文「决定 1」描述的稀有度黑名单与稀有度加成机制，**在当前 TS 核心中已无生产消费者**：
 
-- `ScoreCalculator.applyRarityBonus`（`src/core/logic/ScoreCalculator.ts:297`）与 `isNoRarityAction`（`:290`）在生产路径**无调用点**，仅被 `tests/core/scoring-attack-buff-rarity.test.ts` 与死旋钮普查引用；
-- 因此 `RARITY_MULTIPLIER`（`:104`）、`NO_RARITY_ACTIONS`（`:107`）、`ACTION_PROBABILITY`（`:125`）均不生效；
-- `NO_RARITY_ACTIONS` 的实际取值也已扩为 `[BURST, BURST_ATK, DISSIPATE, PASS]`，多于本文原文的 `['BURST', 'BURST_ATK']`；
+- `ScoreCalculator.applyRarityBonus` 与 `isNoRarityAction` 在生产路径**从未有调用点**；这两个符号已随 `078c240` 删除，其原引用的测试 `tests/core/scoring-attack-buff-rarity.test.ts` 亦已更名为 `tests/core/scoring-attack-buff.test.ts`；
+- 因此 `RARITY_MULTIPLIER`、`NO_RARITY_ACTIONS`、`ACTION_PROBABILITY` 均不生效，且已随 `078c240` 一并删除；
+- `NO_RARITY_ACTIONS` 删除前其实际取值已扩为 `[BURST, BURST_ATK, DISSIPATE, PASS]`，多于本文原文的 `['BURST', 'BURST_ATK']`；
 - 本文「决定 1」提到的 `StateScoreRecorder` 从未存在于 `src/`，仅存于旧 JS 路径 `legacy/src/state/StateScoreRecorder.js`。
 
 **本文「决定 2」（攻击压制状态分 2.5× 硬编码）仍然有效**：`CAUSE_DMG` 阳 300 / 阴 250、`BREAK_LIGHT` 阳 200 / 阴 150、`WEAKEN` 200 与生产 `POINTS_CONFIG` 一致（`src/core/logic/ScoreCalculator.ts:98-100`）。后续攻击进度定价（ADR 0011「采纳记录」）在此基础上对攻击状态分做进度缩放。
