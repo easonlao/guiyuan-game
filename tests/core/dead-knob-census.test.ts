@@ -537,7 +537,6 @@ describe('Ticket 05 — 活旋钮改变批量指标（同断言下死旋钮若�
   const cases: readonly {
     readonly name: string;
     readonly config: PointsConfig;
-    readonly dead: boolean;
   }[] = [
     {
       name: '对照：STATE_CHANGE.CAUSE_DMG 放大 10 倍（活旋钮，断言必须有牙齿）',
@@ -547,8 +546,7 @@ describe('Ticket 05 — 活旋钮改变批量指标（同断言下死旋钮若�
           ...POINTS_CONFIG.STATE_CHANGE,
           CAUSE_DMG: { yang: 3000, yin: 2500 }
         }
-      },
-      dead: false
+      }
     }
   ];
 
@@ -572,11 +570,7 @@ describe('Ticket 05 — 活旋钮改变批量指标（同断言下死旋钮若�
         scoreConfig: testCase.config
       });
 
-      if (testCase.dead) {
-        expect(deterministicMetrics(perturbed)).toEqual(deterministicMetrics(control));
-      } else {
-        expect(deterministicMetrics(perturbed)).not.toEqual(deterministicMetrics(control));
-      }
+      expect(deterministicMetrics(perturbed)).not.toEqual(deterministicMetrics(control));
     });
   }
 });
