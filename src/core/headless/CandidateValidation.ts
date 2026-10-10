@@ -180,9 +180,10 @@ export const TICKET_05_CANDIDATE: CandidateSpec = {
 /**
  * 搜索基线：工单 06 采纳前的生产计分（无攻击进度定价）。
  *
- * 候选 B/C/D/E 都是相对这个基线的改动，与工单 05 实际搜索时一致；
- * 候选 A 则是把它替换为进度定价。这样五个候选共享同一基线，避免把 A 的改动
- * 混进 B–E 的四标准结果。
+ * 候选 B/D/E 都是相对这个基线的改动，与工单 05 实际搜索时一致；
+ * 候选 A 则是把它替换为进度定价。原候选 C（赛跑差定价）的机制已由
+ * dead-scoring-code-removal 工单随 `RACE_DIFF_PRICING` 一并删除。这样候选共享同一基线，
+ * 避免把 A 的改动混进 B/D/E 的四标准结果。
  */
 export const SEARCH_BASELINE_POINTS_CONFIG: PointsConfig = {
   ...POINTS_CONFIG,
@@ -193,15 +194,6 @@ export const SEARCH_BASELINE_POINTS_CONFIG: PointsConfig = {
 export const WEAKEN_ZERO_POINTS_CONFIG: PointsConfig = {
   ...SEARCH_BASELINE_POINTS_CONFIG,
   STATE_CHANGE: { ...SEARCH_BASELINE_POINTS_CONFIG.STATE_CHANGE, WEAKEN: 0 }
-};
-
-/**
- * 候选 C：赛跑差定价（实际测试出的最佳变体，g120 且无 cap）。
- * 攻击动作附加 `120 × (己方落后量 − 对手落后量)`。
- */
-export const RACE_DIFF_POINTS_CONFIG: PointsConfig = {
-  ...SEARCH_BASELINE_POINTS_CONFIG,
-  RACE_DIFF_PRICING: { gain: 120 }
 };
 
 /** 候选 D：结构化下调（`WEAKEN → 0` + `CAUSE_DMG → 120/100`）。 */
@@ -221,14 +213,6 @@ export const CANDIDATE_B: CandidateSpec = {
   name: 'weaken-zero',
   description: '空枪定价：WEAKEN 200 → 0（搜索基线 + 只改这一旋钮）',
   pointsConfig: WEAKEN_ZERO_POINTS_CONFIG,
-  settlementMode: 'scoring'
-};
-
-/** 候选 C：赛跑差定价。 */
-export const CANDIDATE_C: CandidateSpec = {
-  name: 'race-diff',
-  description: '赛跑差定价：攻击动作附加 gain × (己方落后量 − 对手落后量)，gain=120 无 cap',
-  pointsConfig: RACE_DIFF_POINTS_CONFIG,
   settlementMode: 'scoring'
 };
 
@@ -256,9 +240,10 @@ export interface RegisteredCandidate {
 }
 
 /**
- * 已登记候选：生产基线（默认动态策略）+ ticket 05 的五个候选 A–E。
+ * 已登记候选：生产基线（默认动态策略）+ ticket 05 的候选 A/B/D/E
+ * （候选 C「赛跑差定价」已由 dead-scoring-code-removal 工单删除）。
  * 候选 A（`progress-pricing`）标准 4 使用调优动态策略（dyn-v3-self7）；
- * B–E 使用默认动态策略。默认行为不被改变。
+ * B/D/E 使用默认动态策略。默认行为不被改变。
  */
 export const CANDIDATE_REGISTRY: Readonly<Record<string, RegisteredCandidate>> = {
   [PRODUCTION_CANDIDATE.name]: {
@@ -271,10 +256,6 @@ export const CANDIDATE_REGISTRY: Readonly<Record<string, RegisteredCandidate>> =
   },
   [CANDIDATE_B.name]: {
     spec: CANDIDATE_B,
-    dynamicPolicies: [DEFAULT_DYNAMIC_POLICY]
-  },
-  [CANDIDATE_C.name]: {
-    spec: CANDIDATE_C,
     dynamicPolicies: [DEFAULT_DYNAMIC_POLICY]
   },
   [CANDIDATE_D.name]: {

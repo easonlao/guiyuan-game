@@ -49,11 +49,6 @@ export function getMinusTargetPolarity(node: NodeData): Polarity | null {
 
 export interface ActionCandidatesOptions {
   readonly isExtraTurn?: boolean;
-  /**
-   * 通用规则开关（默认恒等：不传即全部关闭，不改变任何行为）。
-   * 具体开关在此登记，由相应消费点读取。
-   */
-  readonly rules?: RuleSwitches;
 }
 
 /**

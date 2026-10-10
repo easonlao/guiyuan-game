@@ -91,14 +91,14 @@ export class GameManager {
       initialState = seedOrOptions.initialState;
       this.rules = seedOrOptions.rules ?? {};
     }
-    // 规则开关同时绑定到 AI 估值器与回合候选生成器，保证两个消费点读到同一份开关
+    // 规则开关绑定到 AI 估值器（策略层）；候选生成不读 rules。
     this.aiStrategy = createStrategy(BALANCED_WEIGHTS, { rules: this.rules });
     this.initTurnManager(prng, initialState);
     this.startNewTurn();
   }
 
   private initTurnManager(prng: PRNG, initialState?: GameState): void {
-    this.turnManager = new TurnManager({ prng, initialState, rules: this.rules });
+    this.turnManager = new TurnManager({ prng, initialState });
     this.lastShowdownInfo = null;
     this.turnManager.getEventBus().on('showdown:draw', (data) => {
       this.lastShowdownInfo = data;

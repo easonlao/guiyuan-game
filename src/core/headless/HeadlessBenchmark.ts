@@ -30,7 +30,6 @@ export interface BenchmarkOptions {
    */
   strategyP1?: StrategySpec;
   strategyP2?: StrategySpec;
-  recordActions?: boolean;
   /** 批量推演使用的计分配置；同时到达解析器与（权重模板策略的）AI 估值器 */
   scoreConfig?: PointsConfig;
   /** 批量推演使用的规则开关；同时到达候选生成与（权重模板策略的）AI 估值器 */
@@ -64,7 +63,6 @@ export class HeadlessBenchmark {
     const totalMatches = options?.matches ?? 10000;
     const baseSeed = options?.baseSeed ?? 10000;
     const maxRounds = options?.maxRounds ?? 30;
-    const recordActions = options?.recordActions ?? false;
     const scoreConfig = options?.scoreConfig;
     const rules = options?.rules;
     const isBoardSettlement = options?.isBoardSettlement ?? false;
@@ -97,7 +95,6 @@ export class HeadlessBenchmark {
       const matchResult = this.headlessMatch.run(strategyP1, strategyP2, {
         seed: baseSeed + i,
         maxRounds,
-        recordActions,
         scoreConfig,
         rules,
         shouldCollectStats: true,
