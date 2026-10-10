@@ -4,7 +4,9 @@
  */
 
 import { ActionPayload, ActionType, GameState, TianGanInfo } from '../types/domain.js';
-import { getAvailableActions } from '../logic/ActionCandidates.js';
+import { getAvailableActions, RuleSwitches } from '../logic/ActionCandidates.js';
+import { ActionResolver } from '../logic/ActionResolver.js';
+import { ScoreCalculator, PointsConfig } from '../logic/ScoreCalculator.js';
 import { ActionEvaluator, DEFAULT_STRATEGY_WEIGHTS } from './ActionEvaluator.js';
 import { ActionScore, DecisionStrategy, StrategyWeights } from './types.js';
 
@@ -83,6 +85,8 @@ export const DEFENSIVE_WEIGHTS: StrategyWeights = {
 export interface StrategyOptions {
   readonly evaluator?: ActionEvaluator;
   readonly tieBreaker?: (candidates: ActionScore[]) => ActionPayload;
+  /** 通用规则开关；默认恒等，不传即全部关闭 */
+  readonly rules?: RuleSwitches;
 }
 
 /**
@@ -122,7 +126,7 @@ export function createStrategy(
       return actions[0];
     }
 
-    const scored = evaluator.evaluateAll(state, tianGan, actions, mergedWeights);
+    const scored = evaluator.evaluateAll(state, tianGan, actions, mergedWeights, options.rules);
 
     // 稳定排序：得分高者排在前
     scored.sort((a, b) => b.score - a.score);
@@ -137,6 +141,24 @@ export function createStrategy(
 
     return scored[0].action;
   };
+}
+
+/**
+ * 把同一份计分配置同时绑定到 AI 动作估值器与动作解析器。
+ * 这是「计分是 AI 决策输入」这一角色的唯一保证：
+ * 若只把配置交给 HeadlessMatch 的解析器，AI 估值器仍读默认 POINTS_CONFIG，
+ * 换一套计分数值后 AI 行为会逐字节不变。
+ * 默认（POINTS_CONFIG）下与 createStrategy(weights) 等价。
+ */
+export function createScoreBoundStrategy(
+  weights: StrategyWeights,
+  config: PointsConfig,
+  rules?: RuleSwitches
+): DecisionStrategy {
+  return createStrategy(weights, {
+    evaluator: new ActionEvaluator(new ActionResolver(new ScoreCalculator(config))),
+    rules
+  });
 }
 
 /** 预设策略：平衡策略 (对齐 GDD) */
