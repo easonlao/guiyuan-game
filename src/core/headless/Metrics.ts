@@ -41,6 +41,31 @@ export function countActionsToGuiYuan(board: BoardState): number {
   return countUnlightedSides(board) + countBoardDamage(board);
 }
 
+/**
+ * 【破】(ATK) 的盘面边际收益口径（ticket 08）。
+ *
+ * 一次【破】对对手盘面的盘面价值 = 它使对手「还差几次行动到五行归元」增加的次数：
+ *
+ *   atkTempoGain(opponentBefore, opponentAfter)
+ *     = countActionsToGuiYuan(opponentAfter) - countActionsToGuiYuan(opponentBefore)
+ *
+ * 逐侧取值（由 `countActionsToGuiYuan` 的逐侧口径 `max(0, 1 - level)` 直接推出）：
+ *   0 -> -1（虚空打到道损）：+1
+ *   1 ->  0（点亮打回虚空）：+1
+ *   2 ->  1（加持削到点亮）： 0（未点亮侧数与道损数均不变，加持吸收了这次打击）
+ *   -1 已道损（封顶）：      0
+ *
+ * 为什么它隔离盘面价值：本函数只读盘面等级，输入是两张 `BoardState`，不接触任何
+ * 分数、权重、稀有度或计分配置。`ActionResolver.resolve` 对【破】只改动对手一侧等级，
+ * 因此该差值恰好等于这一次盘面扰动的节奏价值；计分轴的作用由 ticket 09 单独测量。
+ */
+export function atkTempoGain(
+  opponentBefore: BoardState,
+  opponentAfter: BoardState
+): number {
+  return countActionsToGuiYuan(opponentAfter) - countActionsToGuiYuan(opponentBefore);
+}
+
 // ---------------------------------------------------------------------------
 // 单局指标
 // ---------------------------------------------------------------------------
