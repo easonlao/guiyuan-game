@@ -8,7 +8,8 @@ import {
   isBoardGuiYuan,
   clampNodeLevel,
   measureBoardDiff,
-  canTianGanLightUnlightedSide
+  canTianGanLightUnlightedSide,
+  getUnlightedSide
 } from '../../src/core/logic/State.js';
 
 /** 构造全点亮盘面（每侧均为 1），作为「单一未点亮侧」用例的基底 */
@@ -70,6 +71,9 @@ describe('State Management & Boundary Rules', () => {
     expect(state.currentPlayer).toBe('P1');
     expect(state.isGameOver).toBe(false);
     expect(state.winner).toBeNull();
+    // 归元锁定表是域数据：双方初始都必须是显式 false（而非缺字段的空对象），
+    // 下游用 `lockedGuiYuan.P1/P2` 直接读取，缺字段会读成 undefined 而偏离布尔语义。
+    expect(state.lockedGuiYuan).toEqual({ P1: false, P2: false });
   });
 
   describe('measureBoardDiff', () => {
@@ -101,6 +105,28 @@ describe('State Management & Boundary Rules', () => {
         constructionLevels: 0,
         suppressionLevels: 3
       });
+    });
+  });
+
+  describe('getUnlightedSide', () => {
+    it('returns the sole unlighted side when exactly one side is unlighted', () => {
+      const board: BoardState = {
+        ...fullyLitBoard(),
+        [WuXing.WOOD]: { yin: 1, yang: 0 }
+      };
+      expect(getUnlightedSide(board)).toEqual({ element: WuXing.WOOD, polarity: Polarity.YANG });
+    });
+
+    it('returns null when more than one side is unlighted', () => {
+      // 空白盘：10 侧全部未点亮，无唯一未点亮侧
+      expect(getUnlightedSide(createEmptyBoard())).toBeNull();
+      // 恰有两侧未点亮：仍不唯一，必须返回 null（单抽在数学上无法归元）
+      const twoUnlighted: BoardState = {
+        ...fullyLitBoard(),
+        [WuXing.WOOD]: { yin: 1, yang: 0 },
+        [WuXing.FIRE]: { yin: 0, yang: 1 }
+      };
+      expect(getUnlightedSide(twoUnlighted)).toBeNull();
     });
   });
 

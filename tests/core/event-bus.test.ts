@@ -36,6 +36,20 @@ describe('EventBus (Layer 1 to Layer 3 UI Decoupling)', () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
+  it('should keep both handlers when two are registered for the same event', () => {
+    const bus = new EventBus();
+    const first = vi.fn();
+    const second = vi.fn();
+    bus.on('game:over', first);
+    bus.on('game:over', second);
+
+    bus.emit('game:over', { winner: 'P1', endReason: 'GUI_YUAN' });
+
+    // 同一事件注册多个 handler 时必须全部触发；后者不得清掉先注册者。
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledTimes(1);
+  });
+
   it('diffAndEmit: should automatically detect changes between states and emit events', () => {
     const bus = new EventBus();
     const handler = vi.fn();

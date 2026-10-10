@@ -147,6 +147,41 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
     expect(finalResult.nextState.endReason).toBe('GUI_YUAN');
   });
 
+  it('Victory by 五行归元 (GuiYuan) for P2 ends the game without granting an extra turn', () => {
+    const base = createInitialGameState();
+    // P2 差 1 侧归元；本大回合已然闭合，归元即终局，不授予额外行动。
+    const almostWinBoard = {
+      [WuXing.WOOD]: { yin: 1, yang: 1 },
+      [WuXing.FIRE]: { yin: 1, yang: 1 },
+      [WuXing.EARTH]: { yin: 1, yang: 1 },
+      [WuXing.METAL]: { yin: 1, yang: 1 },
+      [WuXing.WATER]: { yin: 1, yang: 0 }
+    } as const;
+
+    const state = {
+      ...base,
+      currentPlayer: 'P2' as const,
+      players: {
+        ...base.players,
+        P2: { ...base.players.P2, board: almostWinBoard }
+      }
+    };
+
+    const result = resolver.resolve(state, {
+      actionType: ActionType.AUTO,
+      player: 'P2',
+      element: WuXing.WATER,
+      polarity: Polarity.YANG
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.nextState.isGameOver).toBe(true);
+    expect(result.nextState.winner).toBe('P2');
+    expect(result.nextState.endReason).toBe('GUI_YUAN');
+    // 终局即大回合闭合：extraTurn 必须为 false（HeadlessMatch/ActionEvaluator 会读该字段）
+    expect(result.extraTurn).toBe(false);
+  });
+
   it('DISSIPATE (亢极散气): should reduce KangJi side from 2 to 1 with 0 score and hand over turn', () => {
     let state = createInitialGameState();
     state = {

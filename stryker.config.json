@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "_comment": "针对 Layer 1 纯逻辑层做突变分析。门禁是基线棘轮（mutation:check 只对基线之外的存活/无覆盖报警），不是全局固定阈值；规则与来源见 docs/MUTATION-TESTING.md。coverageAnalysis 维持 off（既有配置，与本修复无关）——「0 个测试/突变体」的真正根因是 vitest-runner 的 testNamePattern 分隔符 bug，已由 patches/ 下的 patch-package 补丁修复。",
+  "_timeoutComment": "timeoutMS=30000（默认 5000）用于压缩 Killed/Timeout 的抖动窗口。Stryker 的突变超时 = timeoutFactor * dryRun净耗时 + timeoutMS + dryRun开销（见 @stryker-mutator/core 的 mutant-test-planner：`timeoutFactor * netTime + timeoutMS + timeOverheadMS`）；后两项随机器负载大幅波动（本机 full dry run 两次均 net ~16.4s / overhead ~24s，超时 ~78s；narrow `--mutate` 探测时 net ~3.1s / overhead ~8s，超时 ~42s）。根因是：少数 ActionResolver 突变体（如 440:23 的 `state.round + 1 -> state.round - 1`、119:26 的 `payload.polarity || ... -> false`）会让轮次永不递增，使 experiment-runner 里的同步自对弈用例（含 matches:2000 那一条）慢一个数量级但不死循环；这类“慢而可杀”的突变体在负载相关的超时线上下浮动，于是同一突变体在 Killed/Timeout 间翻转。把常量下限抬到 30000 后超时由常量项主导、对负载噪声不敏感（narrow 探测：ActionResolver.ts:438-442 改前连续 2 次均为 2 Killed/1 Timeout，改后连续 3 次均为 3 Killed/0 Timeout）。⚠️ 关键结论：这个抖动不影响门禁。基线棘轮只收录 Survived + NoCoverage（见 scripts/lib/mutation-baseline-core.mjs 的 RATCHET_STATUSES），Timeout 既不入基线、又被 Stryker 计入 mutation score 的“已探测”，所以 Killed<->Timeout 翻转对 mutation:check 与分数均无影响。实测两次全量：run1 = 0 Survived / 0 NoCoverage / 2 Timeout（119:26、440:23），run2 = 0 Survived / 0 NoCoverage / 1 Timeout（440:23，119:26 翻回 Killed）——门禁相关集合两次完全相同（均空）。彻底消除翻转需把超时再抬 2-3x（440 在 full 范围下耗时已 >78s），代价是每次多等数分钟，却不改善门禁稳定性，故不做。concurrency 维持 4：Stryker 的 vitest-runner 每个 worker 内部已强制 maxWorkers:1（见 vitest-test-runner.js 的 #getVitestPoolConfig），4 worker 在 20 核上不构成 CPU 争用（实测 load ~4），降并发不会改善抖动、只会拖长全量。",
   "testRunner": "vitest",
   "tempDirName": "/tmp/.stryker-tmp",
   "ignorePatterns": [
@@ -13,6 +14,7 @@
     "dist/**"
   ],
   "reporters": ["progress", "clear-text", "json"],
+  "timeoutMS": 30000,
   "concurrency": 4,
   "coverageAnalysis": "off",
   "mutate": [
