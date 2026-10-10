@@ -6,7 +6,7 @@
 import { ActionPayload, ActionType, GameState, TianGanInfo } from '../types/domain.js';
 import { getAvailableActions, RuleSwitches } from '../logic/ActionCandidates.js';
 import { ActionResolver } from '../logic/ActionResolver.js';
-import { ScoreCalculator, PointsConfig } from '../logic/ScoreCalculator.js';
+import { ScoreCalculator, PointsConfig, POINTS_CONFIG } from '../logic/ScoreCalculator.js';
 import { ActionEvaluator, DEFAULT_STRATEGY_WEIGHTS } from './ActionEvaluator.js';
 import { ActionScore, DecisionStrategy, StrategyWeights } from './types.js';
 
@@ -80,6 +80,53 @@ export const DEFENSIVE_WEIGHTS: StrategyWeights = {
   scoreDeltaWeight: 0.8,
   winReward: 10000,
   baseActionBias: {}
+};
+
+/**
+ * 纯推进策略权重 (Ticket 06)：只最大化自身点亮/归一进度，完全关闭压制轴与计分轴。
+ * 压制类权重全部为 0、scoreDeltaWeight 为 0，确保计分不会把跨轴价值泄漏进决策。
+ */
+export const PURE_RUSH_WEIGHTS: StrategyWeights = {
+  repairDamage: 120,
+  reachGuiYi: 300,
+  lightVoid: 120,
+  reachKangJi: 60,
+  guiyuanProgress: 200,
+  burstExtraTurn: 120,
+  breakOpponentGuiYi: 0,
+  causeDamage: 0,
+  suppressNode: 0,
+  scoreDeltaWeight: 0,
+  winReward: 10000,
+  baseActionBias: {}
+};
+
+/**
+ * 纯压制策略权重 (Ticket 06)：只最大化对对手的削弱，完全关闭自身建设轴与计分轴。
+ * 建设类权重全部为 0、scoreDeltaWeight 为 0，确保计分不会把跨轴价值泄漏进决策。
+ */
+export const PURE_SUPPRESS_WEIGHTS: StrategyWeights = {
+  repairDamage: 0,
+  reachGuiYi: 0,
+  lightVoid: 0,
+  reachKangJi: 0,
+  guiyuanProgress: 0,
+  burstExtraTurn: 0,
+  breakOpponentGuiYi: 300,
+  causeDamage: 200,
+  suppressNode: 100,
+  scoreDeltaWeight: 0,
+  winReward: 0,
+  baseActionBias: {}
+};
+
+/**
+ * 剥离计分策略权重 (Ticket 06)：保留平衡策略的盘面偏好，但把计分轴权重归零，
+ * 使动作估值只按盘面判优、完全不读取规则得分（scoreDelta）。
+ */
+export const SCORE_STRIPPED_WEIGHTS: StrategyWeights = {
+  ...BALANCED_WEIGHTS,
+  scoreDeltaWeight: 0
 };
 
 export interface StrategyOptions {
@@ -172,3 +219,21 @@ export const aggressiveStrategy: DecisionStrategy = createStrategy(AGGRESSIVE_WE
 
 /** 预设策略：保守自保 */
 export const defensiveStrategy: DecisionStrategy = createStrategy(DEFENSIVE_WEIGHTS);
+
+/** 预设策略：纯推进（只最大化自身点亮/归一进度，压制轴与计分轴归零） */
+export const pureRushStrategy: DecisionStrategy = createScoreBoundStrategy(
+  PURE_RUSH_WEIGHTS,
+  POINTS_CONFIG
+);
+
+/** 预设策略：纯压制（只最大化对对手的削弱，建设轴与计分轴归零） */
+export const pureSuppressStrategy: DecisionStrategy = createScoreBoundStrategy(
+  PURE_SUPPRESS_WEIGHTS,
+  POINTS_CONFIG
+);
+
+/** 预设策略：剥离计分（盘面偏好同平衡策略，计分轴权重归零，只按盘面判优） */
+export const scoreStrippedStrategy: DecisionStrategy = createScoreBoundStrategy(
+  SCORE_STRIPPED_WEIGHTS,
+  POINTS_CONFIG
+);
