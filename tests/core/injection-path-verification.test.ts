@@ -81,9 +81,7 @@ const ZERO_POINTS_CONFIG: PointsConfig = {
     TRANS: 0,
     ATK: 0,
     BURST: 0,
-    BURST_ATK: 0,
-    DISSIPATE: 0,
-    PASS: 0
+    BURST_ATK: 0
   },
   STATE_CHANGE: {
     REPAIR_DMG: { yang: 0, yin: 0 },
@@ -568,8 +566,8 @@ describe('注入同时覆盖游戏内回合管理与无头推演两个入口', (
  * | ACTION / STATE_CHANGE | 是           | 是（scoreDelta） | 活旋钮              |
  * | GUI_YI_MILESTONE     | 是           | 是（scoreDelta） | 活旋钮              |
  * | DAMAGE_PENALTY       | 是（仅 MAX_ROUNDS 终局） | 否 | 仅终局判定，AI 不可见 |
- * | RARITY_MULTIPLIER    | 否           | 否          | 死旋钮（applyRarityBonus 无调用点） |
- * | NO_RARITY_ACTIONS    | 否           | 否          | 死旋钮（同上）           |
+ *
+ * RARITY_MULTIPLIER / NO_RARITY_ACTIONS 死旋钮及其测试已由 dead-scoring-code-removal 工单删除。
  */
 
 describe('scoreConfig 子项普查（转交 Ticket 05：死旋钮清单）', () => {
@@ -643,30 +641,6 @@ describe('scoreConfig 子项普查（转交 Ticket 05：死旋钮清单）', () 
       new ActionResolver(new ScoreCalculator({ ...POINTS_CONFIG, DAMAGE_PENALTY: 50 }))
     ).evaluate(state, tianGan, passAction);
     expect(evalZero.score).toBe(evalFifty.score);
-  });
-
-  it('RARITY_MULTIPLIER：死旋钮（解析器与 AI 均不读取）', () => {
-    const state = createInitialGameState(MAX_ROUNDS);
-    const atk: ActionPayload = {
-      actionType: ActionType.ATK,
-      player: 'P1',
-      sourceElement: WuXing.WOOD,
-      polarity: Polarity.YANG
-    };
-    const low = new ActionResolver(new ScoreCalculator({ ...POINTS_CONFIG, RARITY_MULTIPLIER: 0 }));
-    const high = new ActionResolver(new ScoreCalculator({ ...POINTS_CONFIG, RARITY_MULTIPLIER: 99 }));
-
-    const lowResult = low.resolve(state, atk);
-    const highResult = high.resolve(state, atk);
-    expect(lowResult.scoreDelta).toBe(highResult.scoreDelta);
-
-    const evalLow = new ActionEvaluator(
-      new ActionResolver(new ScoreCalculator({ ...POINTS_CONFIG, RARITY_MULTIPLIER: 0 }))
-    ).evaluate(state, tianGan, atk);
-    const evalHigh = new ActionEvaluator(
-      new ActionResolver(new ScoreCalculator({ ...POINTS_CONFIG, RARITY_MULTIPLIER: 99 }))
-    ).evaluate(state, tianGan, atk);
-    expect(evalLow.score).toBe(evalHigh.score);
   });
 
   it('GUI_YI_MILESTONE：AI 估值可见（经 scoreDelta）', () => {

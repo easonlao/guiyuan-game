@@ -25,9 +25,7 @@ const ZERO_POINTS_CONFIG: PointsConfig = {
     TRANS: 0,
     ATK: 0,
     BURST: 0,
-    BURST_ATK: 0,
-    DISSIPATE: 0,
-    PASS: 0
+    BURST_ATK: 0
   },
   STATE_CHANGE: {
     REPAIR_DMG: { yang: 0, yin: 0 },
@@ -37,8 +35,6 @@ const ZERO_POINTS_CONFIG: PointsConfig = {
     BREAK_LIGHT: { yang: 0, yin: 0 },
     WEAKEN: 0
   },
-  RARITY_MULTIPLIER: 0,
-  NO_RARITY_ACTIONS: [],
   GUI_YI_MILESTONE: 0,
   DAMAGE_PENALTY: 0
 };

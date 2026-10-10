@@ -11,7 +11,7 @@ import {
   POINTS_CONFIG
 } from '../../src/core/logic/ScoreCalculator.js';
 
-describe('Ticket 02: 2.5倍攻击压制状态分与爆发动作稀有度黑名单豁免实装', () => {
+describe('Ticket 02: 2.5倍攻击压制状态分实装', () => {
   const calculator = new ScoreCalculator();
   const resolver = new ActionResolver(calculator);
 
@@ -28,15 +28,9 @@ describe('Ticket 02: 2.5倍攻击压制状态分与爆发动作稀有度黑名�
       // 削弱加持: 200
       expect(POINTS_CONFIG.STATE_CHANGE.WEAKEN).toBe(200);
     });
-
-    it('defines rarity multiplier and blacklisted actions', () => {
-      expect(POINTS_CONFIG.RARITY_MULTIPLIER).toBe(1.5);
-      expect(POINTS_CONFIG.NO_RARITY_ACTIONS).toContain(ActionType.BURST);
-      expect(POINTS_CONFIG.NO_RARITY_ACTIONS).toContain(ActionType.BURST_ATK);
-    });
   });
 
-  describe('2. ScoreCalculator 攻击状态分计算与稀有度黑名单过滤', () => {
+  describe('2. ScoreCalculator 攻击状态分计算', () => {
     it('calculates 3 types of attack damage across yin and yang correctly', () => {
       // 1. 致道损: 0 -> -1
       expect(calculator.calculateTransitionPoints(0, -1, Polarity.YANG, true)).toBe(300);
@@ -53,36 +47,6 @@ describe('Ticket 02: 2.5倍攻击压制状态分与爆发动作稀有度黑名�
       // 无变化或非法跃迁
       expect(calculator.calculateTransitionPoints(-1, -1, Polarity.YANG, true)).toBe(0);
       expect(calculator.calculateTransitionPoints(0, 0, Polarity.YIN, true)).toBe(0);
-    });
-
-    it('strictly bypasses rarity bonus for BURST and BURST_ATK', () => {
-      expect(calculator.isNoRarityAction(ActionType.BURST)).toBe(true);
-      expect(calculator.isNoRarityAction(ActionType.BURST_ATK)).toBe(true);
-
-      // 爆发动作直接返回原始分值，绝不施加乘数
-      expect(calculator.applyRarityBonus(100, ActionType.BURST)).toBe(100);
-      expect(calculator.applyRarityBonus(200, ActionType.BURST)).toBe(200);
-      expect(calculator.applyRarityBonus(80, ActionType.BURST_ATK)).toBe(80);
-      expect(calculator.applyRarityBonus(380, ActionType.BURST_ATK)).toBe(380);
-    });
-
-    it('applies rarity multiplier bonus for regular actions (CONVERT, TRANS, ATK)', () => {
-      expect(calculator.isNoRarityAction(ActionType.CONVERT)).toBe(false);
-      expect(calculator.isNoRarityAction(ActionType.TRANS)).toBe(false);
-      expect(calculator.isNoRarityAction(ActionType.ATK)).toBe(false);
-
-      // 普通动作应用 1 + (1 - prob) * 1.5 增益
-      const convertScore = calculator.applyRarityBonus(100, ActionType.CONVERT);
-      expect(convertScore).toBeGreaterThan(100);
-      expect(convertScore).toBe(Math.round(100 + 100 * (1 - 0.167) * 1.5)); // 225
-
-      const transScore = calculator.applyRarityBonus(100, ActionType.TRANS);
-      expect(transScore).toBeGreaterThan(100);
-      expect(transScore).toBe(Math.round(100 + 100 * (1 - 0.243) * 1.5)); // 214
-
-      const atkScore = calculator.applyRarityBonus(100, ActionType.ATK);
-      expect(atkScore).toBeGreaterThan(100);
-      expect(atkScore).toBe(Math.round(100 + 100 * (1 - 0.518) * 1.5)); // 172
     });
   });
 

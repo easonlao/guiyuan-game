@@ -40,9 +40,7 @@ const ZERO_POINTS_CONFIG: PointsConfig = {
     TRANS: 0,
     ATK: 0,
     BURST: 0,
-    BURST_ATK: 0,
-    DISSIPATE: 0,
-    PASS: 0
+    BURST_ATK: 0
   },
   STATE_CHANGE: {
     REPAIR_DMG: { yang: 0, yin: 0 },

@@ -19,7 +19,7 @@
 | --- | --- |
 | **活参数（AI 估值读取）** | `PointsConfig.ACTION.{AUTO,CONVERT,TRANS,ATK,BURST,BURST_ATK}`、`PointsConfig.STATE_CHANGE.*`（9 个标量）、`PointsConfig.GUI_YI_MILESTONE`、`PointsConfig.ATTACK_PROGRESS_SCALE`、`StrategyWeights.*`（12 个）、`RuleSwitches.isBoardOnly`（经策略构造器或权重模板策略绑定） |
 | **仅终局生效（终局读、AI 不读）** | `PointsConfig.DAMAGE_PENALTY`（**当前唯一成员**） |
-| **死参数（AI 不读、终局不读、扰动无变化）** | `PointsConfig.ACTION.DISSIPATE`、`PointsConfig.ACTION.PASS`、`PointsConfig.RARITY_MULTIPLIER`、`PointsConfig.NO_RARITY_ACTIONS`、`PointsConfig.RACE_DIFF_PRICING`（生产未配置）、`ACTION_PROBABILITY`、`ScoreConfig`/`DEFAULT_SCORE_CONFIG`、`ScoreCalculator.applyRarityBonus`/`isNoRarityAction` |
+| **死参数（AI 不读、终局不读、扰动无变化）** | `PointsConfig.RACE_DIFF_PRICING`（生产未配置）。原列的 `PointsConfig.ACTION.DISSIPATE`、`PointsConfig.ACTION.PASS`、`PointsConfig.RARITY_MULTIPLIER`、`PointsConfig.NO_RARITY_ACTIONS`、`ACTION_PROBABILITY`、`ScoreConfig`/`DEFAULT_SCORE_CONFIG`、`ScoreCalculator.applyRarityBonus`/`isNoRarityAction` 已由 dead-scoring-code-removal 工单删除（见 §5） |
 | **接线但无消费者（转发死参数）** | `TurnManagerOptions.rules`、`ActionCandidatesOptions.rules`、`BenchmarkOptions.recordActions` |
 
 ---
@@ -38,8 +38,6 @@
 | `ACTION.ATK` | 是 | 是 | 是 | 活 | `ActionResolver.ts`（`calculateActionPoints(ATK)`） |
 | `ACTION.BURST` | 是 | 是 | 是 | 活 | `ActionResolver.ts`（`calculateActionPoints(BURST)`） |
 | `ACTION.BURST_ATK` | 是 | 是 | 是 | 活 | `ActionResolver.ts`（`calculateActionPoints(BURST_ATK)`） |
-| `ACTION.DISSIPATE` | 否 | 否 | 否 | **死** | `ActionResolver.ts` 的 `DISSIPATE` 分支直接 `scoreDelta = 0`，从不调用 `calculateActionPoints` |
-| `ACTION.PASS` | 否 | 否 | 否 | **死** | `ActionResolver.ts` 的 `PASS` 分支直接 `scoreDelta = 0`，从不调用 `calculateActionPoints` |
 | `STATE_CHANGE.REPAIR_DMG.yang` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts`（-1→0 己方建设） |
 | `STATE_CHANGE.REPAIR_DMG.yin` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts` |
 | `STATE_CHANGE.LIGHT_UP` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts`（0→1） |
@@ -51,8 +49,6 @@
 | `STATE_CHANGE.WEAKEN` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts`（攻击 2→1） |
 | `GUI_YI_MILESTONE` | 是 | 是 | 是 | 活 | `ActionResolver.ts` 进入 `scoreDelta`；`ScoreCalculator.ts` 提供缺省回退 60 |
 | `DAMAGE_PENALTY` | 否 | 是 | 是 | **仅终局生效** | `ActionResolver.ts`，只在 `MAX_ROUNDS` 结算分支从 `finalScore` 扣减，**从不进入 `scoreDelta`**；`ScoreCalculator.ts` 缺省回退 50 |
-| `RARITY_MULTIPLIER` | 否 | 否 | 否 | **死** | 仅被 `ScoreCalculator.applyRarityBonus` 的默认参数读取，该方法无调用点 |
-| `NO_RARITY_ACTIONS` | 否 | 否 | 否 | **死** | 仅被 `isNoRarityAction` 读取，后者只被 `applyRarityBonus` 调用，无调用点 |
 | `ATTACK_PROGRESS_SCALE` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts`（`attackProgressScale` = floor + span×count/5）；`ActionResolver.ts` 缩放 ATK/BURST_ATK 的攻击状态分 |
 | `RACE_DIFF_PRICING` | 否 | 否 | 否 | **死（生产未配置）** | `ScoreCalculator.ts`（`raceDiffPoints`）；`ActionResolver.ts` 的应用点存在，但生产 `POINTS_CONFIG` 不设置该字段，恒等 0 |
 
@@ -62,10 +58,9 @@
 
 | 符号 | 位置 | 结论 |
 | --- | --- | --- |
-| `ACTION_PROBABILITY` | `ScoreCalculator.ts` | 死：只被 `applyRarityBonus` 读取 |
-| `ScoreConfig` / `DEFAULT_SCORE_CONFIG` | `ScoreCalculator.ts` | 死：生产路径只消费 `PointsConfig`；`ScoreConfig` 仅被 `tests/core/score-calculator.test.ts` 引用，数值与 `POINTS_CONFIG` 巧合相等 |
-| `ScoreCalculator.applyRarityBonus` / `isNoRarityAction` | `ScoreCalculator.ts` | 死：生产路径无调用点 |
 | 常量 `GUI_YI_MILESTONE` / `DAMAGE_PENALTY` | `ScoreCalculator.ts` | 活（作为 `PointsConfig` 可选字段缺省时的回退值，经 getter 读取） |
+
+> 原有死物 `ACTION_PROBABILITY`、`ScoreConfig`/`DEFAULT_SCORE_CONFIG`、`ScoreCalculator.applyRarityBonus`/`isNoRarityAction` 已由 dead-scoring-code-removal 工单删除（见 §5）。
 
 ### 1.1 两个必须说明的口径细节
 
@@ -209,15 +204,10 @@
 
 处置只给建议，本票不实施。**接线属于新机制，明确不在本票范围。**
 
+> 其中标 **DELETE** 的死参数（`RARITY_MULTIPLIER`、`NO_RARITY_ACTIONS`、`ACTION_PROBABILITY`、`applyRarityBonus`/`isNoRarityAction`、`ScoreConfig`/`DEFAULT_SCORE_CONFIG`、`ACTION.DISSIPATE`、`ACTION.PASS`）已由 dead-scoring-code-removal 工单删除，故不再列入下表；下表只保留尚未处置的项。
+
 | 死参数 | 死因 | 处置建议 |
 | --- | --- | --- |
-| `PointsConfig.RARITY_MULTIPLIER` | `applyRarityBonus` 无调用点 | **DELETE**（连同 `applyRarityBonus`、`isNoRarityAction`、`ACTION_PROBABILITY`、`NO_RARITY_ACTIONS`）。若稀有度机制要复活，属于新机制，应另开票重新接线，而不是保留一个会被误认为生效的字段 |
-| `PointsConfig.NO_RARITY_ACTIONS` | 同上 | **DELETE**（与上同一组） |
-| `ACTION_PROBABILITY` | 只被 `applyRarityBonus` 读取 | **DELETE**（与上同一组） |
-| `ScoreCalculator.applyRarityBonus` / `isNoRarityAction` | 生产路径无调用点 | **DELETE**（与上同一组） |
-| `ScoreConfig` / `DEFAULT_SCORE_CONFIG` | 生产路径只消费 `PointsConfig`；仅测试引用 | **DELETE**（或把测试改为引用 `POINTS_CONFIG` 后删除） |
-| `PointsConfig.ACTION.DISSIPATE` | 规则规定亢极散气计 0 分；`resolve` 强制 `scoreDelta = 0` | **DELETE**（保留字段会诱导「调它试试」的无效实验） |
-| `PointsConfig.ACTION.PASS` | 规则规定消散过牌计 0 分；`resolve` 强制 `scoreDelta = 0` | **DELETE** |
 | `PointsConfig.RACE_DIFF_PRICING` | 生产 `POINTS_CONFIG` 不设置该字段，`raceDiffPoints` 恒等 0；机制代码存在但未接线 | **WIRE 或 DELETE**：若采纳赛跑差定价则接入生产并移入活参数；否则删除该字段 |
 | `MatchOptions.rules` / `BenchmarkOptions.rules` / `HeadlessMatchConfig.rules` | **已接线**（ticket 01/04 修复）：策略为权重模板时经 `resolveStrategy` 绑定 AI 估值器 | **已移出死参数清单** |
 | `TurnManagerOptions.rules` / `ActionCandidatesOptions.rules` | 只转发到候选接缝，而候选接缝从不读 `rules` | **WIRE 或 DELETE（二选一）**：若规则模式应同时影响候选生成，则让 `getAvailableActions` 读 `isBoardOnly`（统一入口）；若规则只属于策略，则删除这些转发字段 |
@@ -235,7 +225,7 @@
 | --- | --- | :---: | --- |
 | `PointsConfig.DAMAGE_PENALTY` | `ActionResolver.ts`（`MAX_ROUNDS` 分支，从 `finalScore` 扣减） | 否 | **唯一成员** |
 | 常量 `DAMAGE_PENALTY` | 经 `ScoreCalculator.ts` getter 作为缺省回退，最终仍只在 `ActionResolver` 的 `MAX_ROUNDS` 结算分支被读 | 否 | 与上同一成员的回退值 |
-| `ScoreConfig.damagePenalty`（legacy） | 若接线则会落入同一分支；当前**未接线** | 否 | 不是终端成员，是死参数 |
+| `ScoreConfig.damagePenalty`（legacy） | 已由 dead-scoring-code-removal 工单随 `ScoreConfig` 接口一并删除 | 否 | 已删除，不再是成员 |
 
 **终局分支清单（确认没有遗漏）：**
 

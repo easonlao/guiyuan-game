@@ -15,7 +15,8 @@
  *   - 场景接缝：ActionResolver.resolve（受控盘面）
  *
  * 已确认结论（见文档）：
- *   - 死旋钮：RARITY_MULTIPLIER、NO_RARITY_ACTIONS、ACTION.DISSIPATE、ACTION.PASS
+ *   - 死旋钮（已由 dead-scoring-code-removal 工单删除）：RARITY_MULTIPLIER、NO_RARITY_ACTIONS、
+ *     ACTION.DISSIPATE、ACTION.PASS —— 本清单不再收录
  *   - 仅终局生效（AI 不可见）：DAMAGE_PENALTY
  *   - 规则开关 isBoardOnly 的活消费者是估值器；无头入口的 `rules` 在策略为权重模板时
  *     与 scoreConfig 一起绑定 AI 估值器（活）；TurnManager / ActionCandidates 上的
@@ -35,6 +36,7 @@ import {
 import {
   ScoreCalculator,
   POINTS_CONFIG,
+  type ActionPointsConfig,
   type PointsConfig
 } from '../../src/core/logic/ScoreCalculator.js';
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
@@ -107,7 +109,7 @@ interface ScoringKnob {
   readonly scenario: () => Scenario;
 }
 
-function perturbAction(type: ActionType): PointsConfig {
+function perturbAction(type: keyof ActionPointsConfig): PointsConfig {
   return {
     ...POINTS_CONFIG,
     ACTION: { ...POINTS_CONFIG.ACTION, [type]: POINTS_CONFIG.ACTION[type] + 1000 }
@@ -232,30 +234,6 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     })
   },
   {
-    // 死旋钮：ActionResolver 在 DISSIPATE 分支把 scoreDelta 强制为 0，从不读 ACTION.DISSIPATE。
-    knob: 'ACTION.DISSIPATE',
-    aiReads: false,
-    terminalReads: false,
-    mutate: () => perturbAction(ActionType.DISSIPATE),
-    scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 2, yang: 2 } } }),
-      tianGan: JIA_WOOD_YANG,
-      action: { actionType: ActionType.DISSIPATE, player: 'P1', element: WuXing.WOOD, polarity: Polarity.YANG }
-    })
-  },
-  {
-    // 死旋钮：ActionResolver 在 PASS 分支把 scoreDelta 强制为 0，从不读 ACTION.PASS。
-    knob: 'ACTION.PASS',
-    aiReads: false,
-    terminalReads: false,
-    mutate: () => perturbAction(ActionType.PASS),
-    scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } } }),
-      tianGan: JIA_WOOD_YANG,
-      action: { actionType: ActionType.PASS, player: 'P1', element: WuXing.WOOD, polarity: Polarity.YANG }
-    })
-  },
-  {
     knob: 'STATE_CHANGE.REPAIR_DMG.yang',
     aiReads: true,
     terminalReads: true,
@@ -355,30 +333,6 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     })
   },
   {
-    // 死旋钮：applyRarityBonus 在生产路径无调用点；乘数留在配置里只是历史残留。
-    knob: 'RARITY_MULTIPLIER',
-    aiReads: false,
-    terminalReads: false,
-    mutate: () => ({ ...POINTS_CONFIG, RARITY_MULTIPLIER: 99 }),
-    scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 1 } }, P2: { [WuXing.EARTH]: { yin: 0 } } }),
-      tianGan: JIA_WOOD_YANG,
-      action: ATK_YIN
-    })
-  },
-  {
-    // 死旋钮：isNoRarityAction 只被 applyRarityBonus 调用，后者无调用点。
-    knob: 'NO_RARITY_ACTIONS',
-    aiReads: false,
-    terminalReads: false,
-    mutate: () => ({ ...POINTS_CONFIG, NO_RARITY_ACTIONS: [] }),
-    scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 1 } }, P2: { [WuXing.EARTH]: { yin: 0 } } }),
-      tianGan: JIA_WOOD_YANG,
-      action: ATK_YIN
-    })
-  },
-  {
     knob: 'GUI_YI_MILESTONE',
     aiReads: true,
     terminalReads: true,
@@ -452,8 +406,6 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
 const POINTS_CONFIG_FIELDS: Record<keyof PointsConfig, true> = {
   ACTION: true,
   STATE_CHANGE: true,
-  RARITY_MULTIPLIER: true,
-  NO_RARITY_ACTIONS: true,
   GUI_YI_MILESTONE: true,
   DAMAGE_PENALTY: true,
   ATTACK_PROGRESS_SCALE: true,
@@ -462,7 +414,7 @@ const POINTS_CONFIG_FIELDS: Record<keyof PointsConfig, true> = {
 
 /**
  * 递归枚举配置对象的**叶子路径**（数组视为叶子，普通对象递归进入）。
- * 例：`ACTION.ATK`、`STATE_CHANGE.REPAIR_DMG.yang`、`NO_RARITY_ACTIONS`、
+ * 例：`ACTION.ATK`、`STATE_CHANGE.REPAIR_DMG.yang`、`GUI_YI_MILESTONE`、
  * `ATTACK_PROGRESS_SCALE.floor`。
  */
 function leafPaths(value: unknown, prefix = ''): string[] {
@@ -565,10 +517,6 @@ describe('Ticket 05 — 计分参数普查 (PointsConfig)：AI 估值 / 终局�
   it('死参数清单（AI 不读、终局不读、扰动无变化）', () => {
     const dead = SCORING_KNOBS.filter(row => !row.aiReads && !row.terminalReads).map(row => row.knob);
     expect(dead).toEqual([
-      'ACTION.DISSIPATE',
-      'ACTION.PASS',
-      'RARITY_MULTIPLIER',
-      'NO_RARITY_ACTIONS',
       'RACE_DIFF_PRICING'
     ]);
   });
@@ -580,7 +528,7 @@ describe('Ticket 05 — 计分参数普查 (PointsConfig)：AI 估值 / 终局�
 });
 
 // ---------------------------------------------------------------------------
-// 批量指标层面：死旋钮必须逐格不变，且同一断言下活旋钮必须变化
+// 批量指标层面：活旋钮必须改变批量指标（断言必须有牙齿；死旋钮已随工单删除）
 // ---------------------------------------------------------------------------
 
 /** 剔除运行期噪声（耗时/内存），只留确定性对局指标。 */
@@ -603,7 +551,7 @@ function deterministicMetrics(metrics: ReturnType<HeadlessBenchmark['run']>): un
   return rest;
 }
 
-describe('Ticket 05 — 死旋钮不改变任何批量指标（同断言下活旋钮必须变化）', () => {
+describe('Ticket 05 — 活旋钮改变批量指标（同断言下死旋钮若存在必须不变）', () => {
   const base = { matches: 60, baseSeed: 10000, maxRounds: 30 } as const;
 
   const cases: readonly {
@@ -611,18 +559,6 @@ describe('Ticket 05 — 死旋钮不改变任何批量指标（同断言下活�
     readonly config: PointsConfig;
     readonly dead: boolean;
   }[] = [
-    { name: 'RARITY_MULTIPLIER=99', config: { ...POINTS_CONFIG, RARITY_MULTIPLIER: 99 }, dead: true },
-    { name: 'NO_RARITY_ACTIONS=[]', config: { ...POINTS_CONFIG, NO_RARITY_ACTIONS: [] }, dead: true },
-    {
-      name: 'ACTION.DISSIPATE=999',
-      config: { ...POINTS_CONFIG, ACTION: { ...POINTS_CONFIG.ACTION, DISSIPATE: 999 } },
-      dead: true
-    },
-    {
-      name: 'ACTION.PASS=999',
-      config: { ...POINTS_CONFIG, ACTION: { ...POINTS_CONFIG.ACTION, PASS: 999 } },
-      dead: true
-    },
     {
       name: '对照：STATE_CHANGE.CAUSE_DMG 放大 10 倍（活旋钮，断言必须有牙齿）',
       config: {

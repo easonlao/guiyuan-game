@@ -13,7 +13,6 @@ import {
 import {
   ScoreCalculator,
   POINTS_CONFIG,
-  DEFAULT_SCORE_CONFIG,
   GUI_YI_MILESTONE,
   DAMAGE_PENALTY
 } from '../../src/core/logic/ScoreCalculator.js';
@@ -29,8 +28,6 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
       expect(DAMAGE_PENALTY).toBe(50);
       expect(POINTS_CONFIG.GUI_YI_MILESTONE).toBe(60);
       expect(POINTS_CONFIG.DAMAGE_PENALTY).toBe(50);
-      expect(DEFAULT_SCORE_CONFIG.guiYiMilestone).toBe(60);
-      expect(DEFAULT_SCORE_CONFIG.damagePenalty).toBe(50);
     });
 
     it('ScoreCalculator instance provides calculation methods', () => {
