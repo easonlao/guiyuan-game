@@ -18,6 +18,7 @@ export const RATCHET_STATUSES = new Set(['Survived', 'NoCoverage']);
 
 export const DEFAULT_REPORT = 'reports/mutation/mutation.json';
 export const DEFAULT_BASELINE = 'mutation-baseline.jsonl';
+export const DEFAULT_STRYKER_CONFIG = 'stryker.config.json';
 
 /** 字节级稳定比较（不用 localeCompare，避免随 locale 变化）。 */
 function compare(a, b) {
@@ -106,6 +107,48 @@ export function readReportEntriesStrict(reportPath) {
     throw new TypeError("报告内没有任何突变体（'files' 下 mutant 总数为 0），不是有效的变异结果");
   }
   return entries;
+}
+
+/**
+ * 读取 stryker.config.json 的 `mutate` 列表（全量跑的权威目标集）。
+ * 缺文件 / 非数组 / 空数组都抛错——门禁拿不到权威目标集就不能放行。
+ */
+export function readConfigMutate(configPath) {
+  const raw = JSON.parse(readFileSync(configPath, 'utf-8'));
+  const mutate = raw === null || typeof raw !== 'object' ? undefined : raw.mutate;
+  if (!Array.isArray(mutate) || mutate.length === 0) {
+    throw new TypeError(`'${configPath}' 缺少非空的 'mutate' 数组，无法判定报告是否为全量跑`);
+  }
+  return mutate;
+}
+
+/**
+ * 断言 Stryker 报告来自**全量**跑（未用 `--mutate` 覆盖配置里的 `mutate`），不是则抛错。
+ *
+ * 依据：Stryker JSON 报告的 `config` 回填的是 CLI 覆盖后的**最终** options，`mutation:changed`
+ * 用 `--mutate <子集>` 覆盖后，报告里 `config.mutate` 会变成那个子集，与配置文件不一致。
+ * （已实测：全量报告的 config.mutate 等于配置文件的两项 glob；单文件 `--mutate State.ts` 的报告
+ *  config.mutate 只有那一项。）
+ *
+ * 为什么门禁必须拒绝子集报告：Stryker 的 perTest 覆盖按**被变异文件集**选测试，子集跑出的
+ * 存活/无覆盖集合与全量跑不同，直接喂给棘轮会报出**假的新增存活**。
+ */
+export function assertReportIsFullRun(reportPath, configMutate) {
+  const raw = JSON.parse(readFileSync(reportPath, 'utf-8'));
+  const reportMutate = raw === null || typeof raw !== 'object' ? undefined : raw.config?.mutate;
+  if (!Array.isArray(reportMutate) || reportMutate.length === 0) {
+    throw new TypeError("报告缺少 'config.mutate'，无法确认是否全量跑");
+  }
+  const normalize = (list) => [...list].map((item) => String(item).trim()).sort();
+  const reportSet = normalize(reportMutate);
+  const configSet = normalize(configMutate);
+  const same =
+    reportSet.length === configSet.length && reportSet.every((item, i) => item === configSet[i]);
+  if (!same) {
+    throw new TypeError(
+      `报告的 config.mutate=${JSON.stringify(reportMutate)} 与配置的 mutate=${JSON.stringify(configMutate)} 不一致`
+    );
+  }
 }
 
 /** 读取基线文件（跳过空行与 `#` 注释行）。 */
