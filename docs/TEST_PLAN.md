@@ -38,14 +38,19 @@
 
 由于 AI 生成的代码有时会看似通过了测试，但实际上只是“侥幸通过”（比如测试断言写得太宽泛），我们需要引入**突变测试 (Mutation Testing)** 来检验测试本身的健壮性。
 
-* **测试工具**：[Stryker.js](https://stryker-mutator.io/) (`npm run stryker`)，配置见 `stryker.config.json`（`mutate` 覆盖 `src/core/logic/**/*.ts`）。
+* **测试工具**：[Stryker.js](https://stryker-mutator.io/)，配置见 `stryker.config.json`（`mutate` 覆盖 `src/core/logic/**/*.ts`，排除纯 re-export 的 `src/core/logic/index.ts`）。
+  * 全量：`npm run mutation`。
+  * 只跑相对某 git ref 改动的逻辑文件：`npm run mutation:changed`（默认对比 `HEAD`，含未提交改动；可传 ref，如 `npm run mutation:changed -- HEAD~1`）。
+  * 存活明细同时输出到控制台（`clear-text`，含文件/行号/变异类型与 `- / +` diff）与 `reports/mutation/mutation.json`。
 * **执行时机**：**发布前 (Pre-release) 或 核心模块重构完毕后**。日常高频开发无需运行。
 * **运行机制**：Stryker 会故意修改你的业务代码（例如把 `if (score >= 1)` 改成 `if (score > 1)`），然后运行 Vitest。如果测试仍然通过，说明这个“突变体存活了”，意味着你的测试用例存在漏洞（没有覆盖到边界值）。
 * **准入红线**：核心计算逻辑的 **Mutation Score 目标 >= 80%**。
 
 > **现状（2026-10-10）**：这条 80% 红线**未被强制**——`stryker.config.json` 未配置任何 `thresholds`。已修两个阻断问题：(1) `tests/core/candidate-validation.test.ts` 的重仿真用例在插桩下超过默认 `hookTimeout`，已通过 `vitest.stryker.config.ts` 将其排除出 Stryker 测试集；(2) `coverageAnalysis: "perTest"` 在 Stryker 10 + Vitest 5 下退化为「0 个测试/突变体」（全部误报存活），已改为 `"off"`。
 >
-> **实测分数偏低**：修复后单文件实测 `src/core/logic/ScoreCalculator.ts` 突变分为 **60.63%**（77 杀 / 45 存活 / 5 无覆盖），低于本文的 80% 目标。因此**未接 `thresholds`**：直接写 `break = 80` 会让 `npm run stryker` 当场变红。是「把红线降到 60 做防回退棘轮」还是「先补测试再维持 80」，属政策决定，待定。
+> **实测分数偏低**：修复后单文件实测 `src/core/logic/ScoreCalculator.ts` 突变分为 **60.63%**（77 杀 / 45 存活 / 5 无覆盖），低于本文的 80% 目标。因此**未接 `thresholds`**：直接写 `break = 80` 会让 `npm run mutation` 当场变红。是「把红线降到 60 做防回退棘轮」还是「先补测试再维持 80」，属政策决定，待定。
+>
+> **⚠️ 存活清单当前不可信（上游 bug，2026-10-10 发现）**：`@stryker-mutator/vitest-runner@10.0.0` + `vitest@5.0.3` 下，**非 static 突变体**的判定全部不可信——凡是「有 per-test 覆盖、需要按测试名过滤」的突变体，runner 构造的 `testNamePattern` 用空格连接套件链，而 Vitest 5 改为用 `' > '` 连接，导致过滤不中任何用例、实际执行 0 个测试，突变体被误报为 `Survived`（报告里 `testsCompleted: 0`）。只有 static 突变体（runner 不套用名字过滤）的判定是对的。这是上游已知问题 [stryker-js#6210](https://github.com/stryker-mutator/stryker-js/issues/6210)，修复 PR [#6214](https://github.com/stryker-mutator/stryker-js/pull/6214) 尚未发布。`coverageAnalysis: "off"` **并不能**绕开它（Stryker 10 的 vitest-runner 无论该选项都会收集并回传 per-test 覆盖）。在拿到含该修复的版本前，**不要把存活清单当作真实测试缺口**；若要本地止血，可用 `patch-package` 打 #6214 的分隔符补丁（把 `collectTestName` 的 `join(' ')` 改为 `join(' > ')`），或把 Vitest 降到 4.x。
 
 ---
 

@@ -21,6 +21,8 @@
     "benchmark:dynamic-switching": "npx tsx src/core/headless/DynamicSwitching.ts",
     "build:minigame": "node scripts/build-minigame.mjs",
     "dev:minigame": "node scripts/build-minigame.mjs --watch",
+    "mutation": "stryker run",
+    "mutation:changed": "node scripts/mutation-changed.mjs",
     "stryker": "stryker run"
   },
   "devDependencies": {

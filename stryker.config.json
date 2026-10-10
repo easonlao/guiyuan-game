@@ -12,11 +12,12 @@
     "legacy/**",
     "dist/**"
   ],
-  "reporters": ["progress", "clear-text"],
+  "reporters": ["progress", "clear-text", "json"],
   "concurrency": 4,
   "coverageAnalysis": "off",
   "mutate": [
-    "src/core/logic/**/*.ts"
+    "src/core/logic/**/*.ts",
+    "!src/core/logic/index.ts"
   ],
   "vitest": {
     "configFile": "vitest.stryker.config.ts"
