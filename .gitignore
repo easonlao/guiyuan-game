@@ -18,6 +18,7 @@ dist-ssr/
 .scratch/
 .pi/
 .agents/
+.worktrees/
 
 # Regenerable codegraph index
 .codegraph/
