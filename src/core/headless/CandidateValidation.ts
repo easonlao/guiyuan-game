@@ -14,7 +14,8 @@
  *                          标准 1 报「无法判定」（`inconclusive`），不静默通过。
  *   2. 每个行为都有价值 —— 动作价值普查中没有在所有被测盘面上都被支配的动作。
  *   3. 护栏全绿        —— 500 局平衡自对弈、种子 10000、回合上限 30 下，
- *                          归元率 ∈ [0.75, 0.95]、先手胜率 ∈ [0.45, 0.55]、堆内存增量 < 15MB。
+ *                          归元率 ∈ [0.89, 0.95]、先手胜率 ∈ [0.47, 0.51]、堆内存增量 < 15MB。
+ *                          带值的唯一定义在 `./GuardrailBand.js`；本文件与测试都不得再硬编码。
  *   4. 动态策略全胜    —— 动态切换策略对全部静态预设的座次平衡胜率显著高于 50%（非裸 >50%）。
  *
  * 报告另外携带（ticket 清单）：
@@ -32,6 +33,13 @@ import type { RuleSwitches } from '../logic/ActionCandidates.js';
 import { POINTS_CONFIG, type PointsConfig } from '../logic/ScoreCalculator.js';
 import { BALANCED_WEIGHTS } from '../ai/Strategy.js';
 import { HeadlessBenchmark } from './HeadlessBenchmark.js';
+import {
+  GUARDRAIL_GUIYUAN_MIN,
+  GUARDRAIL_GUIYUAN_MAX,
+  GUARDRAIL_P1_WIN_MIN,
+  GUARDRAIL_P1_WIN_MAX,
+  GUARDRAIL_HEAP_MAX_MB
+} from './GuardrailBand.js';
 import {
   DEFAULT_BASE_SEED,
   DEFAULT_MAX_ROUNDS,
@@ -74,16 +82,9 @@ import {
 // 验收标准常量
 // ---------------------------------------------------------------------------
 
-/** 护栏：归元率下界（500 局平衡自对弈，唯一 live 红线，见 ADR 0011 决策 2）。 */
-export const GUARDRAIL_GUIYUAN_MIN = 0.75;
-/** 护栏：归元率上界。 */
-export const GUARDRAIL_GUIYUAN_MAX = 0.95;
-/** 护栏：先手胜率下界。 */
-export const GUARDRAIL_P1_WIN_MIN = 0.45;
-/** 护栏：先手胜率上界。 */
-export const GUARDRAIL_P1_WIN_MAX = 0.55;
-/** 护栏：500 局堆内存增量上界（MB）。 */
-export const GUARDRAIL_HEAP_MAX_MB = 15;
+// 护栏带（归元率 / 先手胜率 / 堆内存）的**唯一定义**在 `./GuardrailBand.js`。
+// 本文件只 import、不再声明这些常量：历史上测试与 CLI 各持一份副本且值不同，
+// CLI 因此用采纳前的旧带判定候选。守卫见 `tests/core/guardrail-band-single-source.test.ts`。
 
 /** 护栏样本量（固定口径）。 */
 export const DEFAULT_GUARDRAIL_MATCHES = 500;

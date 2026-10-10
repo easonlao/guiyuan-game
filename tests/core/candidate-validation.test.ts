@@ -7,13 +7,13 @@ import {
 } from '../../src/core/headless/ExperimentRunner.js';
 import {
   DEFAULT_VALIDATION_MATCHES_PER_SEAT,
-  GUARDRAIL_GUIYUAN_MAX,
   PRODUCTION_CANDIDATE,
   formatCandidateValidationReport,
   validateCandidate,
   type CandidateSpec,
   type CandidateValidationReport
 } from '../../src/core/headless/CandidateValidation.js';
+import { GUARDRAIL_GUIYUAN_MAX, GUARDRAIL_GUIYUAN_MIN } from '../../src/core/headless/GuardrailBand.js';
 import { parseCandidateArgs } from '../../src/core/headless/CandidateValidationCli.js';
 import { runActionValueCensus } from '../../src/core/headless/ActionValueCensus.js';
 import {
@@ -25,16 +25,21 @@ import {
  * 候选验证命令测试（Ticket 05）。
  *
  * 样本量取舍：对拼矩阵每座次 50 局（每格 = 2 × 50 = 100 局，恰好达到
- * `MIN_DOMINANCE_MATCHES` 显著性门槛），护栏 120 局。所有结果由固定种子决定，
+ * `MIN_DOMINANCE_MATCHES` 显著性门槛）。所有结果由固定种子决定，
  * 因此不是「大概率」而是逐字节可复现；代价是标准误较大（每格 p≈0.5 时 ≈ 5pp），
  * 只用于验证「四条标准各自可失败、报告同时包含四条」这类结构性结论，
  * 不用于给出生产级胜率数值。
+ *
+ * 护栏样本必须是 500 局：护栏带（`GuardrailBand.ts`）是按「500 局平衡自对弈、
+ * 种子 10000」口径定的，先手胜率上界只比锚点高 0.6pp。120 局的噪声会让生产配置的
+ * 先手胜率（120 局实测 0.4667）落到 [0.47, 0.51] 下界外——那是口径不匹配，不是真实击穿。
+ * 因此这里与 live 护栏测试保持同一口径。
  */
 const FAST = {
   matchesPerSeat: 50,
   seed: 10000,
   maxRounds: 30,
-  guardrailMatches: 120,
+  guardrailMatches: 500,
   guardrailSeed: 10000
 } as const;
 
@@ -143,7 +148,12 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
     expect(dominance.noStrictDominance.passed).toBe(false);
     expect(dominance.noStrictDominance.strictDominators).toContain('激进压制');
     expect(dominance.everyActionHasValue.passed).toBe(true);
-    expect(dominance.guardrails.passed).toBe(true);
+    // 工单 02/03 收紧后的带把「无进度定价」的回退挡在带外：该候选的归元率 88.40%
+    // 低于下界 0.89，因此标准 3 也随之独立失败（这正是带的用意，不是回归）。
+    expect(dominance.guardrails.passed).toBe(false);
+    const dominanceGuiYuan = dominance.guardrails.checks.find(check => check.key === 'guiYuanRate');
+    expect(dominanceGuiYuan?.passed).toBe(false);
+    expect(dominance.guardrails.guiYuanRate).toBeLessThan(GUARDRAIL_GUIYUAN_MIN);
     expect(dominance.dynamicBeatsStatics.evidence.length).toBe(
       DEFAULT_STRATEGY_VARIANTS.length
     );

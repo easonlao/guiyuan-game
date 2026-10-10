@@ -15,6 +15,13 @@ import {
   defensiveStrategy
 } from '../../src/core/ai/Strategy.js';
 import { HeadlessBenchmark } from '../../src/core/headless/HeadlessBenchmark.js';
+import {
+  GUARDRAIL_GUIYUAN_MIN,
+  GUARDRAIL_GUIYUAN_MAX,
+  GUARDRAIL_P1_WIN_MIN,
+  GUARDRAIL_P1_WIN_MAX,
+  GUARDRAIL_HEAP_MAX_MB
+} from '../../src/core/headless/GuardrailBand.js';
 
 describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', () => {
   const evaluator = new ActionEvaluator();
@@ -150,7 +157,7 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
   });
 
   describe('3. live 启发式预设护栏基线推演验收', () => {
-    it('satisfies the live heuristic-preset guardrails: GuiYuan rate between 75% and 95%, fair win rates, low GC delta', () => {
+    it('satisfies the live heuristic-preset guardrails: GuiYuan rate between 89% and 95%, fair win rates, low GC delta', () => {
       const benchmark = new HeadlessBenchmark();
       // Run 500 matches verification sample
       const metrics = benchmark.run({
@@ -169,18 +176,19 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
       // 变红」的目的，勿改回 0.88。上界保留 0.95（锚点 + 4.6pp），仍拒绝 ADR 0010 的
       // 极端候选（attack-zero 把归元率推到 ≈99.9%）。
       // 口径记录见 ADR 0011「决策 2」与「采纳记录」。
-      expect(metrics.guiYuanRate).toBeGreaterThanOrEqual(0.89);
-      expect(metrics.guiYuanRate).toBeLessThanOrEqual(0.95);
+      // 带值唯一定义在 `src/core/headless/GuardrailBand.ts`，本测试只 import、不硬编码。
+      expect(metrics.guiYuanRate).toBeGreaterThanOrEqual(GUARDRAIL_GUIYUAN_MIN);
+      expect(metrics.guiYuanRate).toBeLessThanOrEqual(GUARDRAIL_GUIYUAN_MAX);
 
       // 护栏 3: 先手胜率。锚点实测 50.40%。旧带 [0.47, 0.54] 的上界 0.54 同样包住了
       // 「无进度定价」时的 51.20%（0.512 <= 0.54 通过），故上界收到 0.51 = 锚点 + 0.6pp，
       // 使 51.20% 落在带外；下界 0.47（锚点 − 3.4pp）不变。0.6pp 的余量很薄，是有意为之：
       // 先手胜率的回退幅度只有 0.8pp，不收紧就抓不到。
-      expect(metrics.p1WinRate).toBeGreaterThanOrEqual(0.47);
-      expect(metrics.p1WinRate).toBeLessThanOrEqual(0.51);
+      expect(metrics.p1WinRate).toBeGreaterThanOrEqual(GUARDRAIL_P1_WIN_MIN);
+      expect(metrics.p1WinRate).toBeLessThanOrEqual(GUARDRAIL_P1_WIN_MAX);
 
       // 内存稳定性: 500 局内存增量不超过 15MB
-      expect(metrics.heapUsedDeltaMB).toBeLessThan(15);
+      expect(metrics.heapUsedDeltaMB).toBeLessThan(GUARDRAIL_HEAP_MAX_MB);
     });
   });
 });
