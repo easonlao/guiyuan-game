@@ -65,7 +65,6 @@ export type PlayerId = 'P1' | 'P2';
 
 /** 单个玩家状态 */
 export interface PlayerState {
-  readonly id: PlayerId;
   readonly score: number;
   readonly board: BoardState;
 }

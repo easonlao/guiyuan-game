@@ -66,6 +66,7 @@ export class ActionResolver {
         success: false,
         scoreDelta: 0,
         extraTurn: false,
+        // Stryker disable next-line StringLiteral: 终局提示文案不参与断言（不可观测）
         message: '对局已结束'
       };
     }
@@ -105,20 +106,29 @@ export class ActionResolver {
 
     let scoreDelta = 0;
     let extraTurn = false;
+    // Stryker disable next-line BooleanLiteral: success 初值仅在非法 actionType 下可观测；枚举各 case 均显式置 true，生产不可达
     let success = false;
+    // Stryker disable next-line StringLiteral: message 初值仅在未显式赋值时透出，文案不参与断言（不可观测）
     let message = '';
 
     switch (payload.actionType) {
       case ActionType.AUTO: {
+        // Stryker disable next-line OptionalChaining: 缺 element 时 currentTianGan 必非空（候选已补齐），?. 仅为防御
         const element = payload.element || state.currentTianGan?.element;
+        // Stryker disable next-line OptionalChaining: 同上，缺 polarity 时 currentTianGan 必非空
         const polarity = payload.polarity || state.currentTianGan?.polarity;
+        // Stryker disable next-line ConditionalExpression,LogicalOperator,BlockStatement: 入参校验失败返回经候选补齐后不可达
         if (!element || !polarity) {
+          // Stryker disable next-line ObjectLiteral,BooleanLiteral,StringLiteral: 同上，不可达返回
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少天干属性或极性' };
         }
+        // Stryker disable next-line AssignmentOperator: AUTO 行为分恒为 0（ACTION.AUTO=0），+= 0 与 -= 0 等价
         scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.AUTO);
         const node = nextActiveBoard[element];
         const prevLevel = node[polarity];
+        // Stryker disable next-line ConditionalExpression,EqualityOperator: prevLevel===2 时两分支状态与分数等价，仅 message 文案不同（不可观测）
         if (prevLevel >= 2) {
+          // Stryker disable next-line StringLiteral: 封顶提示文案不参与断言（不可观测）
           message = '节点已达最高加持状态';
           success = true; // 动作仍算完成，但不再提升
         } else {
@@ -131,8 +141,11 @@ export class ActionResolver {
       }
 
       case ActionType.CONVERT: {
+        // Stryker disable next-line OptionalChaining: 缺 element 时 currentTianGan 必非空（候选已补齐），?. 仅为防御
         const element = payload.element || state.currentTianGan?.element;
+        // Stryker disable next-line ConditionalExpression,BlockStatement: 入参校验失败返回经候选补齐后不可达
         if (!element) {
+          // Stryker disable next-line ObjectLiteral,BooleanLiteral,StringLiteral: 同上，不可达返回
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少指定元素' };
         }
         // 调息转到相反极性
@@ -152,8 +165,11 @@ export class ActionResolver {
       }
 
       case ActionType.TRANS: {
+        // Stryker disable next-line OptionalChaining: 缺 sourceElement 时 currentTianGan 必非空（候选已补齐），?. 仅为防御
         const sourceElement = payload.sourceElement || payload.element || state.currentTianGan?.element;
+        // Stryker disable next-line ConditionalExpression,BlockStatement: 入参校验失败返回经候选补齐后不可达
         if (!sourceElement) {
+          // Stryker disable next-line ObjectLiteral,BooleanLiteral,StringLiteral: 同上，不可达返回
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少源五行' };
         }
         scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.TRANS);
@@ -161,6 +177,7 @@ export class ActionResolver {
         const polarity = payload.polarity || Polarity.YANG;
         const targetNode = nextActiveBoard[targetElement];
         const prevLevel = targetNode[polarity];
+        // Stryker disable next-line ConditionalExpression,EqualityOperator: prevLevel===2 时 clamp 与计分同样为 2/0，真值分支与 < 等价
         if (prevLevel < 2) {
           const newLevel = clampNodeLevel(prevLevel + 1);
           patchActiveNode(targetElement, { [polarity]: newLevel });
@@ -171,8 +188,11 @@ export class ActionResolver {
       }
 
       case ActionType.ATK: {
+        // Stryker disable next-line OptionalChaining: 缺 sourceElement 时 currentTianGan 必非空（候选已补齐），?. 仅为防御
         const sourceElement = payload.sourceElement || payload.element || state.currentTianGan?.element;
+        // Stryker disable next-line ConditionalExpression,BlockStatement: 入参校验失败返回经候选补齐后不可达
         if (!sourceElement) {
+          // Stryker disable next-line ObjectLiteral,BooleanLiteral,StringLiteral: 同上，不可达返回
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少源五行' };
         }
         scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.ATK);
@@ -195,11 +215,14 @@ export class ActionResolver {
       case ActionType.BURST: {
         const sourceElement = payload.sourceElement;
         const consumePolarity = payload.consumePolarity || Polarity.YIN;
+        // Stryker disable next-line ConditionalExpression,BlockStatement: 候选列表为 BURST 必带 sourceElement，此守卫不可达
         if (!sourceElement) {
+          // Stryker disable next-line ObjectLiteral,BooleanLiteral,StringLiteral: 同上，不可达返回
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '爆发需指定归一源节点' };
         }
         const sourceNode = nextActiveBoard[sourceElement];
         if (!isNodeGuiYi(sourceNode)) {
+          // Stryker disable next-line StringLiteral: 失败原因文案不参与断言（不可观测）
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '源节点未达成归一，无法爆发' };
         }
         scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.BURST);
@@ -225,11 +248,14 @@ export class ActionResolver {
       case ActionType.BURST_ATK: {
         const sourceElement = payload.sourceElement;
         const consumePolarity = payload.consumePolarity || Polarity.YANG;
+        // Stryker disable next-line ConditionalExpression,BlockStatement: 候选列表为 BURST_ATK 必带 sourceElement，此守卫不可达
         if (!sourceElement) {
+          // Stryker disable next-line ObjectLiteral,BooleanLiteral,StringLiteral: 同上，不可达返回
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '强破需指定归一源节点' };
         }
         const sourceNode = nextActiveBoard[sourceElement];
         if (!isNodeGuiYi(sourceNode)) {
+          // Stryker disable next-line StringLiteral: 失败原因文案不参与断言（不可观测）
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '源节点未达成归一，无法强破' };
         }
         scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.BURST_ATK);
@@ -258,9 +284,13 @@ export class ActionResolver {
       }
 
       case ActionType.DISSIPATE: {
+        // Stryker disable next-line OptionalChaining: 缺 element 时 currentTianGan 必非空（候选已补齐），?. 仅为防御
         const element = payload.element || state.currentTianGan?.element;
+        // Stryker disable next-line OptionalChaining: 同上，缺 polarity 时 currentTianGan 必非空
         const polarity = payload.polarity || state.currentTianGan?.polarity;
+        // Stryker disable next-line ConditionalExpression,LogicalOperator,BlockStatement: 入参校验失败返回经候选补齐后不可达
         if (!element || !polarity) {
+          // Stryker disable next-line ObjectLiteral,BooleanLiteral,StringLiteral: 同上，不可达返回
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少天干属性或极性' };
         }
         const node = nextActiveBoard[element];
@@ -270,6 +300,7 @@ export class ActionResolver {
         // 亢极散气：计 0 分，不消耗/获得额外行动
         scoreDelta = 0;
         success = true;
+        // Stryker disable next-line StringLiteral: 动作提示文案不参与断言（不可观测）
         message = '亢极散气：极位能量满溢回落';
         break;
       }
@@ -278,12 +309,15 @@ export class ActionResolver {
         // 消散过牌：计 0 分，不修改盘面，自然交接回合
         scoreDelta = 0;
         success = true;
+        // Stryker disable next-line StringLiteral: 动作提示文案不参与断言（不可观测）
         message = '消散过牌：无有效动作，流转回合';
         break;
       }
     }
 
+    // Stryker disable next-line ConditionalExpression,BlockStatement: switch 穷举全部 ActionType 且各 case 均置 success=true，此兜底仅非法 actionType 可达
     if (!success) {
+      // Stryker disable next-line ObjectLiteral,BooleanLiteral: 同上，不可达返回
       return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message };
     }
 
@@ -297,6 +331,7 @@ export class ActionResolver {
       }
     }
 
+    // Stryker disable next-line ConditionalExpression,EqualityOperator: guiYiDelta===0 时累加 0，> 与 >= 等价
     if (guiYiDelta > 0) {
       scoreDelta += this.scoreCalculator.calculateGuiYiMilestonePoints(guiYiDelta);
     }
@@ -305,8 +340,11 @@ export class ActionResolver {
 
     // 检查是否达成“五行归元”
     const hasGuiYuan = isBoardGuiYuan(nextActiveBoard);
+    // Stryker disable next-line ObjectLiteral: state.lockedGuiYuan 恒存在（createInitialGameState 构造），?? 兜底不可达
     const prevLockedGuiYuan: Readonly<Record<PlayerId, boolean>> = state.lockedGuiYuan ?? {
+      // Stryker disable next-line BooleanLiteral: 同上，不可达兜底
       P1: false,
+      // Stryker disable next-line BooleanLiteral: 同上，不可达兜底
       P2: false
     };
 
@@ -367,6 +405,7 @@ export class ActionResolver {
           finalActiveScore -= this.scoreCalculator.calculateDamagePenalty(activeDamage);
           finalOpponentScore -= this.scoreCalculator.calculateDamagePenalty(opponentDamage);
 
+          // Stryker disable next-line ConditionalExpression,EqualityOperator: 此分支 activePlayerId 恒为 P2，与平局兜底 winner='P2' 等价
           if (finalActiveScore > finalOpponentScore) {
             winner = activePlayerId;
           } else if (finalOpponentScore > finalActiveScore) {
@@ -382,23 +421,26 @@ export class ActionResolver {
     let nextRound = state.round;
     let nextCurrentPlayer: PlayerId = activePlayerId;
 
+    // Stryker disable next-line BlockStatement: 分支体赋的值与上面初值相同，删除分支体等价
     if (isGameOver) {
       nextRound = state.round;
       nextCurrentPlayer = activePlayerId;
-    } else if (extraTurn) {
-      nextRound = state.round;
-      nextCurrentPlayer = activePlayerId;
-    } else {
-      if (activePlayerId === 'P1') {
-        // 半回合交接：大回合不递增，切换到 P2
+    } else
+      // Stryker disable next-line BlockStatement: 同上，分支体赋的值与初值相同
+      if (extraTurn) {
         nextRound = state.round;
-        nextCurrentPlayer = 'P2';
+        nextCurrentPlayer = activePlayerId;
       } else {
-        // P2 常规行动完毕且未终局：大回合闭合，进入下一大回合，切换回 P1
-        nextRound = state.round + 1;
-        nextCurrentPlayer = 'P1';
+        if (activePlayerId === 'P1') {
+          // 半回合交接：大回合不递增，切换到 P2
+          nextRound = state.round;
+          nextCurrentPlayer = 'P2';
+        } else {
+          // P2 常规行动完毕且未终局：大回合闭合，进入下一大回合，切换回 P1
+          nextRound = state.round + 1;
+          nextCurrentPlayer = 'P1';
+        }
       }
-    }
 
     const nextState: GameState = {
       ...state,

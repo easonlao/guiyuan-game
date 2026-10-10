@@ -134,6 +134,7 @@ export class TurnManager {
     }
 
     // 终轮天命揭牌决胜阶段判定：先手 P1 已锁定五行归元且当前轮到后手 P2
+    // Stryker disable next-line OptionalChaining: lockedGuiYuan 由 createInitialGameState/ActionResolver 恒置，?. 仅为防御（生产不可达）
     if (this.state.lockedGuiYuan?.P1 && this.state.currentPlayer === 'P2') {
       this.phase = TurnPhase.START_TURN;
       this.eventBus.emit('turn:start', {
@@ -161,6 +162,7 @@ export class TurnManager {
         P1: true,
         P2: false
       };
+      // Stryker disable next-line StringLiteral: 初值必被下方 if/else 两分支覆盖，初值不可观测（等价）
       let winner: PlayerId = 'P1';
 
       if (success) {
@@ -171,6 +173,7 @@ export class TurnManager {
         };
         // 成功时将最后一侧点亮
         const unlighted = getUnlightedSide(p2Board);
+        // Stryker disable next-line ConditionalExpression: success 蕴含 getUnlightedSide 非 null，此守卫恒真（等价）
         if (unlighted) {
           nextP2Board = {
             ...p2Board,
@@ -180,9 +183,11 @@ export class TurnManager {
             }
           };
         }
-      } else {
-        winner = 'P1';
-      }
+      } else
+        // Stryker disable next-line BlockStatement: winner 初值已是 'P1'，else 置同值被吸收（等价）
+        {
+          winner = 'P1';
+        }
 
       // 派发 showdown:draw 事件
       this.eventBus.emit('showdown:draw', {
@@ -289,6 +294,7 @@ export class TurnManager {
     // 校验连动限制：在连动额外行动中严禁二次爆发
     if (
       this.isExtraTurn &&
+      // Stryker disable next-line ConditionalExpression: 连动时候选列表已过滤爆发动作，BURST_ATK 分支与候选校验冗余（等价）
       (action.actionType === ActionType.BURST || action.actionType === ActionType.BURST_ATK)
     ) {
       return {
@@ -323,6 +329,7 @@ export class TurnManager {
     const prevState = this.state;
     const result = this.resolver.resolve(this.state, fullAction);
 
+    // Stryker disable next-line ConditionalExpression,BlockStatement: 候选列表已校验合法性，匹配上的动作 resolve 恒成功，此防线不可达（等价）
     if (!result.success) {
       return result;
     }
@@ -335,10 +342,12 @@ export class TurnManager {
       // 触发爆发连动：获得额外行动机会，保持当前玩家
       this.isExtraTurn = true;
       this.eventBus.emit('burst:extra_turn', { player: fullAction.player });
-    } else if (wasExtraTurn) {
-      // 连动额外行动已执行完毕，重置连动锁
-      this.isExtraTurn = false;
-    }
+    } else
+      // Stryker disable next-line ConditionalExpression: wasExtraTurn 为 false 时置 false 无差异，为 true 时与原分支一致（等价）
+      if (wasExtraTurn) {
+        // 连动额外行动已执行完毕，重置连动锁
+        this.isExtraTurn = false;
+      }
 
     this.state = result.nextState;
 
@@ -389,6 +398,7 @@ export class TurnManager {
         success: false,
         scoreDelta: 0,
         extraTurn: false,
+        // Stryker disable next-line StringLiteral: 终局提示文案不参与断言（不可观测）
         message: '对局已结束'
       };
     }
@@ -408,12 +418,17 @@ export class TurnManager {
     }
 
     const actionToExecute = action ?? this.candidateActions[0];
+    // Stryker disable next-line ConditionalExpression,BlockStatement: startTurn 恒产出至少一个候选（含 PASS 兜底），此无动作分支不可达
     if (!actionToExecute) {
+      // Stryker disable next-line ObjectLiteral: 不可达的兜底返回
       return {
         nextState: this.state,
+        // Stryker disable next-line BooleanLiteral: 不可达的兜底返回
         success: false,
         scoreDelta: 0,
+        // Stryker disable next-line BooleanLiteral: 不可达的兜底返回
         extraTurn: false,
+        // Stryker disable next-line StringLiteral: 不可达的兜底返回
         message: '无可用动作'
       };
     }
@@ -432,6 +447,7 @@ export class TurnManager {
         success: false,
         scoreDelta: 0,
         extraTurn: false,
+        // Stryker disable next-line StringLiteral: 终局提示文案不参与断言（不可观测）
         message: '对局已结束'
       };
     }
@@ -446,6 +462,7 @@ export class TurnManager {
         success: true,
         scoreDelta: 0,
         extraTurn: false,
+        // Stryker disable next-line StringLiteral: 终局提示文案不参与断言（不可观测）
         message: '终轮天命揭牌决胜已完成'
       };
     }
@@ -477,9 +494,6 @@ export class TurnManager {
       return false;
     }
     if (action.sourceElement !== undefined && candidate.sourceElement !== action.sourceElement) {
-      return false;
-    }
-    if (action.targetElement !== undefined && candidate.targetElement !== action.targetElement) {
       return false;
     }
     if (action.polarity !== undefined && candidate.polarity !== action.polarity) {

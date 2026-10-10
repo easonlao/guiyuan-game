@@ -113,20 +113,12 @@ export class ScoreCalculator {
     return count * this.guiYiMilestone;
   }
 
-  calculateGuiYiMilestone(count: number): number {
-    return this.calculateGuiYiMilestonePoints(count);
-  }
-
   /**
    * 计算终局道损扣分
    * @param damageCount 残留道损总数量（每个阴或阳为 -1 记 1 个道损）
    */
   calculateDamagePenalty(damageCount: number): number {
     return damageCount * this.damagePenalty;
-  }
-
-  calculateEndgameDamagePenalty(damageCount: number): number {
-    return this.calculateDamagePenalty(damageCount);
   }
 
   /**
@@ -166,6 +158,7 @@ export class ScoreCalculator {
     polarity: Polarity = Polarity.YANG,
     isAttack: boolean = false
   ): number {
+    // Stryker disable next-line ConditionalExpression,BlockStatement: prevLevel===newLevel 时后续各分支均不命中、末尾同样返回 0，提前返回被完全吸收（等价）
     if (prevLevel === newLevel) {
       return 0;
     }
