@@ -6,6 +6,7 @@ import {
   TIAN_GAN_LIST
 } from '../../src/core/types/domain.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
+import { gameStateWith } from '../../src/core/headless/BoardFixture.js';
 import { ActionEvaluator } from '../../src/core/ai/ActionEvaluator.js';
 import {
   balancedStrategy,
@@ -62,30 +63,15 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
 
   describe('2. 各项预设策略行为倾向验证', () => {
     it('defensive strategy prioritizes self repair over attack', () => {
-      const baseState = createInitialGameState();
       const dingFireYin = TIAN_GAN_LIST[3];
 
-      const dilemmaState = {
-        ...baseState,
-        players: {
-          ...baseState.players,
-          P1: {
-            ...baseState.players.P1,
-            board: {
-              ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const },
-              [WuXing.FIRE]: { yin: -1 as const, yang: 0 as const }
-            }
-          },
-          P2: {
-            ...baseState.players.P2,
-            board: {
-              ...baseState.players.P2.board,
-              [WuXing.EARTH]: { yin: 1 as const, yang: 1 as const }
-            }
-          }
-        }
-      };
+      const dilemmaState = gameStateWith({
+        P1: {
+          [WuXing.WOOD]: { yin: 1, yang: 1 },
+          [WuXing.FIRE]: { yin: -1, yang: 0 }
+        },
+        P2: { [WuXing.EARTH]: { yin: 1, yang: 1 } }
+      });
 
       const repairOption = {
         actionType: ActionType.AUTO,
@@ -107,30 +93,15 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
     });
 
     it('aggressive strategy prioritizes opponent disruption', () => {
-      const baseState = createInitialGameState();
       const dingFireYin = TIAN_GAN_LIST[3];
 
-      const dilemmaState = {
-        ...baseState,
-        players: {
-          ...baseState.players,
-          P1: {
-            ...baseState.players.P1,
-            board: {
-              ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const },
-              [WuXing.FIRE]: { yin: -1 as const, yang: 0 as const }
-            }
-          },
-          P2: {
-            ...baseState.players.P2,
-            board: {
-              ...baseState.players.P2.board,
-              [WuXing.EARTH]: { yin: 1 as const, yang: 1 as const }
-            }
-          }
-        }
-      };
+      const dilemmaState = gameStateWith({
+        P1: {
+          [WuXing.WOOD]: { yin: 1, yang: 1 },
+          [WuXing.FIRE]: { yin: -1, yang: 0 }
+        },
+        P2: { [WuXing.EARTH]: { yin: 1, yang: 1 } }
+      });
 
       const repairOption = {
         actionType: ActionType.AUTO,
@@ -152,27 +123,10 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
     });
 
     it('rushGuiyuan strategy prioritizes unity completion over suppression', () => {
-      const baseState = createInitialGameState();
-      const testState = {
-        ...baseState,
-        players: {
-          ...baseState.players,
-          P1: {
-            ...baseState.players.P1,
-            board: {
-              ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 0 as const, yang: 1 as const }
-            }
-          },
-          P2: {
-            ...baseState.players.P2,
-            board: {
-              ...baseState.players.P2.board,
-              [WuXing.EARTH]: { yin: 1 as const, yang: 1 as const }
-            }
-          }
-        }
-      };
+      const testState = gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 0, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 1, yang: 1 } }
+      });
 
       const convertAction = {
         actionType: ActionType.CONVERT,

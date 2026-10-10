@@ -39,10 +39,11 @@
 | 对手残留道损 `opponentResidualDamage` | 终局盘面上等级为 -1 的侧数（双方盘面残留道损的场均） | 每局 `(countBoardDamage(P1) + countBoardDamage(P2)) / 2` 的场均 | 只统计终局残留，不是整局累计造成的伤害。累计伤害见压制度量。 |
 | 未点亮侧数 `unlightedSides` | 盘面上等级 < 1 的侧数（虚空 0 与道损 -1 都算） | `10 - 已点亮侧数` | 把道损 -1 与虚空 0 等同。一个道损侧「差 1 侧到归一」其实需要 2 次提升，进度会被高估。 |
 | 归一节点数 `guiYiNodes` | 阴阳两侧均 >= 1 的节点数 | `isNodeGuiYi` 计数 | 只看归一节点数看不出等级：全 1 与全 2 都算归一，掩盖亢极与后续爆发能力。 |
-| 听牌临界态 `tingPai` | 未点亮侧数严格等于 1 | `countUnlightedSides === 1` | **反直觉**：唯一未点亮侧若处于道损 -1，单抽天干数学上无法点亮（`canTianGanLightUnlightedSide` 返回 false），此时「听牌」并不等于「还差 1 次行动」。进度差需用盘面进度指标（ticket 07）。 |
+| 听牌临界态 `tingPai` | 未点亮侧数严格等于 1 | `countUnlightedSides === 1` | **反直觉**：唯一未点亮侧若处于道损 -1，单抽天干数学上无法点亮（`canTianGanLightUnlightedSide` 返回 false），此时「听牌」并不等于「还差 1 次行动」——进度差见盘面进度 `actionsToGuiYuan`（道损的最后一侧记 2 次行动）。 |
 | 道损数 `residualDamage` | 等级为 -1 的侧数 | `countBoardDamage` | 与压制度量混淆：道损数是终局快照，压制度量是整局累计的等级下降量；一次 2 -> 1 不产生道损。 |
+| 盘面进度 `actionsToGuiYuan` | 还差几次行动到五行归元（单侧提升 1 级记 1 次行动） | `未点亮侧数 + 道损数`（`countActionsToGuiYuan`）：虚空 0 需 1 次，道损 -1 需 2 次；五行归元完成时为 0 | 把它读成「还需几次抽天干」会低估：一个行动不必然点亮一侧（受生克与极性限制），本指标是**最少**行动数下界，不是实际抽数。 |
 
-> 盘面进度指标「还差几次行动到五行归元」不在本表实现范围内，由 ticket 07 补入本表（见 `07-board-fixture-and-progress-metric.md`）。
+> 受控盘面 fixture 构造器在 `src/core/headless/BoardFixture.ts`：`boardWith(overrides)` 构造棋盘，`gameStateWith(options)` 在 `createInitialGameState()` 之上构造完整总状态（spec Implementation Decisions #9）。
 
 ## 2. 三个已确认的口径陷阱与回归测试
 

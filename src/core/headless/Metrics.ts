@@ -10,7 +10,7 @@
  * 口径陷阱见 docs/headless/metric-definitions.md 与 tests/core/metric-definitions.test.ts。
  */
 
-import { PlayerId } from '../types/domain.js';
+import { BoardState, PlayerId } from '../types/domain.js';
 import {
   countBoardDamage,
   countBoardGuiYi,
@@ -18,6 +18,28 @@ import {
   isBoardTingPai
 } from '../logic/State.js';
 import type { ClosureType, MatchResult } from './HeadlessMatch.js';
+
+// ---------------------------------------------------------------------------
+// 盘面进度指标
+// ---------------------------------------------------------------------------
+
+/**
+ * 盘面进度指标：还差几次行动到五行归元。
+ *
+ * 每侧达到点亮 (>= 1) 至少需要 (1 - level) 次单侧提升行动：
+ * 虚空 0 需 1 次，道损 -1 需 2 次。因此：
+ *
+ *   actionsToGuiYuan = 未点亮侧数 + 道损数
+ *
+ * 它是「最少行动数」下界：假设每次行动只把一侧提升 1 级。
+ * 五行归元已完成（10 侧均 >= 1）时，未点亮侧数与道损数均为 0，恒返回 0。
+ *
+ * 口径陷阱：听牌临界态（未点亮侧数 == 1）若唯一未点亮侧处于道损 -1，
+ * 则仍需 2 次行动，而非 1 次（见 docs/headless/metric-definitions.md）。
+ */
+export function countActionsToGuiYuan(board: BoardState): number {
+  return countUnlightedSides(board) + countBoardDamage(board);
+}
 
 // ---------------------------------------------------------------------------
 // 单局指标
@@ -33,6 +55,11 @@ export interface PlayerBoardMetrics {
   readonly tingPai: boolean;
   /** 道损数：等级为 -1 的侧数 */
   readonly residualDamage: number;
+  /**
+   * 盘面进度：还差几次行动到五行归元（未点亮侧数 + 道损数）。
+   * 五行归元已完成时为 0。详见 `countActionsToGuiYuan` 与指标口径表。
+   */
+  readonly actionsToGuiYuan: number;
 }
 
 /** 单局指标快照 */
@@ -65,12 +92,16 @@ export interface MatchMetrics {
 export function deriveMatchMetrics(result: MatchResult): MatchMetrics {
   const finalState = result.finalState;
 
-  const playerBoard = (id: PlayerId): PlayerBoardMetrics => ({
-    unlightedSides: countUnlightedSides(finalState.players[id].board),
-    guiYiNodes: countBoardGuiYi(finalState.players[id].board),
-    tingPai: isBoardTingPai(finalState.players[id].board),
-    residualDamage: countBoardDamage(finalState.players[id].board)
-  });
+  const playerBoard = (id: PlayerId): PlayerBoardMetrics => {
+    const board = finalState.players[id].board;
+    return {
+      unlightedSides: countUnlightedSides(board),
+      guiYiNodes: countBoardGuiYi(board),
+      tingPai: isBoardTingPai(board),
+      residualDamage: countBoardDamage(board),
+      actionsToGuiYuan: countActionsToGuiYuan(board)
+    };
+  };
 
   const stats = result.stats;
 
