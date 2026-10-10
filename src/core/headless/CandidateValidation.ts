@@ -38,7 +38,8 @@ import {
   GUARDRAIL_GUIYUAN_MAX,
   GUARDRAIL_P1_WIN_MIN,
   GUARDRAIL_P1_WIN_MAX,
-  GUARDRAIL_HEAP_MAX_MB
+  GUARDRAIL_HEAP_MAX_MB,
+  checkGuardrailBand
 } from './GuardrailBand.js';
 import {
   DEFAULT_BASE_SEED,
@@ -534,15 +535,22 @@ function runGuardrails(
     isBoardSettlement: candidate.isBoardSettlement
   });
 
+  // 与带比较的唯一实现是 `checkGuardrailBand`；本文件不再直接与任何数字比较，
+  // 因此没有可漂移的第二份副本。`GUARDRAIL_*` 常量仅用于报告的 min/max 展示。
+  const violations = checkGuardrailBand({
+    guiYuanRate: metrics.guiYuanRate,
+    p1WinRate: metrics.p1WinRate,
+    heapUsedDeltaMB: metrics.heapUsedDeltaMB
+  });
+  const violated = (bound: string): boolean => violations.some(v => v.bound === bound);
+
   const guiYuanCheck: GuardrailCheck = {
     key: 'guiYuanRate',
     label: '归元率',
     actual: metrics.guiYuanRate,
     min: GUARDRAIL_GUIYUAN_MIN,
     max: GUARDRAIL_GUIYUAN_MAX,
-    passed:
-      metrics.guiYuanRate >= GUARDRAIL_GUIYUAN_MIN &&
-      metrics.guiYuanRate <= GUARDRAIL_GUIYUAN_MAX
+    passed: !violated('guiYuanRate.min') && !violated('guiYuanRate.max')
   };
   const p1Check: GuardrailCheck = {
     key: 'p1WinRate',
@@ -550,15 +558,14 @@ function runGuardrails(
     actual: metrics.p1WinRate,
     min: GUARDRAIL_P1_WIN_MIN,
     max: GUARDRAIL_P1_WIN_MAX,
-    passed:
-      metrics.p1WinRate >= GUARDRAIL_P1_WIN_MIN && metrics.p1WinRate <= GUARDRAIL_P1_WIN_MAX
+    passed: !violated('p1WinRate.min') && !violated('p1WinRate.max')
   };
   const heapCheck: GuardrailCheck = {
     key: 'heapUsedDeltaMB',
     label: '堆内存增量 (MB)',
     actual: metrics.heapUsedDeltaMB,
     max: GUARDRAIL_HEAP_MAX_MB,
-    passed: metrics.heapUsedDeltaMB < GUARDRAIL_HEAP_MAX_MB
+    passed: !violated('heapUsedDeltaMB.max')
   };
   const checks = [guiYuanCheck, p1Check, heapCheck];
 

@@ -16,11 +16,7 @@ import {
 } from '../../src/core/ai/Strategy.js';
 import { HeadlessBenchmark } from '../../src/core/headless/HeadlessBenchmark.js';
 import {
-  GUARDRAIL_GUIYUAN_MIN,
-  GUARDRAIL_GUIYUAN_MAX,
-  GUARDRAIL_P1_WIN_MIN,
-  GUARDRAIL_P1_WIN_MAX,
-  GUARDRAIL_HEAP_MAX_MB
+  checkGuardrailBand
 } from '../../src/core/headless/GuardrailBand.js';
 
 describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', () => {
@@ -166,29 +162,20 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
         strategyP2: balancedStrategy
       });
 
-      // 护栏 1: 同水平五行归元率处于安全区间。
-      // 锚点 = 500 局平衡自对弈、baseSeed 默认 10000、maxRounds 默认 30 下的实测
-      // 90.40%（同口径先手 50.40%）。工单 06 采纳进度定价后按 spec 决策 13 把旧带
-      // [0.75, 0.95] 重设为 [0.86, 0.95]，但下界 0.86 仍把「无进度定价」时的 88.40%
-      // 包在带内（0.884 >= 0.86 通过），该带本身拦不住这次回退。
-      // 后续工单 02 把下界收到 0.89 = 锚点 − 1.4pp，使 88.40% 落在带外。
-      // 注意不是 0.88：断言是 >= 下界，0.884 >= 0.88 仍会通过，达不到「回归时带断言
-      // 变红」的目的，勿改回 0.88。上界保留 0.95（锚点 + 4.6pp），仍拒绝 ADR 0010 的
-      // 极端候选（attack-zero 把归元率推到 ≈99.9%）。
-      // 口径记录见 ADR 0011「决策 2」与「采纳记录」。
-      // 带值唯一定义在 `src/core/headless/GuardrailBand.ts`，本测试只 import、不硬编码。
-      expect(metrics.guiYuanRate).toBeGreaterThanOrEqual(GUARDRAIL_GUIYUAN_MIN);
-      expect(metrics.guiYuanRate).toBeLessThanOrEqual(GUARDRAIL_GUIYUAN_MAX);
-
-      // 护栏 3: 先手胜率。锚点实测 50.40%。旧带 [0.47, 0.54] 的上界 0.54 同样包住了
-      // 「无进度定价」时的 51.20%（0.512 <= 0.54 通过），故上界收到 0.51 = 锚点 + 0.6pp，
-      // 使 51.20% 落在带外；下界 0.47（锚点 − 3.4pp）不变。0.6pp 的余量很薄，是有意为之：
-      // 先手胜率的回退幅度只有 0.8pp，不收紧就抓不到。
-      expect(metrics.p1WinRate).toBeGreaterThanOrEqual(GUARDRAIL_P1_WIN_MIN);
-      expect(metrics.p1WinRate).toBeLessThanOrEqual(GUARDRAIL_P1_WIN_MAX);
-
-      // 内存稳定性: 500 局内存增量不超过 15MB
-      expect(metrics.heapUsedDeltaMB).toBeLessThan(GUARDRAIL_HEAP_MAX_MB);
+      // 护栏 1/3/内存：与带比较的唯一实现是 `checkGuardrailBand`
+      // （`src/core/headless/GuardrailBand.ts`）。本测试只调用谓词、不与任何数字比较，
+      // 因此没有可硬编码的副本。锚点 = 500 局平衡自对弈、baseSeed 默认 10000、
+      // maxRounds 默认 30 下的实测 90.40%（同口径先手 50.40%）。带为何取
+      // 0.89 / 0.95 / 0.47 / 0.51（把「无进度定价」的回退 88.40% / 51.20% 挡在带外）
+      // 见 GuardrailBand.ts 的常量注释与 ADR 0011。失败时 `toEqual([])` 的 diff
+      // 会列出每条违规的 bound / actual / boundValue。
+      expect(
+        checkGuardrailBand({
+          guiYuanRate: metrics.guiYuanRate,
+          p1WinRate: metrics.p1WinRate,
+          heapUsedDeltaMB: metrics.heapUsedDeltaMB
+        })
+      ).toEqual([]);
     });
   });
 });
