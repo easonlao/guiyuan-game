@@ -61,14 +61,14 @@
 - **旧错误**：用自对弈归元率回答「某策略是否占优」。自对弈没有对手，无法回答占优；结论必须由全部有序策略对的座次平衡对拼矩阵支撑。
 - **守卫 API**：`assertDominanceVerdictHasMatrix(verdict, matrix?)` / `formatDominanceVerdict(verdict, matrix?)`。缺少矩阵、矩阵为空、或矩阵未覆盖结论涉及的对局时抛错。
 - **测试**：`陷阱 B: 占优结论必须附带跨策略对拼矩阵`。对无矩阵、空矩阵、不完整矩阵均断言拒绝，对完整矩阵断言放行。
-- **留给 ticket 06**：`HeadToHeadMatrix` / `HeadToHeadCell` / `DominanceVerdict` 类型已就位；ticket 06 生成矩阵后调用守卫即可。
+- **已落地（工单 06）**：`HeadToHeadMatrix` / `HeadToHeadCell` / `DominanceVerdict` 类型已就位；对拼矩阵生成后调用守卫（`tests/core/experiment-runner.test.ts:396`）。占优结论的最终判定与路线决定见 `docs/adr/0011-balance-route-fix-rules.md`。
 
 ### 陷阱 C：流局率必须与先后手胜率成对输出
 
 - **旧错误**：单独输出流局率，把「个体最优、集体无聊」误读成独立现象。压制型策略同时表现为高流局率与偏离 50% 的先手胜率。
 - **守卫 API**：`assertDrawRatePaired(input)` / `formatDrawRateWithWinRates(input)`。缺少先手或后手胜率时抛错。
 - **测试**：`陷阱 C: 流局率必须与先后手胜率成对输出`。单独流局率与只带先手胜率均断言拒绝，成对时断言输出同时含三者。
-- **留给 ticket 06**：报告格式化时调用 `formatDrawRateWithWinRates`（或先 `assertDrawRatePaired`），保证任何含流局率的报告都带先后手胜率。
+- **已落地（工单 06）**：报告格式化时调用 `formatDrawRateWithWinRates`（或先 `assertDrawRatePaired`），保证任何含流局率的报告都带先后手胜率。
 
 ## 3. 使用示例
 
