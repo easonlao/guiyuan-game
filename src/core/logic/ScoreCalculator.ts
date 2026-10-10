@@ -27,11 +27,11 @@ export interface StateChangePointsConfig {
 }
 
 /**
- * 攻击进度定价（ticket 05 候选 A）。
+ * 攻击进度定价（ticket 05 候选 A，ticket 06 采纳进生产）。
  *
  * 攻击状态分（CAUSE_DMG / BREAK_LIGHT / WEAKEN）乘以
  *   `floor + span × (行动前对手盘面归一节点数 / 5)`。
- * 未配置时恒等（factor = 1），生产行为逐字节不变。
+ * 未配置时恒等（factor = 1），供测试与对照配置使用。
  */
 export interface AttackProgressScale {
   readonly floor: number;
@@ -94,7 +94,13 @@ export const POINTS_CONFIG: PointsConfig = {
   GUI_YI_MILESTONE: 60,
 
   // 终局残留道损扣分
-  DAMAGE_PENALTY: 50
+  DAMAGE_PENALTY: 50,
+
+  // 攻击进度定价（ticket 06 采纳 ticket 05 候选 A）：
+  // 攻击状态分乘以 floor + span × (行动前对手归一节点数 / 5)，
+  // 让压制的相对回报随对手归一进度上升、在对手尚未归一时下降。
+  // 采纳记录与四标准证据见 docs/adr/0011-balance-route-fix-rules.md 追加节。
+  ATTACK_PROGRESS_SCALE: { floor: 0.3, span: 0.9 }
 };
 
 /**
