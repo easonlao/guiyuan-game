@@ -54,16 +54,56 @@ export function looseSignature(entry) {
   return [entry.file, entry.mutatorName, entry.replacement].join('\u0000');
 }
 
-/** 读取 Stryker JSON 报告，返回全部 Survived / NoCoverage 记录（未排序）。 */
-export function readReportEntries(reportPath) {
-  const raw = JSON.parse(readFileSync(reportPath, 'utf-8'));
+/** 遍历报告结构：返回 { entries, mutantCount }。entries 是计入棘轮的记录，mutantCount 是全部突变体数。 */
+function collectReportEntries(raw) {
   const entries = [];
+  let mutantCount = 0;
   for (const [file, fileReport] of Object.entries(raw.files ?? {})) {
     for (const mutant of fileReport.mutants ?? []) {
+      mutantCount += 1;
       if (RATCHET_STATUSES.has(mutant.status)) {
         entries.push(entryFromMutant(file, mutant));
       }
     }
+  }
+  return { entries, mutantCount };
+}
+
+/**
+ * 读取 Stryker JSON 报告，返回全部 Survived / NoCoverage 记录（未排序）。
+ * 结构不合法时按空报告处理（供不参与门禁的调用方使用）。
+ */
+export function readReportEntries(reportPath) {
+  return collectReportEntries(JSON.parse(readFileSync(reportPath, 'utf-8'))).entries;
+}
+
+/**
+ * 严格读取 Stryker JSON 报告，返回全部 Survived / NoCoverage 记录（未排序）。
+ *
+ * 与 `readReportEntries` 的区别：结构不合法（顶层不是对象、缺对象类型的 `files`、
+ * 某文件的 `mutants` 不是数组）或报告内 mutant 总数为 0 时**抛错**。
+ * 门禁必须走这条：否则空报告 / 坏报告会被当成「零存活」静默放行（假绿）。
+ */
+export function readReportEntriesStrict(reportPath) {
+  const raw = JSON.parse(readFileSync(reportPath, 'utf-8'));
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new TypeError('报告顶层不是 JSON 对象，缺少 Stryker 报告结构');
+  }
+  const files = raw.files;
+  if (files === undefined || files === null || typeof files !== 'object' || Array.isArray(files)) {
+    throw new TypeError("报告缺少对象类型的 'files' 字段，不是 Stryker JSON 报告");
+  }
+  for (const [file, fileReport] of Object.entries(files)) {
+    if (fileReport === null || typeof fileReport !== 'object' || Array.isArray(fileReport)) {
+      throw new TypeError(`报告文件 '${file}' 不是对象，不是 Stryker JSON 报告`);
+    }
+    if (fileReport.mutants !== undefined && !Array.isArray(fileReport.mutants)) {
+      throw new TypeError(`报告文件 '${file}' 的 'mutants' 不是数组，不是 Stryker JSON 报告`);
+    }
+  }
+  const { entries, mutantCount } = collectReportEntries(raw);
+  if (mutantCount === 0) {
+    throw new TypeError("报告内没有任何突变体（'files' 下 mutant 总数为 0），不是有效的变异结果");
   }
   return entries;
 }

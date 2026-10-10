@@ -1,5 +1,5 @@
 // `npm run mutation:check`：把 Stryker 报告与基线对比，**只报告基线里没有的**存活/无覆盖突变体。
-// 有新增 → 退出码 1；无新增 → 退出码 0。基线文件缺失/报告缺失 → 退出码 2。
+// 有新增 → 退出码 1；无新增 → 退出码 0。基线文件缺失/报告缺失/报告结构无效 → 退出码 2。
 //
 // 用法：
 //   npm run mutation:check                    # 读 reports/mutation/mutation.json + mutation-baseline.jsonl
@@ -17,7 +17,7 @@ import {
   formatEntry,
   looseSignature,
   readBaselineEntries,
-  readReportEntries,
+  readReportEntriesStrict,
   sortEntries
 } from './lib/mutation-baseline-core.mjs';
 
@@ -41,7 +41,7 @@ if (!existsSync(baselinePath)) {
 let reportEntries;
 let baselineEntries;
 try {
-  reportEntries = readReportEntries(reportPath);
+  reportEntries = readReportEntriesStrict(reportPath);
   baselineEntries = readBaselineEntries(baselinePath);
 } catch (error) {
   fail(`读取失败：${error instanceof Error ? error.message : String(error)}`);
@@ -68,7 +68,7 @@ process.stdout.write(`mutation:check: 基线 ${baselinePath}（${baselineEntries
 
 if (newEntries.length === 0) {
   process.stdout.write(
-    `mutation:check: ✅ 没有新增存活/无覆盖突变体（基线内 ${reportKeys.size} 条全部命中）。退出 0。\n`
+    `mutation:check: ✅ 没有新增存活/无覆盖突变体（报告内 ${reportEntries.length} 条存活/无覆盖均在基线内）。退出 0。\n`
   );
   process.exit(0);
 }
