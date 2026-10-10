@@ -409,10 +409,64 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
       tianGan: JIA_WOOD_YANG,
       action: { actionType: ActionType.PASS, player: 'P2', element: WuXing.WOOD, polarity: Polarity.YANG }
     })
+  },
+  {
+    // 进度定价（ticket 06 采纳）：攻击状态分乘 floor + span × (对手归一节点数 / 5)。
+    // 探针用 CAUSE_DMG 生效的 ATK 盘面，扰动 floor/span 即改变 scoreDelta 与终局分数。
+    knob: 'ATTACK_PROGRESS_SCALE',
+    aiReads: true,
+    terminalReads: true,
+    mutate: () => ({ ...POINTS_CONFIG, ATTACK_PROGRESS_SCALE: { floor: 5, span: 0 } }),
+    scenario: () => ({
+      state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 1 } }, P2: { [WuXing.EARTH]: { yin: 0 } } }),
+      tianGan: JIA_WOOD_YANG,
+      action: ATK_YIN
+    })
+  },
+  {
+    // 未接线：生产 POINTS_CONFIG 不设置 RACE_DIFF_PRICING，raceDiffPoints 恒等 0。
+    // 探针用双方落后量相等的对称盘面，故即使设置 gain 也不改变输出（"死"指生产不生效，
+    // 而非代码路径不存在——一旦在不对称盘面上配置该字段，它会被 ActionResolver 读取）。
+    knob: 'RACE_DIFF_PRICING',
+    aiReads: false,
+    terminalReads: false,
+    mutate: () => ({ ...POINTS_CONFIG, RACE_DIFF_PRICING: { gain: 120 } }),
+    scenario: () => ({
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yang: 1 }, [WuXing.EARTH]: { yin: 0 } },
+        P2: { [WuXing.WOOD]: { yang: 1 }, [WuXing.EARTH]: { yin: 0 } }
+      }),
+      tianGan: JIA_WOOD_YANG,
+      action: ATK_YIN
+    })
   }
 ];
 
+/**
+ * `PointsConfig` 的声明字段全集（含未在 `POINTS_CONFIG` 中设置的可选字段）。
+ *
+ * 类型标注为 `Record<keyof PointsConfig, true>`：漏字段或多字段都会让 `npm run typecheck` 报错，
+ * 因此这份运行时清单始终与接口声明同步。完整性断言用它（而不是 `Object.keys(POINTS_CONFIG)`）做差集，
+ * 因为后者看不到可选字段——例如 `RACE_DIFF_PRICING` 从未在 `POINTS_CONFIG` 里设置。
+ */
+const POINTS_CONFIG_FIELDS: Record<keyof PointsConfig, true> = {
+  ACTION: true,
+  STATE_CHANGE: true,
+  RARITY_MULTIPLIER: true,
+  NO_RARITY_ACTIONS: true,
+  GUI_YI_MILESTONE: true,
+  DAMAGE_PENALTY: true,
+  ATTACK_PROGRESS_SCALE: true,
+  RACE_DIFF_PRICING: true
+};
+
 describe('Ticket 05 — 计分参数普查 (PointsConfig)：AI 估值 / 终局判定 / 扰动输出', () => {
+  it('完整性：PointsConfig 的每个声明字段都出现在 SCORING_KNOBS 清单中', () => {
+    const covered = new Set(SCORING_KNOBS.map(row => row.knob.split('.')[0]));
+    const missing = Object.keys(POINTS_CONFIG_FIELDS).filter(field => !covered.has(field));
+    expect(missing, `SCORING_KNOBS 清单缺少 PointsConfig 字段：${missing.join('、')}`).toEqual([]);
+  });
+
   for (const row of SCORING_KNOBS) {
     describe(row.knob, () => {
       it(`(a) AI 估值读取 = ${row.aiReads}`, () => {
@@ -463,7 +517,8 @@ describe('Ticket 05 — 计分参数普查 (PointsConfig)：AI 估值 / 终局�
       'STATE_CHANGE.BREAK_LIGHT.yin',
       'STATE_CHANGE.WEAKEN',
       'GUI_YI_MILESTONE',
-      'DAMAGE_PENALTY'
+      'DAMAGE_PENALTY',
+      'ATTACK_PROGRESS_SCALE'
     ]);
   });
 
@@ -473,7 +528,8 @@ describe('Ticket 05 — 计分参数普查 (PointsConfig)：AI 估值 / 终局�
       'ACTION.DISSIPATE',
       'ACTION.PASS',
       'RARITY_MULTIPLIER',
-      'NO_RARITY_ACTIONS'
+      'NO_RARITY_ACTIONS',
+      'RACE_DIFF_PRICING'
     ]);
   });
 

@@ -73,7 +73,7 @@ D 的强/温和）只是该候选的调参，不是新候选（§6）。
 
 候选 A 的 floor/span 参数敏感度（M = 300）：floor ≤ 0.2 时 C3 击穿（归元率 0.962）；
 floor ≥ 0.5 时 C1 的「平衡 vs 激进压制」格退回不显著。**可行域 0.25–0.45 × 0.7–0.95**，
-采纳 0.3/0.9（居中且离两侧边界最远）。
+采纳 0.3/0.9（选点依据是搜索实测——A(0.3, 0.9) 四条验收标准全过，见 §2；并非「居中」，可行域中心实为 0.35/0.825，0.3 距下界仅 0.05）。
 
 ## 3. 被采纳候选 A：进度定价
 
@@ -94,13 +94,12 @@ factor = floor + span × (countBoardGuiYi(行动前对手盘面) / 5)
 ```
 
 四舍五入取整。`countBoardGuiYi` 取**行动前**的对手盘面（`state.players[opponent].board`）。
-系数从 0.3（对手 0 个归一节点）到 1.2（对手 5 个）。
+系数从 0.3（对手 0 个归一节点）到**有效上限 1.02**（对手 4 个归一节点）；`countBoardGuiYi === 5` 等价于该方已达成五行归元、对局当场判定（`State.ts:70,239`、`ActionResolver.ts:326,352-353,368-369`），故行动时对手最多 4 个。1.2 只在揭牌分支可达（对手已锁定归元、己方听牌揭牌）。**过零点**在 `0.3 + 0.9n/5 = 1` ⇒ `n ≈ 3.89`：对手 0–3 个归一节点是打折，只有 4 个才是加成。
 
 **不缩放**：`ACTION.ATK` / `ACTION.BURST_ATK` 行为分、`GUI_YI_MILESTONE`、己方建设分
 （`REPAIR_DMG` / `LIGHT_UP` / `BLESSING`）。AI 估值器通过 `scoreDelta` 自动看到该变化。
 
-生产 `POINTS_CONFIG` **不设置** `ATTACK_PROGRESS_SCALE`，未配置时 `attackProgressScale` 返回恒等 1，
-生产行为逐字节不变（ticket 06 才决定是否采纳）。
+生产 `POINTS_CONFIG` 已设置 `ATTACK_PROGRESS_SCALE: { floor: 0.3, span: 0.9 }`（ticket 06 采纳）；未配置时 `attackProgressScale` 返回恒等 1。
 
 实现上把「行动前对手归一节点数」以数字传入 `ScoreCalculator.attackProgressScale(count)`，
 `ScoreCalculator` 不反向读取 `GameState`；`npm run check:deps` 无循环/层级违规。
@@ -169,7 +168,7 @@ export const TUNED_DYNAMIC_POLICY: DynamicSwitchPolicy = {
 | DISSIPATE | 是 | 6 | 3 | 0 | 否 |
 | PASS | 是 | 2 | 1 | 0 | 否 |
 
-没有动作在所有被测盘面上都被支配。压制侧价值沿 `oppGuiYiNodes` 轴从 0.3× 到 1.2× 单调上升，
+没有动作在所有被测盘面上都被支配。压制侧价值沿 `oppGuiYiNodes` 轴从 0.3× 到有效上限 1.02×（揭牌分支 1.2×）单调上升，
 【破】在 `kangji/*` 盘面仍为最优档。
 
 ### 4.3 标准 3 — 护栏全绿：通过
@@ -412,6 +411,11 @@ ticket 05 的检验工具（`TUNED_DYNAMIC_POLICY`），不进入生产默认。
 ---
 
 ## 5. 改动前后逐格对照
+
+> **口径说明（先读）。** 本节是**采纳时**的归档对照：相对采纳前的生产基线（无 `ATTACK_PROGRESS_SCALE`）。
+> 工单 06 已把进度定价写进生产 `POINTS_CONFIG`，因此现在复跑时工具默认基线（`production`）与候选逐旋钮一致，
+> 本节复跑得到 **0 格翻转**——那是预期的，不是证据丢失。完整的采纳时逐格对照（42 个有序对）见工单 06 提交历史中的报告归档；
+> §4.5 保留采纳时的核心翻转（种子 10000 翻转 4 格、种子 20000 翻转 6 格）。下文表格是本次复跑（默认基线）的输出，故逐格 Δ 均为 0.00%。
 
 对照基线：`production`（生产默认 POINTS_CONFIG（scoring 结算））。
 
