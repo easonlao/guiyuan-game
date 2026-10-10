@@ -328,6 +328,13 @@ export interface HeadToHeadMatrixOptions extends RunConfig {
   readonly strategies?: readonly StrategyVariant[];
   readonly mode?: RuleMode;
   readonly scoreConfig?: ScoreConfigVariant;
+  /**
+   * 显式规则开关覆盖；缺省时由 `mode` 经 `ruleSwitchesFor` 推导。
+   * 候选验证用它注入候选规则，而不必新增 `RuleMode`。
+   */
+  readonly rules?: RuleSwitches;
+  /** 显式终局结算覆盖；缺省时由 `mode` 经 `isBoardSettlementFor` 推导。 */
+  readonly isBoardSettlement?: boolean;
 }
 
 interface SeatRun {
@@ -346,13 +353,13 @@ interface SeatRun {
 function runSeat(
   strategyP1: StrategyVariant,
   strategyP2: StrategyVariant,
-  mode: RuleMode,
   scoreConfig: ScoreConfigVariant,
+  rules: RuleSwitches,
+  isBoardSettlement: boolean,
   matches: number,
   baseSeed: number,
   maxRounds: number
 ): SeatRun {
-  const rules = ruleSwitchesFor(mode);
   const benchmark = new HeadlessBenchmark();
   const metrics = benchmark.run({
     matches,
@@ -362,7 +369,7 @@ function runSeat(
     strategyP2: buildVariantStrategy(strategyP2, scoreConfig.config, rules),
     scoreConfig: scoreConfig.config,
     rules,
-    isBoardSettlement: isBoardSettlementFor(mode)
+    isBoardSettlement
   });
   return {
     totalMatches: metrics.totalMatches,
@@ -387,6 +394,8 @@ export function runHeadToHeadMatrix(options: HeadToHeadMatrixOptions = {}): Head
   const matches = options.matches ?? DEFAULT_MATCHES_PER_CELL;
   const baseSeed = options.baseSeed ?? DEFAULT_BASE_SEED;
   const maxRounds = options.maxRounds ?? DEFAULT_MAX_ROUNDS;
+  const rules = options.rules ?? ruleSwitchesFor(mode);
+  const isBoardSettlement = options.isBoardSettlement ?? isBoardSettlementFor(mode);
 
   const matchups: HeadToHeadMatchup[] = [];
   for (let i = 0; i < strategies.length; i++) {
@@ -395,8 +404,8 @@ export function runHeadToHeadMatrix(options: HeadToHeadMatrixOptions = {}): Head
       const b = strategies[j];
 
       // 座次 1：A 执先手；座次 2：B 执先手。两个座次使用同一随机种子序列。
-      const aAsP1 = runSeat(a, b, mode, scoreConfig, matches, baseSeed, maxRounds);
-      const bAsP1 = runSeat(b, a, mode, scoreConfig, matches, baseSeed, maxRounds);
+      const aAsP1 = runSeat(a, b, scoreConfig, rules, isBoardSettlement, matches, baseSeed, maxRounds);
+      const bAsP1 = runSeat(b, a, scoreConfig, rules, isBoardSettlement, matches, baseSeed, maxRounds);
 
       const total = aAsP1.totalMatches + bAsP1.totalMatches;
       const aWins = aAsP1.p1Wins + bAsP1.p2Wins;

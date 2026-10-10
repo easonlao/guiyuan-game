@@ -261,7 +261,8 @@ describe('Ticket 01 - headless scoring-config injection', () => {
     it('GameManager binds the rule switch to its AI valuation path', () => {
       // 受控盘面：P2 木归一 (1,1)，火阳道损；P1 土 (-1,0)。
       // 固定抽 甲木（阳）：候选为 ATK / BURST / BURST_ATK。
-      // 默认计分下 AI 选 BURST_ATK（消耗木阳 1->0）；关闭计分轴后改选 ATK（不消耗）。
+      // 工单 06 采纳进度定价后，默认计分下 AI 改选 BURST（消耗木阴 1->0）；
+      // 关闭计分轴后仍选 ATK（不消耗自身）。两者差异证明 rules 到达了 AI 估值路径。
       const fixedPrng: PRNG = {
         next: () => 0,
         nextInt: (min) => min,
@@ -305,10 +306,10 @@ describe('Ticket 01 - headless scoring-config injection', () => {
       const defaultState = driveAiOnce();
       const boardOnlyState = driveAiOnce({ isBoardOnly: true });
 
-      // 默认：BURST_ATK 消耗木阳 1 -> 0
-      expect(defaultState.players.P2.board[WuXing.WOOD].yang).toBe(0);
-      // 关闭计分轴：ATK 保留木阳
-      expect(boardOnlyState.players.P2.board[WuXing.WOOD].yang).toBe(1);
+      // 默认：BURST 消耗木阴 1 -> 0
+      expect(defaultState.players.P2.board[WuXing.WOOD].yin).toBe(0);
+      // 关闭计分轴：ATK 保留木阴
+      expect(boardOnlyState.players.P2.board[WuXing.WOOD].yin).toBe(1);
     });
   });
 });

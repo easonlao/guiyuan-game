@@ -6,7 +6,7 @@
 > 2. **终局判定是否读取它** —— 消费者是 `ActionResolver.resolve` 的终局分数/胜负判定；
 > 3. **扰动它，输出是否变化** —— 用 `ActionResolver.resolve` 的 `scoreDelta` + 终局分数 + 盘面快照观测。
 >
-> 可执行断言在 `tests/core/dead-knob-census.test.ts`（86 条），使本表不能静默腐烂。
+> 可执行断言在 `tests/core/dead-knob-census.test.ts`（93 条），使本表不能静默腐烂。
 > 判定所用的两个接缝（spec Implementation Decisions 1–3，不新增第三个）：
 > 主接缝 `HeadlessMatch.run` / `HeadlessBenchmark.run`；场景接缝 `ActionResolver.resolve`。
 >
@@ -17,9 +17,9 @@
 
 | 分类 | 参数 |
 | --- | --- |
-| **活参数（AI 估值读取）** | `PointsConfig.ACTION.{AUTO,CONVERT,TRANS,ATK,BURST,BURST_ATK}`、`PointsConfig.STATE_CHANGE.*`（9 个标量）、`PointsConfig.GUI_YI_MILESTONE`、`StrategyWeights.*`（12 个）、`RuleSwitches.isBoardOnly`（经策略构造器或权重模板策略绑定） |
+| **活参数（AI 估值读取）** | `PointsConfig.ACTION.{AUTO,CONVERT,TRANS,ATK,BURST,BURST_ATK}`、`PointsConfig.STATE_CHANGE.*`（9 个标量）、`PointsConfig.GUI_YI_MILESTONE`、`PointsConfig.ATTACK_PROGRESS_SCALE`、`StrategyWeights.*`（12 个）、`RuleSwitches.isBoardOnly`（经策略构造器或权重模板策略绑定） |
 | **仅终局生效（终局读、AI 不读）** | `PointsConfig.DAMAGE_PENALTY`（**当前唯一成员**） |
-| **死参数（AI 不读、终局不读、扰动无变化）** | `PointsConfig.ACTION.DISSIPATE`、`PointsConfig.ACTION.PASS`、`PointsConfig.RARITY_MULTIPLIER`、`PointsConfig.NO_RARITY_ACTIONS`、`ACTION_PROBABILITY`、`ScoreConfig`/`DEFAULT_SCORE_CONFIG`、`ScoreCalculator.applyRarityBonus`/`isNoRarityAction` |
+| **死参数（AI 不读、终局不读、扰动无变化）** | `PointsConfig.ACTION.DISSIPATE`、`PointsConfig.ACTION.PASS`、`PointsConfig.RARITY_MULTIPLIER`、`PointsConfig.NO_RARITY_ACTIONS`、`PointsConfig.RACE_DIFF_PRICING`（生产未配置）、`ACTION_PROBABILITY`、`ScoreConfig`/`DEFAULT_SCORE_CONFIG`、`ScoreCalculator.applyRarityBonus`/`isNoRarityAction` |
 | **接线但无消费者（转发死参数）** | `TurnManagerOptions.rules`、`ActionCandidatesOptions.rules`、`BenchmarkOptions.recordActions` |
 
 ---
@@ -53,6 +53,10 @@
 | `DAMAGE_PENALTY` | 否 | 是 | 是 | **仅终局生效** | `ActionResolver.ts:331-332`，只在 `MAX_ROUNDS` 结算分支从 `finalScore` 扣减，**从不进入 `scoreDelta`**；`ScoreCalculator.ts:134` 缺省回退 50 |
 | `RARITY_MULTIPLIER` | 否 | 否 | 否 | **死** | 仅被 `ScoreCalculator.applyRarityBonus` 的默认参数读取（`:232`），该方法无调用点 |
 | `NO_RARITY_ACTIONS` | 否 | 否 | 否 | **死** | 仅被 `isNoRarityAction`（`:222-223`）读取，后者只被 `applyRarityBonus`（`:235`）调用，无调用点 |
+| `ATTACK_PROGRESS_SCALE` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts:210`（`attackProgressScale` = floor + span×count/5）；`ActionResolver.ts:42,55` 缩放 ATK/BURST_ATK 的攻击状态分 |
+| `RACE_DIFF_PRICING` | 否 | 否 | 否 | **死（生产未配置）** | `ScoreCalculator.ts:225`（`raceDiffPoints`）；`ActionResolver.ts:66,208,273` 的应用点存在，但生产 `POINTS_CONFIG` 不设置该字段，恒等 0 |
+
+`RACE_DIFF_PRICING` 的「死」指**生产不生效**：生产 `POINTS_CONFIG` 不设置该字段（`raceDiffPoints` 恒等 0），故三个探针列均为「否」；但机制代码存在——一旦在不对称盘面（双方落后量不等）上配置 `gain`，它会被 `ActionResolver` 读取并进入 `scoreDelta`。清单把它记为死参数是因为它不影响生产行为。
 
 **同族但不在 `PointsConfig` 内的死物**（一并列出，避免被误认为生效）：
 
@@ -180,6 +184,7 @@
 - `PointsConfig.ACTION.AUTO` / `CONVERT` / `TRANS` / `ATK` / `BURST` / `BURST_ATK`
 - `PointsConfig.STATE_CHANGE.REPAIR_DMG.{yang,yin}` / `LIGHT_UP` / `BLESSING` / `CAUSE_DMG.{yang,yin}` / `BREAK_LIGHT.{yang,yin}` / `WEAKEN`
 - `PointsConfig.GUI_YI_MILESTONE`
+- `PointsConfig.ATTACK_PROGRESS_SCALE`
 - 常量 `GUI_YI_MILESTONE`（缺省回退）
 
 **仅终局生效（见第 6 节）**
@@ -213,6 +218,7 @@
 | `ScoreConfig` / `DEFAULT_SCORE_CONFIG` | 生产路径只消费 `PointsConfig`；仅测试引用 | **DELETE**（或把测试改为引用 `POINTS_CONFIG` 后删除） |
 | `PointsConfig.ACTION.DISSIPATE` | 规则规定亢极散气计 0 分；`resolve` 强制 `scoreDelta = 0` | **DELETE**（保留字段会诱导「调它试试」的无效实验） |
 | `PointsConfig.ACTION.PASS` | 规则规定消散过牌计 0 分；`resolve` 强制 `scoreDelta = 0` | **DELETE** |
+| `PointsConfig.RACE_DIFF_PRICING` | 生产 `POINTS_CONFIG` 不设置该字段，`raceDiffPoints` 恒等 0；机制代码存在但未接线 | **WIRE 或 DELETE**：若采纳赛跑差定价则接入生产并移入活参数；否则删除该字段 |
 | `MatchOptions.rules` / `BenchmarkOptions.rules` / `HeadlessMatchConfig.rules` | **已接线**（ticket 01/04 修复）：策略为权重模板时经 `resolveStrategy` 绑定 AI 估值器 | **已移出死参数清单** |
 | `TurnManagerOptions.rules` / `ActionCandidatesOptions.rules` | 只转发到候选接缝，而候选接缝从不读 `rules` | **WIRE 或 DELETE（二选一）**：若规则模式应同时影响候选生成，则让 `getAvailableActions` 读 `isBoardOnly`（统一入口）；若规则只属于策略，则删除这些转发字段 |
 | `BenchmarkOptions.recordActions` | 转发到 `HeadlessMatch`，但 `BenchmarkMetrics` 不暴露逐动作记录 | **WIRE 或 DELETE**：若批量报告需要逐动作证据，在 `BenchmarkMetrics` 暴露；否则删除该字段，避免误以为批量运行会采集动作 |
@@ -245,7 +251,7 @@
 ## 7. 复跑与维护
 
 ```bash
-npm test -- tests/core/dead-knob-census.test.ts   # 86 条逐参数断言
+npm test -- tests/core/dead-knob-census.test.ts   # 93 条逐参数断言
 npm run typecheck
 npm run lint
 ```
@@ -253,5 +259,6 @@ npm run lint
 维护约定：
 
 - 新增/删除 `PointsConfig` 叶子、`RuleSwitches` 字段或选项参数时，必须同步 `tests/core/dead-knob-census.test.ts` 的 `SCORING_KNOBS` / `WEIGHT_KNOBS` 表与本文两张清单。
+- 计分字段清单有**完整性断言**兜底：`tests/core/dead-knob-census.test.ts` 的「完整性：PointsConfig 的每个声明字段都出现在 SCORING_KNOBS 清单中」把 `PointsConfig` 的声明字段全集（含可选字段，由 `Record<keyof PointsConfig, true>` 在 `npm run typecheck` 下强制与接口同步）与 `SCORING_KNOBS` 的顶层键做差集，差集非空即红并报出缺失键名。
 - 若把某个死参数接线（新机制），必须把它从「死参数」移到「活参数」，并让对应断言从「相等」翻转为「不等」——测试会强制这一变更被显式做出。
 - 本表只描述**读取关系**，不评价数值好坏；具体候选数值属于诊断票（08/09/10）。
