@@ -10,7 +10,7 @@
 
 在 `HLD.md` 和 `LLD.md` 中，我们确立了分层架构与纯数据驱动。
 **核心纪律：**
-* **Layer 1 (核心逻辑层 `src/logic/*`) 绝对禁止** 引入任何引擎相关的库（如 `cc`, `window`, `document`）。
+* **Layer 1 (核心逻辑层 `src/core/*`) 绝对禁止** 引入任何引擎相关的库（如 `cc`, `window`, `document`）。
 * **Layer 1 必须保持纯粹（Pure）**：所有动作解析 (`ActionResolver`) 必须是**纯函数**。任何依赖随机数的地方（如天干生成），必须通过传入 Seed 或 RandomGenerator 的方式注入，确保 100% 可重现。
 
 若依赖探测工具（如 `dependency-cruiser`）在检查中检测到越界引用，提交将被拒绝。
@@ -57,14 +57,14 @@
 ## 4. 给 AI Agent 的特别指引 (AI Agent Guidelines)
 
 当 AI 代理（如 Executor, Reviewer）在执行任务时，必须：
-1. **先看契约，再写代码**：在编写 `src/logic/` 下的代码前，先读取 `docs/LLD.md` 中的数据结构定义。
+1. **先看契约，再写代码**：在编写 `src/core/` 下的代码前，先读取 `docs/LLD.md` 中的数据结构定义。
 2. **纯数据优先**：不要使用 ES6 Class 实例去封装 `State` 属性，`State` 只能是 `readonly` 的 Interface 对象。
 3. **Test-Driven (TDD)**：每实现一个功能或修复，必须同步在 `*.test.ts` 中补充覆盖该分支的用例，并通过红绿循环验证。
 
 ## 5. 开发流程闭环
 
 1. **领取任务**：阅读对应的 Issue 或 `.scratch/` 里的 Markdown 规范。
-2. **脱水开发**：在纯 TS 环境下实现功能并跑通 `vitest`。
-3. **静态体检**：运行 `oxlint` 和 `dependency-cruiser`。
+2. **脱水开发**：在纯 TS 环境下实现功能并跑通 `npm test`（内部调用 Vitest）。
+3. **静态体检**：运行 `npm run lint`（oxlint）与 `npm run check:deps`（dependency-cruiser）。
 4. **提交代码**：按照上述 Git 规范 `git commit`。
-5. **引擎验收**：最终由人类开发者将底层的纯净代码引入 Cocos Creator，进行 UI 挂载与动画预览。
+5. **表现层打包**：`npm run build:minigame`（`scripts/build-minigame.mjs`）把 `src/minigame/` 打成 IIFE 产物 `minigame/game.js`；在微信开发者工具中导入 `minigame/` 目录做真机预览。

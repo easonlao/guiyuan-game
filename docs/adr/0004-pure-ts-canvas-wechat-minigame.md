@@ -18,7 +18,7 @@ status: accepted
    - 源代码组织于 `src/minigame/`，直接消费 Layer 1（`src/core/`）导出的 `TurnManager`、`State`、`EventBus`。
    - 渲染完全基于标准 Canvas 2D 上下文（`wx.createCanvas()`），配合像素比（`pixelRatio`）与手机竖屏适配。
 2. **构建管线与自动化输出**：
-   - 配置 Vite 构建管道（`vite.config.minigame.mjs`），将代码打包为单个高内聚 `minigame/game.js`。
+   - 配置 Vite 构建管道（`scripts/build-minigame.mjs`，以 `configFile: false` 编程式调用 Vite），将代码打包为单个高内聚 `minigame/game.js`。
    - 微信小游戏项目根目录收敛在 `minigame/`（包含 `game.json` 与 `project.config.json`）。
    - 提供 `npm run build:minigame`（单次打包）与 `npm run dev:minigame`（监听代码自动热打包）。
 3. **Windows 微信开发者工具直连**：

@@ -1,8 +1,8 @@
 # 归元弈 (Guiyuan) - 软件需求规格说明书 (SRS)
 
-**文档版本：** V2.0 (全项目基准)  
-**项目状态：** 核心规则与仿真引擎已实现，推进 TypeScript 脱水与跨端落地  
-**基准实现：** `src/js/logic/` 确定性规则库、`HeadlessMatch` 诊断平台与 Web 原型  
+**文档版本：** V2.1 (全项目基准)
+**项目状态：** 核心规则、无头仿真引擎与微信小游戏单机版均已实现；联机对战为远期规划
+**基准实现：** `src/core/`（TS 确定性规则库 + 无头诊断平台）、`src/minigame/`（微信小游戏表现层）；旧 Web JS 原型与 Supabase 网络层已归档于 `legacy/`（ADR 0003）
 
 ---
 
@@ -10,9 +10,9 @@
 
 ### 1.1 编写目的
 本文档基于《归元弈》现有代码实现（Code-First），正式确立全系统的软件需求规格。本文档作为整个项目的**唯一权威需求基准**，用于指导：
-1. 核心五行规则与计分算法的强类型（TypeScript）重构；
+1. 核心五行规则与计分算法的维护与演进；
 2. 自动化无头仿真（Headless Match）与数值平衡体系维护；
-3. 多平台交付：阶段性 MVP（微信小游戏纯单机版）及后续跨端联机拓展。
+3. 多平台交付：已落地的 MVP（微信小游戏纯单机版）及后续跨端联机拓展。
 
 ### 1.2 产品定位与受众
 *   **产品定位**：一款融合中国传统五行相生相克与阴阳流转哲学的轻度策略回合制博弈游戏。
@@ -20,17 +20,17 @@
 *   **开发协作范式**：AI-First 架构驱动。核心逻辑与表现层严格解耦，AI 在终端与测试闭环内保证逻辑 100% 正确，人类开发者专注于视听与引擎装配。
 
 ### 1.3 交付形态定义 (Delivery Formats)
-系统支持三种不同运行形态：
-1.  **无头仿真与诊断平台 (Headless Engine)**：运行于 Node.js 环境，用于批量对战、AI 算法博弈、数值平衡测试与突变测试。
-2.  **轻量单机小游戏端 (Standalone Mini-game MVP)**：首发落地形态，基于 Cocos Creator 3.x 构建的微信小游戏，零服务器成本，纯本地运行。
-3.  **多玩家联机对弈端 (Online Multiplayer Platform)**：完整版形态，基于 Supabase 实时房间机制与状态同步，支持天梯与跨端对战。
+系统支持三种不同运行形态（前两种已实现，第三种为远期规划）：
+1.  **无头仿真与诊断平台 (Headless Engine)**：运行于 Node.js 环境，用于批量对战、AI 算法博弈、数值平衡测试与突变测试。已实现于 `src/core/headless/`。
+2.  **轻量单机小游戏端 (Standalone Mini-game MVP)**：已实现的首发形态，纯 TypeScript + Canvas 2D 直出微信小游戏（ADR 0004），零服务器成本，纯本地运行。
+3.  **多玩家联机对弈端 (Online Multiplayer Platform)**：远期规划，**尚未实现**。旧版 Supabase 实时房间与 PVP 原型已归档至 `legacy/src/network/`（ADR 0003），联机形态复用其协议设计。
 
 ---
 
 ## 2. 领域模型与核心术语 (Domain Model)
 
 *   **五行 (Five Elements)**：木、火、土、金、水。遵循固定相生（木→火→土→金→水→木）与相克（木→土→水→火→金→木）规则。
-*   **天干与阴阳 (Heavenly Stems & Yin-Yang)**：对应十种符号（甲/乙、丙/丁、戊/己、庚/辛、壬/癸），每回合随机生成一个作为行动触发源。
+*   **天干与阴阳 (Heavenly Stems & Yin-Yang)**：对应十种符号（甲/乙、丙/丁、戊/己、庚/辛、壬/癸），每个半回合随机生成一个作为行动触发源。
 *   **节点状态 (Node States)**：每个元素包含阴、阳两个状态侧，离散取值：
     *   `-1`（道损）：节点一侧受损；
     *   `0`（虚空）：节点一侧未激活初始态；
@@ -38,24 +38,25 @@
     *   `2`（加持）：节点一侧充盈强化。
 *   **归一 (Unity)**：同一节点的阴、阳两侧数值均 $\ge 1$。
 *   **五行归元 (Guiyuan Victory)**：己方全部五个节点同时达成“归一”，即刻触发直接胜利。
+*   **大回合 / 半回合 (Round / Turn)**：一个大回合 = 先手半回合 + 后手半回合 = 2 次行动机会；对局上限 30 大回合 = 60 次行动机会。术语口径以 `GLOSSARY.md` 为准。
 
 ---
 
 ## 3. 功能需求规格 (Functional Requirements)
 
 ### 3.1 核心对战与规则执行引擎 (FR-1: Core Game Engine)
-系统必须提供一套确定性（Deterministic）、环境无关的规则执行引擎（对应代码中 `GameEngine`, `ActionResolver`, `TurnManager`）：
+系统必须提供一套确定性（Deterministic）、环境无关的规则执行引擎（对应 `src/core/logic/` 的 `TurnManager`, `ActionResolver`, `ActionCandidates`, `State`）：
 *   **FR-1.1 回合推进与时序 (Turn Flow)**：
-    *   由 `GameSequence` 确定开局先手；
-    *   每大回合由 `TurnManager` 随机抽取一个天干；
+    *   由 `TurnManager` / `State` 确定开局先手；
+    *   每个半回合由 `TurnManager` 抽取一个天干；
     *   标准对局总上限为 **30 大回合（60 次行动机会）**；若达到上限仍无人归元，则进入终局计分仲裁，分高者胜，同分则判定后手玩家获胜。
 *   **FR-1.2 动作合法性判定与状态流转 (Action Resolution)**：
     *   **吸纳 (AUTO)**：若当前天干对应的己方节点侧处于虚空 (`0`) 或道损 (`-1`)，系统强制自动吸纳，使该侧状态 $+1$。
-    *   **调息 (CONVERT)**：当对应侧已点亮 (`1`) 或加持 (`2`) 时，玩家可将能量向同一节点的相反侧转移。
+    *   **调息 (CONVERT)**：当对应侧已点亮 (`1`) 或加持 (`2`)，且同节点对侧处于虚空 (`0`) 或道损 (`-1`) 时，玩家可将能量向对侧转移。
     *   **化 (TRANS)**：触发条件为当前天干对应的己方节点侧已处于点亮或加持状态，且抽到阴天干。沿“相生”路径，将多余能量赋予己方相生节点（使其对应侧状态 $+1$）。
     *   **破 (ATK)**：触发条件为当前天干对应的己方节点侧已处于点亮或加持状态，且抽到阳天干。沿“相克”路径，将多余能量化为攻击，削弱对手相克节点（使其对应侧状态 $-1$）。
-    *   **强化 (BURST)**：触发条件为当前天干对应的己方节点已处于“归一”状态（阴阳均 $\ge 1$）。消耗该节点的**阴侧**状态，强化其相生节点（使其对应侧状态 $+1$）。
-    *   **强破 (BURST_ATK)**：触发条件为当前天干对应的己方节点已处于“归一”状态（阴阳均 $\ge 1$）。消耗该节点的**阳侧**状态，强袭对手相克节点（使其对应侧状态 $-1$）。
+    *   **强化 (BURST)**：触发条件为当前天干对应的己方节点已处于“归一”状态（阴阳均 $\ge 1$），**与所抽天干的阴阳极性无关**。消耗该节点的**阴侧**状态，强化其相生节点（使其对应侧状态 $+1$）。
+    *   **强破 (BURST_ATK)**：触发条件同为当前天干对应的己方节点已处于“归一”状态。消耗该节点的**阳侧**状态，强袭对手相克节点（使其对应侧状态 $-1$）。
     *   **亢极散气 (KangJi Dissipation)**：若当前天干对应的己方节点已处于“亢极”（`2, 2`）状态，系统强制执行亢极散气，对应侧状态 $-1$（变为 `2, 1` 或 `1, 2`），计 0 分。
 *   **FR-1.3 爆发连动限制 (Burst Constraint)**：
     *   执行爆发动作（BURST / BURST_ATK）后获得 1 次额外行动机会；
@@ -65,31 +66,28 @@
     *   低于 `-1` 的削弱操作截断至 `-1`。
     *   普通状态下高于 `2` 的增益截断至 `2`；但在极位态（`2, 2`）下再次注入能量时，触发“亢极散气”规则使该侧回落至 `1`。
 
-### 3.2 双轨制计分与动态稀有度系统 (FR-2: Scoring & Rarity System)
-系统必须完整支持 `ScoreCalculator` 与 `RarityScoring` 定义的双轨计分机制，用于终局仲裁：
-*   **FR-2.1 行为分 (Action Score)**：每种动作具有明确的基础动作分。
-*   **FR-2.2 状态分 (State Score)**：根据动作改变前后棋盘状态（修复道损、达成点亮、达成归一、造成对手道损）进行累积分值。
-*   **FR-2.3 稀有度与乘区加成 (Rarity Multipliers)**：根据天干出现概率与复合动作达成难度计算动态稀有度加成（Rarity Bonus；当前版本暂不加入核心结算，待后续数值平衡调整考量）。
+### 3.2 双轨制计分系统 (FR-2: Scoring System)
+系统必须完整支持 `ScoreCalculator` 定义的双轨计分机制，用于终局仲裁：
+*   **FR-2.1 行为分 (Action Score)**：每种动作具有明确的基础动作分（`POINTS_CONFIG.ACTION`）。
+*   **FR-2.2 状态分 (State Score)**：根据动作改变前后棋盘状态（修复道损、达成点亮、达成归一、造成对手道损）进行累积分值（`POINTS_CONFIG.STATE_CHANGE`）。
+*   **FR-2.3 稀有度与乘区加成 (Rarity Multipliers)**：根据天干出现概率与复合动作达成难度计算动态稀有度加成（Rarity Bonus）。**当前该机制未接线**：`applyRarityBonus` / `isNoRarityAction` 在生产路径无调用点（死代码），详见 `docs/headless/knob-census.md` 与 ADR 0002 勘误。
 
-### 3.3 分层 AI 决策与自学习系统 (FR-3: AI & Autonomous Learning)
-系统必须提供高度自治、开销可控的本地 AI（对应 `AIController`）：
+### 3.3 分层 AI 决策系统 (FR-3: AI Decision)
+系统必须提供开销可控的本地启发式 AI（对应 `src/core/ai/` 的 `Strategy`, `ActionEvaluator`）：
 *   **FR-3.1 启发式多维度评估 (Decision Tree)**：
-    *   由 `ActionValueCalculator` 评估动作的基础收益；
-    *   由 `UnityEvaluator` 评估动作对达成“归一”与“归元”的推进潜力；
-    *   由 `StrategySelector` 根据局势在激进（攻击对手）、防守（修复自愈）、求圆（抢占归元）等策略风格间切换。
-*   **FR-3.2 离线自学习与权重自适应 (Learning & Optimization)**：
-    *   `GameRecorder` 负责完整记录对局动作轨迹；
-    *   `StatsCollector` 收集对战胜负率与动作偏好数据；
-    *   `WeightOptimizer` 允许基于历史对战统计数据动态微调决策权重。
+    *   由 `ActionEvaluator` 按 `StrategyWeights` 各维度权重评估动作收益（修复道损、点亮、推进归元、压制对手等）；
+    *   归元推进潜力由 `ActionEvaluator` 的 `reachGuiYi` / `guiyuanProgress` / `reachKangJi` 等权重维度承载；
+    *   由 `Strategy` 在激进（攻击对手）、防守（修复自愈）、求圆（抢占归元）等预设权重模板间选择。
+*   **FR-3.2 离线自学习与权重自适应 (Learning & Optimization)**：**规划项，尚未实现**。当前权重由人工设定的预设模板（`BALANCED_WEIGHTS`、`RUSH_GUIYUAN_WEIGHTS` 等，见 `src/core/ai/types.ts`）提供，无自动调参。旧 JS 原型中的 `GameRecorder` / `StatsCollector` / `WeightOptimizer` 已归档于 `legacy/src/logic/ai/learning/`。
 
 ### 3.4 无头对弈与数值诊断平台 (FR-4: Headless Simulation Platform)
 系统必须原生支持脱离任何 UI 渲染的纯逻辑批处理对战环境：
-*   **FR-4.1 确定性无头对战 (`HeadlessMatch`)**：支持两方 AI 纯逻辑无延迟对战，单局执行时间需在微秒级。
-*   **FR-4.2 种子可复现性 (`SeededMatch`)**：支持固定伪随机种子（PRNG），确保偶发 Bug 或关键对局可 100% 确定性回放。
-*   **FR-4.3 批量实验与平衡性诊断**：支持运行批量对战（`BatchComparison`）、策略锦标赛（`StrategyTournament`）及参数敏感性分析（如攻防削弱实验）。
+*   **FR-4.1 确定性无头对战 (`HeadlessMatch`)**：支持两方 AI 纯逻辑无延迟对战，单局执行时间在毫秒级以内（实测约 0.3ms/局）。
+*   **FR-4.2 种子可复现性 (PRNG)**：支持固定伪随机种子（`src/core/utils/prng.ts` 与无头入口的 `baseSeed`），确保偶发 Bug 或关键对局可 100% 确定性回放。
+*   **FR-4.3 批量实验与平衡性诊断**：支持运行批量对战、对拼矩阵与策略对比（`ExperimentRunner`）、参数敏感性扫描（如攻击进度定价、边际收益实验）及候选搜索/护栏校验（`CandidateValidation`）。
 
 ### 3.5 多人联机与网络对战 (FR-5: Multiplayer & Networking)
-针对完整版联网场景，系统提供网络对弈能力（已在代码中部分实现）：
+针对完整版联网场景，系统**规划**提供网络对弈能力。当前 `src/` 中**尚未实现**任何联机模块；旧 JS 原型（`RoomManager`、`SimplifiedPVPManager`、`ReconnectionManager`、`LeaderboardManager`）已归档于 `legacy/src/network/`，作为协议与交互设计的参考：
 *   **FR-5.1 房间与对局匹配 (`RoomManager`)**：支持创建对战房间、房间邀请与加入。
 *   **FR-5.2 状态同步与断线重连 (`SimplifiedPVPManager`, `ReconnectionManager`)**：支持回合指令与棋盘状态的可靠广播，并在断线后通过历史动作日志恢复棋盘。
 *   **FR-5.3 全局排行榜 (`LeaderboardManager`)**：支持玩家胜率、胜场与最高积分的持久化排行榜。
@@ -97,27 +95,27 @@
 ### 3.6 存储抽象与适配 (FR-6: Storage Abstraction)
 系统数据持久化必须通过 `IStorageManager` 接口隔离：
 *   **FR-6.1 Node.js 环境**：注入 `MockStorage`，不产生物理副作用。
-*   **FR-6.2 Web 预览环境**：适配浏览器 `localStorage`。
-*   **FR-6.3 微信小游戏环境**：适配 `wx.setStorageSync` / `wx.getStorageSync`。
-*   **FR-6.4 联机云端环境**：适配 Supabase 云数据库。
+*   **FR-6.2 Web 预览环境**：适配浏览器 `localStorage`（`LocalStorageAdapter`）。
+*   **FR-6.3 微信小游戏环境**：适配 `wx.setStorageSync` / `wx.getStorageSync`（`WechatStorageAdapter`）。
+*   **FR-6.4 联机云端环境（远期规划）**：适配 Supabase 云数据库；当前 `src/adapters/` 仅提供前三项。
 
 ---
 
 ## 4. 非功能需求规格 (Non-Functional Requirements)
 
 ### 4.1 架构独立性与解耦 (NFR-1: Decoupling)
-*   核心逻辑库（`logic/`, `state/`）**严禁**导入任何 DOM、BOM、Canvas、CSS 或具体游戏引擎（Cocos）API。
+*   核心逻辑库（`src/core/`）**严禁**导入任何 DOM、BOM、Canvas、CSS 或具体游戏引擎 API（由 `dependency-cruiser` 强制）。
 *   表现层与核心逻辑层仅通过**事件总线 (EventBus)** 或纯数据契约（Data Transfer Object）通信。
 
 ### 4.2 计算性能与帧率保障 (NFR-2: Performance)
-*   **主线程计算阈值**：AIController 单次决策计算耗时必须控制在 **16ms** 以内（满足 60FPS 满帧流畅要求）。
+*   **主线程计算阈值**：`ActionEvaluator` 单次决策计算耗时必须控制在 **16ms** 以内（满足 60FPS 满帧流畅要求）。
 *   **异步线程预留**：AI 决策接口需支持异步规范（`Promise<Action>`）。当策略深度搜索引起卡顿时，支持一键切换至 Web Worker 或微信小游戏 Worker 运行。
 
 ### 4.3 小游戏包体约束 (NFR-3: Package Budget)
 *   针对小游戏 MVP 交付形态，引擎基础代码与逻辑脚本首包体积严格限制在 **4MB** 以内。
 
 ### 4.4 状态确定性 (NFR-4: Determinism)
-*   给定相同的初始状态、随机种子与动作序列，`GameEngine` 必须产生完全一致的状态变动与结算分值。
+*   给定相同的初始状态、随机种子与动作序列，`TurnManager` / `ActionResolver` 必须产生完全一致的状态变动与结算分值。
 
 ---
 
@@ -125,9 +123,9 @@
 
 | 阶段 | 交付目标 | 核心范围 | 验收标准 |
 | :--- | :--- | :--- | :--- |
-| **阶段 1 (已就绪)** | Web 原型与无头诊断平台 | 原生 JS + Vite + DOM UI + Headless 模拟器 + Supabase 网络层 | 成功完成多轮数值调优与机制验证，跑通几千场批处理实验 |
-| **阶段 2 (进行中)** | 逻辑脱水与 TS 强类型重构 | 剥离 DOM 依赖，全面 TS 化，完善 Vitest / oxlint / Stryker 工具链 | `npm run test` 100% 通过，无头对战脱机运行零错误 |
-| **阶段 3 (近期目标)** | Cocos 3.x 微信小游戏 MVP | 纯本地单机版，Cocos 2D 薄视图接入，本地存档 | 微信开发者工具首包 < 4MB，真机 60FPS 流畅运行 |
+| **阶段 1 (已完成，已归档)** | Web 原型与无头诊断平台 | 原生 JS + Vite + DOM UI + Headless 模拟器 + Supabase 网络层（现归档于 `legacy/`） | 成功完成多轮数值调优与机制验证，跑通几千场批处理实验 |
+| **阶段 2 (已完成)** | 逻辑脱水与 TS 强类型重构 | 剥离 DOM 依赖，全面 TS 化，完善 Vitest / oxlint / Stryker 工具链 | `npm test` 100% 通过（693 用例），无头对战脱机运行零错误 |
+| **阶段 3 (进行中)** | 纯 TS Canvas 微信小游戏 MVP（ADR 0004） | 纯本地单机版，Canvas 2D 直出，本地存档；表现层轻量化场景树重构见 `.scratch/minigame-view-upgrade` | 微信开发者工具首包 < 4MB，真机流畅运行 |
 | **阶段 4 (远期规划)** | 跨端联机与商业化版本 | 恢复并强化 Supabase 联机对战，引入社交排行榜与跨平台互通 | 支持实时 PvP 匹配与断线重连 |
 
 ---

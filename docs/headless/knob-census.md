@@ -6,7 +6,7 @@
 > 2. **终局判定是否读取它** —— 消费者是 `ActionResolver.resolve` 的终局分数/胜负判定；
 > 3. **扰动它，输出是否变化** —— 用 `ActionResolver.resolve` 的 `scoreDelta` + 终局分数 + 盘面快照观测。
 >
-> 可执行断言在 `tests/core/dead-knob-census.test.ts`（93 条），使本表不能静默腐烂。
+> 可执行断言在 `tests/core/dead-knob-census.test.ts`，使本表不能静默腐烂。
 > 判定所用的两个接缝（spec Implementation Decisions 1–3，不新增第三个）：
 > 主接缝 `HeadlessMatch.run` / `HeadlessBenchmark.run`；场景接缝 `ActionResolver.resolve`。
 >
@@ -26,35 +26,35 @@
 
 ## 1. 计分参数 (`PointsConfig`)
 
-`PointsConfig` 定义在 `src/core/logic/ScoreCalculator.ts:29`。所有叶子字段如下。
-「AI 估值读取」= `ActionEvaluator` 读 `result.scoreDelta`（`ActionEvaluator.ts:188`）时该字段是否进入 `scoreDelta`；
-「终局判定读取」= 最终分数/胜负是否依赖它。证据行号指 `ActionResolver.ts`。
+`PointsConfig` 定义在 `src/core/logic/ScoreCalculator.ts`。所有叶子字段如下。
+「AI 估值读取」= `ActionEvaluator` 读 `result.scoreDelta`（`ActionEvaluator.ts`）时该字段是否进入 `scoreDelta`；
+「终局判定读取」= 最终分数/胜负是否依赖它。证据指 `ActionResolver.ts` 的对应分支/调用点。
 
 | 参数 | AI 估值读取 | 终局判定读取 | 扰动输出变化 | 结论 | 读取点 / 证据 |
 | --- | :---: | :---: | :---: | --- | --- |
-| `ACTION.AUTO` | 是 | 是 | 是 | 活 | `ActionResolver.ts:92`（`calculateActionPoints(AUTO)`） |
-| `ACTION.CONVERT` | 是 | 是 | 是 | 活 | `:120` |
-| `ACTION.TRANS` | 是 | 是 | 是 | 活 | `:133` |
-| `ACTION.ATK` | 是 | 是 | 是 | 活 | `:152` |
-| `ACTION.BURST` | 是 | 是 | 是 | 活 | `:174` |
-| `ACTION.BURST_ATK` | 是 | 是 | 是 | 活 | `:204` |
-| `ACTION.DISSIPATE` | 否 | 否 | 否 | **死** | `DISSIPATE` 分支直接 `scoreDelta = 0`（`:235`），从不调用 `calculateActionPoints` |
-| `ACTION.PASS` | 否 | 否 | 否 | **死** | `PASS` 分支直接 `scoreDelta = 0`（`:243`），从不调用 `calculateActionPoints` |
-| `STATE_CHANGE.REPAIR_DMG.yang` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts:206`（-1→0 己方建设） |
-| `STATE_CHANGE.REPAIR_DMG.yin` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts:207` |
-| `STATE_CHANGE.LIGHT_UP` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts:210`（0→1） |
-| `STATE_CHANGE.BLESSING` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts:213`（1→2） |
-| `STATE_CHANGE.CAUSE_DMG.yang` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts:189`（攻击 0→-1） |
-| `STATE_CHANGE.CAUSE_DMG.yin` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts:190` |
-| `STATE_CHANGE.BREAK_LIGHT.yang` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts:194`（攻击 1→0） |
-| `STATE_CHANGE.BREAK_LIGHT.yin` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts:195` |
-| `STATE_CHANGE.WEAKEN` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts:198`（攻击 2→1） |
-| `GUI_YI_MILESTONE` | 是 | 是 | 是 | 活 | `ActionResolver.ts:265` 进入 `scoreDelta`；`ScoreCalculator.ts:130` 提供缺省回退 60 |
-| `DAMAGE_PENALTY` | 否 | 是 | 是 | **仅终局生效** | `ActionResolver.ts:331-332`，只在 `MAX_ROUNDS` 结算分支从 `finalScore` 扣减，**从不进入 `scoreDelta`**；`ScoreCalculator.ts:134` 缺省回退 50 |
-| `RARITY_MULTIPLIER` | 否 | 否 | 否 | **死** | 仅被 `ScoreCalculator.applyRarityBonus` 的默认参数读取（`:232`），该方法无调用点 |
-| `NO_RARITY_ACTIONS` | 否 | 否 | 否 | **死** | 仅被 `isNoRarityAction`（`:222-223`）读取，后者只被 `applyRarityBonus`（`:235`）调用，无调用点 |
-| `ATTACK_PROGRESS_SCALE` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts:210`（`attackProgressScale` = floor + span×count/5）；`ActionResolver.ts:42,55` 缩放 ATK/BURST_ATK 的攻击状态分 |
-| `RACE_DIFF_PRICING` | 否 | 否 | 否 | **死（生产未配置）** | `ScoreCalculator.ts:225`（`raceDiffPoints`）；`ActionResolver.ts:66,208,273` 的应用点存在，但生产 `POINTS_CONFIG` 不设置该字段，恒等 0 |
+| `ACTION.AUTO` | 是 | 是 | 是 | 活 | `ActionResolver.ts`（`calculateActionPoints(AUTO)`） |
+| `ACTION.CONVERT` | 是 | 是 | 是 | 活 | `ActionResolver.ts`（`calculateActionPoints(CONVERT)`） |
+| `ACTION.TRANS` | 是 | 是 | 是 | 活 | `ActionResolver.ts`（`calculateActionPoints(TRANS)`） |
+| `ACTION.ATK` | 是 | 是 | 是 | 活 | `ActionResolver.ts`（`calculateActionPoints(ATK)`） |
+| `ACTION.BURST` | 是 | 是 | 是 | 活 | `ActionResolver.ts`（`calculateActionPoints(BURST)`） |
+| `ACTION.BURST_ATK` | 是 | 是 | 是 | 活 | `ActionResolver.ts`（`calculateActionPoints(BURST_ATK)`） |
+| `ACTION.DISSIPATE` | 否 | 否 | 否 | **死** | `ActionResolver.ts` 的 `DISSIPATE` 分支直接 `scoreDelta = 0`，从不调用 `calculateActionPoints` |
+| `ACTION.PASS` | 否 | 否 | 否 | **死** | `ActionResolver.ts` 的 `PASS` 分支直接 `scoreDelta = 0`，从不调用 `calculateActionPoints` |
+| `STATE_CHANGE.REPAIR_DMG.yang` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts`（-1→0 己方建设） |
+| `STATE_CHANGE.REPAIR_DMG.yin` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts` |
+| `STATE_CHANGE.LIGHT_UP` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts`（0→1） |
+| `STATE_CHANGE.BLESSING` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts`（1→2） |
+| `STATE_CHANGE.CAUSE_DMG.yang` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts`（攻击 0→-1） |
+| `STATE_CHANGE.CAUSE_DMG.yin` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts` |
+| `STATE_CHANGE.BREAK_LIGHT.yang` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts`（攻击 1→0） |
+| `STATE_CHANGE.BREAK_LIGHT.yin` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts` |
+| `STATE_CHANGE.WEAKEN` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts`（攻击 2→1） |
+| `GUI_YI_MILESTONE` | 是 | 是 | 是 | 活 | `ActionResolver.ts` 进入 `scoreDelta`；`ScoreCalculator.ts` 提供缺省回退 60 |
+| `DAMAGE_PENALTY` | 否 | 是 | 是 | **仅终局生效** | `ActionResolver.ts`，只在 `MAX_ROUNDS` 结算分支从 `finalScore` 扣减，**从不进入 `scoreDelta`**；`ScoreCalculator.ts` 缺省回退 50 |
+| `RARITY_MULTIPLIER` | 否 | 否 | 否 | **死** | 仅被 `ScoreCalculator.applyRarityBonus` 的默认参数读取，该方法无调用点 |
+| `NO_RARITY_ACTIONS` | 否 | 否 | 否 | **死** | 仅被 `isNoRarityAction` 读取，后者只被 `applyRarityBonus` 调用，无调用点 |
+| `ATTACK_PROGRESS_SCALE` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts`（`attackProgressScale` = floor + span×count/5）；`ActionResolver.ts` 缩放 ATK/BURST_ATK 的攻击状态分 |
+| `RACE_DIFF_PRICING` | 否 | 否 | 否 | **死（生产未配置）** | `ScoreCalculator.ts`（`raceDiffPoints`）；`ActionResolver.ts` 的应用点存在，但生产 `POINTS_CONFIG` 不设置该字段，恒等 0 |
 
 `RACE_DIFF_PRICING` 的「死」指**生产不生效**：生产 `POINTS_CONFIG` 不设置该字段（`raceDiffPoints` 恒等 0），故三个探针列均为「否」；但机制代码存在——一旦在不对称盘面（双方落后量不等）上配置 `gain`，它会被 `ActionResolver` 读取并进入 `scoreDelta`。清单把它记为死参数是因为它不影响生产行为。
 
@@ -62,15 +62,15 @@
 
 | 符号 | 位置 | 结论 |
 | --- | --- | --- |
-| `ACTION_PROBABILITY` | `ScoreCalculator.ts:89` | 死：只被 `applyRarityBonus` 读取（`:238`） |
-| `ScoreConfig` / `DEFAULT_SCORE_CONFIG` | `ScoreCalculator.ts:103` / `:113` | 死：生产路径只消费 `PointsConfig`；`ScoreConfig` 仅被 `tests/core/score-calculator.test.ts` 引用，数值与 `POINTS_CONFIG` 巧合相等 |
-| `ScoreCalculator.applyRarityBonus` / `isNoRarityAction` | `ScoreCalculator.ts:229` / `:222` | 死：生产路径无调用点 |
-| 常量 `GUI_YI_MILESTONE` / `DAMAGE_PENALTY` | `ScoreCalculator.ts:39` / `:42` | 活（作为 `PointsConfig` 可选字段缺省时的回退值，经 getter `:130`/`:134` 读取） |
+| `ACTION_PROBABILITY` | `ScoreCalculator.ts` | 死：只被 `applyRarityBonus` 读取 |
+| `ScoreConfig` / `DEFAULT_SCORE_CONFIG` | `ScoreCalculator.ts` | 死：生产路径只消费 `PointsConfig`；`ScoreConfig` 仅被 `tests/core/score-calculator.test.ts` 引用，数值与 `POINTS_CONFIG` 巧合相等 |
+| `ScoreCalculator.applyRarityBonus` / `isNoRarityAction` | `ScoreCalculator.ts` | 死：生产路径无调用点 |
+| 常量 `GUI_YI_MILESTONE` / `DAMAGE_PENALTY` | `ScoreCalculator.ts` | 活（作为 `PointsConfig` 可选字段缺省时的回退值，经 getter 读取） |
 
 ### 1.1 两个必须说明的口径细节
 
-- **`ACTION.AUTO` 在生产路径中不会被估值**：低位态（天干对应侧 ≤ 0）时 `getAvailableActions` 恒返回单候选 `[AUTO]`（`ActionCandidates.ts:98`），而 `createStrategy` 对单候选短路、不调用估值器（`Strategy.ts:172-173`）。因此结构上估值器会读 `ACTION.AUTO`，但生产对局里 AUTO 的数值实际只影响终局分数，不影响 AI 选择。`DISSIPATE`、`PASS` 同理恒为单候选（`ActionCandidates.ts:110`、`:197`）。
-- **`DAMAGE_PENALTY` 的「AI 不读」不是因为分支没执行**：AI 估值时也会调用 `resolve`，若模拟状态已达上限，`MAX_ROUNDS` 分支会执行并扣减 `finalScore`；但估值器只读 `result.scoreDelta`（`ActionEvaluator.ts:188`），而惩罚扣的是 `finalActiveScore`/`finalOpponentScore`，不在 `scoreDelta` 内，故 AI 不可见。
+- **`ACTION.AUTO` 在生产路径中不会被估值**：低位态（天干对应侧 ≤ 0）时 `getAvailableActions` 恒返回单候选 `[AUTO]`（`ActionCandidates.ts`），而 `createStrategy` 对单候选短路、不调用估值器（`Strategy.ts`）。因此结构上估值器会读 `ACTION.AUTO`，但生产对局里 AUTO 的数值实际只影响终局分数，不影响 AI 选择。`DISSIPATE`、`PASS` 同理恒为单候选（`ActionCandidates.ts`）。
+- **`DAMAGE_PENALTY` 的「AI 不读」不是因为分支没执行**：AI 估值时也会调用 `resolve`，若模拟状态已达上限，`MAX_ROUNDS` 分支会执行并扣减 `finalScore`；但估值器只读 `result.scoreDelta`（`ActionEvaluator.ts`），而惩罚扣的是 `finalActiveScore`/`finalOpponentScore`，不在 `scoreDelta` 内，故 AI 不可见。
 
 ---
 
@@ -79,24 +79,24 @@
 「AI 估值读取」中「间接」指该值先进入 `GameState`/候选集，AI 再经状态读取（而非直接读该配置）。
 「扰动输出变化」指任一可观测输出（对局轨迹、终局分数、指标、记录、事件）是否变化。
 
-### 2.1 `RuleSwitches`（`ActionCandidates.ts:63`）
+### 2.1 `RuleSwitches`（`ActionCandidates.ts`）
 
 | 参数 | 消费者 | AI 估值读取 | 终局判定读取 | 扰动输出变化 | 结论 |
 | --- | --- | :---: | :---: | :---: | --- |
-| `isBoardOnly` | `ActionEvaluator.evaluate`（`ActionEvaluator.ts:188`）：为 true 时 `scoreDeltaPoints = 0` | 是 | 否 | 是 | 活 |
+| `isBoardOnly` | `ActionEvaluator.evaluate`（`ActionEvaluator.ts`）：为 true 时 `scoreDeltaPoints = 0` | 是 | 否 | 是 | 活 |
 
-**活路径**：`createStrategy(weights, { rules })`（`Strategy.ts:176`）或 `createScoreBoundStrategy(weights, config, rules)`（`Strategy.ts:203-207`）把 `rules` 交给估值器；`GameManager` 走这条路（`game-manager.ts:95`）。
+**活路径**：`createStrategy(weights, { rules })`（`Strategy.ts`）或 `createScoreBoundStrategy(weights, config, rules)`（`Strategy.ts`）把 `rules` 交给估值器；`GameManager` 走这条路（`game-manager.ts`）。
 无头入口新增第三条活路径（ticket 01/04 修复）：`HeadlessMatch.run(strategy=weights, { rules })` 与 `HeadlessBenchmark.run({ strategyP1: weights, rules })` 由 `resolveStrategy`（`HeadlessMatch.ts`）用同一份 `rules` 构造 score-bound 策略，因此 `MatchOptions.rules`（`HeadlessMatch.ts`）、`BenchmarkOptions.rules`（`HeadlessBenchmark.ts`）、`HeadlessMatchConfig.rules`（`HeadlessMatch.ts`）在策略为权重模板时都到达 AI 估值器。
-**仍无消费者的转发路径**：`getAvailableActions` 只读 `options?.isExtraTurn`，从不读 `options?.rules`（`ActionCandidates.ts:168`；`rules` 字段在 `:56` 声明后无人读）。因此 `TurnManagerOptions.rules`（`TurnManager.ts:250`）与 `ActionCandidatesOptions.rules` 仍是转发死参数。
+**仍无消费者的转发路径**：`getAvailableActions` 只读 `options?.isExtraTurn`，从不读 `options?.rules`（`ActionCandidates.ts`；`rules` 字段在 `ActionCandidatesOptions` 声明后无人读）。因此 `TurnManagerOptions.rules`（`TurnManager.ts`）与 `ActionCandidatesOptions.rules` 仍是转发死参数。
 
-### 2.2 `ActionCandidatesOptions`（`ActionCandidates.ts:50`）
+### 2.2 `ActionCandidatesOptions`（`ActionCandidates.ts`）
 
 | 参数 | AI 估值读取 | 终局判定读取 | 扰动输出变化 | 结论 |
 | --- | :---: | :---: | :---: | --- |
-| `isExtraTurn` | 间接（过滤候选集） | 否 | 是（爆发候选被过滤，`ActionCandidates.ts:168`） | 活（行为过滤；由连动状态派生，非调参旋钮） |
+| `isExtraTurn` | 间接（过滤候选集） | 否 | 是（爆发候选被过滤，`ActionCandidates.ts`） | 活（行为过滤；由连动状态派生，非调参旋钮） |
 | `rules` | 否 | 否 | 否 | 死转发（候选接缝不读） |
 
-### 2.3 `TurnManagerOptions`（`TurnManager.ts:40`）
+### 2.3 `TurnManagerOptions`（`TurnManager.ts`）
 
 | 参数 | AI 估值读取 | 终局判定读取 | 扰动输出变化 | 结论 |
 | --- | :---: | :---: | :---: | --- |
@@ -106,28 +106,28 @@
 | `eventBus` | 否 | 否 | 仅事件（不改状态/分数） | 观察通道，非平衡旋钮 |
 | `rules` | 否 | 否 | 否 | 死转发（只转发到候选接缝） |
 
-### 2.4 `GameManagerOptions`（`game-manager.ts:30`）
+### 2.4 `GameManagerOptions`（`game-manager.ts`）
 
 | 参数 | AI 估值读取 | 终局判定读取 | 扰动输出变化 | 结论 |
 | --- | :---: | :---: | :---: | --- |
 | `seed` | 间接 | 间接 | 是 | 活 |
 | `initialState` | 间接 | 间接 | 是 | 活 |
 | `prng` | 间接 | 间接 | 是 | 活 |
-| `rules` | 是（绑定到 `createStrategy`，`game-manager.ts:95`） | 否 | 是 | 活（游戏内把 `isBoardOnly` 接到 AI 的入口） |
+| `rules` | 是（绑定到 `createStrategy`，`game-manager.ts`） | 否 | 是 | 活（游戏内把 `isBoardOnly` 接到 AI 的入口） |
 
-### 2.5 `MatchOptions`（`HeadlessMatch.ts:37`）
+### 2.5 `MatchOptions`（`HeadlessMatch.ts`）
 
 | 参数 | AI 估值读取 | 终局判定读取 | 扰动输出变化 | 结论 |
 | --- | :---: | :---: | :---: | --- |
 | `seed` | 间接 | 间接 | 是 | 活 |
 | `maxRounds` | 间接（影响对局长度） | 是（触发 `MAX_ROUNDS`） | 是 | 活 |
-| `recordActions` | 否 | 否 | 是（`record.actions`，`HeadlessMatch.ts:248`） | 活（仅输出采集） |
-| `scoreConfig` | 是（策略为权重模板时经 `resolveStrategy` 绑定 AI 估值器） | 是（终局分数，`HeadlessMatch.ts:157-159`） | 是 | 活：同时到达解析器与 AI 估值器；已构造的 `DecisionStrategy` 仍按自身估值器运行 |
+| `recordActions` | 否 | 否 | 是（`record.actions`，`HeadlessMatch.ts`） | 活（仅输出采集） |
+| `scoreConfig` | 是（策略为权重模板时经 `resolveStrategy` 绑定 AI 估值器） | 是（终局分数，`HeadlessMatch.ts`） | 是 | 活：同时到达解析器与 AI 估值器；已构造的 `DecisionStrategy` 仍按自身估值器运行 |
 | `rules` | 是（策略为权重模板时） | 否 | 是 | 活（同上；候选接缝仍不读） |
 | `shouldCollectStats` | 否 | 否 | 是（`MatchResult.stats`） | 活（仅输出采集） |
 | `isBoardSettlement` | 否 | 是（回合上限按盘面进度判胜负，不读计分） | 是（仅 MAX_ROUNDS 局的胜者） | 活（ticket 09 board-only 实验模式；默认 false，生产规则不变） |
 
-### 2.6 `BenchmarkOptions`（`HeadlessBenchmark.ts:23`）
+### 2.6 `BenchmarkOptions`（`HeadlessBenchmark.ts`）
 
 | 参数 | AI 估值读取 | 终局判定读取 | 扰动输出变化 | 结论 |
 | --- | :---: | :---: | :---: | --- |
@@ -135,12 +135,12 @@
 | `baseSeed` | 间接 | 间接 | 是 | 活 |
 | `maxRounds` | 间接 | 是 | 是 | 活 |
 | `strategyP1` / `strategyP2` | 是（权重模板经 `resolveStrategy` 绑定 AI 估值器；已构造策略按其自身估值器） | 间接 | 是 | 活（接受 `DecisionStrategy` 或 `StrategyWeights`） |
-| `recordActions` | 否 | 否 | **否** | 死转发：转发到 `HeadlessMatch`（`HeadlessBenchmark.ts:83`），但 `BenchmarkMetrics` 不暴露逐动作记录 |
+| `recordActions` | 否 | 否 | **否** | 死转发：转发到 `HeadlessMatch`（`HeadlessBenchmark.ts`），但 `BenchmarkMetrics` 不暴露逐动作记录 |
 | `scoreConfig` | 是（策略为权重模板时） | 是（平均分） | 是 | 活：同时到达解析器与 AI 估值器 |
 | `rules` | 是（策略为权重模板时） | 否 | 是 | 活（同上） |
 | `isBoardSettlement` | 否 | 是（回合上限按盘面进度判胜负） | 是 | 活（ticket 09 board-only 实验模式；默认 false） |
 
-### 2.7 `HeadlessMatchConfig`（`HeadlessMatch.ts:28`）与 `StrategyOptions`（`Strategy.ts:132`）
+### 2.7 `HeadlessMatchConfig`（`HeadlessMatch.ts`）与 `StrategyOptions`（`Strategy.ts`）
 
 | 参数 | 消费者 | AI 估值读取 | 终局判定读取 | 扰动输出变化 | 结论 |
 | --- | --- | :---: | :---: | :---: | --- |
@@ -156,7 +156,7 @@
 
 ## 3. AI 估值权重 (`StrategyWeights`)
 
-`StrategyWeights`（`src/core/ai/types.ts:11`）是 AI 估值的唯一权重表，全部为**活参数**：估值器逐项读取，终局判定完全不读。逐项断言见 `tests/core/dead-knob-census.test.ts`（`StrategyWeights 全部为活参数` 小节）。
+`StrategyWeights`（`src/core/ai/types.ts`）是 AI 估值的唯一权重表，全部为**活参数**：估值器逐项读取，终局判定完全不读。逐项断言见 `tests/core/dead-knob-census.test.ts`（`StrategyWeights 全部为活参数` 小节）。
 
 | 参数 | AI 估值读取 | 终局判定读取 | 读取点 |
 | --- | :---: | :---: | --- |
@@ -169,7 +169,7 @@
 | `causeDamage` | 是 | 否 | 压制克破段（0→-1） |
 | `suppressNode` | 是 | 否 | 压制克破段（普通降级） |
 | `burstExtraTurn` | 是 | 否 | 连动收益段 |
-| `scoreDeltaWeight` | 是 | 否 | 规则得分段（`ActionEvaluator.ts:187`） |
+| `scoreDeltaWeight` | 是 | 否 | 规则得分段（`ActionEvaluator.ts`） |
 | `winReward` | 是 | 否 | 达成五行全归元奖励 |
 | `baseActionBias` | 是 | 否 | 动作基础偏好段 |
 
@@ -227,22 +227,22 @@
 
 ## 6. 「仅终局生效」类：穷举
 
-**一般化结论**：任何**只在终局分支生效、且从不进入 `ActionResolver.resolve` 的 `scoreDelta`** 的计分项，对当前 AI 都不可见。AI 估值器只读 `result.scoreDelta`（`ActionEvaluator.ts:188`），所以只要一个计分项不走 `scoreDelta`，换它任何数值都不会改变 AI 行为——这类实验必然得出「无影响」。
+**一般化结论**：任何**只在终局分支生效、且从不进入 `ActionResolver.resolve` 的 `scoreDelta`** 的计分项，对当前 AI 都不可见。AI 估值器只读 `result.scoreDelta`（`ActionEvaluator.ts`），所以只要一个计分项不走 `scoreDelta`，换它任何数值都不会改变 AI 行为——这类实验必然得出「无影响」。
 
 **穷举当前代码中的成员：**
 
 | 成员 | 终局读取点 | 是否进入 `scoreDelta` | 结论 |
 | --- | --- | :---: | --- |
-| `PointsConfig.DAMAGE_PENALTY` | `ActionResolver.ts:331-332`（`MAX_ROUNDS` 分支，从 `finalScore` 扣减） | 否 | **唯一成员** |
-| 常量 `DAMAGE_PENALTY` | 经 `ScoreCalculator.ts:134` getter 作为缺省回退，最终仍只在 `:331-332` 被读 | 否 | 与上同一成员的回退值 |
+| `PointsConfig.DAMAGE_PENALTY` | `ActionResolver.ts`（`MAX_ROUNDS` 分支，从 `finalScore` 扣减） | 否 | **唯一成员** |
+| 常量 `DAMAGE_PENALTY` | 经 `ScoreCalculator.ts` getter 作为缺省回退，最终仍只在 `ActionResolver` 的 `MAX_ROUNDS` 结算分支被读 | 否 | 与上同一成员的回退值 |
 | `ScoreConfig.damagePenalty`（legacy） | 若接线则会落入同一分支；当前**未接线** | 否 | 不是终端成员，是死参数 |
 
 **终局分支清单（确认没有遗漏）：**
 
-- `ActionResolver.resolve` 的 `MAX_ROUNDS` 结算分支（`ActionResolver.ts:324-338`）：只读 `DAMAGE_PENALTY`。胜负为「扣损后分高者胜，同分 P2 胜」；P2 平局优先是规则，不是可调计分参数。
-- `ActionResolver.resolve` 的 `GUI_YUAN` 分支（`:291-322`）：只按盘面锁定与听牌判定胜负，**不读任何计分参数**。
-- `HeadlessMatch.run` 的天命揭牌分支（`HeadlessMatch.ts:172-227`）：只改盘面与胜负，不读计分参数。
-- `TurnManager.startTurn` 的天命揭牌分支（`TurnManager.ts:141-228`）：同上。
+- `ActionResolver.resolve` 的 `MAX_ROUNDS` 结算分支（`ActionResolver.ts`）：只读 `DAMAGE_PENALTY`。胜负为「扣损后分高者胜，同分 P2 胜」；P2 平局优先是规则，不是可调计分参数。
+- `ActionResolver.resolve` 的 `GUI_YUAN` 分支：只按盘面锁定与听牌判定胜负，**不读任何计分参数**。
+- `HeadlessMatch.run` 的天命揭牌分支（`HeadlessMatch.ts`）：只改盘面与胜负，不读计分参数。
+- `TurnManager.startTurn` 的天命揭牌分支（`TurnManager.ts`）：同上。
 
 因此，**当前终端生效类 = { `DAMAGE_PENALTY` }，无其它成员。** 未来若新增「终局才结算」的计分项（例如终局归元奖励、终局剩余资源折算），它天然落入此类；届时应同时（a）加入本表，（b）决定是否把它并入 `scoreDelta` 让 AI 可见。把这条规则写进普查，是为了让下一个调参者不再对终端项白跑一整格实验。
 
@@ -251,7 +251,7 @@
 ## 7. 复跑与维护
 
 ```bash
-npm test -- tests/core/dead-knob-census.test.ts   # 93 条逐参数断言
+npm test -- tests/core/dead-knob-census.test.ts   # 逐参数断言
 npm run typecheck
 npm run lint
 ```
