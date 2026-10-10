@@ -194,7 +194,7 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
   });
 
   describe('3. ADR 0001 安全护栏基线推演验收', () => {
-    it('satisfies ADR 0001 guardrails: GuiYuan rate between 80% and 95%, fair win rates, low GC delta', () => {
+    it('satisfies ADR 0001 guardrails: GuiYuan rate between 75% and 95%, fair win rates, low GC delta', () => {
       const benchmark = new HeadlessBenchmark();
       // Run 500 matches verification sample
       const metrics = benchmark.run({
@@ -203,7 +203,8 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
         strategyP2: balancedStrategy
       });
 
-      // 护栏 1: 同水平五行归元率处于安全区间 (30大回合与智能快刀下，归元率保持在 80%~95%)
+      // 护栏 1: 同水平五行归元率处于安全区间 (30大回合与智能快刀下，归元率保持在 75%~95%)
+      // 注：此带为启发式预设自对弈口径，无 ADR 记录；与 ADR 0001 的搜索深度 1/2 带 25%~80% 无法比较，见 docs/headless/guardrail-provenance.md。
       expect(metrics.guiYuanRate).toBeGreaterThanOrEqual(0.75);
       expect(metrics.guiYuanRate).toBeLessThanOrEqual(0.95);
 
