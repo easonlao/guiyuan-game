@@ -96,7 +96,7 @@ export interface MatchOptions {
   readonly recordActions?: boolean;
   /** 单局级计分配置覆盖；同时到达解析器与（权重模板策略的）AI 估值器 */
   readonly scoreConfig?: PointsConfig;
-  /** 单局级规则开关覆盖；同时到达候选生成与（权重模板策略的）AI 估值器 */
+  /** 单局级规则开关覆盖；只到达（权重模板策略的）AI 估值器，候选生成不读 rules */
   readonly rules?: RuleSwitches;
   /** 是否累计单局聚合统计（建设/压制/残留道损）。默认关闭以保持默认路径逐字节不变 */
   readonly shouldCollectStats?: boolean;

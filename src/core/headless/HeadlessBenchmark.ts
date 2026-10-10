@@ -32,7 +32,7 @@ export interface BenchmarkOptions {
   strategyP2?: StrategySpec;
   /** 批量推演使用的计分配置；同时到达解析器与（权重模板策略的）AI 估值器 */
   scoreConfig?: PointsConfig;
-  /** 批量推演使用的规则开关；同时到达候选生成与（权重模板策略的）AI 估值器 */
+  /** 批量推演使用的规则开关；只到达（权重模板策略的）AI 估值器，候选生成不读 rules */
   rules?: RuleSwitches;
   /** board-only 实验模式：回合上限时按盘面进度判定胜负，不读取计分。默认 false */
   isBoardSettlement?: boolean;
@@ -98,7 +98,8 @@ export class HeadlessBenchmark {
         scoreConfig,
         rules,
         shouldCollectStats: true,
-        isBoardSettlement
+        isBoardSettlement,
+        recordActions: false
       });
 
       totalP1Score += matchResult.finalP1Score;
