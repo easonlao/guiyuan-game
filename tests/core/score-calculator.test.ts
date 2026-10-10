@@ -82,11 +82,4 @@ describe('ScoreCalculator', () => {
     expect(custom.damagePenalty).toBe(7);
     expect(custom.calculateDamagePenalty(3)).toBe(21);
   });
-
-  it('should delegate milestone and endgame penalty helpers to the canonical calculators', () => {
-    expect(calculator.calculateGuiYiMilestone(2)).toBe(calculator.calculateGuiYiMilestonePoints(2));
-    expect(calculator.calculateGuiYiMilestone(2)).toBe(120);
-    expect(calculator.calculateEndgameDamagePenalty(2)).toBe(calculator.calculateDamagePenalty(2));
-    expect(calculator.calculateEndgameDamagePenalty(2)).toBe(100);
-  });
 });

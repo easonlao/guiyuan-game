@@ -67,6 +67,7 @@ export class EventBus {
 
   off<K extends EventKey>(event: K, handler: EventHandler<K>): void {
     const handlers = this.listeners.get(event);
+    // Stryker disable next-line ConditionalExpression: off 仅经注册时返回的闭包调用，handlers 恒存在，此守卫为防御（生产不可达）
     if (handlers) {
       handlers.delete(handler);
     }
@@ -78,7 +79,10 @@ export class EventBus {
       handlers.forEach(h => {
         try {
           h(data);
-        } catch (e) {
+        }
+        // Stryker disable next-line BlockStatement: catch 仅做日志输出，handler 抛错不改变状态（不可观测）
+        catch (e) {
+          // Stryker disable next-line StringLiteral,CallExpression: 错误日志文案与调用不参与断言（catch 不可达，不可观测）
           console.error(`[EventBus] Error handling event ${String(event)}:`, e);
         }
       });

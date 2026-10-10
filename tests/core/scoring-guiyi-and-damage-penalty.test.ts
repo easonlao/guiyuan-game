@@ -291,7 +291,6 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
         currentPlayer: 'P2',
         players: {
           P1: {
-            id: 'P1',
             score: 300,
             board: {
               ...createEmptyBoard(),
@@ -299,7 +298,6 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
             }
           },
           P2: {
-            id: 'P2',
             score: 200,
             board: {
               ...createEmptyBoard(),
@@ -339,7 +337,6 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
         currentPlayer: 'P2',
         players: {
           P1: {
-            id: 'P1',
             score: 200,
             board: {
               ...createEmptyBoard(),
@@ -347,7 +344,6 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
             }
           },
           P2: {
-            id: 'P2',
             score: 20,
             board: createEmptyBoard() // 0 damage
           }
@@ -381,7 +377,6 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
         currentPlayer: 'P2',
         players: {
           P1: {
-            id: 'P1',
             score: 200,
             board: {
               ...createEmptyBoard(),
@@ -389,7 +384,6 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
             }
           },
           P2: {
-            id: 'P2',
             score: 50, // will get +100 from AUTO => 150
             board: createEmptyBoard() // 0 damage => 150
           }
@@ -428,12 +422,10 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
         ...state,
         players: {
           P1: {
-            id: 'P1',
             score: 500,
             board: almostWinBoard
           },
           P2: {
-            id: 'P2',
             score: 400,
             board: {
               ...createEmptyBoard(),

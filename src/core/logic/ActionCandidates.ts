@@ -116,6 +116,7 @@ export function getAvailableActions(
   const actions: ActionPayload[] = [];
 
   // 3. 中位态：当对应节点侧已点亮 (1) 或加持 (2) 时，玩家享有完整自主决策权
+  // Stryker disable next-line ConditionalExpression: 前面已对 stemLevel <= 0 提前返回，此处置信恒真（等价）
   if (stemLevel >= 1) {
     // 2.1 调息 (CONVERT): 仅当对侧处于低位态 (<= 0) 时转到同一元素的另一极性
     const oppositePolarity = getOppositePolarity(stemPolarity);
