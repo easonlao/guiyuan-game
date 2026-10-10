@@ -36,27 +36,31 @@
 
 ## 3. 突变测试与漏洞防御 (Mutation Testing)
 
-由于 AI 生成的代码有时会看似通过了测试，但实际上只是“侥幸通过”（比如测试断言写得太宽泛），我们需要引入**突变测试 (Mutation Testing)** 来检验测试本身的健壮性。
+由于 AI 生成的代码有时会看似通过了测试，但实际上只是“侥幸通过”（比如测试断言写得太宽泛），我们需要引入**突变测试 (Mutation Testing)** 来检验测试本身的健壮性。**规则与门禁的完整说明见 [`docs/MUTATION-TESTING.md`](./MUTATION-TESTING.md)**，本节只做摘要。
 
 * **测试工具**：[Stryker.js](https://stryker-mutator.io/)，配置见 `stryker.config.json`（`mutate` 覆盖 `src/core/logic/**/*.ts`，排除纯 re-export 的 `src/core/logic/index.ts`）。
   * 全量：`npm run mutation`。
   * 只跑相对某 git ref 改动的逻辑文件：`npm run mutation:changed`（默认对比 `HEAD`，含未提交改动；可传 ref，如 `npm run mutation:changed -- HEAD~1`）。
-  * 存活明细同时输出到控制台（`clear-text`，含文件/行号/变异类型与 `- / +` diff）与 `reports/mutation/mutation.json`。
-* **执行时机**：**发布前 (Pre-release) 或 核心模块重构完毕后**。日常高频开发无需运行。
+  * 存活明细同时输出到控制台（`clear-text`，含文件/行号/变异类型与 `- / +` diff）与 `reports/mutation/mutation.json`（`reports/` 已 gitignore）。
+* **执行时机（两条路径）**：
+  1. **改动处跑**：`implement` 收尾时对本次改动的逻辑文件跑 `npm run mutation:changed`，当场补断言。
+  2. **里程碑全量**：每个 spec 收尾 + 发版/提审前跑 `npm run mutation`。
 * **运行机制**：Stryker 会故意修改你的业务代码（例如把 `if (score >= 1)` 改成 `if (score > 1)`），然后运行 Vitest。如果测试仍然通过，说明这个“突变体存活了”，意味着你的测试用例存在漏洞（没有覆盖到边界值）。
-* **准入红线**：核心计算逻辑的 **Mutation Score 目标 >= 80%**。
+* **门禁 = 基线棘轮，不是固定阈值**：仓库入库一份基线 `mutation-baseline.jsonl`（当前 223 条 = Survived 122 + NoCoverage 101）。跑完变异后用 `npm run mutation:check` 与基线对比，**只对基线里没有的**存活/无覆盖报警：无新增退出 `0`，有新增退出 `1`，缺报告/缺基线退出 `2`。确认等价的突变体就地 `// Stryker disable next-line <Mutator>` 并写理由，不做全局排除；确认接受的新缺口用 `npm run mutation:baseline` 更新基线（diff 可 review）。
+  * **不设全局固定阈值**：全库绝对变异分不可行、不可行动——Google《State of Mutation Testing at Google》(ICSE-SEIP 2018) 与《Practical Mutation Testing at Scale》(IEEE TSE 2021) 都只对改动的行跑变异，并把单个存活突变体作为 review 评论，而不是用分数当门禁。按成熟度的参考档位是 60/75/90，仅供定位水平，100% 不值得追（等价突变体是天花板）。理由与来源详见 `docs/MUTATION-TESTING.md` §5。
+  * **现状（2026-10-10）**：全量变异分 **79.45%**（ActionCandidates 98.98 / ActionResolver 80.39 / EventBus 72.34 / ScoreCalculator 83.16 / State 91.62 / TurnManager 63.70），落在“活跃开发”与“稳定库”之间，是状态快照而非门禁。
 
-> **现状（2026-10-10）**：这条 80% 红线**未被强制**——`stryker.config.json` 未配置任何 `thresholds`。已修两个阻断问题：(1) `tests/core/candidate-validation.test.ts` 的重仿真用例在插桩下超过默认 `hookTimeout`，已通过 `vitest.stryker.config.ts` 将其排除出 Stryker 测试集；(2) `coverageAnalysis: "perTest"` 在 Stryker 10 + Vitest 5 下退化为「0 个测试/突变体」（全部误报存活），已改为 `"off"`。
+> **阻断问题的修复（2026-10-10）**：
 >
-> **实测分数偏低**：修复后单文件实测 `src/core/logic/ScoreCalculator.ts` 突变分为 **60.63%**（77 杀 / 45 存活 / 5 无覆盖），低于本文的 80% 目标。因此**未接 `thresholds`**：直接写 `break = 80` 会让 `npm run mutation` 当场变红。是「把红线降到 60 做防回退棘轮」还是「先补测试再维持 80」，属政策决定，待定。
->
-> **✅ 上游分隔符 bug 已修复（patch-package，2026-10-10）**：`@stryker-mutator/vitest-runner@10.0.0` + `vitest@5.0.3` 下，**非 static 突变体**的判定此前全部不可信——runner 用空格连接套件链构造 `testNamePattern`，而 Vitest 5 用 `' > '` 连接，导致过滤不中任何用例、实际执行 0 个测试，突变体被误报为 `Survived`（报告里 `testsCompleted: 0`）。上游问题为 [stryker-js#6210](https://github.com/stryker-mutator/stryker-js/issues/6210)，修复 PR [#6214](https://github.com/stryker-mutator/stryker-js/pull/6214) 尚未发版，故本地用 `patch-package` 落地同一修法。
+> 1. `tests/core/candidate-validation.test.ts` 的重仿真用例在 Stryker 插桩下超过默认 `hookTimeout`，已通过 `vitest.stryker.config.ts` 将其排除出 Stryker 测试集（该用例只覆盖 `src/core/headless/CandidateValidation.ts`，而 Stryker 只 mutate `src/core/logic/**`，排除不损失被 mutate 文件的覆盖信号）。
+> 2. **非 static 突变体误报存活**：`@stryker-mutator/vitest-runner@10.0.0` + `vitest@5.0.3` 下，runner 用**空格**连接套件链构造 `testNamePattern`，而 Vitest 5 用 `' > '` 连接，导致过滤不中任何用例、实际执行 **0 个测试**，突变体被一律误报为 `Survived`（报告里 `testsCompleted: 0`）。**这才是“0 个测试/突变体”的真正根因**——与 `coverageAnalysis` 无关，`coverageAnalysis: "off"` 也绕不开它（该配置维持既有值不变）。上游 [stryker-js#6210](https://github.com/stryker-mutator/stryker-js/issues/6210)，修复 PR [#6214](https://github.com/stryker-mutator/stryker-js/pull/6214) 尚未发版，故本地用 `patch-package` 落地修复。
 >
 > - **补丁文件**：`patches/@stryker-mutator+vitest-runner+10.0.0.patch`（已入库）。
-> - **补丁内容**：把两处 `collectTestName` 的 `nameParts.join(' ')` 改为 `nameParts.join(' > ')`——`dist/src/test-helpers.js`（`vitest-helpers.js` 与 `vitest-test-runner.js` 经它构造 test id / `testNamePattern`）与 `dist/src/stryker-setup.js`（沙箱内收集 per-test 覆盖）。两者必须一致，否则覆盖 id 与过滤 pattern 对不上。
+> - **补丁内容**：把两处 `collectTestName` 的 `nameParts.join(' ')` 改为 `nameParts.join(' > ')`——`dist/src/test-helpers.js`（`vitest-test-runner.js` **经 `vitest-helpers.js` 间接**引用它来构造 test id / `testNamePattern`）与 `dist/src/stryker-setup.js`（沙箱内收集 per-test 覆盖）。两者必须一致，否则覆盖 id 与过滤 pattern 对不上。
+> - **与上游 #6214 的区别**：上游 #6214 是**按 Vitest 版本选择分隔符**并注入 `testNameSeparator`；本补丁是**版本无关的硬编码** `' > '`。
 > - **生效方式**：`package.json` 的 `postinstall` 已设为 `patch-package`，`patch-package` 在 `devDependencies`；`npm install` / `npm ci` 后自动打补丁。
-> - **⚠️ 升级 `@stryker-mutator/vitest-runner` 时必须重新生成/复核补丁**：新版本若已含 #6214，应删除本补丁并移除 `postinstall`；若仍含该 bug，需对新的 dist 重新生成 patch（`npx patch-package @stryker-mutator/vitest-runner`）。否则 `postinstall` 会因 patch 上下文不匹配而失败。
-> - **验证**：修复前 `EventBus.ts` 为 0 杀 / 45 存活 / `testsCompleted` 恒为 0；修复后 34 杀 / 11 存活 / 2 无覆盖（突变分 72.34%，平均每突变体执行 9.21 个测试），存活项 `testsCompleted` 不再为 0。`coverageAnalysis: "off"` 仍保留（它绕不开此 bug，但与本修复无关，维持既有配置）。
+> - **⚠️ 维护告警**：升级 `@stryker-mutator/vitest-runner` 或**降级 `vitest` 到 4.x** 时都必须重新生成/复核补丁。升级 runner：新版本若已含 #6214，应删除本补丁并移除 `postinstall`；若仍含该 bug，需对新 dist 重新生成 patch（`npx patch-package @stryker-mutator/vitest-runner`），否则 `postinstall` 会因 patch 上下文不匹配而失败。降级 Vitest 到 4.x：4.x 用**空格**分隔符，硬编码 `' > '` 会**反向失效**，突变体重新误报存活，必须先确认版本对应的分隔符再决定是否改写补丁。
+> - **验证**：修复前 `EventBus.ts` 为 0 杀 / 45 存活 / `testsCompleted` 恒为 0；修复后 34 杀 / 11 存活 / 2 无覆盖（突变分 72.34%，平均每突变体执行 9.21 个测试），存活项 `testsCompleted` 不再为 0。
 
 ---
 

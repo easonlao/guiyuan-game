@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
-  "_comment": "发布前 (Pre-release) 质量体检配置，针对 Layer 1 纯逻辑层做突变分析。coverageAnalysis 必须为 off：Stryker 10 + Vitest 5 下 perTest 会退化为「0 个测试/突变体」（所有突变体误报存活）；见 vitest.stryker.config.ts。",
+  "_comment": "针对 Layer 1 纯逻辑层做突变分析。门禁是基线棘轮（mutation:check 只对基线之外的存活/无覆盖报警），不是全局固定阈值；规则与来源见 docs/MUTATION-TESTING.md。coverageAnalysis 维持 off（既有配置，与本修复无关）——「0 个测试/突变体」的真正根因是 vitest-runner 的 testNamePattern 分隔符 bug，已由 patches/ 下的 patch-package 补丁修复。",
   "testRunner": "vitest",
   "tempDirName": "/tmp/.stryker-tmp",
   "ignorePatterns": [
