@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "postinstall": "patch-package",
     "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src/core src/adapters tests/core",
@@ -32,6 +33,7 @@
     "agent-browser": "^0.38.2",
     "dependency-cruiser": "^18.5.0",
     "oxlint": "^1.87.0",
+    "patch-package": "^8.0.1",
     "terser": "^5.46.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",

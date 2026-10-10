@@ -50,7 +50,13 @@
 >
 > **实测分数偏低**：修复后单文件实测 `src/core/logic/ScoreCalculator.ts` 突变分为 **60.63%**（77 杀 / 45 存活 / 5 无覆盖），低于本文的 80% 目标。因此**未接 `thresholds`**：直接写 `break = 80` 会让 `npm run mutation` 当场变红。是「把红线降到 60 做防回退棘轮」还是「先补测试再维持 80」，属政策决定，待定。
 >
-> **⚠️ 存活清单当前不可信（上游 bug，2026-10-10 发现）**：`@stryker-mutator/vitest-runner@10.0.0` + `vitest@5.0.3` 下，**非 static 突变体**的判定全部不可信——凡是「有 per-test 覆盖、需要按测试名过滤」的突变体，runner 构造的 `testNamePattern` 用空格连接套件链，而 Vitest 5 改为用 `' > '` 连接，导致过滤不中任何用例、实际执行 0 个测试，突变体被误报为 `Survived`（报告里 `testsCompleted: 0`）。只有 static 突变体（runner 不套用名字过滤）的判定是对的。这是上游已知问题 [stryker-js#6210](https://github.com/stryker-mutator/stryker-js/issues/6210)，修复 PR [#6214](https://github.com/stryker-mutator/stryker-js/pull/6214) 尚未发布。`coverageAnalysis: "off"` **并不能**绕开它（Stryker 10 的 vitest-runner 无论该选项都会收集并回传 per-test 覆盖）。在拿到含该修复的版本前，**不要把存活清单当作真实测试缺口**；若要本地止血，可用 `patch-package` 打 #6214 的分隔符补丁（把 `collectTestName` 的 `join(' ')` 改为 `join(' > ')`），或把 Vitest 降到 4.x。
+> **✅ 上游分隔符 bug 已修复（patch-package，2026-10-10）**：`@stryker-mutator/vitest-runner@10.0.0` + `vitest@5.0.3` 下，**非 static 突变体**的判定此前全部不可信——runner 用空格连接套件链构造 `testNamePattern`，而 Vitest 5 用 `' > '` 连接，导致过滤不中任何用例、实际执行 0 个测试，突变体被误报为 `Survived`（报告里 `testsCompleted: 0`）。上游问题为 [stryker-js#6210](https://github.com/stryker-mutator/stryker-js/issues/6210)，修复 PR [#6214](https://github.com/stryker-mutator/stryker-js/pull/6214) 尚未发版，故本地用 `patch-package` 落地同一修法。
+>
+> - **补丁文件**：`patches/@stryker-mutator+vitest-runner+10.0.0.patch`（已入库）。
+> - **补丁内容**：把两处 `collectTestName` 的 `nameParts.join(' ')` 改为 `nameParts.join(' > ')`——`dist/src/test-helpers.js`（`vitest-helpers.js` 与 `vitest-test-runner.js` 经它构造 test id / `testNamePattern`）与 `dist/src/stryker-setup.js`（沙箱内收集 per-test 覆盖）。两者必须一致，否则覆盖 id 与过滤 pattern 对不上。
+> - **生效方式**：`package.json` 的 `postinstall` 已设为 `patch-package`，`patch-package` 在 `devDependencies`；`npm install` / `npm ci` 后自动打补丁。
+> - **⚠️ 升级 `@stryker-mutator/vitest-runner` 时必须重新生成/复核补丁**：新版本若已含 #6214，应删除本补丁并移除 `postinstall`；若仍含该 bug，需对新的 dist 重新生成 patch（`npx patch-package @stryker-mutator/vitest-runner`）。否则 `postinstall` 会因 patch 上下文不匹配而失败。
+> - **验证**：修复前 `EventBus.ts` 为 0 杀 / 45 存活 / `testsCompleted` 恒为 0；修复后 34 杀 / 11 存活 / 2 无覆盖（突变分 72.34%，平均每突变体执行 9.21 个测试），存活项 `testsCompleted` 不再为 0。`coverageAnalysis: "off"` 仍保留（它绕不开此 bug，但与本修复无关，维持既有配置）。
 
 ---
 
