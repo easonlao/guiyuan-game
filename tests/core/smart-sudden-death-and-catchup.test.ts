@@ -3,15 +3,13 @@ import {
   WuXing,
   Polarity,
   ActionType,
-  BoardState,
   TIAN_GAN_LIST
 } from '../../src/core/types/domain.js';
 import {
-  createEmptyBoard,
-  createInitialGameState,
   isBoardTingPai,
   isBoardGuiYuan
 } from '../../src/core/logic/State.js';
+import { boardWith, gameStateWith } from '../../src/core/headless/BoardFixture.js';
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
 import { TurnManager } from '../../src/core/logic/TurnManager.js';
 import { EventBus } from '../../src/core/logic/EventBus.js';
@@ -27,67 +25,56 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
   });
 
   // 辅助棋盘：全五行归一 (10 侧点亮，归元棋盘)
-  const fullGuiYuanBoard: BoardState = {
+  const fullGuiYuanBoard = boardWith({
     [WuXing.WOOD]: { yin: 1, yang: 1 },
     [WuXing.FIRE]: { yin: 1, yang: 1 },
     [WuXing.EARTH]: { yin: 1, yang: 1 },
     [WuXing.METAL]: { yin: 1, yang: 1 },
     [WuXing.WATER]: { yin: 1, yang: 1 }
-  };
+  });
 
   // 辅助棋盘：差 1 侧水阳达成归元 (9 侧点亮，未点亮 1 侧 -> 听牌临界态)
-  const tingPaiBoard9SidesWaterYang: BoardState = {
+  const tingPaiBoard9SidesWaterYang = boardWith({
     [WuXing.WOOD]: { yin: 1, yang: 1 },
     [WuXing.FIRE]: { yin: 1, yang: 1 },
     [WuXing.EARTH]: { yin: 1, yang: 1 },
     [WuXing.METAL]: { yin: 1, yang: 1 },
     [WuXing.WATER]: { yin: 1, yang: 0 } // 水阳未点亮 (0)
-  };
+  });
 
   // 辅助棋盘：差 1 侧水阴达成归元 (9 侧点亮，未点亮 1 侧 -> 听牌临界态)
-  const tingPaiBoard9SidesWaterYin: BoardState = {
+  const tingPaiBoard9SidesWaterYin = boardWith({
     [WuXing.WOOD]: { yin: 1, yang: 1 },
     [WuXing.FIRE]: { yin: 1, yang: 1 },
     [WuXing.EARTH]: { yin: 1, yang: 1 },
     [WuXing.METAL]: { yin: 1, yang: 1 },
     [WuXing.WATER]: { yin: 0, yang: 1 } // 水阴未点亮 (0)
-  };
+  });
 
   // 辅助棋盘：差 2 侧达成归元 (8 侧点亮，未点亮 2 侧 -> 未听牌)
-  const notTingPaiBoard8Sides: BoardState = {
+  const notTingPaiBoard8Sides = boardWith({
     [WuXing.WOOD]: { yin: 1, yang: 1 },
     [WuXing.FIRE]: { yin: 1, yang: 1 },
     [WuXing.EARTH]: { yin: 1, yang: 1 },
     [WuXing.METAL]: { yin: 1, yang: 1 },
     [WuXing.WATER]: { yin: 0, yang: 0 } // 水阴阳皆未点亮
-  };
+  });
 
   // 辅助棋盘：差 3 侧达成归元 (7 侧点亮，未点亮 3 侧 -> 未听牌)
-  const notTingPaiBoard7Sides: BoardState = {
+  const notTingPaiBoard7Sides = boardWith({
     [WuXing.WOOD]: { yin: 1, yang: 1 },
     [WuXing.FIRE]: { yin: 1, yang: 1 },
     [WuXing.EARTH]: { yin: 1, yang: 1 },
     [WuXing.METAL]: { yin: 1, yang: 0 }, // 金阳未点亮
     [WuXing.WATER]: { yin: 0, yang: 0 }  // 水阴阳未点亮
-  };
+  });
 
   describe('1. 先手归元 + 后手未听牌 (未点亮侧数 >= 2) -> 智能快刀常规秒结 (占 ~97%)', () => {
     it('8 侧已点亮（未点亮 2 侧）时，P1 归元直接常规秒结 P1 获胜！', () => {
-      let state = createInitialGameState();
-      state = {
-        ...state,
-        players: {
-          ...state.players,
-          P1: {
-            ...state.players.P1,
-            board: tingPaiBoard9SidesWaterYang // P1 差 1 侧水阳归元
-          },
-          P2: {
-            ...state.players.P2,
-            board: notTingPaiBoard8Sides // P2 剩余未点亮 2 侧 (未听牌！)
-          }
-        }
-      };
+      const state = gameStateWith({
+        P1: tingPaiBoard9SidesWaterYang, // P1 差 1 侧水阳归元
+        P2: notTingPaiBoard8Sides // P2 剩余未点亮 2 侧 (未听牌！)
+      });
 
       // ADR 0007: 8 侧点亮未点亮 2 侧判定为未听牌
       expect(isBoardTingPai(state.players.P2.board)).toBe(false);
@@ -111,21 +98,10 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
     });
 
     it('7 侧已点亮（未点亮 3 侧）时，P1 达成归元当场秒结 P1 获胜', () => {
-      let state = createInitialGameState();
-      state = {
-        ...state,
-        players: {
-          ...state.players,
-          P1: {
-            ...state.players.P1,
-            board: tingPaiBoard9SidesWaterYang
-          },
-          P2: {
-            ...state.players.P2,
-            board: notTingPaiBoard7Sides
-          }
-        }
-      };
+      const state = gameStateWith({
+        P1: tingPaiBoard9SidesWaterYang,
+        P2: notTingPaiBoard7Sides
+      });
 
       expect(isBoardTingPai(state.players.P2.board)).toBe(false);
 
@@ -143,23 +119,18 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
     });
 
     it('P1 通过 BURST 达成归元且 P2 未听牌时，秒结对局，不发放额外行动', () => {
-      let state = createInitialGameState();
-      const burstPrepBoard: BoardState = {
+      const burstPrepBoard = boardWith({
         [WuXing.WOOD]: { yin: 2, yang: 2 },
         [WuXing.FIRE]: { yin: 1, yang: 0 },
         [WuXing.EARTH]: { yin: 1, yang: 1 },
         [WuXing.METAL]: { yin: 1, yang: 1 },
         [WuXing.WATER]: { yin: 1, yang: 1 }
-      };
+      });
 
-      state = {
-        ...state,
-        players: {
-          ...state.players,
-          P1: { ...state.players.P1, board: burstPrepBoard },
-          P2: { ...state.players.P2, board: notTingPaiBoard8Sides }
-        }
-      };
+      const state = gameStateWith({
+        P1: burstPrepBoard,
+        P2: notTingPaiBoard8Sides
+      });
 
       const result = resolver.resolve(state, {
         actionType: ActionType.BURST,
@@ -179,17 +150,12 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
 
   describe('2. 先手归元 + 后手严格差 1 侧听牌 -> 状态机流转至 P2 终轮天命揭牌阶段', () => {
     it('P1 常规行动达成归元，P2 9 侧点亮听牌时，维持对局流转至 P2', () => {
-      let state = createInitialGameState();
-      state = {
-        ...state,
+      const state = gameStateWith({
         round: 3,
         currentPlayer: 'P1',
-        players: {
-          ...state.players,
-          P1: { ...state.players.P1, board: tingPaiBoard9SidesWaterYang },
-          P2: { ...state.players.P2, board: tingPaiBoard9SidesWaterYang } // P2 严格听牌
-        }
-      };
+        P1: tingPaiBoard9SidesWaterYang,
+        P2: tingPaiBoard9SidesWaterYang // P2 严格听牌
+      });
 
       expect(isBoardTingPai(state.players.P2.board)).toBe(true);
 
@@ -211,25 +177,20 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
     });
 
     it('P1 通过 BURST 达成归元且 P2 差 1 侧听牌时，直接交接给 P2 进行终轮天命揭牌 (extraTurn=false)', () => {
-      let state = createInitialGameState();
-      const burstPrepBoard: BoardState = {
+      const burstPrepBoard = boardWith({
         [WuXing.WOOD]: { yin: 2, yang: 2 },
         [WuXing.FIRE]: { yin: 1, yang: 0 },
         [WuXing.EARTH]: { yin: 1, yang: 1 },
         [WuXing.METAL]: { yin: 1, yang: 1 },
         [WuXing.WATER]: { yin: 1, yang: 1 }
-      };
+      });
 
-      state = {
-        ...state,
+      const state = gameStateWith({
         round: 4,
         currentPlayer: 'P1',
-        players: {
-          ...state.players,
-          P1: { ...state.players.P1, board: burstPrepBoard },
-          P2: { ...state.players.P2, board: tingPaiBoard9SidesWaterYang }
-        }
-      };
+        P1: burstPrepBoard,
+        P2: tingPaiBoard9SidesWaterYang
+      });
 
       // P1 BURST 达成归元
       const burstResult = resolver.resolve(state, {
@@ -258,18 +219,13 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
       });
 
       // 初始化进入 P2 终轮天命揭牌状态：P1 已锁定归元，当前行动方为 P2
-      let state = createInitialGameState();
-      state = {
-        ...state,
+      const state = gameStateWith({
         round: 5,
         currentPlayer: 'P2',
         lockedGuiYuan: { P1: true, P2: false },
-        players: {
-          ...state.players,
-          P1: { ...state.players.P1, board: fullGuiYuanBoard },
-          P2: { ...state.players.P2, board: tingPaiBoard9SidesWaterYang } // 差水阳 (0)
-        }
-      };
+        P1: fullGuiYuanBoard,
+        P2: tingPaiBoard9SidesWaterYang // 差水阳 (0)
+      });
 
       // 索引 8 对应 壬水 (WATER, YANG)
       const renWaterPrng = createMockPrng(8);
@@ -311,18 +267,13 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
         showdownEvent = data;
       });
 
-      let state = createInitialGameState();
-      state = {
-        ...state,
+      const state = gameStateWith({
         round: 5,
         currentPlayer: 'P2',
         lockedGuiYuan: { P1: true, P2: false },
-        players: {
-          ...state.players,
-          P1: { ...state.players.P1, board: fullGuiYuanBoard },
-          P2: { ...state.players.P2, board: tingPaiBoard9SidesWaterYang } // 水阴=1, 水阳=0
-        }
-      };
+        P1: fullGuiYuanBoard,
+        P2: tingPaiBoard9SidesWaterYang // 水阴=1, 水阳=0
+      });
 
       // 索引 9 对应 癸水 (WATER, YIN)
       const guiWaterPrng = createMockPrng(9);
@@ -354,18 +305,13 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
         showdownEvent = data;
       });
 
-      let state = createInitialGameState();
-      state = {
-        ...state,
+      const state = gameStateWith({
         round: 6,
         currentPlayer: 'P2',
         lockedGuiYuan: { P1: true, P2: false },
-        players: {
-          ...state.players,
-          P1: { ...state.players.P1, board: fullGuiYuanBoard },
-          P2: { ...state.players.P2, board: tingPaiBoard9SidesWaterYin } // 差水阴 (0)
-        }
-      };
+        P1: fullGuiYuanBoard,
+        P2: tingPaiBoard9SidesWaterYin // 差水阴 (0)
+      });
 
       // 索引 7 对应 辛金 (METAL, YIN)
       const xinMetalPrng = createMockPrng(7);
@@ -397,23 +343,18 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
         showdownEvent = data;
       });
 
-      const boardWithYinBlessed: BoardState = {
+      const boardWithYinBlessed = boardWith({
         ...tingPaiBoard9SidesWaterYang,
         [WuXing.WATER]: { yin: 2, yang: 0 } // 水阴已满 2，未点亮侧为水阳
-      };
+      });
 
-      let state = createInitialGameState();
-      state = {
-        ...state,
+      const state = gameStateWith({
         round: 6,
         currentPlayer: 'P2',
         lockedGuiYuan: { P1: true, P2: false },
-        players: {
-          ...state.players,
-          P1: { ...state.players.P1, board: fullGuiYuanBoard },
-          P2: { ...state.players.P2, board: boardWithYinBlessed }
-        }
-      };
+        P1: fullGuiYuanBoard,
+        P2: boardWithYinBlessed
+      });
 
       // 辛金 (METAL, YIN, index 7)
       const xinMetalPrng = createMockPrng(7);
@@ -439,18 +380,13 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
       });
 
       // 水阴仅为 1 (未满 2)，水阳为 0
-      let state = createInitialGameState();
-      state = {
-        ...state,
+      const state = gameStateWith({
         round: 6,
         currentPlayer: 'P2',
         lockedGuiYuan: { P1: true, P2: false },
-        players: {
-          ...state.players,
-          P1: { ...state.players.P1, board: fullGuiYuanBoard },
-          P2: { ...state.players.P2, board: tingPaiBoard9SidesWaterYang } // 水阴=1, 水阳=0
-        }
-      };
+        P1: fullGuiYuanBoard,
+        P2: tingPaiBoard9SidesWaterYang // 水阴=1, 水阳=0
+      });
 
       // 辛金 (METAL, YIN, index 7)
       const xinMetalPrng = createMockPrng(7);
@@ -483,18 +419,13 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
         showdownEvent = data;
       });
 
-      let state = createInitialGameState();
-      state = {
-        ...state,
+      const state = gameStateWith({
         round: 7,
         currentPlayer: 'P2',
         lockedGuiYuan: { P1: true, P2: false },
-        players: {
-          ...state.players,
-          P1: { ...state.players.P1, board: fullGuiYuanBoard },
-          P2: { ...state.players.P2, board: tingPaiBoard9SidesWaterYang } // 差水阳
-        }
-      };
+        P1: fullGuiYuanBoard,
+        P2: tingPaiBoard9SidesWaterYang // 差水阳
+      });
 
       // 索引 2 对应 丙火 (FIRE, YANG)
       const bingFirePrng = createMockPrng(2);
@@ -526,23 +457,18 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
         showdownEvent = data;
       });
 
-      const boardWithDamage: BoardState = {
+      const boardWithDamage = boardWith({
         ...tingPaiBoard9SidesWaterYang,
         [WuXing.WATER]: { yin: 1, yang: -1 } // 水阳为道损 -1
-      };
+      });
 
-      let state = createInitialGameState();
-      state = {
-        ...state,
+      const state = gameStateWith({
         round: 7,
         currentPlayer: 'P2',
         lockedGuiYuan: { P1: true, P2: false },
-        players: {
-          ...state.players,
-          P1: { ...state.players.P1, board: fullGuiYuanBoard },
-          P2: { ...state.players.P2, board: boardWithDamage }
-        }
-      };
+        P1: fullGuiYuanBoard,
+        P2: boardWithDamage
+      });
 
       // 抽中 壬水 (WATER, YANG, index 8)
       const renWaterPrng = createMockPrng(8);
@@ -563,18 +489,13 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
 
   describe('4. TurnManager 单步驱动与生命周期集成', () => {
     it('step() 自动平稳驱动终轮天命揭牌并安全返回终局结果', () => {
-      let state = createInitialGameState();
-      state = {
-        ...state,
+      const state = gameStateWith({
         round: 8,
         currentPlayer: 'P2',
         lockedGuiYuan: { P1: true, P2: false },
-        players: {
-          ...state.players,
-          P1: { ...state.players.P1, board: fullGuiYuanBoard },
-          P2: { ...state.players.P2, board: tingPaiBoard9SidesWaterYang }
-        }
-      };
+        P1: fullGuiYuanBoard,
+        P2: tingPaiBoard9SidesWaterYang
+      });
 
       // 壬水 (WATER, YANG, index 8) -> 命中
       const manager = new TurnManager({
@@ -592,18 +513,13 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
     });
 
     it('executeTurn() 策略驱动亦能平稳兼容终轮天命揭牌', () => {
-      let state = createInitialGameState();
-      state = {
-        ...state,
+      const state = gameStateWith({
         round: 8,
         currentPlayer: 'P2',
         lockedGuiYuan: { P1: true, P2: false },
-        players: {
-          ...state.players,
-          P1: { ...state.players.P1, board: fullGuiYuanBoard },
-          P2: { ...state.players.P2, board: tingPaiBoard9SidesWaterYang }
-        }
-      };
+        P1: fullGuiYuanBoard,
+        P2: tingPaiBoard9SidesWaterYang
+      });
 
       // 丙火 (index 2) -> 未命中
       const manager = new TurnManager({
@@ -621,18 +537,13 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
 
   describe('5. 后手常规归元与先手归元成就不可逆锁定', () => {
     it('后手破坏无法撤销先手已锁定的归元成就', () => {
-      let state = createInitialGameState();
-      state = {
-        ...state,
+      const state = gameStateWith({
         round: 9,
         currentPlayer: 'P2',
         lockedGuiYuan: { P1: true, P2: false },
-        players: {
-          ...state.players,
-          P1: { ...state.players.P1, board: fullGuiYuanBoard },
-          P2: { ...state.players.P2, board: notTingPaiBoard8Sides }
-        }
-      };
+        P1: fullGuiYuanBoard,
+        P2: notTingPaiBoard8Sides
+      });
 
       // P2 发动 ATK 削弱 P1 的 EARTH 节点阳极
       const atkResult = resolver.resolve(state, {
@@ -655,18 +566,12 @@ describe('Ticket 01: 智能快刀终局裁决与终轮天命揭牌决胜全链�
     });
 
     it('P1 未达成归元，后手 (P2) 自行达成归元，直接判定 P2 获胜', () => {
-      let state = createInitialGameState();
-      state = {
-        ...state,
+      const state = gameStateWith({
         round: 10,
         currentPlayer: 'P2',
         lockedGuiYuan: { P1: false, P2: false },
-        players: {
-          ...state.players,
-          P1: { ...state.players.P1, board: createEmptyBoard() },
-          P2: { ...state.players.P2, board: tingPaiBoard9SidesWaterYang }
-        }
-      };
+        P2: tingPaiBoard9SidesWaterYang
+      });
 
       const result = resolver.resolve(state, {
         actionType: ActionType.AUTO,

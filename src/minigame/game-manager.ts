@@ -1,7 +1,9 @@
 import { TurnManager } from '../core/logic/TurnManager';
+import { RuleSwitches } from '../core/logic/ActionCandidates';
 import { createPRNG, PRNG } from '../core/utils/prng';
 import { ActionPayload, ActionType, GameState, PlayerId, Polarity, TianGanInfo, WuXing } from '../core/types/domain';
 import { BALANCED_WEIGHTS, createStrategy } from '../core/ai/Strategy';
+import { DecisionStrategy } from '../core/ai/types';
 import { AnimationMode, CharacterActionState, FlyingProjectile, ImpactEffect, TouchButton } from './types';
 import { formatActionButton, getActionTargetElement } from './action-button-formatter';
 import {
@@ -29,11 +31,14 @@ export interface GameManagerOptions {
   readonly seed?: number;
   readonly initialState?: GameState;
   readonly prng?: PRNG;
+  /** 通用规则开关；默认恒等，不传即全部关闭 */
+  readonly rules?: RuleSwitches;
 }
 
 export class GameManager {
   private turnManager!: TurnManager;
-  private readonly aiStrategy = createStrategy(BALANCED_WEIGHTS);
+  private readonly rules: RuleSwitches;
+  private readonly aiStrategy: DecisionStrategy;
   private currentTianGan: TianGanInfo | null = null;
   private availableButtons: TouchButton[] = [];
 
@@ -80,16 +85,20 @@ export class GameManager {
     let initialState: GameState | undefined;
     if (typeof seedOrOptions === 'number') {
       prng = createPRNG(seedOrOptions);
+      this.rules = {};
     } else {
       prng = seedOrOptions.prng ?? createPRNG(seedOrOptions.seed ?? Date.now());
       initialState = seedOrOptions.initialState;
+      this.rules = seedOrOptions.rules ?? {};
     }
+    // 规则开关同时绑定到 AI 估值器与回合候选生成器，保证两个消费点读到同一份开关
+    this.aiStrategy = createStrategy(BALANCED_WEIGHTS, { rules: this.rules });
     this.initTurnManager(prng, initialState);
     this.startNewTurn();
   }
 
   private initTurnManager(prng: PRNG, initialState?: GameState): void {
-    this.turnManager = new TurnManager({ prng, initialState });
+    this.turnManager = new TurnManager({ prng, initialState, rules: this.rules });
     this.lastShowdownInfo = null;
     this.turnManager.getEventBus().on('showdown:draw', (data) => {
       this.lastShowdownInfo = data;

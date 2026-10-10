@@ -13,8 +13,8 @@
 ### 2.1 游戏总状态 (`GameState`)
 ```typescript
 export interface GameState {
-  readonly round: number;                                    // 当前回合数 (1 ~ 60)
-  readonly maxRounds: number;                                // 回合上限 (60)
+  readonly round: number;                                    // 当前大回合数 (1 ~ 30)
+  readonly maxRounds: number;                                // 大回合上限 (30，即 60 次行动机会)
   readonly currentPlayer: PlayerId;                          // 当前行动玩家 ('P1' | 'P2')
   readonly players: Readonly<Record<PlayerId, PlayerState>>; // 双方玩家状态
   readonly currentTianGan: TianGanInfo | null;               // 本回合抽取的天干

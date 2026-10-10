@@ -4,7 +4,7 @@
 
 ## 一局游戏的主要流程 (Layer 1: 核心计算与状态层 `src/core/`)
 
-- [`TurnManager`](../src/core/logic/TurnManager.ts)：回合生命周期驱动器，调度天干生成、合法动作过滤、动作执行、连动判定与 60 回合终局判定。
+- [`TurnManager`](../src/core/logic/TurnManager.ts)：回合生命周期驱动器，调度天干生成、合法动作过滤、动作执行、连动判定与 30 大回合（60 次行动机会）终局判定。
 - [`ActionCandidates`](../src/core/logic/ActionCandidates.ts)：纯函数合法动作候选生成器，对齐吸纳/调息/化/破/强化/强破规则。
 - [`ActionResolver`](../src/core/logic/ActionResolver.ts)：纯函数动作解析器，基于轻量增量 Patch 与结构共享演进 `GameState`。
 - [`State`](../src/core/logic/State.ts)：创建初始棋盘状态（包含五行节点阴阳两仪）与状态校验。
