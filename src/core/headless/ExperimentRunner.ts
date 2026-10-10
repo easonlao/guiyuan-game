@@ -36,7 +36,7 @@ import {
   SCORE_STRIPPED_WEIGHTS,
   createScoreBoundStrategy
 } from '../ai/Strategy.js';
-import type { StrategyWeights } from '../ai/types.js';
+import type { DecisionStrategy, StrategyWeights } from '../ai/types.js';
 import { POINTS_CONFIG, type PointsConfig } from '../logic/ScoreCalculator.js';
 import type { RuleSwitches } from '../logic/ActionCandidates.js';
 
@@ -58,10 +58,28 @@ export function ruleSwitchesFor(mode: RuleMode): RuleSwitches {
   return { boardOnly: mode === 'board-only' };
 }
 
-/** 策略族变体：名称 + 权重模板。运行时由 createScoreBoundStrategy 绑定计分配置。 */
+/**
+ * 策略族变体：名称 + 权重模板。运行时由 createScoreBoundStrategy 绑定计分配置。
+ *
+ * `create` 为可选工厂：当策略无法用单一权重模板表达时（例如按盘面在两组权重间切换的
+ * 动态策略），由工厂直接构造 `DecisionStrategy`。缺省时仍走 `createScoreBoundStrategy`，
+ * 既有预设行为逐字节不变。
+ */
 export interface StrategyVariant {
   readonly name: string;
   readonly weights: StrategyWeights;
+  readonly create?: (config: PointsConfig, rules: RuleSwitches) => DecisionStrategy;
+}
+
+/** 由变体构造运行时策略：自定义工厂优先，否则按权重绑定计分配置。 */
+export function buildVariantStrategy(
+  variant: StrategyVariant,
+  config: PointsConfig,
+  rules: RuleSwitches
+): DecisionStrategy {
+  return variant.create
+    ? variant.create(config, rules)
+    : createScoreBoundStrategy(variant.weights, config, rules);
 }
 
 /** 计分配置变体：名称 + PointsConfig。 */
@@ -175,8 +193,8 @@ function runCell(
   maxRounds: number
 ): ExperimentCell {
   const rules = ruleSwitchesFor(mode);
-  const strategy = createScoreBoundStrategy(
-    strategyVariant.weights,
+  const strategy = buildVariantStrategy(
+    strategyVariant,
     scoreConfigVariant.config,
     rules
   );
@@ -321,8 +339,8 @@ function runSeat(
     matches,
     baseSeed,
     maxRounds,
-    strategyP1: createScoreBoundStrategy(strategyP1.weights, scoreConfig.config, rules),
-    strategyP2: createScoreBoundStrategy(strategyP2.weights, scoreConfig.config, rules),
+    strategyP1: buildVariantStrategy(strategyP1, scoreConfig.config, rules),
+    strategyP2: buildVariantStrategy(strategyP2, scoreConfig.config, rules),
     scoreConfig: scoreConfig.config,
     rules
   });
