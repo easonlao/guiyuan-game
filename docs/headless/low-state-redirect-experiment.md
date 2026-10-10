@@ -15,7 +15,7 @@
 
 | 项 | 取值 |
 | --- | --- |
-| 命令 | `npm run benchmark:ai-preference -- --matches 5000 --seed 10000 --max-rounds 30` |
+| 命令 | `npm run benchmark:ai-preference -- --matches 5000 --seed 10000 --max-rounds 30`（该 CLI 与 npm script 已随变体 B 否决一并移除，见 §3.3；此处保留原始口径记录） |
 | 种子基数 | `10000`，每格使用 `10000 + i` 连续 5000 局 |
 | 每格样本量 | 5000 局（每格同一策略自对弈） |
 | 回合上限 | 30 |
@@ -114,7 +114,7 @@
 
 | 项 | 取值 |
 | --- | --- |
-| 命令 | `npm run benchmark:score-lever -- --matches 5000 --seed 10000 --max-rounds 30` |
+| 命令 | `npm run benchmark:score-lever -- --matches 5000 --seed 10000 --max-rounds 30`（同上，已随变体 B 否决移除） |
 | 种子基数 | `10000`，每格使用 `10000 + i` 连续 5000 局 |
 | 每格样本量 | 5000 局（每格同一策略自对弈） |
 | 回合上限 | 30 |

@@ -26,6 +26,8 @@
 
 ## 表现层与小游戏交付 (Layer 3: `src/minigame/` & `minigame/`)
 
+> **实现状态**：当前 `src/minigame/` 是单体命令式实现——`main.ts`（入口）、`game-manager.ts`（渲染与触摸命中）、`pixel-art.ts`（逐像素绘制）、`action-button-formatter.ts`（按钮文案）。下列 `engine/`、`views/`、`GameScene.ts` 是**目标架构（未实现）**，依据 ADR-0005 与在办 spec `.scratch/minigame-view-upgrade`（`status: ready-for-agent`）。
+
 依据 ADR-0004 与 ADR-0005，表现层采用纯代码轻量场景树与组件化架构，打包输出至 `minigame/`：
 
 - `engine/`：微型场景树与动画基础设施（`Node`、`Container`、`Button`、`Tween`、`InputManager`）。

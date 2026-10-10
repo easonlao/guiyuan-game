@@ -5,6 +5,8 @@
 > 这一设计意图能否在既有规则下打赢全部固定权重预设。
 > 指标口径的唯一来源是 `src/core/headless/Metrics.ts` 与 `docs/headless/metric-definitions.md`；
 > 本实验**未新增任何指标定义**，也未新增第三处接缝。
+>
+> **口径说明（后续追加）**：本文「静态预设」对照数据是在**攻击进度定价采纳之前**测的。生产自工单 06 起默认启用 `ATTACK_PROGRESS_SCALE: { floor: 0.3, span: 0.9 }`（`src/core/logic/ScoreCalculator.ts`），因此这些数字不再复现于当前生产；`--mode board-only` 列不受影响。
 
 ## 0. 复跑命令
 

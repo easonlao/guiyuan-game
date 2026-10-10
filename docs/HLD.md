@@ -30,7 +30,7 @@
 *   `ActionResolver`: 处理各类动作（吸纳、化、破）的合法性校验及状态变更。
 *   `ScoreCalculator`: 基于动作与状态变动进行双轨制计分。
 *   `TurnManager`: 回合状态机调度器与连动规则保障。
-*   `AIController & HeadlessMatch`: 无头对战模拟器，执行基于权重的 AI 决策树，也是性能测试的核心依据。
+*   `Strategy` & `ActionEvaluator`: 基于 `StrategyWeights` 权重的启发式 AI 决策；`HeadlessMatch`: 无头对战模拟器，也是性能测试的核心依据。
 *   **AI 算力与执行保障**：
     *   单局推演耗时保持 `< 1ms`，内存增量平稳。
     *   AI 决策默认纯同步极速返回，满足小游戏零掉帧要求。
@@ -44,6 +44,8 @@
 
 #### 🟢 Layer 3: 视图与小游戏交付层 (View Layer)
 纯代码 Canvas 2D 微信小游戏环境（`src/minigame/` -> `minigame/`，对齐 ADR-0004 与 ADR-0005）。
+
+> **实现状态**：当前 `src/minigame/` 是单体命令式实现（`game-manager.ts` + `pixel-art.ts` + 手写触摸命中判定）。下文描述的轻量场景树/组件化架构是**目标架构（未实现）**，依据 ADR 0005 与在办 spec `.scratch/minigame-view-upgrade`（`status: ready-for-agent`）。
 *   **轻量场景树与组件化**：基于轻量纯 TS 场景树架构（`Node`、`Container`、`Button`、`Tween`、`InputManager`），摆脱逐像素点阵硬编码，实现自动化触控命中检测、按压微动与声明式补间动画。
 *   **模块化业务视图**：拆分为 `BoardView`（五行阵盘与生克连线）、`ActionBarView`（可选动作按钮面板）、`CharacterView`（角色化身与表情）以及 `RuneFlightView`（天干轨迹动效），由 `GameScene` 控制器对齐 `TurnManager` 状态进行纯数据驱动投影。
 *   **极速构建管线**：通过 Vite 构建单文件 `minigame/game.js`，Windows 微信开发者工具直连开发与实时仿真调试。
@@ -61,7 +63,7 @@
 
 ### 3.2 实施里程碑 (Milestones)
 *   **阶段一：逻辑脱水与无头推演闭环 (已完成)**
-    *   完成纯 TS 核心计算逻辑，通过 112 项 Vitest 单元测试，万局无头推演基线达标（0.5ms/局）。
+    *   完成纯 TS 核心计算逻辑，通过 693 项 Vitest 单元测试（38 个测试文件），万局无头推演基线达标（约 0.3ms/局）。
 *   **阶段二：微信小游戏纯代码 Canvas 表现层与真机对战 (进行中)**
     *   搭建独立 `minigame/` 小游戏构建管线与刘海屏安全区适配。
     *   实现左右对抗像素风舞台、护体五行灵印与底部自适应战术决策台。

@@ -62,7 +62,7 @@
 - **旧错误**：用自对弈归元率回答「某策略是否占优」。自对弈没有对手，无法回答占优；结论必须由全部有序策略对的座次平衡对拼矩阵支撑。
 - **守卫 API**：`assertDominanceVerdictHasMatrix(verdict, matrix?)` / `formatDominanceVerdict(verdict, matrix?)`。缺少矩阵、矩阵为空、或矩阵未覆盖结论涉及的对局时抛错。
 - **测试**：`陷阱 B: 占优结论必须附带跨策略对拼矩阵`。对无矩阵、空矩阵、不完整矩阵均断言拒绝，对完整矩阵断言放行。
-- **已落地（工单 06）**：`HeadToHeadMatrix` / `HeadToHeadCell` / `DominanceVerdict` 类型已就位；对拼矩阵生成后调用守卫（`tests/core/experiment-runner.test.ts:396`）。占优结论的最终判定与路线决定见 `docs/adr/0011-balance-route-fix-rules.md`。
+- **已落地（工单 06）**：`HeadToHeadMatrix` / `HeadToHeadCell` / `DominanceVerdict` 类型已就位；对拼矩阵生成后调用守卫（`tests/core/experiment-runner.test.ts` 中 `toHeadToHeadMatrix` 的调用点）。占优结论的最终判定与路线决定见 `docs/adr/0011-balance-route-fix-rules.md`。
 
 ### 陷阱 C：流局率必须与先后手胜率成对输出
 

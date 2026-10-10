@@ -21,6 +21,7 @@ export interface GameState {
   readonly isGameOver: boolean;                              // 终局标志
   readonly winner: PlayerId | 'DRAW' | null;                 // 获胜方
   readonly endReason: 'GUI_YUAN' | 'MAX_ROUNDS' | null;      // 终局原因
+  readonly lockedGuiYuan?: Readonly<Record<PlayerId, boolean>>; // 归元锁定（终轮天命揭牌判定用）
 }
 
 export type PlayerId = 'P1' | 'P2';
@@ -90,6 +91,8 @@ export interface ActionPayload {
 - **`TurnManager`**：生命周期状态机驱动器，调度抽天干 -> 生成合法候选动作（`ActionCandidates`）-> 校验执行 -> 连动判定 -> 终局检测。
 
 ## 4. 与表现层的解耦与交互机制 (EventBus & Scene Graph Architecture)
+
+> **实现状态**：第 1、2 点为已实现契约；第 3 点的 `GameScene` 单向投影已实现（`src/minigame/game-manager.ts`），第 4 点的 `src/minigame/engine/` 场景树与 `BoardView`/`ActionBarView`/`CharacterView`/`RuneFlightView` 是**目标架构（未实现）**，依据 ADR 0005 与在办 spec `.scratch/minigame-view-upgrade`。
 
 核心计算层（Layer 1）与表现层（Layer 3）完全解耦（对齐 ADR-0004、ADR-0005 与 ADR-0008）：
 
