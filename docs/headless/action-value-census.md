@@ -7,6 +7,8 @@
 > 改动前的 Ticket 03 版本留在 git 历史中（本次采纳只重跑同一工具，不改判定口径）。
 > 结论：`globallyDominated` 仍为空——采纳后每个动作仍在某个被测盘面下成为（并列）最优。
 >
+> **口径（先读，两条）。** ①**白送的最优**：AUTO / DISSIPATE / PASS 的「最优」全部来自该盘面上它们是唯一可用动作（`ActionCandidates.ts:98,110,197`；`Strategy.ts:172-173` 对单候选短路、不调用估值器），真正有竞争的最优判定只来自 ATK / BURST / BURST_ATK / TRANS / CONVERT 五个动作。②**度量的性质**：本价值函数是 **AI 自身的估值函数**（`ActionEvaluator.evaluate`），不是游戏的真实价值；它回答「AI 怎么看」，不回答「客观上哪个动作最好」。
+>
 > 复跑命令：`npm run benchmark:action-value-census`
 
 ## 动作价值普查
@@ -19,6 +21,7 @@
 - 计分配置：POINTS_CONFIG（生产默认）
 - board-only：关闭
 - 并列容差 epsilon：1e-9
+- **度量的性质**：本价值是 **AI 自身的估值函数**（`ActionEvaluator.evaluate`），不是游戏的真实价值；可辩护的口径是「AI 怎么看就怎么打」，但读数时须记住它不是博弈论意义上的真实价值。
 
 > 判定「被支配」用的是**动作价值**，不是胜率：同一盘面上某动作价值严格低于另一个可用动作即为该盘面下被支配；
 > 若它在所有可用观测上都被支配，则为全局被支配。并列（价值差 <= epsilon）不算支配。

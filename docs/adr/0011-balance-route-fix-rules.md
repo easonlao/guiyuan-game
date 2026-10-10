@@ -181,7 +181,7 @@ ATTACK_PROGRESS_SCALE: { floor: 0.3, span: 0.9 }
 factor = floor + span × (行动前对手盘面归一节点数 / 5)
 ```
 
-四舍五入取整：对手 0 个归一节点 ×0.3，5 个 ×1.2。**不缩放**：`ACTION.ATK` / `ACTION.BURST_ATK` 行为分、`GUI_YI_MILESTONE`、己方建设分（`REPAIR_DMG` / `LIGHT_UP` / `BLESSING`）。AI 估值器通过 `scoreDelta` 自动看到该变化。实现把「行动前对手归一节点数」以数字传入 `ScoreCalculator.attackProgressScale(count)`，`ScoreCalculator` 不反向读取 `GameState`；`npm run check:deps` 无循环/层级违规。
+四舍五入取整。**有效上限 1.02（揭牌分支可达 1.2）**：`countBoardGuiYi === 5` 等价于该方已达成五行归元——`countBoardGuiYi` 统计满足 `isNodeGuiYi` 的节点（`State.ts:239`），`isBoardGuiYuan` 要求五个元素全部归一（`State.ts:70`）；一旦达成即锁定记录、对局当场判定（`ActionResolver.ts:326,352-353,368-369`），故行动方行动时对手最多 4 个归一节点，`0.3 + 0.9 × 4/5 = 1.02`。1.2 只在揭牌分支可达（对手已锁定归元、己方听牌揭牌，约占 33% 的对局，见 `GDD.md:16,19-22`），且只出现在终局那一下。**过零点**在 `0.3 + 0.9n/5 = 1` ⇒ `n ≈ 3.89`：对手 0–3 个归一节点全部是打折，只有 4 个才是加成。**不缩放**：`ACTION.ATK` / `ACTION.BURST_ATK` 行为分、`GUI_YI_MILESTONE`、己方建设分（`REPAIR_DMG` / `LIGHT_UP` / `BLESSING`）。AI 估值器通过 `scoreDelta` 自动看到该变化。实现把「行动前对手归一节点数」以数字传入 `ScoreCalculator.attackProgressScale(count)`，`ScoreCalculator` 不反向读取 `GameState`；`npm run check:deps` 无循环/层级违规。
 
 **终局结算口径不变。** 候选 A 只改 `scoreDelta` 中的攻击状态分定价，不改 `settlementMode`（仍为 `scoring`）、不改 `DAMAGE_PENALTY`、不改回合上限结算分支。本 ADR「决策 1」中「终局结算不再按累计分数奖励压制」那一层并未实施，本次采纳的是其中的计分重定价子路线。
 
@@ -199,7 +199,7 @@ npm run benchmark:candidate-validation -- --candidate progress-pricing --matches
 | # | 验收标准 | 结果 | 证据 |
 | --- | --- | --- | --- |
 | 1 | 无严格占优 | 通过 | **确认证据用种子 20000**（矩阵完全可判定）：无策略对全部 6 个对手严格占优。`激进压制` 5/6（**输给平衡**）、`平衡` 5/6、`剥离计分` 5/6；`保守自保` 2/6、`纯推进` 2/6、`纯压制` 2/6、`归元冲刺` 0/6。**种子 10000 对 C1 为「无法判定」**：有 1 对 within-noise（`归元冲刺 vs 保守自保`，50.10%），严格口径下不能断言「无占优」 |
-| 2 | 每个行为都有价值 | 通过 | `runActionValueCensus` 在候选配置下 `globallyDominated = []`，八个动作类型均在某个被测盘面上成为最优 |
+| 2 | 每个行为都有价值 | 通过 | `runActionValueCensus` 在候选配置下 `globallyDominated = []`，八个动作类型均在某个被测盘面上成为最优（口径见 `docs/headless/action-value-census.md`：AUTO/DISSIPATE/PASS 的「最优」来自唯一可用动作，价值函数是 AI 自身估值） |
 | 3 | 护栏全绿 | 通过 | 500 局平衡自对弈、种子 10000：归元率 **90.40%**、先手胜率 **50.40%**、后手 49.60%、流局率 9.60%、堆内存增量在 < 15MB 带内（运行期诊断，带噪声；确认运行约 −0.58MB） |
 | 4 | 动态策略打赢全部静态预设 | 通过（需调优动态） | `动态切换(调优v3)` 对 7 个静态预设 M=2000/座次、双种子共 14 格全部显著（95% CI 下界 > 50%）；最薄的两格是对平衡 +2.6~3.7pp、对激进压制 +3.8~4.2pp |
 
@@ -248,4 +248,4 @@ npm run benchmark:candidate-validation -- --candidate progress-pricing --matches
 | **D 结构化下调** | `WEAKEN → 0` + `CAUSE_DMG → 120/100` | C1（激进压制 6/6 占优）、C3（归元率 97.80% > 95%，与 ADR 0010 同款击穿护栏）、C4 |
 | **E 盘面进度结算** | 计分不变，回合上限按盘面进度判负（`isBoardSettlement: true`） | C1（剥离计分 6/6 占优）、C4（对剥离计分 36.75%） |
 
-候选内部的参数扫描（A 的 floor/span、C 的 gain/cap、D 的强/温和）是该候选的调参，不引入新机制、不占新候选名额。A 的可行域 0.25–0.45 × 0.7–0.95，采纳 0.3/0.9（居中且离两侧边界最远）。
+候选内部的参数扫描（A 的 floor/span、C 的 gain/cap、D 的强/温和）是该候选的调参，不引入新机制、不占新候选名额。A 的可行域 0.25–0.45 × 0.7–0.95，采纳 0.3/0.9（选点依据是搜索实测——A(0.3, 0.9) 四条验收标准全过，见 §2；并非「居中」，可行域中心实为 0.35/0.825，0.3 距下界仅 0.05）。
