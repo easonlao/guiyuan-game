@@ -460,11 +460,51 @@ const POINTS_CONFIG_FIELDS: Record<keyof PointsConfig, true> = {
   RACE_DIFF_PRICING: true
 };
 
+/**
+ * 递归枚举配置对象的**叶子路径**（数组视为叶子，普通对象递归进入）。
+ * 例：`ACTION.ATK`、`STATE_CHANGE.REPAIR_DMG.yang`、`NO_RARITY_ACTIONS`、
+ * `ATTACK_PROGRESS_SCALE.floor`。
+ */
+function leafPaths(value: unknown, prefix = ''): string[] {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return [prefix];
+  }
+  return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) =>
+    leafPaths(child, prefix === '' ? key : `${prefix}.${key}`)
+  );
+}
+
+/**
+ * 一条普查行的 `knob` 是否**覆盖**某叶子路径：等于它，或是它的**按段**前缀。
+ * 按段比较（而非字符串 `startsWith`）保证 `ACTION.A` 不会误盖 `ACTION.ATK`；
+ * 而 `ATTACK_PROGRESS_SCALE` 会覆盖 `ATTACK_PROGRESS_SCALE.floor` / `.span`。
+ */
+function knobCoversLeaf(knob: string, leaf: string): boolean {
+  const knobSegments = knob.split('.');
+  const leafSegments = leaf.split('.');
+  if (knobSegments.length > leafSegments.length) return false;
+  return knobSegments.every((segment, index) => segment === leafSegments[index]);
+}
+
 describe('Ticket 05 — 计分参数普查 (PointsConfig)：AI 估值 / 终局判定 / 扰动输出', () => {
   it('完整性：PointsConfig 的每个声明字段都出现在 SCORING_KNOBS 清单中', () => {
     const covered = new Set(SCORING_KNOBS.map(row => row.knob.split('.')[0]));
     const missing = Object.keys(POINTS_CONFIG_FIELDS).filter(field => !covered.has(field));
     expect(missing, `SCORING_KNOBS 清单缺少 PointsConfig 字段：${missing.join('、')}`).toEqual([]);
+  });
+
+  it('完整性：POINTS_CONFIG 的每个嵌套叶子路径都被某条清单覆盖（不被 ACTION/STATE_CHANGE 整体吞掉）', () => {
+    // 顶层差集（上一条）只保证 `ACTION` / `STATE_CHANGE` 这两个键出现过，挡不住
+    // 「往 ACTION 里加一个新字段」——它会被现有的 `ACTION.*` 行整体吞掉，静默腐烂。
+    // 这里对生产的 POINTS_CONFIG 递归到叶子路径（数组算叶子），逐条要求有某行覆盖它。
+    const leaves = leafPaths(POINTS_CONFIG);
+    const uncovered = leaves.filter(
+      leaf => !SCORING_KNOBS.some(row => knobCoversLeaf(row.knob, leaf))
+    );
+    expect(
+      uncovered,
+      `SCORING_KNOBS 清单缺少 POINTS_CONFIG 叶子路径：${uncovered.join('、')}`
+    ).toEqual([]);
   });
 
   for (const row of SCORING_KNOBS) {
