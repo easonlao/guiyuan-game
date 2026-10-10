@@ -1,5 +1,8 @@
 // `npm run mutation:check`：把 Stryker 报告与基线对比，**只报告基线里没有的**存活/无覆盖突变体。
-// 有新增 → 退出码 1；无新增 → 退出码 0。基线文件缺失/报告缺失/报告结构无效 → 退出码 2。
+// 有新增 → 退出码 1；无新增 → 退出码 0。基线文件缺失/报告缺失/报告结构无效/报告来自子集跑 → 退出码 2。
+//
+// 子集报告（`mutation:changed` 的 --mutate 结果）会被拒绝：棘轮只对全量跑有效，
+// 子集跑的覆盖集不同，直接对比会报出假的新增存活。
 //
 // 用法：
 //   npm run mutation:check                    # 读 reports/mutation/mutation.json + mutation-baseline.jsonl
@@ -13,10 +16,13 @@ import { existsSync } from 'node:fs';
 import {
   DEFAULT_BASELINE,
   DEFAULT_REPORT,
+  DEFAULT_STRYKER_CONFIG,
+  assertReportIsFullRun,
   entryKey,
   formatEntry,
   looseSignature,
   readBaselineEntries,
+  readConfigMutate,
   readReportEntriesStrict,
   sortEntries
 } from './lib/mutation-baseline-core.mjs';
@@ -45,6 +51,23 @@ try {
   baselineEntries = readBaselineEntries(baselinePath);
 } catch (error) {
   fail(`读取失败：${error instanceof Error ? error.message : String(error)}`);
+}
+
+// 子集报告防护（门禁完整性）：棘轮只对**全量**跑有效。
+// `mutation:changed` 用 `--mutate <子集>` 只变异改动文件，Stryker 的 perTest 覆盖随之按子集选测试，
+// 跑出的存活/无覆盖集合与全量跑不同——直接对比会报出**假的新增存活**。
+// 判定依据：报告 `config.mutate` 是 CLI 覆盖后的最终值，子集跑会与 stryker.config.json 的 `mutate` 不一致。
+if (!existsSync(DEFAULT_STRYKER_CONFIG)) {
+  fail(`找不到配置 '${DEFAULT_STRYKER_CONFIG}'，无法校验报告是否来自全量跑。`);
+}
+try {
+  assertReportIsFullRun(reportPath, readConfigMutate(DEFAULT_STRYKER_CONFIG));
+} catch (error) {
+  fail(
+    `报告不是全量跑的结果：${error instanceof Error ? error.message : String(error)}。\n` +
+      `棘轮只对全量跑有效（子集跑的覆盖集不同，会报出假的新增存活）。请先跑 'npm run mutation' 再做棘轮对比；` +
+      `'npm run mutation:changed' 仅用于 implement 收尾时查看存活、补断言，不做棘轮对比。`
+  );
 }
 
 const baselineKeys = new Set(baselineEntries.map(entryKey));

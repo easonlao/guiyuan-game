@@ -10,12 +10,13 @@
 
 | 场景 | 命令 |
 | --- | --- |
-| 改完核心逻辑（`implement` 收尾） | `npm run mutation:changed` → `npm run mutation:check` |
-| 里程碑全量（每个 spec 收尾 / 发版 / 提审前） | `npm run mutation` → `npm run mutation:check` |
+| 改完核心逻辑（`implement` 收尾） | `npm run mutation:changed`（**只看存活、补断言**；子集报告不做棘轮对比） |
+| 里程碑全量（每个 spec 收尾 / 发版 / 提审前） | `npm run mutation` → `npm run mutation:check`（棘轮只认全量） |
 | 只跑相对某个 ref 的改动 | `npm run mutation:changed -- HEAD~1`（默认 `HEAD`，含未提交改动） |
-| 确认等价突变体后接受进基线 | `npm run mutation:baseline` |
+| 确认等价突变体后接受进基线 | `npm run mutation`（全量）→ `npm run mutation:baseline` |
 
 - **门禁红**的定义：`npm run mutation:check` 报出「基线之外的存活/无覆盖突变体」，退出码 `1`。
+- **棘轮只对全量跑有效**：`mutation:check` 若发现报告来自子集跑（`mutation:changed` 的 `--mutate` 结果），退出码 `2` 并提示先跑 `npm run mutation`——子集跑的覆盖集不同，直接对比会报出**假的新增存活**。
 - 报告产物：`reports/mutation/mutation.json`（`reports/` 已 gitignore，不入库）。存活明细同时打到控制台（`clear-text`，含文件 / 行号 / 变异类型 / `- / +` diff）。
 - 基线文件：`mutation-baseline.jsonl`（**入库**、JSONL、可 diff）。
 
@@ -31,7 +32,8 @@
 
 - **命令**：`npm run mutation:changed`，默认对比 `HEAD`（含未提交改动），只对 `src/core/logic/**` 里改动的 `.ts` 文件跑（排除纯 re-export 的 `src/core/logic/index.ts`）。
 - **时机**：`implement` 收尾。反馈最紧——刚写的代码、刚写的测试，改动小、跑得快，能当场把漏掉的断言补上。补测试本来就属于 `implement` 的职责，所以变异收敛到这一步，而不是留到事后。
-- **为什么不用全量**：全量一次约 33 分钟（1085 个突变体 / 6 个文件），不适合每次改动都跑。
+- **为什么不用全量**：全量一次约 33 分钟（1073 个突变体 / 6 个文件，其中 923 个计分），不适合每次改动都跑。
+- **子集报告不能做棘轮对比**：Stryker 的 perTest 覆盖按**被变异文件集**选测试，子集跑出的存活集与全量不同。`mutation:check` 会识别并**拒绝**子集报告（退出 `2`），见 §3.1。
 - **无改动文件时**：退出 `0`（合法状态，不是失败）。
 
 ### 2.2 里程碑全量（每个 spec 收尾 + 发版/提审前）
@@ -55,7 +57,9 @@
 - 仓库里存一份基线 `mutation-baseline.jsonl`，记录**当前全部**「未被测试抓住」的突变体（`status ∈ {Survived, NoCoverage}`）。
 - 每行一条 JSON：`{file, line, column, mutatorName, replacement}`，按 `file → line → column → mutatorName → replacement` 稳定排序。
 - 跑完变异后，`npm run mutation:check` 拿报告和基线对比，**只报告基线里没有的**存活/无覆盖。
-- 有新增 → 退出 `1`；无新增 → 退出 `0`；缺报告或缺基线 → 退出 `2`。
+- 有新增 → 退出 `1`；无新增 → 退出 `0`；缺报告、缺基线、或报告来自**子集跑** → 退出 `2`。
+- **子集报告防护**：`mutation:check` 读 `stryker.config.json` 的 `mutate`，并比对报告 `config.mutate`（Stryker 回填的是 CLI 覆盖后的**最终**值）。两者不一致、或报告缺 `config.mutate`，即判定为子集跑，退出 `2` 并提示「棘轮只对全量跑有效，请先跑 `npm run mutation`」。
+- 棘轮只收 `Survived + NoCoverage`。`Timeout` 既不入基线、又被 Stryker 计入「已探测」，所以 Killed↔Timeout 的抖动对门禁与分数**都无影响**（见 §3.4）。
 - 身份键是 `{file, mutatorName, line, column, replacement}`，**不是** Stryker 的 `mutants[].id`（那个只在单次报告内唯一）。
 
 棘轮的对象是 `Survived` **和** `NoCoverage` 两者：「故意加一段没被测到的行为」产出的是 `NoCoverage`，只盯 `Survived` 会漏。
@@ -69,9 +73,16 @@
 
 ### 3.3 现状快照（截至 2026-10-10）
 
-- 基线规模：**223 条** = Survived 122 + NoCoverage 101（6 个被变异文件）。
-- 全量变异分 **79.45%**，分文件：ActionCandidates 98.98 / ActionResolver 80.39 / EventBus 72.34 / ScoreCalculator 83.16 / State 91.62 / TurnManager 63.70。
-- 这个分数**不是门禁**，只是当前状态的一个快照，会随代码变化浮动。
+- 基线规模：**0 条**（Survived 0 + NoCoverage 0）。
+- 全量变异分 **100.00%**：923 个计分突变体（Killed 922 / Timeout 1 / Survived 0 / NoCoverage 0），另有 150 个被**就地 disable**、Stryker 记为 `Ignored`。
+- **100% 是「等价 / 不可观测项被显式 disable 后的结果」，不是追求目标**。这些 disable 是阶段 3a 逐个确认等价后**就地**加的（带理由注释），不是靠全局排除规则堆出来的；见 §4。
+- 这个分数**不是门禁**，只是当前状态的一个快照，会随代码变化浮动。门禁只盯「有没有新增存活 / 无覆盖」（§3.1）。
+
+### 3.4 Timeout：为什么抬到 30s，且不影响门禁
+
+- `stryker.config.json` 设了 `timeoutMS: 30000`（默认 5000）。原因：少数突变体（如 `ActionResolver.ts` 440:23 的 `state.round + 1` → `state.round - 1`）会让轮次永不递增，使同步自对弈用例（含 `matches:2000`）慢一个数量级但不死循环；这类「慢而可杀」的突变体会在负载相关的超时线上下翻转 Killed/Timeout。把常量下限抬到 30s 后超时由常量项主导、对负载噪声不敏感。
+- **棘轮只收 `Survived + NoCoverage`，Timeout 不入基线**；而 Stryker 把 Timeout 计入「已探测」，所以 Killed↔Timeout 翻转对 `mutation:check` 与分数**都无影响**。
+- 因此不去彻底消除翻转（需再把超时抬 2–3 倍，每次多等数分钟，却不改善门禁稳定性）。完整推导见 `stryker.config.json` 的 `_timeoutComment`。
 
 ---
 
@@ -82,6 +93,8 @@
 - **就地**加 `// Stryker disable next-line <Mutator>` 注释，**并写清为什么等价**。
 - 只对**已确认等价**的突变体这么做，不要因为「懒得补测试」而 disable。
 - **不做全局排除规则**（不在 `stryker.config.json` 里加 `mutator.excludedMutations`）。原因：本仓库的计分表本身就是一堆数字常量，禁掉字面量突变（`StringLiteral` / 数值替换）等于把**最该测的东西**排除掉。全局规则会随一次误判永久生效，就地注释则带上下文、可 review。
+
+**现状（阶段 3a）**：活代码上的存活已用真实行为断言清零，剩余杀不掉的**等价 / 不可观测**突变体（共 150 个）已逐个**就地** `// Stryker disable next-line` 并附理由。这正是 100% 的来源——它是「等价项被显式 disable 后的结果」，**不是**靠补出扭曲断言硬凑出来的分数。
 
 示例（语法，非本仓库现有内容）：
 
@@ -122,7 +135,7 @@ if (score >= 0) { /* ... */ }
 
 - 这些是**参考**，用来判断「我们现在大概在什么水平」，**不是**要接线的红线。
 - **100% 不值得追**：等价突变体是理论天花板，永远杀不完；把变异分当 KPI 会逼出「为杀而杀」的测试（断言内部实现细节，反而更脆）。
-- 本仓库当前全量 79.45%，落在「稳定库」与「高保障」之间，属于合理区间。
+- 本仓库当前全量 100.00%（等价项已就地 disable），高于「高保障」档——但这只是现状快照，**不是**要守住的 KPI。门禁是基线棘轮（§3），不是这个档位。
 
 ---
 
@@ -130,7 +143,7 @@ if (score >= 0) { /* ... */ }
 
 - **纳入**：`src/core/logic/**/*.ts`，排除纯 re-export 的入口 `src/core/logic/index.ts`。
 - **暂不纳入**：`src/core/ai/**`、`src/core/headless/**`（实验 / 工具代码，错了不污染对局结果）。
-- **`EventBus` 这类管道**的低价值存活进基线后不再追（`EventBus` 当前 72.34%，其存活多是框架管道噪音）。
+- **`EventBus` 这类管道**的低价值存活不单独追：框架管道噪音确认等价后就地 disable，不靠全局规则排除。
 - 变异测试是**测试质量的反馈**，不是团队 KPI，也不是绝对质量指标。
 
 ---
@@ -186,7 +199,7 @@ if (score >= 0) { /* ... */ }
 | `npm run mutation` | 全量变异（`mutate` 全部目标） | Stryker 自身（无 `thresholds`，存活不改退出码） |
 | `npm run mutation:changed [-- <ref>]` | 只变异相对 `<ref>`（默认 `HEAD`）改动的逻辑文件 | 无改动文件 → `0`；否则透传 Stryker |
 | `npm run mutation:baseline` | 从报告生成 / 刷新基线 `mutation-baseline.jsonl` | 缺报告 → `2` |
-| `npm run mutation:check` | 报告与基线对比，只报基线之外的存活/无覆盖 | 无新增 `0` / 有新增 `1` / 缺报告或缺基线 `2` |
+| `npm run mutation:check` | 报告与基线对比，只报基线之外的存活/无覆盖 | 无新增 `0` / 有新增 `1` / 缺报告、缺基线或报告来自子集跑 `2` |
 
 产物：
 
