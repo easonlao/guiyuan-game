@@ -509,8 +509,8 @@ describe('注入同时覆盖游戏内回合管理与无头推演两个入口', (
 
   it('游戏内入口 GameManager：rules 绑定到 AI 估值器（受控盘面）', () => {
     // 受控盘面：P2 木归一 (1,1)，火阳道损；P1 土 (-1,0)。固定抽 甲木（阳）。
-    // 默认计分下 AI 选 BURST_ATK（消耗木阳 1->0）；关闭计分轴后改选 ATK（保留木阳）。
-    // 与 headless-config-injection.test.ts 的用例同源，此处仅确认两个入口都接线。
+    // 工单 06 采纳进度定价后，默认计分下 AI 改选 BURST（消耗木阴 1->0）；
+    // 关闭计分轴后仍选 ATK（保留木阴）。与 headless-config-injection.test.ts 的用例同源。
     const fixedPrng: PRNG = {
       next: () => 0,
       nextInt: min => min,
@@ -551,8 +551,8 @@ describe('注入同时覆盖游戏内回合管理与无头推演两个入口', (
       return gm.getState();
     };
 
-    expect(driveAiOnce().players.P2.board[WuXing.WOOD].yang).toBe(0);
-    expect(driveAiOnce({ isBoardOnly: true }).players.P2.board[WuXing.WOOD].yang).toBe(1);
+    expect(driveAiOnce().players.P2.board[WuXing.WOOD].yin).toBe(0);
+    expect(driveAiOnce({ isBoardOnly: true }).players.P2.board[WuXing.WOOD].yin).toBe(1);
   });
 });
 

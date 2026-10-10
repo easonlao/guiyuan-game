@@ -54,16 +54,15 @@ describe('Ticket 05 - 调优动态策略 (dyn-v3-self7)', () => {
 });
 
 describe('Ticket 05 - 候选 A 注册与 CLI 选择', () => {
-  it('候选 A 是进度定价的 CandidateSpec，且不改变生产 POINTS_CONFIG', () => {
+  it('候选 A 是进度定价的 CandidateSpec，且与生产 POINTS_CONFIG 一致（ticket 06 已采纳）', () => {
     expect(TICKET_05_CANDIDATE.pointsConfig?.ATTACK_PROGRESS_SCALE).toEqual({
       floor: 0.3,
       span: 0.9
     });
-    // 生产表本身不含该字段
-    expect(POINTS_CONFIG.ATTACK_PROGRESS_SCALE).toBeUndefined();
-    // 其余旋钮与生产一致
-    const { ATTACK_PROGRESS_SCALE: _scale, ...rest } = TICKET_05_CANDIDATE.pointsConfig!;
-    expect(rest).toEqual(POINTS_CONFIG);
+    // 工单 06 采纳后，生产表已含同一进度定价。
+    expect(POINTS_CONFIG.ATTACK_PROGRESS_SCALE).toEqual({ floor: 0.3, span: 0.9 });
+    // 候选 A 与生产逐旋钮一致。
+    expect(TICKET_05_CANDIDATE.pointsConfig).toEqual(POINTS_CONFIG);
   });
 
   it('注册表同时登记生产与候选 A，且候选 A 默认使用调优动态策略', () => {

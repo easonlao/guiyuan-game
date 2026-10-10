@@ -15,7 +15,8 @@ import type { BoardOverrides } from '../../src/core/headless/BoardFixture.js';
  * 口径（search-advice.md）：攻击状态分（CAUSE_DMG / BREAK_LIGHT / WEAKEN）乘以
  *   factor = floor + span × (行动前对手盘面归一节点数 / 5)，四舍五入取整。
  * 行为分 `ACTION.ATK` / `ACTION.BURST_ATK`、里程碑、己方建设分**不缩放**。
- * 未配置该字段时为恒等，生产行为逐字节不变。
+ * 未配置该字段时为恒等；工单 06 已把 `ATTACK_PROGRESS_SCALE = { floor: 0.3, span: 0.9 }`
+ * 采纳进生产 `POINTS_CONFIG`，故本文件同时钉住恒等机制（显式无字段配置）与生产值。
  *
  * 断言写在 `ActionResolver.resolve(...).scoreDelta` 与 `ScoreCalculator` 输出上，
  * 不触碰内部数据结构。
@@ -65,20 +66,24 @@ function resolveAtk(config: PointsConfig, opponentGuiYi: 0 | 2 | 4 | 5, payload:
 }
 
 describe('Ticket 05 候选 A - 攻击进度定价 (ATTACK_PROGRESS_SCALE)', () => {
-  it('未配置 ATTACK_PROGRESS_SCALE 时为恒等：攻击状态分与生产逐字节一致', () => {
-    const production = new ScoreCalculator(POINTS_CONFIG);
-    const withoutField = new ScoreCalculator({ ...POINTS_CONFIG });
+  it('未配置 ATTACK_PROGRESS_SCALE 时为恒等（用显式无字段配置验证机制）', () => {
+    // 显式覆盖为 undefined 才是真正的「无字段」配置：`{ ...POINTS_CONFIG }` 会复制该字段。
+    const identityConfig: PointsConfig = { ...POINTS_CONFIG, ATTACK_PROGRESS_SCALE: undefined };
+    const identity = new ScoreCalculator(identityConfig);
 
-    expect(production.config.ATTACK_PROGRESS_SCALE).toBeUndefined();
-    expect(production.attackProgressScale(0)).toBe(1);
-    expect(production.attackProgressScale(5)).toBe(1);
+    expect(identity.attackProgressScale(0)).toBe(1);
+    expect(identity.attackProgressScale(5)).toBe(1);
 
-    // 生产：0 -> -1 阳侧致道损 = 300；行为分 ATK = 40；总计 340。
-    const baseline = resolveAtk(POINTS_CONFIG, 2);
-    const explicit = resolveAtk({ ...POINTS_CONFIG }, 2);
+    // 无字段：0 -> -1 阳侧致道损 = 300；行为分 ATK = 40；总计 340。
+    const baseline = resolveAtk(identityConfig, 2);
     expect(baseline.scoreDelta).toBe(340);
-    expect(explicit.scoreDelta).toBe(baseline.scoreDelta);
-    expect(withoutField.calculateTransitionPoints(0, -1, Polarity.YANG, true)).toBe(300);
+    expect(identity.calculateTransitionPoints(0, -1, Polarity.YANG, true)).toBe(300);
+  });
+
+  it('生产 POINTS_CONFIG 已采纳进度定价（ticket 06）', () => {
+    expect(POINTS_CONFIG.ATTACK_PROGRESS_SCALE).toEqual(SCALE);
+    // 生产下对手 2 个归一节点：×0.66，round(300 × 0.66) = 198；40 + 198 = 238。
+    expect(resolveAtk(POINTS_CONFIG, 2).scoreDelta).toBe(238);
   });
 
   it('对手 0 个归一节点：攻击状态分 ×0.3', () => {

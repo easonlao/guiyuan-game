@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { ActionType } from '../../src/core/types/domain.js';
-import { POINTS_CONFIG } from '../../src/core/logic/ScoreCalculator.js';
+import { POINTS_CONFIG, type PointsConfig } from '../../src/core/logic/ScoreCalculator.js';
 import {
   ATTACK_ZERO_POINTS_CONFIG,
   DEFAULT_STRATEGY_VARIANTS
@@ -51,15 +51,33 @@ const ATTACK_ZERO_CANDIDATE: CandidateSpec = {
   pointsConfig: ATTACK_ZERO_POINTS_CONFIG
 };
 
+/**
+ * 关闭进度定价（等价于工单 06 采纳前的生产计分）：重新造出「激进压制」严格占优。
+ * 工单 06 采纳后，生产配置不再含严格占优，因此不能用生产配置当「标准 1 可独立失败」的样本；
+ * 本候选保留该失败形态，维持测试强度。
+ */
+const NO_PROGRESS_PRICING_CONFIG: PointsConfig = {
+  ...POINTS_CONFIG,
+  ATTACK_PROGRESS_SCALE: undefined
+};
+
+const DOMINANCE_CANDIDATE: CandidateSpec = {
+  name: 'no-progress-pricing',
+  description: '关闭进度定价（等价于工单 06 采纳前），重新造出激进压制严格占优',
+  pointsConfig: NO_PROGRESS_PRICING_CONFIG
+};
+
 describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
   let production: CandidateValidationReport;
   let dominated: CandidateValidationReport;
+  let dominance: CandidateValidationReport;
   let attackZero: CandidateValidationReport;
 
   beforeAll(() => {
     production = validateCandidate(PRODUCTION_CANDIDATE, FAST);
     const baselineHeadToHead = production.noStrictDominance.headToHead;
     dominated = validateCandidate(DOMINATED_CANDIDATE, { ...FAST, baselineHeadToHead });
+    dominance = validateCandidate(DOMINANCE_CANDIDATE, { ...FAST, baselineHeadToHead });
     attackZero = validateCandidate(ATTACK_ZERO_CANDIDATE, { ...FAST, baselineHeadToHead });
   });
 
@@ -78,23 +96,24 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
     }
   });
 
-  it('生产配置是「before」基线：标准 1 失败（激进压制严格占优），其余三条照常输出', () => {
-    expect(production.noStrictDominance.passed).toBe(false);
-    expect(production.noStrictDominance.strictDominators).toContain('激进压制');
+  it('生产配置（工单 06 采纳后）标准 1 通过：不存在严格占优，其余三条照常输出', () => {
+    expect(production.noStrictDominance.passed).toBe(true);
+    expect(production.noStrictDominance.strictDominators).toEqual([]);
     // 标准 2 在生产配置下通过（普查无全局被支配动作）
     expect(production.everyActionHasValue.passed).toBe(true);
     // 标准 3 在生产配置下通过
     expect(production.guardrails.passed).toBe(true);
-    // 标准 4 在生产配置下失败（对激进压制只有约 0.7pp 优势，落在噪声内）
+    // 标准 4 在生产配置下仍失败（默认动态策略对激进压制只有约 0.7pp 优势，落在噪声内）
     expect(production.dynamicBeatsStatics.passed).toBe(false);
     expect(production.allPassed).toBe(false);
   });
 
-  it('标准 1 独立失败，不影响标准 2/3/4 的输出', () => {
-    expect(production.noStrictDominance.passed).toBe(false);
-    expect(production.everyActionHasValue.passed).toBe(true);
-    expect(production.guardrails.passed).toBe(true);
-    expect(production.dynamicBeatsStatics.evidence.length).toBe(
+  it('标准 1 独立失败（关闭进度定价重新造出占优），不影响标准 2/3/4 的输出', () => {
+    expect(dominance.noStrictDominance.passed).toBe(false);
+    expect(dominance.noStrictDominance.strictDominators).toContain('激进压制');
+    expect(dominance.everyActionHasValue.passed).toBe(true);
+    expect(dominance.guardrails.passed).toBe(true);
+    expect(dominance.dynamicBeatsStatics.evidence.length).toBe(
       DEFAULT_STRATEGY_VARIANTS.length
     );
   });

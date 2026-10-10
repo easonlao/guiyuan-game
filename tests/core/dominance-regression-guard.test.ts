@@ -2,92 +2,88 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import {
   runHeadToHeadMatrix,
   findSeatBalancedWinRate,
-  computeDominanceVerdicts,
+  analyzeDominance,
   DEFAULT_STRATEGY_VARIANTS,
   DEFAULT_SCORE_CONFIG_VARIANTS
 } from '../../src/core/headless/ExperimentRunner.js';
 import type { HeadToHeadReport } from '../../src/core/headless/ExperimentRunner.js';
 
 /**
- * 占优回归护栏（绊线 / characterization pin）
+ * 占优回归护栏（绊线 / characterization pin）——工单 06 采纳进度定价后重写。
  *
- * 背景：平衡审计发现「激进压制」在座次平衡对拼矩阵中对全部六个其它策略严格占优
- * （座次平衡胜率 57.80%–80.85%，2000 局/座次，种子 10000）。这个事实此前只写在
- * markdown 文档里，没有任何测试会在计分改动后失败——唯一涉及真实对拼矩阵的占优断言
- * 只是「报告文本含『占优』或『矩阵』字样」，出现占优时它反而更容易通过。
+ * 历史：平衡审计（spec `balance-audit-and-dominance`）发现「激进压制」对全部六个其它
+ * 策略严格占优（2000 局/座次、种子 10000，座次平衡胜率 57.80%–80.85%）。工单 06 采纳
+ * 「攻击进度定价」（`POINTS_CONFIG.ATTACK_PROGRESS_SCALE = { floor: 0.3, span: 0.9 }`）
+ * 后该占优消失：激进压制输给平衡，七个预设互有胜负，**不存在对全部对手严格占优的策略**。
  *
- * 方向：现状下占优**确实存在**，所以本文件断言的是「占优存在」，而不是「不存在占优」
- * （后者今天就会红）。它的作用是绊线：改动计分后这条断言会失败，逼改动人显式确认
- * 「旧占优是否消失、有没有换来新占优」。
+ * 本文件据此从「钉住激进压制 6/6 占优」改写为「钉住不存在严格占优」：
+ *   - 主断言用显著性证据 `analyzeDominance`（z = 1.96，每格 ≥ 100 局），不是裸 >50%；
+ *   - 副断言钉住两个关键翻转格（平衡 vs 激进压制、剥离计分 vs 平衡）的实测值，容差
+ *     2×SE，用于捕捉幅度漂移；
+ *   - 绊线职责不变：若未来计分改动重新造出严格占优者（或把关键格推回旧关系），本文件
+ *     变红，迫使改动人显式确认「旧占优是否消失、有没有换来新占优」。
  *
  * 运行参数（生产默认计分配置）：
- *   - 规则模式 mode = 'scoring'（计分轴开启，生产默认）
- *   - 计分配置 = DEFAULT_SCORE_CONFIG_VARIANTS[0]（名为 'default' 的 POINTS_CONFIG）
+ *   - 规则模式 mode = 'scoring'（生产默认）
+ *   - 计分配置 = DEFAULT_SCORE_CONFIG_VARIANTS[0]（名为 'default' 的 POINTS_CONFIG，
+ *     工单 06 起含 ATTACK_PROGRESS_SCALE）
  *   - 样本量 500 局/座次（每格 = 2 × 500 = 1000 局，两座次合并）
  *   - 种子基数 10000，回合上限 30（与审计口径一致，仅缩小样本量）
  *
- * 样本量取舍：2000 局/座次的全矩阵约 20s，会显著拖慢 npm test；500 局/座次约 5s，
- * 在把每格标准误压到 1.58pp 的前提下把开销控制在可接受范围。在 vitest 并行下本文件
- * 成为关键路径，npm test 墙钟由约 2.6s 增至约 5.5s（新增约 3s）。因为缩小了样本量，
- * 本文件钉的是 500 局/座次下的实测值（见 PINNED_CELLS），不是 markdown 里
- * 2000 局/座次的数字（例如 2000 局/座次下「对平衡」是 57.80%，此处是 59.20%）。
+ * 样本量取舍：2000 局/座次的全矩阵约 20s，会显著拖慢 npm test；500 局/座次约 5s。
+ * 500 局/座次下每格二项标准误 SE = 0.5/√1000 ≈ 1.58pp，容差 2×SE ≈ 3.16pp。
+ * 主断言「不存在严格占优」不依赖容差：它要求某策略对全部 6 个对手都越过显著性阈值
+ * （约 53.1%），在采纳前的旧现状（57.80%–80.85%）下必然触发，因此绊线仍然有效。
  *
- * 容差推导：每格胜率来自 n = 2 × 500 = 1000 局，p≈0.5 时二项标准误
- *   SE = 0.5 / √n ≈ 1.58pp。
- * 引擎由种子确定，行为等价的重构应给出 0 偏差；取 2 × SE ≈ 3.16pp 作为
- * 「与采样噪声不可区分」的带宽，超过它才判定为刻意的计分改动，而不是无关重构。
- * 严格占优本身另由「胜率 > 50%」的无容差断言守住，因此容差只负责捕捉幅度漂移。
- *
- * ⚠️ 本钉**预期会被 ticket 03 打破**（03 会改动计分以消除该占优）。当它变红时，
- * 不要直接改数字——先确认：
- *   1) 旧的「激进压制严格占优」是否消失？
- *   2) 是否换来了新的占优者？若有，是谁、对谁、幅度多少？
- *   3) 这是有意的平衡改动，还是意外回归？
- * 确认后再按新现状更新本文件的基线，并同步 markdown 文档。
- *
- * 扰动验证记录（绊线确实会红，不是假设）：用一次刻意的计分改动把本文件的 scoreConfig
- * 换掉再运行，实测：
- *   - 换成 DEFAULT_SCORE_CONFIG_VARIANTS[1]（'suppress-boost'，放大对敌破坏状态分）：
- *     值钉失败，vitest 报
- *     「格「激进压制 对 平衡」期望 59.20%，实际 71.40%，偏差 12.20%
- *      （容差 3.16%，样本 500 局/座次，种子 10000）」——偏差 12.20pp 远超容差 3.16pp。
- *   - 换成 DEFAULT_SCORE_CONFIG_VARIANTS[2]（'attack-zero'，清零【破】/【强破】行为分与
- *     攻击状态分）：占优断言本身失败，vitest 报
- *     「格「激进压制 对 纯推进」应严格占优（座次平衡胜率 > 50%），实际 43.50%，
- *      仅高出 50% -6.50%」——激进压制对纯推进反落下风，严格占优不再成立。
- * 两种扰动都证明这条绊线在计分被改动时确实变红，而不是一条恒真的断言。
+ * 扰动验证记录（绊线确实会红，不是假设）：
+ *   - 采纳前：本文件的「不存在严格占优」断言在旧生产配置下失败（激进压制 6/6 占优）。
+ *   - 计分被扰动：把 `DEFAULT_SCORE_CONFIG_VARIANTS[2]`（'attack-zero'，清零【破】/
+ *     【强破】行为分与攻击状态分）当作默认配置运行时，矩阵关系重排，关键格偏离基线，
+ *     本文件变红。
  */
 
-const DOMINANT_STRATEGY = '激进压制';
 const MATCHES_PER_SEAT = 500;
 const BASE_SEED = 10000;
 const MAX_ROUNDS = 30;
-
 /** 每格合并两座次后的样本量。 */
 const GAMES_PER_CELL = 2 * MATCHES_PER_SEAT;
 /** p≈0.5 时座次平衡胜率的二项标准误。 */
 const STANDARD_ERROR = 0.5 / Math.sqrt(GAMES_PER_CELL);
 /** 容差 = 2 × SE ≈ 3.16pp（推导见文件头注释）。 */
 const TOLERANCE = 2 * STANDARD_ERROR;
+/** 策略总数（7 个预设）；严格占优 = 对另外 6 个全部显著占优。 */
+const STRATEGY_COUNT = DEFAULT_STRATEGY_VARIANTS.length;
 
 /**
- * 500 局/座次、种子 10000、scoring/default 下实测的「激进压制」座次平衡胜率。
- * 数值来自本文件运行时相同的配置；缩小样本量后与 2000 局/座次的审计表不同是正常的。
+ * 500 局/座次、种子 10000、scoring/default（含进度定价）下实测的关键格座次平衡胜率。
+ * 两个格子取自候选搜索 `docs/headless/candidate-search.md` §4.1/§4.5 的核心翻转对，
+ * 并在本文件相同样本量下重测。容差 2×SE ≈ 3.16pp。
  */
-const PINNED_CELLS: readonly { readonly opponent: string; readonly expected: number }[] = [
-  { opponent: '平衡', expected: 0.592 },
-  { opponent: '归元冲刺', expected: 0.807 },
-  { opponent: '保守自保', expected: 0.719 },
-  { opponent: '纯推进', expected: 0.784 },
-  { opponent: '纯压制', expected: 0.804 },
-  { opponent: '剥离计分', expected: 0.803 }
+const PINNED_CELLS: readonly {
+  readonly strategyA: string;
+  readonly strategyB: string;
+  readonly expected: number;
+  readonly note: string;
+}[] = [
+  {
+    strategyA: '平衡',
+    strategyB: '激进压制',
+    expected: 0.528,
+    note: '工单 06 核心翻转：激进压制不再占优平衡（旧现状 57.80% 反转为平衡领先）'
+  },
+  {
+    strategyA: '剥离计分',
+    strategyB: '平衡',
+    expected: 0.525,
+    note: '相对价值翻转旁证：压制计分被关掉的策略在采纳后能赢平衡（旧现状 46.52%）'
+  }
 ];
 
 function formatPercent(value: number): string {
   return `${(value * 100).toFixed(2)}%`;
 }
 
-describe('占优回归护栏：激进压制严格占优（特征化钉，预期被 ticket 03 打破）', () => {
+describe('占优回归护栏：采纳进度定价后不存在严格占优（绊线）', () => {
   let report: HeadToHeadReport;
 
   beforeAll(() => {
@@ -101,46 +97,46 @@ describe('占优回归护栏：激进压制严格占优（特征化钉，预期�
     });
   });
 
-  it('在生产默认计分配置下跑出全策略座次平衡矩阵', () => {
+  it('在生产默认计分配置（含 ATTACK_PROGRESS_SCALE）下跑出全策略座次平衡矩阵', () => {
     expect(report.mode).toBe('scoring');
     expect(report.scoreConfigName).toBe('default');
     expect(report.matchesPerSeat).toBe(MATCHES_PER_SEAT);
     expect(report.strategies).toEqual(DEFAULT_STRATEGY_VARIANTS.map(variant => variant.name));
+    // 工单 06 采纳：生产默认配置确实带着进度定价，本绊线钉的是采纳后的现状。
+    expect(DEFAULT_SCORE_CONFIG_VARIANTS[0].config.ATTACK_PROGRESS_SCALE).toEqual({
+      floor: 0.3,
+      span: 0.9
+    });
   });
 
-  it('激进压制对全部六个其它策略严格占优（6/6，座次平衡胜率 > 50%）', () => {
-    const opponents = report.strategies.filter(strategy => strategy !== DOMINANT_STRATEGY);
-    expect(opponents).toHaveLength(6);
+  it('不存在对全部其它策略严格占优的策略（显著性证据，不是裸 >50%）', () => {
+    const analysis = analyzeDominance(report);
+    const strictDominators = analysis.verdicts
+      .filter(verdict => verdict.dominates.length === STRATEGY_COUNT - 1)
+      .map(verdict => verdict.strategy);
 
-    for (const opponent of opponents) {
-      const rate = findSeatBalancedWinRate(report, DOMINANT_STRATEGY, opponent);
-      expect(rate, `矩阵缺少「${DOMINANT_STRATEGY} 对 ${opponent}」这一格`).toBeDefined();
-      expect(
-        rate!,
-        `格「${DOMINANT_STRATEGY} 对 ${opponent}」应严格占优（座次平衡胜率 > 50%），` +
-          `实际 ${formatPercent(rate!)}，仅高出 50% ${formatPercent(rate! - 0.5)}`
-      ).toBeGreaterThan(0.5);
-    }
+    expect(
+      strictDominators,
+      `严格占优者：${strictDominators.join('、') || '（无）'}。` +
+        `若计分改动重新造出严格占优者，请先确认旧占优是否消失、是否换来新占优，再更新基线。`
+    ).toEqual([]);
 
-    // 与 Metrics.ts 的显著性守卫结论一致：六个对手全部被判定为占优对象。
-    const verdict = computeDominanceVerdicts(report).find(
-      entry => entry.strategy === DOMINANT_STRATEGY
-    );
-    expect(verdict).toBeDefined();
-    expect(verdict!.dominates.slice().sort()).toEqual(opponents.slice().sort());
+    // 核心翻转：激进压制不再占优平衡（旧现状是它 6/6 占优）。
+    const aggressive = analysis.verdicts.find(verdict => verdict.strategy === '激进压制');
+    expect(aggressive?.dominates ?? []).not.toContain('平衡');
   });
 
-  it(`钉住激进压制对其余六者的座次平衡胜率（容差 ${formatPercent(TOLERANCE)} ≈ 2×SE）`, () => {
-    for (const { opponent, expected } of PINNED_CELLS) {
-      const actual = findSeatBalancedWinRate(report, DOMINANT_STRATEGY, opponent);
-      expect(actual, `矩阵缺少「${DOMINANT_STRATEGY} 对 ${opponent}」这一格`).toBeDefined();
+  it(`钉住关键翻转格（容差 ${formatPercent(TOLERANCE)} ≈ 2×SE）`, () => {
+    for (const { strategyA, strategyB, expected, note } of PINNED_CELLS) {
+      const actual = findSeatBalancedWinRate(report, strategyA, strategyB);
+      expect(actual, `矩阵缺少「${strategyA} 对 ${strategyB}」这一格`).toBeDefined();
       const delta = Math.abs(actual! - expected);
       expect(
         delta,
-        `格「${DOMINANT_STRATEGY} 对 ${opponent}」期望 ${formatPercent(expected)}，` +
+        `格「${strategyA} 对 ${strategyB}」期望 ${formatPercent(expected)}，` +
           `实际 ${formatPercent(actual!)}，偏差 ${formatPercent(delta)}` +
           `（容差 ${formatPercent(TOLERANCE)}，样本 ${MATCHES_PER_SEAT} 局/座次，种子 ${BASE_SEED}）。` +
-          `若这是 ticket 03 的计分改动所致，请先确认旧占优是否消失、是否换来新占优，再更新基线。`
+          `用途：${note}。`
       ).toBeLessThanOrEqual(TOLERANCE);
     }
   });
