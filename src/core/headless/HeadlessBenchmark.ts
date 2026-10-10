@@ -1,11 +1,21 @@
 /**
  * 归元弈 (Guiyuan) - 万局无头推演基线评测器 (HeadlessBenchmark)
  * 纯 TS 实现，零 DOM/BOM 依赖，可在脱水/Node.js/CI 环境中执行海量批量推演与性能/GC 诊断
+ *
+ * 所有对局指标的唯一口径定义在 Metrics.ts；本文件只负责批量循环、耗时与内存采集，
+ * 以及把指标渲染成人读报告。
  */
 
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { HeadlessMatch, DecisionStrategy } from './HeadlessMatch.js';
+import {
+  accumulateMatchMetrics,
+  createGameMetricsAccumulator,
+  deriveMatchMetrics,
+  finalizeGameMetrics,
+  type GameMetrics
+} from './Metrics.js';
 import { balancedStrategy } from '../ai/Strategy.js';
 
 export interface BenchmarkOptions {
@@ -17,37 +27,11 @@ export interface BenchmarkOptions {
   recordActions?: boolean;
 }
 
-export interface BenchmarkMetrics {
-  totalMatches: number;
+/** 批量评测指标 = 对局指标 (Metrics.ts) + 运行期指标 (耗时 / 内存) */
+export interface BenchmarkMetrics extends GameMetrics {
   totalDurationMs: number;
   avgDurationMs: number;
   tps: number;
-  p1Wins: number;
-  p2Wins: number;
-  draws: number;
-  p1WinRate: number;
-  p2WinRate: number;
-  guiYuanCount: number;
-  guiYuanRate: number;
-  maxRoundsCount: number;
-  maxRoundsRate: number;
-  avgRounds: number;
-  // 智能快刀与终局形态细分度量
-  doubleGuiYuanCount: number;
-  doubleGuiYuanRate: number;
-  suddenDeathCount: number;
-  suddenDeathRate: number;
-  catchupFailCount: number;
-  catchupFailRate: number;
-  p2DirectCount: number;
-  p2DirectRate: number;
-  // 天命揭牌专属度量
-  showdownCount: number;
-  showdownRate: number;
-  showdownSuccessCount: number;
-  showdownSuccessRate: number;
-  showdownFailCount: number;
-  showdownFailRate: number;
   heapUsedDeltaMB: number;
   heapUsedStartMB: number;
   heapUsedEndMB: number;
@@ -75,61 +59,17 @@ export class HeadlessBenchmark {
     const memStart = typeof process !== 'undefined' && process.memoryUsage ? process.memoryUsage().heapUsed : 0;
     const startMs = performance.now();
 
-    let p1Wins = 0;
-    let p2Wins = 0;
-    let draws = 0;
-    let guiYuanCount = 0;
-    let maxRoundsCount = 0;
-    let totalRounds = 0;
-    let doubleGuiYuanCount = 0;
-    let suddenDeathCount = 0;
-    let catchupFailCount = 0;
-    let p2DirectCount = 0;
-    let showdownCount = 0;
-    let showdownSuccessCount = 0;
-    let showdownFailCount = 0;
+    // 单局统计始终采集：压制/建设度量是测量台输出的一部分
+    const accumulator = createGameMetricsAccumulator();
 
     for (let i = 0; i < totalMatches; i++) {
       const matchResult = this.headlessMatch.run(strategyP1, strategyP2, {
         seed: baseSeed + i,
         maxRounds,
-        recordActions
+        recordActions,
+        collectStats: true
       });
-
-      if (matchResult.winner === 'P1') {
-        p1Wins++;
-      } else if (matchResult.winner === 'P2') {
-        p2Wins++;
-      } else {
-        draws++;
-      }
-
-      if (matchResult.endReason === 'GUI_YUAN') {
-        guiYuanCount++;
-      } else if (matchResult.endReason === 'MAX_ROUNDS') {
-        maxRoundsCount++;
-      }
-
-      if (matchResult.closureType === 'DOUBLE_GUIYUAN') {
-        doubleGuiYuanCount++;
-      } else if (matchResult.closureType === 'SUDDEN_DEATH') {
-        suddenDeathCount++;
-      } else if (matchResult.closureType === 'CATCHUP_FAIL') {
-        catchupFailCount++;
-      } else if (matchResult.closureType === 'P2_DIRECT_GUIYUAN') {
-        p2DirectCount++;
-      }
-
-      if (matchResult.showdownOccurred) {
-        showdownCount++;
-        if (matchResult.showdownSuccess) {
-          showdownSuccessCount++;
-        } else {
-          showdownFailCount++;
-        }
-      }
-
-      totalRounds += matchResult.roundsPlayed;
+      accumulateMatchMetrics(accumulator, deriveMatchMetrics(matchResult));
     }
 
     const endMs = performance.now();
@@ -140,57 +80,16 @@ export class HeadlessBenchmark {
     const durationSeconds = totalDurationMs / 1000;
     const tps = durationSeconds > 0 ? totalMatches / durationSeconds : 0;
 
-    const p1WinRate = totalMatches > 0 ? p1Wins / totalMatches : 0;
-    const p2WinRate = totalMatches > 0 ? p2Wins / totalMatches : 0;
-    const guiYuanRate = totalMatches > 0 ? guiYuanCount / totalMatches : 0;
-    const maxRoundsRate = totalMatches > 0 ? maxRoundsCount / totalMatches : 0;
-    const avgRounds = totalMatches > 0 ? totalRounds / totalMatches : 0;
-
-    const doubleGuiYuanRate = totalMatches > 0 ? doubleGuiYuanCount / totalMatches : 0;
-    const suddenDeathRate = totalMatches > 0 ? suddenDeathCount / totalMatches : 0;
-    const catchupFailRate = totalMatches > 0 ? catchupFailCount / totalMatches : 0;
-    const p2DirectRate = totalMatches > 0 ? p2DirectCount / totalMatches : 0;
-
-    const showdownRate = totalMatches > 0 ? showdownCount / totalMatches : 0;
-    const showdownSuccessRate = totalMatches > 0 ? showdownSuccessCount / totalMatches : 0;
-    const showdownFailRate = totalMatches > 0 ? showdownFailCount / totalMatches : 0;
-
-    const heapUsedStartMB = memStart / (1024 * 1024);
-    const heapUsedEndMB = memEnd / (1024 * 1024);
-    const heapUsedDeltaMB = (memEnd - memStart) / (1024 * 1024);
+    const gameMetrics = finalizeGameMetrics(accumulator);
 
     return {
-      totalMatches,
+      ...gameMetrics,
       totalDurationMs,
       avgDurationMs,
       tps,
-      p1Wins,
-      p2Wins,
-      draws,
-      p1WinRate,
-      p2WinRate,
-      guiYuanCount,
-      guiYuanRate,
-      maxRoundsCount,
-      maxRoundsRate,
-      avgRounds,
-      doubleGuiYuanCount,
-      doubleGuiYuanRate,
-      suddenDeathCount,
-      suddenDeathRate,
-      catchupFailCount,
-      catchupFailRate,
-      p2DirectCount,
-      p2DirectRate,
-      showdownCount,
-      showdownRate,
-      showdownSuccessCount,
-      showdownSuccessRate,
-      showdownFailCount,
-      showdownFailRate,
-      heapUsedDeltaMB,
-      heapUsedStartMB,
-      heapUsedEndMB
+      heapUsedStartMB: memStart / (1024 * 1024),
+      heapUsedEndMB: memEnd / (1024 * 1024),
+      heapUsedDeltaMB: (memEnd - memStart) / (1024 * 1024)
     };
   }
 
@@ -229,7 +128,12 @@ export class HeadlessBenchmark {
       `   ├─ 绝杀反击成功 (Win)  : ${metrics.showdownSuccessCount.toLocaleString()} (${(metrics.showdownSuccessRate * 100).toFixed(2)}%)`,
       `   └─ 追平失败 (Fail)     : ${metrics.showdownFailCount.toLocaleString()} (${(metrics.showdownFailRate * 100).toFixed(2)}%)`,
       ` 达到上限 (Max Rounds)   : ${metrics.maxRoundsCount.toLocaleString()} (${mrPct}%)`,
-      ` 平均回合数 (Avg Rounds) : ${metrics.avgRounds.toFixed(2)} 回合`,
+      ` 平均大回合数 (Avg Rounds) : ${metrics.avgRounds.toFixed(2)} 回合`,
+      '-----------------------------------------------------------------',
+      ' 【盘面与压制】',
+      ` 对手残留道损 (Residual) : ${metrics.opponentResidualDamage.toFixed(2)}`,
+      ` 压制度量 (Suppression)  : ${metrics.suppressionLevels.toFixed(2)} 级`,
+      ` 建设度量 (Construction) : ${metrics.constructionLevels.toFixed(2)} 级`,
       '-----------------------------------------------------------------',
       ' 【内存与 GC 指标】',
       ` 起始堆内存 (Heap Start) : ${metrics.heapUsedStartMB.toFixed(2)} MB`,
