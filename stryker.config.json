@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
-  "_comment": "发布前 (Pre-release) 质量体检配置，针对 Layer 1 纯逻辑层做突变分析",
+  "_comment": "发布前 (Pre-release) 质量体检配置，针对 Layer 1 纯逻辑层做突变分析。coverageAnalysis 必须为 off：Stryker 10 + Vitest 5 下 perTest 会退化为「0 个测试/突变体」（所有突变体误报存活）；见 vitest.stryker.config.ts。",
   "testRunner": "vitest",
   "tempDirName": "/tmp/.stryker-tmp",
   "ignorePatterns": [
@@ -14,11 +14,11 @@
   ],
   "reporters": ["progress", "clear-text"],
   "concurrency": 4,
-  "coverageAnalysis": "perTest",
+  "coverageAnalysis": "off",
   "mutate": [
     "src/core/logic/**/*.ts"
   ],
   "vitest": {
-    "configFile": "vitest.config.ts"
+    "configFile": "vitest.stryker.config.ts"
   }
 }
