@@ -24,6 +24,7 @@ import {
   isNodeGuiYi,
   countBoardDamage,
   countBoardGuiYi,
+  countUnlightedSides,
   isBoardTingPai
 } from './State.js';
 import { ScoreCalculator } from './ScoreCalculator.js';
@@ -54,6 +55,22 @@ export class ActionResolver {
       countBoardGuiYi(opponentBoardBeforeAction)
     );
     return Math.round(points * scale);
+  }
+
+  /**
+   * 赛跑差定价附加分（ticket 05 候选 C）。
+   *
+   * 只作用于攻击动作（ATK / BURST_ATK），取**行动前**双方盘面的落后量
+   * （未点亮侧数 + 残留道损数）。`RACE_DIFF_PRICING` 未配置时恒等 0。
+   */
+  private raceDiffPoints(
+    ownBoardBeforeAction: BoardState,
+    opponentBoardBeforeAction: BoardState
+  ): number {
+    const ownBehind = countUnlightedSides(ownBoardBeforeAction) + countBoardDamage(ownBoardBeforeAction);
+    const opponentBehind =
+      countUnlightedSides(opponentBoardBeforeAction) + countBoardDamage(opponentBoardBeforeAction);
+    return this.scoreCalculator.raceDiffPoints(ownBehind, opponentBehind);
   }
 
   /**
@@ -188,6 +205,7 @@ export class ActionResolver {
           polarity,
           opponentPlayer.board
         );
+        scoreDelta += this.raceDiffPoints(activePlayer.board, opponentPlayer.board);
         success = true;
         break;
       }
@@ -252,6 +270,7 @@ export class ActionResolver {
           targetPolarity,
           opponentPlayer.board
         );
+        scoreDelta += this.raceDiffPoints(activePlayer.board, opponentPlayer.board);
         extraTurn = true;
         success = true;
         break;

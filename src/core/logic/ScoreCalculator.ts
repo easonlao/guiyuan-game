@@ -38,6 +38,20 @@ export interface AttackProgressScale {
   readonly span: number;
 }
 
+/**
+ * 赛跑差定价（ticket 05 候选 C 的机制，仅供候选搜索复跑）。
+ *
+ * 攻击动作（ATK / BURST_ATK）在计分上附加
+ *   `gain × (己方落后量 − 对手落后量)`，
+ * 其中落后量 = 未点亮侧数 + 残留道损数；正数表示己方落后，即奖励压制。
+ * `cap` 给出单项附加分的绝对值上限，缺省不限。
+ * 生产 `POINTS_CONFIG` **不配置**，未配置时恒等 0，生产行为逐字节不变。
+ */
+export interface RaceDiffPricing {
+  readonly gain: number;
+  readonly cap?: number;
+}
+
 export interface PointsConfig {
   readonly ACTION: ActionPointsConfig;
   readonly STATE_CHANGE: StateChangePointsConfig;
@@ -47,6 +61,8 @@ export interface PointsConfig {
   readonly DAMAGE_PENALTY?: number;
   /** 攻击进度定价；缺省不配置（恒等）。见 `AttackProgressScale`。 */
   readonly ATTACK_PROGRESS_SCALE?: AttackProgressScale;
+  /** 赛跑差定价；缺省不配置（恒等 0）。见 `RaceDiffPricing`。 */
+  readonly RACE_DIFF_PRICING?: RaceDiffPricing;
 }
 
 /** 节点归一里程碑奖励常量 (+60分) */
@@ -197,6 +213,24 @@ export class ScoreCalculator {
       return 1;
     }
     return scale.floor + scale.span * (opponentGuiYiCount / 5);
+  }
+
+  /**
+   * 赛跑差定价附加分（ticket 05 候选 C）。
+   *
+   * 传入行动前的「己方落后量」与「对手落后量」（未点亮侧数 + 残留道损数），
+   * 返回 `gain × (ownBehind − opponentBehind)`，受可选 `cap` 截断。
+   * 未配置 `RACE_DIFF_PRICING` 时恒等 0。调用方负责只作用于攻击动作。
+   */
+  raceDiffPoints(ownBehind: number, opponentBehind: number): number {
+    const pricing = this.config.RACE_DIFF_PRICING;
+    if (!pricing || pricing.gain === 0) {
+      return 0;
+    }
+    const term = pricing.gain * (ownBehind - opponentBehind);
+    return pricing.cap === undefined
+      ? term
+      : Math.max(-pricing.cap, Math.min(pricing.cap, term));
   }
 
   /**

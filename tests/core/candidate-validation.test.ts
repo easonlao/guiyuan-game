@@ -10,11 +10,16 @@ import {
   GUARDRAIL_GUIYUAN_MAX,
   PRODUCTION_CANDIDATE,
   formatCandidateValidationReport,
-  parseCandidateArgs,
   validateCandidate,
   type CandidateSpec,
   type CandidateValidationReport
 } from '../../src/core/headless/CandidateValidation.js';
+import { parseCandidateArgs } from '../../src/core/headless/CandidateValidationCli.js';
+import { runActionValueCensus } from '../../src/core/headless/ActionValueCensus.js';
+import {
+  formatActionSummaryTable,
+  formatActionValueCensusReport
+} from '../../src/core/headless/ActionValueCensusReport.js';
 
 /**
  * 候选验证命令测试（Ticket 05）。
@@ -96,9 +101,14 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
     }
   });
 
-  it('生产配置（工单 06 采纳后）标准 1 通过：不存在严格占优，其余三条照常输出', () => {
-    expect(production.noStrictDominance.passed).toBe(true);
+  it('生产配置（工单 06 采纳后）标准 1 无严格占优，但小样本矩阵为「无法判定」而非通过', () => {
+    // 无严格占优者：
     expect(production.noStrictDominance.strictDominators).toEqual([]);
+    // 但 FAST 的小样本矩阵存在 within-noise 对，C1 不能读作通过。
+    expect(production.noStrictDominance.fullyDecided).toBe(false);
+    expect(production.noStrictDominance.undecidable.length).toBeGreaterThan(0);
+    expect(production.noStrictDominance.verdict).toBe('inconclusive');
+    expect(production.noStrictDominance.passed).toBe(false);
     // 标准 2 在生产配置下通过（普查无全局被支配动作）
     expect(production.everyActionHasValue.passed).toBe(true);
     // 标准 3 在生产配置下通过
@@ -106,6 +116,27 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
     // 标准 4 在生产配置下仍失败（默认动态策略对激进压制只有约 0.7pp 优势，落在噪声内）
     expect(production.dynamicBeatsStatics.passed).toBe(false);
     expect(production.allPassed).toBe(false);
+  });
+
+  it('回归：样本量低于 MIN_DOMINANCE_MATCHES 时，C1 明确报「无法判定」而不是通过', () => {
+    const tiny = validateCandidate(PRODUCTION_CANDIDATE, {
+      ...FAST,
+      matchesPerSeat: 20, // 每格 40 局 < MIN_DOMINANCE_MATCHES(100) → 全部 insufficient
+      baselineHeadToHead: production.noStrictDominance.headToHead
+    });
+    expect(tiny.noStrictDominance.strictDominators).toEqual([]);
+    expect(tiny.noStrictDominance.fullyDecided).toBe(false);
+    expect(tiny.noStrictDominance.undecidable.length).toBeGreaterThan(0);
+    expect(tiny.noStrictDominance.undecidable.every(item => item.reason === 'insufficient')).toBe(
+      true
+    );
+    expect(tiny.noStrictDominance.verdict).toBe('inconclusive');
+    expect(tiny.noStrictDominance.passed).toBe(false);
+    // 报告不得声称「不存在严格占优」，而应说明无法判定并列出对与原因。
+    const markdown = formatCandidateValidationReport(tiny);
+    expect(markdown).toContain('无法判定');
+    expect(markdown).not.toContain('对拼矩阵中不存在对全部对手严格占优的策略，且矩阵完全可判定');
+    expect(markdown).toContain('insufficient');
   });
 
   it('标准 1 独立失败（关闭进度定价重新造出占优），不影响标准 2/3/4 的输出', () => {
@@ -291,5 +322,18 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
   it('默认对拼样本量有定义，且生产默认结算方式为 scoring', () => {
     expect(DEFAULT_VALIDATION_MATCHES_PER_SEAT).toBeGreaterThanOrEqual(100);
     expect(PRODUCTION_CANDIDATE.settlementMode).toBe('scoring');
+  });
+
+  it('动作类型结论表由同一个 formatter 渲染（消除候选验证与普查的重复表格）', () => {
+    const census = runActionValueCensus({
+      pointsConfig: PRODUCTION_CANDIDATE.pointsConfig,
+      rules: PRODUCTION_CANDIDATE.rules
+    });
+    const table = formatActionSummaryTable(census.actions);
+    // 两处报告都逐字包含同一张表。
+    expect(formatActionValueCensusReport(census)).toContain(table);
+    expect(formatCandidateValidationReport(production)).toContain(table);
+    // 表头唯一且完整。
+    expect(table).toContain('| 动作类型 | 可用 | 观测数 | 最优盘面数 | 被支配盘面数 | 全局被支配 |');
   });
 });

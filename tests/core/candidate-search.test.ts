@@ -1,12 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { POINTS_CONFIG } from '../../src/core/logic/ScoreCalculator.js';
+import { POINTS_CONFIG, ScoreCalculator } from '../../src/core/logic/ScoreCalculator.js';
 import {
+  CANDIDATE_A,
+  CANDIDATE_B,
+  CANDIDATE_C,
+  CANDIDATE_D,
+  CANDIDATE_E,
   CANDIDATE_REGISTRY,
   PRODUCTION_CANDIDATE,
   TICKET_05_CANDIDATE,
-  parseCandidateArgs,
+  resolveCandidate,
   validateCandidate
 } from '../../src/core/headless/CandidateValidation.js';
+import { parseCandidateArgs } from '../../src/core/headless/CandidateValidationCli.js';
 import {
   DEFAULT_DYNAMIC_POLICY,
   TUNED_DYNAMIC_POLICY,
@@ -100,5 +106,50 @@ describe('Ticket 05 - 候选 A 注册与 CLI 选择', () => {
     });
     expect(report.dynamicBeatsStatics.policies).toEqual([TUNED_DYNAMIC_POLICY.name]);
     expect(report.dynamicBeatsStatics.evidence).toHaveLength(7);
+  });
+});
+
+describe('Ticket 05 - 五个候选 A–E 的机制与注册', () => {
+  it('注册表登记五个候选 A–E（外加生产基线），每个都能解析为可运行配置', () => {
+    const candidates = [CANDIDATE_A, CANDIDATE_B, CANDIDATE_C, CANDIDATE_D, CANDIDATE_E];
+    expect(candidates).toHaveLength(5);
+    for (const spec of candidates) {
+      expect(CANDIDATE_REGISTRY[spec.name]).toBeDefined();
+      const resolved = resolveCandidate(spec);
+      expect(resolved.pointsConfig).toBeDefined();
+      expect(resolved.rules).toBeDefined();
+    }
+    // 生产基线不在五个候选内，但注册表包含它。
+    expect(candidates.map(spec => spec.name)).not.toContain(PRODUCTION_CANDIDATE.name);
+    expect(CANDIDATE_REGISTRY[PRODUCTION_CANDIDATE.name]).toBeDefined();
+  });
+
+  it('候选 B/C/D 相对搜索基线（无进度定价）定义，避免混入候选 A 的改动', () => {
+    for (const spec of [CANDIDATE_B, CANDIDATE_C, CANDIDATE_D]) {
+      expect(spec.pointsConfig?.ATTACK_PROGRESS_SCALE).toBeUndefined();
+    }
+    expect(CANDIDATE_B.pointsConfig?.STATE_CHANGE.WEAKEN).toBe(0);
+    expect(CANDIDATE_D.pointsConfig?.STATE_CHANGE.WEAKEN).toBe(0);
+    expect(CANDIDATE_D.pointsConfig?.STATE_CHANGE.CAUSE_DMG).toEqual({ yang: 120, yin: 100 });
+  });
+
+  it('候选 C：赛跑差定价被解析为 PointsConfig 字段，计算 gain × (own − opp)', () => {
+    const resolved = resolveCandidate(CANDIDATE_C);
+    expect(resolved.pointsConfig.RACE_DIFF_PRICING).toEqual({ gain: 120 });
+    const calc = new ScoreCalculator(resolved.pointsConfig);
+    expect(calc.raceDiffPoints(3, 1)).toBe(240);
+    expect(calc.raceDiffPoints(1, 3)).toBe(-240);
+    // 未配置（生产）时恒等 0
+    expect(new ScoreCalculator(POINTS_CONFIG).raceDiffPoints(3, 1)).toBe(0);
+  });
+
+  it('候选 E：isBoardSettlement 覆盖被解析进 ResolvedCandidate，计分仍为 scoring', () => {
+    const resolved = resolveCandidate(CANDIDATE_E);
+    expect(resolved.settlementMode).toBe('scoring');
+    expect(resolved.isBoardSettlement).toBe(true);
+    expect(resolved.rules.isBoardOnly).toBe(false);
+    // 对照：候选 A / 生产仍是 scoring 结算。
+    expect(resolveCandidate(TICKET_05_CANDIDATE).isBoardSettlement).toBe(false);
+    expect(resolveCandidate(PRODUCTION_CANDIDATE).isBoardSettlement).toBe(false);
   });
 });

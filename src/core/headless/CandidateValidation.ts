@@ -8,8 +8,10 @@
  * 也不重算任何指标。
  *
  * 四条验收标准（缺一不可，各自独立计算、独立可失败）：
- *   1. 无严格占优      —— 候选计分/规则下，对拼矩阵中不存在对全部对手严格占优的策略。
- *                          判定用显著性证据（z=1.96，每格 ≥ 100 局），不是裸 `rate > 0.5`。
+ *   1. 无严格占优      —— 候选计分/规则下，对拼矩阵中不存在对全部对手严格占优的策略，
+ *                          且矩阵完全可判定。判定用显著性证据（z=1.96，每格 ≥ 100 局），
+ *                          不是裸 `rate > 0.5`。矩阵缺格 / 样本不足 / 有与 50% 无法区分的对时，
+ *                          标准 1 报「无法判定」（`inconclusive`），不静默通过。
  *   2. 每个行为都有价值 —— 动作价值普查中没有在所有被测盘面上都被支配的动作。
  *   3. 护栏全绿        —— 500 局平衡自对弈、种子 10000、回合上限 30 下，
  *                          归元率 ∈ [0.75, 0.95]、先手胜率 ∈ [0.45, 0.55]、堆内存增量 < 15MB。
@@ -30,14 +32,12 @@ import type { RuleSwitches } from '../logic/ActionCandidates.js';
 import { POINTS_CONFIG, type PointsConfig } from '../logic/ScoreCalculator.js';
 import { BALANCED_WEIGHTS } from '../ai/Strategy.js';
 import { HeadlessBenchmark } from './HeadlessBenchmark.js';
-import { runCliIfDirect } from './cli.js';
 import {
   DEFAULT_BASE_SEED,
   DEFAULT_MAX_ROUNDS,
   DEFAULT_STRATEGY_VARIANTS,
   buildVariantStrategy,
   compareHeadToHeadMatrices,
-  formatSeatBalancedMatrix,
   isBoardSettlementFor,
   ruleSwitchesFor,
   runHeadToHeadMatrix,
@@ -50,11 +50,8 @@ import {
 } from './ExperimentRunner.js';
 import {
   DOMINANCE_SIGNIFICANCE_Z,
-  MIN_DOMINANCE_MATCHES,
   analyzeDominanceMatrix,
   evaluateDominanceEvidence,
-  formatDominanceVerdict,
-  formatDrawRateWithWinRates,
   type DominanceVerdict,
   type HeadToHeadMatrix,
   type UndecidableMatchup
@@ -120,6 +117,11 @@ export interface CandidateSpec {
   readonly rules?: RuleSwitches;
   /** 候选终局结算方式；缺省由 `rules.isBoardOnly` 推导，再缺省为 `scoring`。 */
   readonly settlementMode?: SettlementMode;
+  /**
+   * 终局结算口径覆盖（ticket 05 候选 E）：`scoring` 计分不变，但回合上限按盘面进度结算。
+   * 缺省由 `settlementMode` 经 `isBoardSettlementFor` 推导。不扩展 `RuleMode`。
+   */
+  readonly isBoardSettlement?: boolean;
 }
 
 /** 解析后的候选：计分配置/规则/结算全部落实，供运行器直接消费。 */
@@ -142,7 +144,7 @@ export function resolveCandidate(spec: CandidateSpec): ResolvedCandidate {
     pointsConfig: spec.pointsConfig ?? POINTS_CONFIG,
     rules: spec.rules ?? ruleSwitchesFor(settlementMode),
     settlementMode,
-    isBoardSettlement: isBoardSettlementFor(settlementMode)
+    isBoardSettlement: spec.isBoardSettlement ?? isBoardSettlementFor(settlementMode)
   };
 }
 
@@ -157,7 +159,8 @@ export const PRODUCTION_CANDIDATE: CandidateSpec = {
 
 /**
  * Ticket 05 候选 A 的计分配置：攻击进度定价。
- * 生产 `POINTS_CONFIG` 不设置该字段，未启用时行为逐字节不变。
+ * 工单 06 已把同一配置采纳进生产 `POINTS_CONFIG`，因此候选 A 与生产逐旋钮一致；
+ * 本常量保留给搜索报告与对照使用。
  */
 export const ATTACK_PROGRESS_SCALE_POINTS_CONFIG: PointsConfig = {
   ...POINTS_CONFIG,
@@ -172,6 +175,78 @@ export const TICKET_05_CANDIDATE: CandidateSpec = {
   settlementMode: 'scoring'
 };
 
+/**
+ * 搜索基线：工单 06 采纳前的生产计分（无攻击进度定价）。
+ *
+ * 候选 B/C/D/E 都是相对这个基线的改动，与工单 05 实际搜索时一致；
+ * 候选 A 则是把它替换为进度定价。这样五个候选共享同一基线，避免把 A 的改动
+ * 混进 B–E 的四标准结果。
+ */
+export const SEARCH_BASELINE_POINTS_CONFIG: PointsConfig = {
+  ...POINTS_CONFIG,
+  ATTACK_PROGRESS_SCALE: undefined
+};
+
+/** 候选 B：空枪定价（`WEAKEN: 200 → 0`）。 */
+export const WEAKEN_ZERO_POINTS_CONFIG: PointsConfig = {
+  ...SEARCH_BASELINE_POINTS_CONFIG,
+  STATE_CHANGE: { ...SEARCH_BASELINE_POINTS_CONFIG.STATE_CHANGE, WEAKEN: 0 }
+};
+
+/**
+ * 候选 C：赛跑差定价（实际测试出的最佳变体，g120 且无 cap）。
+ * 攻击动作附加 `120 × (己方落后量 − 对手落后量)`。
+ */
+export const RACE_DIFF_POINTS_CONFIG: PointsConfig = {
+  ...SEARCH_BASELINE_POINTS_CONFIG,
+  RACE_DIFF_PRICING: { gain: 120 }
+};
+
+/** 候选 D：结构化下调（`WEAKEN → 0` + `CAUSE_DMG → 120/100`）。 */
+export const STRUCTURED_REDUCTION_POINTS_CONFIG: PointsConfig = {
+  ...SEARCH_BASELINE_POINTS_CONFIG,
+  STATE_CHANGE: {
+    ...SEARCH_BASELINE_POINTS_CONFIG.STATE_CHANGE,
+    WEAKEN: 0,
+    CAUSE_DMG: { yang: 120, yin: 100 }
+  }
+};
+
+export const CANDIDATE_A: CandidateSpec = TICKET_05_CANDIDATE;
+
+/** 候选 B：空枪定价。 */
+export const CANDIDATE_B: CandidateSpec = {
+  name: 'weaken-zero',
+  description: '空枪定价：WEAKEN 200 → 0（搜索基线 + 只改这一旋钮）',
+  pointsConfig: WEAKEN_ZERO_POINTS_CONFIG,
+  settlementMode: 'scoring'
+};
+
+/** 候选 C：赛跑差定价。 */
+export const CANDIDATE_C: CandidateSpec = {
+  name: 'race-diff',
+  description: '赛跑差定价：攻击动作附加 gain × (己方落后量 − 对手落后量)，gain=120 无 cap',
+  pointsConfig: RACE_DIFF_POINTS_CONFIG,
+  settlementMode: 'scoring'
+};
+
+/** 候选 D：结构化下调。 */
+export const CANDIDATE_D: CandidateSpec = {
+  name: 'structured-reduction',
+  description: '结构化下调：WEAKEN → 0 + CAUSE_DMG → 120/100（搜索基线 + 只改这两项）',
+  pointsConfig: STRUCTURED_REDUCTION_POINTS_CONFIG,
+  settlementMode: 'scoring'
+};
+
+/** 候选 E：盘面进度终局结算（计分不变，AI 估值不变，回合上限按盘面进度判负）。 */
+export const CANDIDATE_E: CandidateSpec = {
+  name: 'board-progress-settlement',
+  description: '盘面进度终局结算：scoring 计分不变，回合上限按盘面进度判负',
+  pointsConfig: SEARCH_BASELINE_POINTS_CONFIG,
+  settlementMode: 'scoring',
+  isBoardSettlement: true
+};
+
 /** CLI 可选择的注册候选：候选声明 + 标准 4 使用的动态策略。 */
 export interface RegisteredCandidate {
   readonly spec: CandidateSpec;
@@ -179,8 +254,9 @@ export interface RegisteredCandidate {
 }
 
 /**
- * 已登记候选。默认生产配置 + 默认动态策略；`progress-pricing` 为 ticket 05 候选 A，
- * 标准 4 使用其调优动态策略（dyn-v3-self7）。默认行为不被改变。
+ * 已登记候选：生产基线（默认动态策略）+ ticket 05 的五个候选 A–E。
+ * 候选 A（`progress-pricing`）标准 4 使用调优动态策略（dyn-v3-self7）；
+ * B–E 使用默认动态策略。默认行为不被改变。
  */
 export const CANDIDATE_REGISTRY: Readonly<Record<string, RegisteredCandidate>> = {
   [PRODUCTION_CANDIDATE.name]: {
@@ -190,6 +266,22 @@ export const CANDIDATE_REGISTRY: Readonly<Record<string, RegisteredCandidate>> =
   [TICKET_05_CANDIDATE.name]: {
     spec: TICKET_05_CANDIDATE,
     dynamicPolicies: [TUNED_DYNAMIC_POLICY]
+  },
+  [CANDIDATE_B.name]: {
+    spec: CANDIDATE_B,
+    dynamicPolicies: [DEFAULT_DYNAMIC_POLICY]
+  },
+  [CANDIDATE_C.name]: {
+    spec: CANDIDATE_C,
+    dynamicPolicies: [DEFAULT_DYNAMIC_POLICY]
+  },
+  [CANDIDATE_D.name]: {
+    spec: CANDIDATE_D,
+    dynamicPolicies: [DEFAULT_DYNAMIC_POLICY]
+  },
+  [CANDIDATE_E.name]: {
+    spec: CANDIDATE_E,
+    dynamicPolicies: [DEFAULT_DYNAMIC_POLICY]
   }
 };
 
@@ -238,10 +330,19 @@ export interface ResolvedValidationOptions {
 // 报告结构
 // ---------------------------------------------------------------------------
 
+/** 单条验收标准的结论：通过 / 失败 / 无法判定（矩阵不完整）。 */
+export type CriterionVerdict = 'pass' | 'fail' | 'inconclusive';
+
 /** 标准 1：无严格占优。 */
 export interface NoStrictDominanceResult {
   readonly passed: boolean;
-  /** 每个策略严格占优全部对手的列表；为空即通过。 */
+  /**
+   * 三态结论。`pass` 要求**既无严格占优者、矩阵又完全可判定**；
+   * 无占优但有缺格 / 样本不足 / 与 50% 无法区分的对时为 `inconclusive`，
+   * 不能读作「已确认无占优」。
+   */
+  readonly verdict: CriterionVerdict;
+  /** 每个策略严格占优全部对手的列表；为空即无严格占优。 */
   readonly strictDominators: readonly string[];
   /** 对拼矩阵（全部有序对、座次平衡）；占优结论的强制附件。 */
   readonly matrix: HeadToHeadMatrix;
@@ -372,15 +473,19 @@ function runNoStrictDominance(
   const strictDominators = analysis.verdicts
     .filter(verdict => verdict.dominates.length === allCount && allCount > 0)
     .map(verdict => verdict.strategy);
+  const fullyDecided = analysis.undecidable.length === 0;
+  const verdict: CriterionVerdict =
+    strictDominators.length > 0 ? 'fail' : fullyDecided ? 'pass' : 'inconclusive';
 
   return {
-    passed: strictDominators.length === 0,
+    passed: verdict === 'pass',
+    verdict,
     strictDominators,
     matrix,
     headToHead,
     verdicts: analysis.verdicts,
     undecidable: analysis.undecidable,
-    fullyDecided: analysis.undecidable.length === 0,
+    fullyDecided,
     strategies: headToHead.strategies,
     matchesPerSeat,
     seed,
@@ -567,6 +672,7 @@ function configsMatch(a: ResolvedCandidate, b: ResolvedCandidate): boolean {
   return (
     a.pointsConfig === b.pointsConfig &&
     a.settlementMode === b.settlementMode &&
+    a.isBoardSettlement === b.isBoardSettlement &&
     (a.rules.isBoardOnly ?? false) === (b.rules.isBoardOnly ?? false)
   );
 }
@@ -692,447 +798,9 @@ export function validateCandidate(
 }
 
 // ---------------------------------------------------------------------------
-// 报告格式化（可直接粘贴进工单的 markdown）
+// 报告格式化与 CLI（拆出到独立模块）
 // ---------------------------------------------------------------------------
+// `formatCandidateValidationReport` 保留在原导入路径以稳定既有调用方；
+// CLI（`parseCandidateArgs`）在 `CandidateValidationCli.ts`，避免运行期循环依赖。
 
-function percent(value: number): string {
-  return `${(value * 100).toFixed(2)}%`;
-}
-
-function passLabel(passed: boolean): string {
-  return passed ? '通过' : '**失败**';
-}
-
-function formatCensusActionTable(actions: readonly ActionTypeCensus[]): string {
-  const lines: string[] = [];
-  lines.push('| 动作类型 | 可用 | 观测数 | 最优盘面数 | 被支配盘面数 | 全局被支配 |');
-  lines.push('| --- | --- | ---: | ---: | ---: | --- |');
-  for (const action of actions) {
-    lines.push(
-      `| ${action.actionType} | ${action.available ? '是' : '否'} | ${action.observationCount} | ${
-        action.optimalBoardKeys.length
-      } | ${action.dominatedBoardKeys.length} | ${action.globallyDominated ? '**是**' : '否'} |`
-    );
-  }
-  return lines.join('\n');
-}
-
-function formatDrawPairedMatchups(report: HeadToHeadReport): string {
-  const lines: string[] = [];
-  lines.push('| A | B | 两座次样本 | 座次平衡胜率 | 流局率 / 先后手胜率 |');
-  lines.push('| --- | --- | ---: | ---: | --- |');
-  for (const matchup of report.matchups) {
-    lines.push(
-      `| ${matchup.strategyA} | ${matchup.strategyB} | ${matchup.matches} | ${percent(
-        matchup.seatBalancedWinRate
-      )} | ${formatDrawRateWithWinRates({
-        drawRate: matchup.drawRate,
-        p1WinRate: matchup.p1WinRate,
-        p2WinRate: matchup.p2WinRate
-      })} |`
-    );
-  }
-  return lines.join('\n');
-}
-
-function formatDominanceConclusion(result: NoStrictDominanceResult): string {
-  const lines: string[] = [];
-  lines.push(`结果：${passLabel(result.passed)}`);
-  lines.push('');
-  if (result.passed) {
-    lines.push('对拼矩阵中不存在对全部对手严格占优的策略。');
-  } else {
-    lines.push(
-      `存在对全部对手严格占优的策略：**${result.strictDominators.join('、')}**（样本量足够且显著高于 50%）。`
-    );
-  }
-  if (!result.fullyDecided) {
-    lines.push('');
-    lines.push(
-      `> 注意：有 ${result.undecidable.length} 对无法判定（缺格 / 样本不足 / 与 50% 无法区分），「无占优」结论并不完整。`
-    );
-  }
-  lines.push('');
-  const dominated = result.verdicts.filter(verdict => verdict.dominates.length > 0);
-  if (dominated.length === 0) {
-    lines.push('无任何被矩阵支撑的占优结论。');
-  } else {
-    for (const verdict of dominated) {
-      // 陷阱 B：占优结论必须由矩阵支撑，`formatDominanceVerdict` 内部会强制校验。
-      lines.push(`- ${formatDominanceVerdict(verdict, result.matrix)}`);
-    }
-  }
-  if (result.undecidable.length > 0) {
-    lines.push('');
-    lines.push('无法判定的对（不能作为占优证据，也不能当作「已确认无占优」）：');
-    for (const item of result.undecidable) {
-      lines.push(`- ${item.strategy} vs ${item.opponent}：${item.reason}`);
-    }
-  }
-  return lines.join('\n');
-}
-
-function formatGuardrailSection(result: GuardrailResult): string {
-  const lines: string[] = [];
-  lines.push(`结果：${passLabel(result.passed)}`);
-  lines.push('');
-  lines.push(`- 样本：${result.matches} 局平衡自对弈，种子 ${result.seed}，回合上限 ${result.maxRounds}`);
-  lines.push(
-    `- 流局率与先后手胜率（陷阱 C：必须成对报告）：${formatDrawRateWithWinRates({
-      drawRate: result.drawRate,
-      p1WinRate: result.p1WinRate,
-      p2WinRate: result.p2WinRate
-    })}`
-  );
-  lines.push('');
-  lines.push('| 护栏 | 实测 | 带 | 结果 |');
-  lines.push('| --- | ---: | --- | --- |');
-  for (const check of result.checks) {
-    const band =
-      check.min !== undefined && check.max !== undefined
-        ? `[${percent(check.min)}, ${percent(check.max)}]`
-        : check.max !== undefined
-          ? `< ${check.max}`
-          : '—';
-    const actual =
-      check.key === 'heapUsedDeltaMB' ? check.actual.toFixed(2) : percent(check.actual);
-    lines.push(`| ${check.label} | ${actual} | ${band} | ${passLabel(check.passed)} |`);
-  }
-  return lines.join('\n');
-}
-
-function formatDynamicSection(result: DynamicBeatsStaticsResult): string {
-  const lines: string[] = [];
-  lines.push(`结果：${passLabel(result.passed)}`);
-  lines.push('');
-  lines.push(
-    `- 动态策略：${result.policies.join('、')}；静态预设：${result.statics.join('、')}`
-  );
-  lines.push(
-    `- 判定：座次平衡胜率需显著高于 50%（z = ${DOMINANCE_SIGNIFICANCE_Z}，每格 ≥ ${MIN_DOMINANCE_MATCHES} 局）。`
-  );
-  lines.push('');
-  lines.push('| 动态策略 | 静态预设 | 样本 | 动态胜率 | 边际 | 标准误 | 阈值 | 95% CI 下界 | 显著 |');
-  lines.push('| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |');
-  for (const item of result.evidence) {
-    lines.push(
-      `| ${item.policy} | ${item.staticStrategy} | ${item.matches} | ${percent(
-        item.dynamicWinRate
-      )} | ${percent(item.margin)} | ${percent(item.standardError)} | ${percent(
-        item.threshold
-      )} | ${percent(item.lowerBound)} | ${item.significant ? '是' : '否'} |`
-    );
-  }
-  if (result.nonSignificant.length > 0) {
-    lines.push('');
-    lines.push(
-      `未显著打赢的对：${result.nonSignificant.join('、')}。这不等于「设计意图不成立」——也可能是该动态实现不足，需区分。`
-    );
-  }
-  return lines.join('\n');
-}
-
-const RELATION_LABEL: Readonly<Record<string, string>> = {
-  strong: '强 (A 胜)',
-  weak: '弱 (A 负)',
-  tie: '平 (50%)'
-};
-
-function formatRelation(relation: string): string {
-  return RELATION_LABEL[relation] ?? relation;
-}
-
-function formatBaselineComparisonSection(result: BaselineComparisonResult): string {
-  const lines: string[] = [];
-  lines.push(
-    `对照基线：\`${result.baselineName}\`（${result.baselineDescription}）${
-      result.reusedCandidateMatrix ? '；候选与基线配置一致，复用候选矩阵。' : '。'
-    }`
-  );
-  lines.push('');
-  lines.push(`**强弱关系翻转 ${result.flips.length} 格**`);
-  lines.push('');
-  if (result.flips.length === 0) {
-    lines.push('无：所有格子的强弱关系与基线一致。');
-  } else {
-    lines.push('| A | B | 基线胜率 | 基线关系 | 候选胜率 | 候选关系 | Δ (候选 − 基线) |');
-    lines.push('| --- | --- | ---: | --- | ---: | --- | ---: |');
-    for (const flip of result.flips) {
-      lines.push(
-        `| ${flip.strategyA} | ${flip.strategyB} | ${percent(flip.scoringWinRate)} | ${
-          formatRelation(flip.scoringRelation)
-        } | ${percent(flip.boardOnlyWinRate)} | ${formatRelation(flip.boardOnlyRelation)} | ${percent(
-          flip.delta
-        )} |`
-      );
-    }
-  }
-  lines.push('');
-  lines.push('### 逐格对照（全部有序对）');
-  lines.push('');
-  lines.push('| A | B | 基线胜率 | 候选胜率 | Δ | 翻转 |');
-  lines.push('| --- | --- | ---: | ---: | ---: | --- |');
-  for (const matchup of result.comparison.matchups) {
-    lines.push(
-      `| ${matchup.strategyA} | ${matchup.strategyB} | ${percent(
-        matchup.scoringWinRate
-      )} | ${percent(matchup.boardOnlyWinRate)} | ${percent(matchup.delta)} | ${
-        matchup.flipped ? '是' : '否'
-      } |`
-    );
-  }
-  return lines.join('\n');
-}
-
-/** 把候选验证报告格式化为可直接粘贴的 markdown。 */
-export function formatCandidateValidationReport(report: CandidateValidationReport): string {
-  const lines: string[] = [];
-  const { candidate, options } = report;
-
-  lines.push(`# 候选验证报告：${candidate.name}`);
-  lines.push('');
-  lines.push(candidate.description);
-  lines.push('');
-  lines.push('## 总览');
-  lines.push('');
-  lines.push('| # | 验收标准 | 结果 |');
-  lines.push('| --- | --- | --- |');
-  lines.push(`| 1 | 无严格占优 | ${passLabel(report.noStrictDominance.passed)} |`);
-  lines.push(`| 2 | 每个行为都有价值 | ${passLabel(report.everyActionHasValue.passed)} |`);
-  lines.push(`| 3 | 护栏全绿 | ${passLabel(report.guardrails.passed)} |`);
-  lines.push(
-    `| 4 | 动态策略打赢全部静态预设 | ${passLabel(report.dynamicBeatsStatics.passed)} |`
-  );
-  lines.push('');
-  lines.push(`**四条全部通过：${report.allPassed ? '是' : '否'}**`);
-  lines.push('');
-  lines.push(
-    `- 对拼样本：${options.matchesPerSeat} 局/座次（每格 ${options.matchesPerSeat * 2} 局），种子 ${options.seed}，回合上限 ${options.maxRounds}`
-  );
-  lines.push(
-    `- 护栏样本：${options.guardrailMatches} 局，种子 ${options.guardrailSeed}`
-  );
-  lines.push(
-    `- 计分配置：${candidate.pointsConfig === POINTS_CONFIG ? 'POINTS_CONFIG（生产默认）' : '自定义 PointsConfig'}`
-  );
-  lines.push(`- 规则开关：${JSON.stringify(candidate.rules)}`);
-  lines.push(`- 终局结算：${candidate.settlementMode}`);
-  lines.push('');
-  lines.push('---');
-  lines.push('');
-
-  lines.push('## 1. 无严格占优');
-  lines.push('');
-  lines.push(formatDominanceConclusion(report.noStrictDominance));
-  lines.push('');
-  lines.push(formatSeatBalancedMatrix(report.noStrictDominance.headToHead));
-  lines.push('');
-  lines.push('### 逐对明细（流局率与先后手胜率成对）');
-  lines.push('');
-  lines.push(formatDrawPairedMatchups(report.noStrictDominance.headToHead));
-  lines.push('');
-  lines.push('---');
-  lines.push('');
-
-  lines.push('## 2. 每个行为都有价值');
-  lines.push('');
-  lines.push(`结果：${passLabel(report.everyActionHasValue.passed)}`);
-  lines.push('');
-  if (report.everyActionHasValue.passed) {
-    lines.push('没有动作在所有被测盘面状态下都被支配。');
-  } else {
-    lines.push(
-      `全局被支配动作：**${report.everyActionHasValue.globallyDominated.join('、')}**。`
-    );
-  }
-  lines.push('');
-  lines.push(formatCensusActionTable(report.everyActionHasValue.actions));
-  lines.push('');
-  lines.push('---');
-  lines.push('');
-
-  lines.push('## 3. 护栏全绿');
-  lines.push('');
-  lines.push(formatGuardrailSection(report.guardrails));
-  lines.push('');
-  lines.push('---');
-  lines.push('');
-
-  lines.push('## 4. 动态策略打赢全部静态预设');
-  lines.push('');
-  lines.push(formatDynamicSection(report.dynamicBeatsStatics));
-  lines.push('');
-  lines.push('---');
-  lines.push('');
-
-  lines.push('## 5. 改动前后逐格对照');
-  lines.push('');
-  lines.push(formatBaselineComparisonSection(report.baselineComparison));
-
-  return lines.join('\n');
-}
-
-// ---------------------------------------------------------------------------
-// CLI
-// ---------------------------------------------------------------------------
-
-const HELP_TEXT = `归元弈 (Guiyuan) 候选验证命令 (Ticket 05)
-
-用法:
-  npm run benchmark:candidate-validation -- [选项]
-
-选项:
-  --candidate <name>    注册候选: production (默认) / progress-pricing (ticket 05 候选 A)
-  --name <name>         报告标题覆盖 (默认取注册候选名)
-  --description <text>  候选说明覆盖
-  --mode <mode>         终局结算方式: scoring (默认) / board-only
-  --matches <N>         对拼矩阵每座次样本量 (默认 ${DEFAULT_VALIDATION_MATCHES_PER_SEAT})
-  --seed <N>            对拼矩阵种子基数 (默认 ${DEFAULT_BASE_SEED})
-  --max-rounds <N>      回合上限 (默认 ${DEFAULT_MAX_ROUNDS})
-  --guardrail-matches <N>  护栏样本量 (默认 ${DEFAULT_GUARDRAIL_MATCHES})
-  --guardrail-seed <N>     护栏种子 (默认 ${DEFAULT_GUARDRAIL_SEED})
-  --help, -h            显示本帮助
-
-说明:
-  一次跑完四条验收标准并输出对照报告：
-    1. 无严格占优 (显著性证据 + 对拼矩阵)
-    2. 每个行为都有价值 (动作价值普查)
-    3. 护栏全绿 (归元率 / 先手胜率 / 堆内存增量)
-    4. 动态策略打赢全部静态预设 (显著性检验)
-  CLI 默认使用生产 POINTS_CONFIG；程序化调用可传入自定义 PointsConfig 做搜索。
-`;
-
-export interface ParsedCandidateArgs {
-  readonly isHelp: boolean;
-  /** 注册候选名；默认 `production`。 */
-  readonly candidate: string;
-  readonly name: string;
-  readonly description: string;
-  readonly mode: SettlementMode;
-  readonly matches?: number;
-  readonly seed?: number;
-  readonly maxRounds?: number;
-  readonly guardrailMatches?: number;
-  readonly guardrailSeed?: number;
-}
-
-/** 解析 CLI 参数；未知参数或非法值抛错。 */
-export function parseCandidateArgs(argv: readonly string[]): ParsedCandidateArgs {
-  let isHelp = false;
-  let candidate = PRODUCTION_CANDIDATE.name;
-  let name = PRODUCTION_CANDIDATE.name;
-  let description = PRODUCTION_CANDIDATE.description;
-  let mode: SettlementMode = 'scoring';
-  let matches: number | undefined;
-  let seed: number | undefined;
-  let maxRounds: number | undefined;
-  let guardrailMatches: number | undefined;
-  let guardrailSeed: number | undefined;
-
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === '--help' || arg === '-h') {
-      isHelp = true;
-      continue;
-    }
-    if (arg === '--candidate') {
-      const value = argv[++i];
-      if (!value || !CANDIDATE_REGISTRY[value]) {
-        throw new Error(
-          `未知候选: ${value}（可选: ${Object.keys(CANDIDATE_REGISTRY).join(' / ')}）`
-        );
-      }
-      candidate = value;
-      continue;
-    }
-    if (arg === '--name') {
-      name = argv[++i] ?? name;
-      continue;
-    }
-    if (arg === '--description') {
-      description = argv[++i] ?? description;
-      continue;
-    }
-    if (arg === '--mode') {
-      const value = argv[++i];
-      if (value !== 'scoring' && value !== 'board-only') {
-        throw new Error(`未知结算方式: ${value}`);
-      }
-      mode = value;
-      continue;
-    }
-    if (arg === '--matches') {
-      const value = Number(argv[++i]);
-      if (!Number.isFinite(value) || value < 0) throw new Error(`--matches 需要非负数字: ${argv[i]}`);
-      matches = Math.floor(value);
-      continue;
-    }
-    if (arg === '--seed') {
-      const value = Number(argv[++i]);
-      if (!Number.isFinite(value)) throw new Error(`--seed 需要数字: ${argv[i]}`);
-      seed = Math.floor(value);
-      continue;
-    }
-    if (arg === '--max-rounds') {
-      const value = Number(argv[++i]);
-      if (!Number.isFinite(value) || value < 1) throw new Error(`--max-rounds 需要正数: ${argv[i]}`);
-      maxRounds = Math.floor(value);
-      continue;
-    }
-    if (arg === '--guardrail-matches') {
-      const value = Number(argv[++i]);
-      if (!Number.isFinite(value) || value < 0) {
-        throw new Error(`--guardrail-matches 需要非负数字: ${argv[i]}`);
-      }
-      guardrailMatches = Math.floor(value);
-      continue;
-    }
-    if (arg === '--guardrail-seed') {
-      const value = Number(argv[++i]);
-      if (!Number.isFinite(value)) throw new Error(`--guardrail-seed 需要数字: ${argv[i]}`);
-      guardrailSeed = Math.floor(value);
-      continue;
-    }
-    throw new Error(`未知参数: ${arg}`);
-  }
-
-  return { isHelp, candidate, name, description, mode, matches, seed, maxRounds, guardrailMatches, guardrailSeed };
-}
-
-runCliIfDirect(import.meta.url, () => {
-  const parsed = parseCandidateArgs(process.argv.slice(2));
-  if (parsed.isHelp) {
-    console.log(HELP_TEXT);
-    return;
-  }
-  const matches = parsed.matches ?? DEFAULT_VALIDATION_MATCHES_PER_SEAT;
-  const seed = parsed.seed ?? DEFAULT_BASE_SEED;
-  const maxRounds = parsed.maxRounds ?? DEFAULT_MAX_ROUNDS;
-  const registered = CANDIDATE_REGISTRY[parsed.candidate];
-  const name =
-    parsed.name !== PRODUCTION_CANDIDATE.name ? parsed.name : registered.spec.name;
-  const description =
-    parsed.description !== PRODUCTION_CANDIDATE.description
-      ? parsed.description
-      : registered.spec.description;
-  console.log(
-    `🚀 候选验证 (${name}, ${parsed.mode}): 对拼 ${matches} 局/座次, 种子 ${seed}, 回合上限 ${maxRounds}...`
-  );
-  const report = validateCandidate(
-    {
-      ...registered.spec,
-      name,
-      description,
-      settlementMode: parsed.mode
-    },
-    {
-      matchesPerSeat: matches,
-      seed,
-      maxRounds,
-      guardrailMatches: parsed.guardrailMatches,
-      guardrailSeed: parsed.guardrailSeed,
-      dynamicPolicies: registered.dynamicPolicies
-    }
-  );
-  console.log(formatCandidateValidationReport(report));
-});
+export { formatCandidateValidationReport } from './CandidateValidationReport.js';
