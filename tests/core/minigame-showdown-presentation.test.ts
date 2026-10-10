@@ -1,35 +1,35 @@
 import { describe, it, expect } from 'vitest';
 import { GameManager } from '../../src/minigame/game-manager.js';
-import { BoardState, WuXing } from '../../src/core/types/domain.js';
-import { createInitialGameState } from '../../src/core/logic/State.js';
+import { WuXing } from '../../src/core/types/domain.js';
+import { boardWith, gameStateWith } from '../../src/core/headless/BoardFixture.js';
 
 describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
   // 辅助棋盘：全五行归一 (10 侧点亮，归元棋盘)
-  const fullGuiYuanBoard: BoardState = {
+  const fullGuiYuanBoard = boardWith({
     [WuXing.WOOD]: { yin: 1, yang: 1 },
     [WuXing.FIRE]: { yin: 1, yang: 1 },
     [WuXing.EARTH]: { yin: 1, yang: 1 },
     [WuXing.METAL]: { yin: 1, yang: 1 },
     [WuXing.WATER]: { yin: 1, yang: 1 }
-  };
+  });
 
   // 辅助棋盘：差 1 侧水阳达成归元 (9 侧点亮，未点亮 1 侧 -> 听牌临界态)
-  const tingPaiBoard9SidesWaterYang: BoardState = {
+  const tingPaiBoard9SidesWaterYang = boardWith({
     [WuXing.WOOD]: { yin: 1, yang: 1 },
     [WuXing.FIRE]: { yin: 1, yang: 1 },
     [WuXing.EARTH]: { yin: 1, yang: 1 },
     [WuXing.METAL]: { yin: 1, yang: 1 },
     [WuXing.WATER]: { yin: 1, yang: 0 } // 水阳未点亮 (0)
-  };
+  });
 
   // 辅助棋盘：差 2 侧达成归元 (8 侧点亮，未点亮 2 侧 -> 未听牌)
-  const notTingPaiBoard8Sides: BoardState = {
+  const notTingPaiBoard8Sides = boardWith({
     [WuXing.WOOD]: { yin: 1, yang: 1 },
     [WuXing.FIRE]: { yin: 1, yang: 1 },
     [WuXing.EARTH]: { yin: 1, yang: 1 },
     [WuXing.METAL]: { yin: 1, yang: 1 },
     [WuXing.WATER]: { yin: 0, yang: 0 } // 水阴阳皆未点亮
-  };
+  });
 
   // 固化 PRNG 工厂：用于按天干索引稳定抽取天干
   const createMockPrng = (tianGanIndex: number) => ({
@@ -39,18 +39,13 @@ describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
   });
 
   it('triggers showdown draw presentation when P1 achieved Guiyuan and P2 is strictly tingpai, succeeding on hit', () => {
-    let state = createInitialGameState();
-    state = {
-      ...state,
+    const state = gameStateWith({
       round: 6,
       currentPlayer: 'P2',
       lockedGuiYuan: { P1: true, P2: false },
-      players: {
-        ...state.players,
-        P1: { ...state.players.P1, board: fullGuiYuanBoard },
-        P2: { ...state.players.P2, board: tingPaiBoard9SidesWaterYang }
-      }
-    };
+      P1: fullGuiYuanBoard,
+      P2: tingPaiBoard9SidesWaterYang
+    });
 
     // 壬水 (WATER, YANG, index 8) -> 成功点亮水阳
     const renWaterPrng = createMockPrng(8);
@@ -82,18 +77,13 @@ describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
   });
 
   it('triggers showdown draw presentation when P1 achieved Guiyuan and P2 is strictly tingpai, failing on miss', () => {
-    let state = createInitialGameState();
-    state = {
-      ...state,
+    const state = gameStateWith({
       round: 6,
       currentPlayer: 'P2',
       lockedGuiYuan: { P1: true, P2: false },
-      players: {
-        ...state.players,
-        P1: { ...state.players.P1, board: fullGuiYuanBoard },
-        P2: { ...state.players.P2, board: tingPaiBoard9SidesWaterYang }
-      }
-    };
+      P1: fullGuiYuanBoard,
+      P2: tingPaiBoard9SidesWaterYang
+    });
 
     // 丙火 (FIRE, YANG, index 2) -> 无法点亮水阳
     const bingFirePrng = createMockPrng(2);
@@ -125,18 +115,13 @@ describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
   });
 
   it('renders cleanly in canvas without throwing errors on showdown game over', () => {
-    let state = createInitialGameState();
-    state = {
-      ...state,
+    const state = gameStateWith({
       round: 6,
       currentPlayer: 'P2',
       lockedGuiYuan: { P1: true, P2: false },
-      players: {
-        ...state.players,
-        P1: { ...state.players.P1, board: fullGuiYuanBoard },
-        P2: { ...state.players.P2, board: tingPaiBoard9SidesWaterYang }
-      }
-    };
+      P1: fullGuiYuanBoard,
+      P2: tingPaiBoard9SidesWaterYang
+    });
 
     const renWaterPrng = createMockPrng(8);
     const gm = new GameManager({
@@ -166,18 +151,13 @@ describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
   });
 
   it('restarts game on touch when game is over from showdown, resetting showdown info', () => {
-    let state = createInitialGameState();
-    state = {
-      ...state,
+    const state = gameStateWith({
       round: 6,
       currentPlayer: 'P2',
       lockedGuiYuan: { P1: true, P2: false },
-      players: {
-        ...state.players,
-        P1: { ...state.players.P1, board: fullGuiYuanBoard },
-        P2: { ...state.players.P2, board: tingPaiBoard9SidesWaterYang }
-      }
-    };
+      P1: fullGuiYuanBoard,
+      P2: tingPaiBoard9SidesWaterYang
+    });
 
     const renWaterPrng = createMockPrng(8);
     const gm = new GameManager({
@@ -199,21 +179,16 @@ describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
   });
 
   it('handles conventional sudden death when P2 is not tingpai without triggering showdown banner', () => {
-    let state = createInitialGameState();
-    state = {
-      ...state,
+    const state = gameStateWith({
       round: 5,
       currentPlayer: 'P1',
       lockedGuiYuan: { P1: true, P2: false },
       isGameOver: true,
       winner: 'P1',
       endReason: 'GUI_YUAN',
-      players: {
-        ...state.players,
-        P1: { ...state.players.P1, board: fullGuiYuanBoard },
-        P2: { ...state.players.P2, board: notTingPaiBoard8Sides }
-      }
-    };
+      P1: fullGuiYuanBoard,
+      P2: notTingPaiBoard8Sides
+    });
 
     const gm = new GameManager({
       initialState: state,

@@ -16,6 +16,7 @@ import {
   WuXing
 } from '../types/domain.js';
 import { ActionResolver } from '../logic/ActionResolver.js';
+import type { RuleSwitches } from '../logic/ActionCandidates.js';
 import { isBoardGuiYuan, isNodeGuiYi, isNodeKangJi } from '../logic/State.js';
 
 export const DEFAULT_STRATEGY_WEIGHTS: StrategyWeights = {
@@ -43,7 +44,8 @@ export class ActionEvaluator {
     state: GameState,
     tianGan: TianGanInfo,
     action: ActionPayload,
-    weights: StrategyWeights = DEFAULT_STRATEGY_WEIGHTS
+    weights: StrategyWeights = DEFAULT_STRATEGY_WEIGHTS,
+    rules?: RuleSwitches
   ): ActionScore {
     const simulatedState: GameState = {
       ...state,
@@ -181,8 +183,9 @@ export class ActionEvaluator {
     }
 
     // 5. 规则得分奖励
+    // board-only：关闭计分轴，忽略规则得分，只按盘面判优（默认关闭，恒等）
     const scoreWeight = weights.scoreDeltaWeight ?? 1;
-    const scoreDeltaPoints = result.scoreDelta * scoreWeight;
+    const scoreDeltaPoints = rules?.isBoardOnly ? 0 : result.scoreDelta * scoreWeight;
 
     // 6. 动作基础偏好
     const biasScore = weights.baseActionBias?.[action.actionType] ?? 0;
@@ -217,8 +220,9 @@ export class ActionEvaluator {
     state: GameState,
     tianGan: TianGanInfo,
     actions: ActionPayload[],
-    weights: StrategyWeights = DEFAULT_STRATEGY_WEIGHTS
+    weights: StrategyWeights = DEFAULT_STRATEGY_WEIGHTS,
+    rules?: RuleSwitches
   ): ActionScore[] {
-    return actions.map(action => this.evaluate(state, tianGan, action, weights));
+    return actions.map(action => this.evaluate(state, tianGan, action, weights, rules));
   }
 }

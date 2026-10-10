@@ -189,6 +189,42 @@ export function clampNodeLevel(level: number): NodeLevel {
   return level as NodeLevel;
 }
 
+/**
+ * 盘面差分度量 (BoardDiff)
+ * constructionLevels: 所有侧等级上升量之和 (建设)
+ * suppressionLevels:  所有侧等级下降量之和 (压制)
+ */
+export interface BoardDiff {
+  readonly constructionLevels: number;
+  readonly suppressionLevels: number;
+}
+
+/**
+ * 度量两张盘面之间的等级变化量。
+ * 关键口径：压制必须按“等级下降量”统计，而非“未点亮侧数”。
+ * 因此 加持 2 -> 点亮 1 记为 1 次削弱（而非 0），1 -> 0 与 0 -> -1 各记 1 次。
+ * 传入对手盘面即可得到施加于对手的压制度量。
+ */
+export function measureBoardDiff(prevBoard: BoardState, nextBoard: BoardState): BoardDiff {
+  let constructionLevels = 0;
+  let suppressionLevels = 0;
+
+  for (const element of Object.values(WuXing)) {
+    const prevNode = prevBoard[element];
+    const nextNode = nextBoard[element];
+
+    const yinDelta = nextNode.yin - prevNode.yin;
+    if (yinDelta > 0) constructionLevels += yinDelta;
+    else if (yinDelta < 0) suppressionLevels += -yinDelta;
+
+    const yangDelta = nextNode.yang - prevNode.yang;
+    if (yangDelta > 0) constructionLevels += yangDelta;
+    else if (yangDelta < 0) suppressionLevels += -yangDelta;
+  }
+
+  return { constructionLevels, suppressionLevels };
+}
+
 /** 计算盘面的残留道损总数 (阴阳两侧为 -1 的数量之和) */
 export function countBoardDamage(board: BoardState): number {
   let count = 0;

@@ -21,7 +21,7 @@ import {
 import { ActionResolver } from './ActionResolver.js';
 import { EventBus } from './EventBus.js';
 import { PRNG, createPRNG, drawTianGan } from '../utils/prng.js';
-import { getAvailableActions } from './ActionCandidates.js';
+import { getAvailableActions, RuleSwitches } from './ActionCandidates.js';
 
 /**
  * 回合生命周期阶段
@@ -42,6 +42,8 @@ export interface TurnManagerOptions {
   readonly prng?: PRNG;
   readonly resolver?: ActionResolver;
   readonly eventBus?: EventBus;
+  /** 通用规则开关；默认恒等，不传即全部关闭 */
+  readonly rules?: RuleSwitches;
 }
 
 /**
@@ -58,6 +60,7 @@ export class TurnManager {
   private readonly prng: PRNG;
   private readonly resolver: ActionResolver;
   private readonly eventBus: EventBus;
+  private readonly rules: RuleSwitches;
 
   private phase: TurnPhase;
   private currentTianGan: TianGanInfo | null = null;
@@ -69,6 +72,7 @@ export class TurnManager {
     this.prng = options.prng ?? createPRNG();
     this.resolver = options.resolver ?? new ActionResolver();
     this.eventBus = options.eventBus ?? new EventBus();
+    this.rules = options.rules ?? {};
     this.phase = this.state.isGameOver ? TurnPhase.GAME_OVER : TurnPhase.START_TURN;
     this.currentTianGan = this.state.currentTianGan ?? null;
   }
@@ -242,7 +246,8 @@ export class TurnManager {
 
     // 生成合法候选列表，若为连动额外行动则严格过滤爆发动作
     this.candidateActions = getAvailableActions(this.state, this.currentTianGan, {
-      isExtraTurn: this.isExtraTurn
+      isExtraTurn: this.isExtraTurn,
+      rules: this.rules
     });
 
     this.phase = TurnPhase.EXECUTE_ACTION;

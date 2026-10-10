@@ -49,6 +49,23 @@ export function getMinusTargetPolarity(node: NodeData): Polarity | null {
 
 export interface ActionCandidatesOptions {
   readonly isExtraTurn?: boolean;
+  /**
+   * 通用规则开关（默认恒等：不传即全部关闭，不改变任何行为）。
+   * 具体开关在此登记，由相应消费点读取。
+   */
+  readonly rules?: RuleSwitches;
+}
+
+/**
+ * 通用规则开关。默认恒等：所有字段缺省即为关闭，行为与未引入开关前逐字节一致。
+ * 本类型是「规则开关」的唯一入口，禁止新增第三处开关接缝。
+ */
+export interface RuleSwitches {
+  /**
+   * 关闭计分轴（board-only）：AI 动作估值忽略规则得分（scoreDelta），只按盘面判优。
+   * 该开关由 ActionEvaluator 读取；不改变动作合法性、状态转移或终局结算。默认 false。
+   */
+  readonly isBoardOnly?: boolean;
 }
 
 /**
