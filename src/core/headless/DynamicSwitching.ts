@@ -486,6 +486,10 @@ export interface DynamicSwitchingExperimentOptions extends RunConfig {
   readonly statics?: readonly StrategyVariant[];
   readonly mode?: RuleMode;
   readonly scoreConfig?: ScoreConfigVariant;
+  /** 显式规则开关覆盖；缺省时由 `mode` 推导。 */
+  readonly rules?: RuleSwitches;
+  /** 显式终局结算覆盖；缺省时由 `mode` 推导。 */
+  readonly isBoardSettlement?: boolean;
   /** 是否运行逐决策统计采集（默认 true） */
   readonly shouldCollectStats?: boolean;
 }
@@ -502,11 +506,12 @@ export function collectDynamicSwitchStats(
   scoreConfig: ScoreConfigVariant,
   matches: number,
   baseSeed: number,
-  maxRounds: number
+  maxRounds: number,
+  overrides: { readonly rules?: RuleSwitches; readonly isBoardSettlement?: boolean } = {}
 ): DynamicSwitchStatsSnapshot {
   const stats = new DynamicSwitchStats();
-  const rules = ruleSwitchesFor(mode);
-  const isBoardSettlement = isBoardSettlementFor(mode);
+  const rules = overrides.rules ?? ruleSwitchesFor(mode);
+  const isBoardSettlement = overrides.isBoardSettlement ?? isBoardSettlementFor(mode);
   const dynamic = createDynamicSwitchingStrategy(policy, scoreConfig.config, rules, stats);
   const match = new HeadlessMatch();
 
@@ -539,6 +544,8 @@ export function runDynamicSwitchingExperiment(
   const baseSeed = options.baseSeed ?? DEFAULT_BASE_SEED;
   const maxRounds = options.maxRounds ?? DEFAULT_MAX_ROUNDS;
   const shouldCollectStats = options.shouldCollectStats ?? true;
+  const rules = options.rules ?? ruleSwitchesFor(mode);
+  const isBoardSettlement = options.isBoardSettlement ?? isBoardSettlementFor(mode);
 
   const policyReports: DynamicPolicyReport[] = policies.map(policy => {
     const dynamicVariant = dynamicStrategyVariant(policy);
@@ -547,6 +554,8 @@ export function runDynamicSwitchingExperiment(
         strategies: [dynamicVariant, staticVariant],
         mode,
         scoreConfig,
+        rules,
+        isBoardSettlement,
         matches,
         baseSeed,
         maxRounds
@@ -579,7 +588,8 @@ export function runDynamicSwitchingExperiment(
           scoreConfig,
           matches,
           baseSeed,
-          maxRounds
+          maxRounds,
+          { rules, isBoardSettlement }
         )
       : emptyDynamicSwitchStats();
 
