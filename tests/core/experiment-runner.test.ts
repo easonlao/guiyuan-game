@@ -218,7 +218,7 @@ describe('Ticket 06 - 声明式矩阵 (strategy × scoreConfig × rule mode)', (
 });
 
 describe('Ticket 06 - 基线复现 (self-distortion alarm)', () => {
-  it('默认参数下复现 88.64% / 20.20 / 52.02%，容差 ≤1.5 个百分点', () => {
+  it('默认参数下复现 91.40% / 19.27 / 52.20%，容差 ≤1.5 个百分点', () => {
     const balanced = DEFAULT_STRATEGY_VARIANTS.find(variant => variant.name === '平衡')!;
     const defaultConfig = DEFAULT_SCORE_CONFIG_VARIANTS.find(
       variant => variant.name === 'default'
@@ -234,9 +234,11 @@ describe('Ticket 06 - 基线复现 (self-distortion alarm)', () => {
 
     expect(report.cells).toHaveLength(1);
     const cell = report.cells[0];
-    expect(Math.abs(cell.guiYuanRate - 0.8864)).toBeLessThanOrEqual(0.015);
-    expect(Math.abs(cell.avgRounds - 20.2)).toBeLessThanOrEqual(1.5);
-    expect(Math.abs(cell.p1WinRate - 0.5202)).toBeLessThanOrEqual(0.015);
+    // 工单 06 采纳进度定价后基线位移：归元率 88.64% → 91.40%、平均大回合 20.20 → 19.27、
+    // 先手胜率 52.02% → 52.20%（2000 局、种子 10000、平衡自对弈）。容差不变。
+    expect(Math.abs(cell.guiYuanRate - 0.914)).toBeLessThanOrEqual(0.015);
+    expect(Math.abs(cell.avgRounds - 19.27)).toBeLessThanOrEqual(1.5);
+    expect(Math.abs(cell.p1WinRate - 0.522)).toBeLessThanOrEqual(0.015);
   });
 
   it('矩阵自对弈格与直接调用 HeadlessBenchmark 完全一致 (薄层不引入偏差)', () => {

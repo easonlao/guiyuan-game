@@ -87,7 +87,7 @@ describe('Ticket 02: 2.5倍攻击压制状态分与爆发动作稀有度黑名�
   });
 
   describe('3. ActionResolver ATK 与 BURST_ATK 攻击压制状态分端到端结算', () => {
-    it('ATK: 0 -> -1 致阳道损 awards 40 behavior + 300 attack points = 340', () => {
+    it('ATK: 0 -> -1 致阳道损（生产进度定价 ×0.3）：40 behavior + 90 attack points = 130', () => {
       const state = createInitialGameState();
       // P1 木克 P2 土，初始 P2 土阳为 0 -> -1
       const res = resolver.resolve(state, {
@@ -98,12 +98,13 @@ describe('Ticket 02: 2.5倍攻击压制状态分与爆发动作稀有度黑名�
       });
 
       expect(res.success).toBe(true);
-      expect(res.scoreDelta).toBe(340);
-      expect(res.nextState.players.P1.score).toBe(340);
+      // 对手盘面无归一节点 → 进度定价 ×0.3：round(300 × 0.3) = 90；40 + 90 = 130
+      expect(res.scoreDelta).toBe(130);
+      expect(res.nextState.players.P1.score).toBe(130);
       expect(res.nextState.players.P2.board[WuXing.EARTH].yang).toBe(-1);
     });
 
-    it('ATK: 0 -> -1 致阴道损 awards 40 behavior + 250 attack points = 290', () => {
+    it('ATK: 0 -> -1 致阴道损（生产进度定价 ×0.3）：40 behavior + 75 attack points = 115', () => {
       const state = createInitialGameState();
       const res = resolver.resolve(state, {
         actionType: ActionType.ATK,
@@ -113,12 +114,13 @@ describe('Ticket 02: 2.5倍攻击压制状态分与爆发动作稀有度黑名�
       });
 
       expect(res.success).toBe(true);
-      expect(res.scoreDelta).toBe(290);
-      expect(res.nextState.players.P1.score).toBe(290);
+      // 对手盘面无归一节点 → ×0.3：round(250 × 0.3) = 75；40 + 75 = 115
+      expect(res.scoreDelta).toBe(115);
+      expect(res.nextState.players.P1.score).toBe(115);
       expect(res.nextState.players.P2.board[WuXing.EARTH].yin).toBe(-1);
     });
 
-    it('ATK: 1 -> 0 破阳点亮 awards 40 behavior + 200 attack points = 240', () => {
+    it('ATK: 1 -> 0 破阳点亮（生产进度定价 ×0.3）：40 behavior + 60 attack points = 100', () => {
       const baseState = createInitialGameState();
       const stateWithLitOpponent = {
         ...baseState,
@@ -142,12 +144,13 @@ describe('Ticket 02: 2.5倍攻击压制状态分与爆发动作稀有度黑名�
       });
 
       expect(res.success).toBe(true);
-      expect(res.scoreDelta).toBe(240);
-      expect(res.nextState.players.P1.score).toBe(240);
+      // 对手盘面无归一节点 → ×0.3：round(200 × 0.3) = 60；40 + 60 = 100
+      expect(res.scoreDelta).toBe(100);
+      expect(res.nextState.players.P1.score).toBe(100);
       expect(res.nextState.players.P2.board[WuXing.EARTH].yang).toBe(0);
     });
 
-    it('ATK: 1 -> 0 破阴点亮 awards 40 behavior + 150 attack points = 190', () => {
+    it('ATK: 1 -> 0 破阴点亮（生产进度定价 ×0.3）：40 behavior + 45 attack points = 85', () => {
       const baseState = createInitialGameState();
       const stateWithLitOpponent = {
         ...baseState,
@@ -171,12 +174,13 @@ describe('Ticket 02: 2.5倍攻击压制状态分与爆发动作稀有度黑名�
       });
 
       expect(res.success).toBe(true);
-      expect(res.scoreDelta).toBe(190);
-      expect(res.nextState.players.P1.score).toBe(190);
+      // 对手盘面无归一节点 → ×0.3：round(150 × 0.3) = 45；40 + 45 = 85
+      expect(res.scoreDelta).toBe(85);
+      expect(res.nextState.players.P1.score).toBe(85);
       expect(res.nextState.players.P2.board[WuXing.EARTH].yin).toBe(0);
     });
 
-    it('ATK: 2 -> 1 削弱加持 awards 40 behavior + 200 attack points = 240', () => {
+    it('ATK: 2 -> 1 削弱加持（生产进度定价 ×0.3）：40 behavior + 60 attack points = 100', () => {
       const baseState = createInitialGameState();
       const stateWithBlessedOpponent = {
         ...baseState,
@@ -200,12 +204,13 @@ describe('Ticket 02: 2.5倍攻击压制状态分与爆发动作稀有度黑名�
       });
 
       expect(res.success).toBe(true);
-      expect(res.scoreDelta).toBe(240);
-      expect(res.nextState.players.P1.score).toBe(240);
+      // 对手盘面无归一节点 → ×0.3：round(200 × 0.3) = 60；40 + 60 = 100
+      expect(res.scoreDelta).toBe(100);
+      expect(res.nextState.players.P1.score).toBe(100);
       expect(res.nextState.players.P2.board[WuXing.EARTH].yang).toBe(1);
     });
 
-    it('BURST_ATK: 0 -> -1 致阳道损 awards 80 behavior + 300 attack points = 380', () => {
+    it('BURST_ATK: 0 -> -1 致阳道损（生产进度定价 ×0.3）：80 behavior + 90 attack points = 170', () => {
       const baseState = createInitialGameState();
       const stateGuiYi = {
         ...baseState,
@@ -230,8 +235,9 @@ describe('Ticket 02: 2.5倍攻击压制状态分与爆发动作稀有度黑名�
       });
 
       expect(res.success).toBe(true);
-      expect(res.scoreDelta).toBe(380);
-      expect(res.nextState.players.P1.score).toBe(380);
+      // 对手盘面无归一节点 → ×0.3：round(300 × 0.3) = 90；80 + 90 = 170
+      expect(res.scoreDelta).toBe(170);
+      expect(res.nextState.players.P1.score).toBe(170);
       expect(res.nextState.players.P2.board[WuXing.EARTH].yang).toBe(-1);
     });
   });
