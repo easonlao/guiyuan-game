@@ -19,8 +19,8 @@
  *     ACTION.DISSIPATE、ACTION.PASS —— 本清单不再收录
  *   - 仅终局生效（AI 不可见）：DAMAGE_PENALTY
  *   - 规则开关 isBoardOnly 的活消费者是估值器；无头入口的 `rules` 在策略为权重模板时
- *     与 scoreConfig 一起绑定 AI 估值器（活）；TurnManager / ActionCandidates 上的
- *     `rules` 只转发到候选接缝，当前无消费者（死）。
+ *     与 scoreConfig 一起绑定 AI 估值器（活）。TurnManager / ActionCandidates 上的
+ *     `rules` 转发已由 dead-scoring-code-removal 工单删除。
  */
 
 import { describe, it, expect } from 'vitest';
@@ -376,23 +376,6 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
       tianGan: JIA_WOOD_YANG,
       action: ATK_YIN
     })
-  },
-  {
-    // 未接线：生产 POINTS_CONFIG 不设置 RACE_DIFF_PRICING，raceDiffPoints 恒等 0。
-    // 探针用双方落后量相等的对称盘面，故即使设置 gain 也不改变输出（"死"指生产不生效，
-    // 而非代码路径不存在——一旦在不对称盘面上配置该字段，它会被 ActionResolver 读取）。
-    knob: 'RACE_DIFF_PRICING',
-    aiReads: false,
-    terminalReads: false,
-    mutate: () => ({ ...POINTS_CONFIG, RACE_DIFF_PRICING: { gain: 120 } }),
-    scenario: () => ({
-      state: gameStateWith({
-        P1: { [WuXing.WOOD]: { yang: 1 }, [WuXing.EARTH]: { yin: 0 } },
-        P2: { [WuXing.WOOD]: { yang: 1 }, [WuXing.EARTH]: { yin: 0 } }
-      }),
-      tianGan: JIA_WOOD_YANG,
-      action: ATK_YIN
-    })
   }
 ];
 
@@ -401,15 +384,14 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
  *
  * 类型标注为 `Record<keyof PointsConfig, true>`：漏字段或多字段都会让 `npm run typecheck` 报错，
  * 因此这份运行时清单始终与接口声明同步。完整性断言用它（而不是 `Object.keys(POINTS_CONFIG)`）做差集，
- * 因为后者看不到可选字段——例如 `RACE_DIFF_PRICING` 从未在 `POINTS_CONFIG` 里设置。
+ * 因为后者看不到接口声明的可选字段。
  */
 const POINTS_CONFIG_FIELDS: Record<keyof PointsConfig, true> = {
   ACTION: true,
   STATE_CHANGE: true,
   GUI_YI_MILESTONE: true,
   DAMAGE_PENALTY: true,
-  ATTACK_PROGRESS_SCALE: true,
-  RACE_DIFF_PRICING: true
+  ATTACK_PROGRESS_SCALE: true
 };
 
 /**
@@ -516,9 +498,7 @@ describe('Ticket 05 — 计分参数普查 (PointsConfig)：AI 估值 / 终局�
 
   it('死参数清单（AI 不读、终局不读、扰动无变化）', () => {
     const dead = SCORING_KNOBS.filter(row => !row.aiReads && !row.terminalReads).map(row => row.knob);
-    expect(dead).toEqual([
-      'RACE_DIFF_PRICING'
-    ]);
+    expect(dead).toEqual([]);
   });
 
   it('「仅终局生效」类当前唯一成员是 DAMAGE_PENALTY（终局读、AI 不读）', () => {

@@ -296,7 +296,7 @@ export class HeadlessMatch {
       }
 
       const tianGan = drawTianGan(prng);
-      const candidates = getAvailableActions(state, tianGan, { isExtraTurn, rules });
+      const candidates = getAvailableActions(state, tianGan, { isExtraTurn });
       const currentStrategy = state.currentPlayer === 'P1' ? resolvedP1 : resolvedP2;
       let action = currentStrategy(state, tianGan, candidates);
 

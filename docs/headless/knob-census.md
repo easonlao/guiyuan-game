@@ -12,6 +12,7 @@
 >
 > 术语以 `GLOSSARY.md` 为准；指标口径见 `docs/headless/metric-definitions.md`。
 > 本票只做普查：**不删除、不接线、不改规则**。死参数的「处置建议」是建议，接线属于新机制，不在本票范围。
+> 后续 `dead-scoring-code-removal` 工单已按本表建议删除死参数（见 §5），本文其余内容与当前代码一致。
 
 ## 0. 结论速览
 
@@ -19,8 +20,8 @@
 | --- | --- |
 | **活参数（AI 估值读取）** | `PointsConfig.ACTION.{AUTO,CONVERT,TRANS,ATK,BURST,BURST_ATK}`、`PointsConfig.STATE_CHANGE.*`（9 个标量）、`PointsConfig.GUI_YI_MILESTONE`、`PointsConfig.ATTACK_PROGRESS_SCALE`、`StrategyWeights.*`（12 个）、`RuleSwitches.isBoardOnly`（经策略构造器或权重模板策略绑定） |
 | **仅终局生效（终局读、AI 不读）** | `PointsConfig.DAMAGE_PENALTY`（**当前唯一成员**） |
-| **死参数（AI 不读、终局不读、扰动无变化）** | `PointsConfig.RACE_DIFF_PRICING`（生产未配置）。原列的 `PointsConfig.ACTION.DISSIPATE`、`PointsConfig.ACTION.PASS`、`PointsConfig.RARITY_MULTIPLIER`、`PointsConfig.NO_RARITY_ACTIONS`、`ACTION_PROBABILITY`、`ScoreConfig`/`DEFAULT_SCORE_CONFIG`、`ScoreCalculator.applyRarityBonus`/`isNoRarityAction` 已由 dead-scoring-code-removal 工单删除（见 §5） |
-| **接线但无消费者（转发死参数）** | `TurnManagerOptions.rules`、`ActionCandidatesOptions.rules`、`BenchmarkOptions.recordActions` |
+| **死参数（AI 不读、终局不读、扰动无变化）** | 无。原列的 `PointsConfig.RACE_DIFF_PRICING`、`PointsConfig.ACTION.DISSIPATE`、`PointsConfig.ACTION.PASS`、`PointsConfig.RARITY_MULTIPLIER`、`PointsConfig.NO_RARITY_ACTIONS`、`ACTION_PROBABILITY`、`ScoreConfig`/`DEFAULT_SCORE_CONFIG`、`ScoreCalculator.applyRarityBonus`/`isNoRarityAction` 已由 dead-scoring-code-removal 工单删除（见 §5） |
+| **接线但无消费者（转发死参数）** | 无。原列的 `TurnManagerOptions.rules`、`ActionCandidatesOptions.rules`、`BenchmarkOptions.recordActions` 已由 dead-scoring-code-removal 工单删除（见 §5） |
 
 ---
 
@@ -50,9 +51,6 @@
 | `GUI_YI_MILESTONE` | 是 | 是 | 是 | 活 | `ActionResolver.ts` 进入 `scoreDelta`；`ScoreCalculator.ts` 提供缺省回退 60 |
 | `DAMAGE_PENALTY` | 否 | 是 | 是 | **仅终局生效** | `ActionResolver.ts`，只在 `MAX_ROUNDS` 结算分支从 `finalScore` 扣减，**从不进入 `scoreDelta`**；`ScoreCalculator.ts` 缺省回退 50 |
 | `ATTACK_PROGRESS_SCALE` | 是 | 是 | 是 | 活 | `ScoreCalculator.ts`（`attackProgressScale` = floor + span×count/5）；`ActionResolver.ts` 缩放 ATK/BURST_ATK 的攻击状态分 |
-| `RACE_DIFF_PRICING` | 否 | 否 | 否 | **死（生产未配置）** | `ScoreCalculator.ts`（`raceDiffPoints`）；`ActionResolver.ts` 的应用点存在，但生产 `POINTS_CONFIG` 不设置该字段，恒等 0 |
-
-`RACE_DIFF_PRICING` 的「死」指**生产不生效**：生产 `POINTS_CONFIG` 不设置该字段（`raceDiffPoints` 恒等 0），故三个探针列均为「否」；但机制代码存在——一旦在不对称盘面（双方落后量不等）上配置 `gain`，它会被 `ActionResolver` 读取并进入 `scoreDelta`。清单把它记为死参数是因为它不影响生产行为。
 
 **同族但不在 `PointsConfig` 内的死物**（一并列出，避免被误认为生效）：
 
@@ -82,14 +80,13 @@
 
 **活路径**：`createStrategy(weights, { rules })`（`Strategy.ts`）或 `createScoreBoundStrategy(weights, config, rules)`（`Strategy.ts`）把 `rules` 交给估值器；`GameManager` 走这条路（`game-manager.ts`）。
 无头入口新增第三条活路径（ticket 01/04 修复）：`HeadlessMatch.run(strategy=weights, { rules })` 与 `HeadlessBenchmark.run({ strategyP1: weights, rules })` 由 `resolveStrategy`（`HeadlessMatch.ts`）用同一份 `rules` 构造 score-bound 策略，因此 `MatchOptions.rules`（`HeadlessMatch.ts`）、`BenchmarkOptions.rules`（`HeadlessBenchmark.ts`）、`HeadlessMatchConfig.rules`（`HeadlessMatch.ts`）在策略为权重模板时都到达 AI 估值器。
-**仍无消费者的转发路径**：`getAvailableActions` 只读 `options?.isExtraTurn`，从不读 `options?.rules`（`ActionCandidates.ts`；`rules` 字段在 `ActionCandidatesOptions` 声明后无人读）。因此 `TurnManagerOptions.rules`（`TurnManager.ts`）与 `ActionCandidatesOptions.rules` 仍是转发死参数。
+**已删除的转发死路径**：`TurnManagerOptions.rules` / `ActionCandidatesOptions.rules` 只转发到候选接缝而无人读，已由 dead-scoring-code-removal 工单删除（`ActionCandidatesOptions` 现只保留 `isExtraTurn`）。
 
 ### 2.2 `ActionCandidatesOptions`（`ActionCandidates.ts`）
 
 | 参数 | AI 估值读取 | 终局判定读取 | 扰动输出变化 | 结论 |
 | --- | :---: | :---: | :---: | --- |
 | `isExtraTurn` | 间接（过滤候选集） | 否 | 是（爆发候选被过滤，`ActionCandidates.ts`） | 活（行为过滤；由连动状态派生，非调参旋钮） |
-| `rules` | 否 | 否 | 否 | 死转发（候选接缝不读） |
 
 ### 2.3 `TurnManagerOptions`（`TurnManager.ts`）
 
@@ -99,7 +96,6 @@
 | `prng` | 间接（决定抽天干） | 间接 | 是 | 活（输入） |
 | `resolver` | 否 | 是（动作结算/终局分数） | 是 | 活（结算注入） |
 | `eventBus` | 否 | 否 | 仅事件（不改状态/分数） | 观察通道，非平衡旋钮 |
-| `rules` | 否 | 否 | 否 | 死转发（只转发到候选接缝） |
 
 ### 2.4 `GameManagerOptions`（`game-manager.ts`）
 
@@ -130,7 +126,6 @@
 | `baseSeed` | 间接 | 间接 | 是 | 活 |
 | `maxRounds` | 间接 | 是 | 是 | 活 |
 | `strategyP1` / `strategyP2` | 是（权重模板经 `resolveStrategy` 绑定 AI 估值器；已构造策略按其自身估值器） | 间接 | 是 | 活（接受 `DecisionStrategy` 或 `StrategyWeights`） |
-| `recordActions` | 否 | 否 | **否** | 死转发：转发到 `HeadlessMatch`（`HeadlessBenchmark.ts`），但 `BenchmarkMetrics` 不暴露逐动作记录 |
 | `scoreConfig` | 是（策略为权重模板时） | 是（平均分） | 是 | 活：同时到达解析器与 AI 估值器 |
 | `rules` | 是（策略为权重模板时） | 否 | 是 | 活（同上） |
 | `isBoardSettlement` | 否 | 是（回合上限按盘面进度判胜负） | 是 | 活（ticket 09 board-only 实验模式；默认 false） |
@@ -142,7 +137,7 @@
 | `HeadlessMatchConfig.resolver` | `HeadlessMatch` 结算 | 否 | 是 | 是 | 活（结算注入） |
 | `HeadlessMatchConfig.scoreCalculator` | 构造 resolver | 否 | 是 | 是 | 活（结算注入） |
 | `HeadlessMatchConfig.scoreConfig` | AI 估值路径的计分配置 | 是（策略为权重模板时） | 否 | 是 | 活 |
-| `HeadlessMatchConfig.rules` | 转发到候选接缝，并作为权重模板策略的规则默认值 | 是（策略为权重模板时） | 否 | 是 | 活（权重模板策略） |
+| `HeadlessMatchConfig.rules` | 作为权重模板策略的规则默认值 | 是（策略为权重模板时） | 否 | 是 | 活（权重模板策略） |
 | `StrategyOptions.evaluator` | `createStrategy` | 是 | 否 | 是 | 活 |
 | `StrategyOptions.tieBreaker` | `createStrategy` 并列裁决 | 是（并列时改选动作） | 否 | 是 | 活 |
 | `StrategyOptions.rules` | `evaluateAll` → 估值器 | 是 | 否 | 是 | 活 |
@@ -200,18 +195,19 @@
 
 ---
 
-## 5. 死参数清单与处置建议
+## 5. 死参数清单与处置结果
 
-处置只给建议，本票不实施。**接线属于新机制，明确不在本票范围。**
+本票（工单 05）只给建议；后续工单 `dead-scoring-code-removal` 已按下表实施删除。三个未接线的选项旋钮（工单 02）一律 **DELETE**，不接线：规则只属于策略层，批量报告不需要逐动作证据。
 
-> 其中标 **DELETE** 的死参数（`RARITY_MULTIPLIER`、`NO_RARITY_ACTIONS`、`ACTION_PROBABILITY`、`applyRarityBonus`/`isNoRarityAction`、`ScoreConfig`/`DEFAULT_SCORE_CONFIG`、`ACTION.DISSIPATE`、`ACTION.PASS`）已由 dead-scoring-code-removal 工单删除，故不再列入下表；下表只保留尚未处置的项。
-
-| 死参数 | 死因 | 处置建议 |
+| 死参数 | 死因 | 处置 |
 | --- | --- | --- |
-| `PointsConfig.RACE_DIFF_PRICING` | 生产 `POINTS_CONFIG` 不设置该字段，`raceDiffPoints` 恒等 0；机制代码存在但未接线 | **WIRE 或 DELETE**：若采纳赛跑差定价则接入生产并移入活参数；否则删除该字段 |
-| `MatchOptions.rules` / `BenchmarkOptions.rules` / `HeadlessMatchConfig.rules` | **已接线**（ticket 01/04 修复）：策略为权重模板时经 `resolveStrategy` 绑定 AI 估值器 | **已移出死参数清单** |
-| `TurnManagerOptions.rules` / `ActionCandidatesOptions.rules` | 只转发到候选接缝，而候选接缝从不读 `rules` | **WIRE 或 DELETE（二选一）**：若规则模式应同时影响候选生成，则让 `getAvailableActions` 读 `isBoardOnly`（统一入口）；若规则只属于策略，则删除这些转发字段 |
-| `BenchmarkOptions.recordActions` | 转发到 `HeadlessMatch`，但 `BenchmarkMetrics` 不暴露逐动作记录 | **WIRE 或 DELETE**：若批量报告需要逐动作证据，在 `BenchmarkMetrics` 暴露；否则删除该字段，避免误以为批量运行会采集动作 |
+| `PointsConfig.RACE_DIFF_PRICING`（连同 `raceDiffPoints` 与 `ActionResolver` 应用点） | 生产 `POINTS_CONFIG` 不设置该字段，`raceDiffPoints` 恒等 0；机制代码存在但未接线 | **已删除**（工单 02） |
+| `TurnManagerOptions.rules` / `ActionCandidatesOptions.rules` | 只转发到候选接缝，而候选接缝从不读 `rules` | **已删除**（工单 02；规则只属于策略层，不影响候选生成） |
+| `BenchmarkOptions.recordActions` | 转发到 `HeadlessMatch`，但 `BenchmarkMetrics` 不暴露逐动作记录 | **已删除**（工单 02） |
+| `RARITY_MULTIPLIER`、`NO_RARITY_ACTIONS`、`ACTION_PROBABILITY`、`applyRarityBonus`/`isNoRarityAction`、`ScoreConfig`/`DEFAULT_SCORE_CONFIG`、`ACTION.DISSIPATE`、`ACTION.PASS` | 稀有度链与零分动作旋钮在生产路径无消费者 | **已删除**（工单 01） |
+| `MatchOptions.rules` / `BenchmarkOptions.rules` / `HeadlessMatchConfig.rules` | **已接线**（ticket 01/04 修复）：策略为权重模板时经 `resolveStrategy` 绑定 AI 估值器 | **已移出死参数清单**（保留为活参数） |
+
+至此本文活/死清单中的死参数为空；唯一保留的「非活」类是「仅终局生效」的 `DAMAGE_PENALTY`（见 §6）。
 
 ---
 

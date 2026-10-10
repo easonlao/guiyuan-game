@@ -30,7 +30,7 @@ const HELP_TEXT = `归元弈 (Guiyuan) 候选验证命令 (Ticket 05)
 
 选项:
   --candidate <name>    注册候选: production (默认) / progress-pricing / weaken-zero /
-                        race-diff / structured-reduction / board-progress-settlement
+                        structured-reduction / board-progress-settlement
   --name <name>         报告标题覆盖 (默认取注册候选名)
   --description <text>  候选说明覆盖
   --mode <mode>         终局结算方式: scoring (默认) / board-only

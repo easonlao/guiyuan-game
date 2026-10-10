@@ -365,9 +365,8 @@ const BENCHMARK_INJECTION_POINTS: readonly InjectionPoint<BenchmarkMetrics>[] = 
     },
     observe: m => [m.guiYuanCount, m.avgRounds]
   }
-  // 说明：BenchmarkOptions.recordActions 与 .rules 转发到 HeadlessMatch.run，但
-  // BenchmarkMetrics 不暴露逐动作记录；recordActions 在单局表已覆盖，rules 的
-  // boardOnly 在候选接缝恒等（见下节），故不在此重复成行。
+  // 说明：BenchmarkOptions.rules 转发到 HeadlessMatch.run，经权重模板策略到达 AI 估值器，
+  // 与单局表的 `RuleSwitches.isBoardOnly（AI 估值器路径）` 同一路径，故不在此重复成行。
 ];
 
 describeInjectionTable('主接缝 HeadlessMatch.run：每个旋钮都到达消费者', MATCH_INJECTION_POINTS);
@@ -422,15 +421,7 @@ describe('HeadlessMatch 构造函数实例级注入', () => {
 // 规则开关在候选接缝上的默认恒等（转交 Ticket 05）
 // ---------------------------------------------------------------------------
 
-describe('规则开关在候选接缝上是默认恒等（消费者是估值器，不是候选生成器）', () => {
-  it('ActionCandidatesOptions.rules 当前不改变合法候选集合（boardOnly 恒等）', () => {
-    const state = createInitialGameState(MAX_ROUNDS);
-    const tianGan = TIAN_GAN_LIST[0];
-    const plain = getAvailableActions(state, tianGan);
-    const switched = getAvailableActions(state, tianGan, { rules: { isBoardOnly: true } });
-    expect(switched).toEqual(plain);
-  });
-
+describe('候选接缝选项：isExtraTurn 过滤爆发候选（连动锁）', () => {
   it('ActionCandidatesOptions.isExtraTurn 过滤爆发候选（连动锁）', () => {
     const base = createInitialGameState(MAX_ROUNDS);
     const tianGan = TIAN_GAN_LIST[0]; // 甲木（阳）

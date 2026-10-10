@@ -7,12 +7,10 @@ import {
   BALANCED_WEIGHTS
 } from '../../src/core/ai/Strategy.js';
 import { PointsConfig, POINTS_CONFIG, ScoreCalculator } from '../../src/core/logic/ScoreCalculator.js';
-import { getAvailableActions } from '../../src/core/logic/ActionCandidates.js';
-import { TurnManager } from '../../src/core/logic/TurnManager.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
-import { createPRNG, PRNG } from '../../src/core/utils/prng.js';
+import { PRNG } from '../../src/core/utils/prng.js';
 import { GameManager } from '../../src/minigame/game-manager.js';
-import { TIAN_GAN_LIST, WuXing, type GameState } from '../../src/core/types/domain.js';
+import { WuXing, type GameState } from '../../src/core/types/domain.js';
 
 const SEED = 4242;
 const MAX_ROUNDS = 30;
@@ -181,15 +179,6 @@ describe('Ticket 01 - headless scoring-config injection', () => {
       expect(explicitFalse.record).toEqual(omitted.record);
       expect(explicitFalse.finalP1Score).toBe(omitted.finalP1Score);
     });
-
-    it('the board-only switch does not alter the candidate set (candidate seam is default-identity)', () => {
-      const state = createInitialGameState(MAX_ROUNDS);
-      const tianGan = TIAN_GAN_LIST[0];
-      const plain = getAvailableActions(state, tianGan);
-      const withSwitch = getAvailableActions(state, tianGan, { rules: { isBoardOnly: true } });
-
-      expect(withSwitch).toEqual(plain);
-    });
   });
 
   describe('HeadlessBenchmark batch entry', () => {
@@ -249,13 +238,6 @@ describe('Ticket 01 - headless scoring-config injection', () => {
   });
 
   describe('in-game entry (TurnManager / GameManager)', () => {
-    it('TurnManager accepts rules and keeps candidate generation unchanged by default', () => {
-      const plain = new TurnManager({ prng: createPRNG(777), rules: {} });
-      const switched = new TurnManager({ prng: createPRNG(777), rules: { isBoardOnly: true } });
-
-      expect(switched.startTurn()).toEqual(plain.startTurn());
-    });
-
     it('GameManager binds the rule switch to its AI valuation path', () => {
       // 受控盘面：P2 木归一 (1,1)，火阳道损；P1 土 (-1,0)。
       // 固定抽 甲木（阳）：候选为 ATK / BURST / BURST_ATK。

@@ -171,25 +171,6 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     expect(metrics.showdownFailRate).toBeGreaterThanOrEqual(0);
   });
 
-  it('should handle recordActions option properly', () => {
-    const benchmark = new HeadlessBenchmark();
-    const metricsWithRecord = benchmark.run({
-      matches: 10,
-      baseSeed: 50000,
-      recordActions: true
-    });
-
-    const metricsWithoutRecord = benchmark.run({
-      matches: 10,
-      baseSeed: 50000,
-      recordActions: false
-    });
-
-    expect(metricsWithRecord.p1Wins).toBe(metricsWithoutRecord.p1Wins);
-    expect(metricsWithRecord.p2Wins).toBe(metricsWithoutRecord.p2Wins);
-    expect(metricsWithRecord.guiYuanCount).toBe(metricsWithoutRecord.guiYuanCount);
-  });
-
   it('should handle zero matches edge case safely without dividing by zero', () => {
     const benchmark = new HeadlessBenchmark();
     const metrics = benchmark.run({ matches: 0 });

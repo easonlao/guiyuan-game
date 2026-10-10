@@ -6,6 +6,11 @@
 >
 > 搜索有界：**最多 5 个候选，每个都跑完四条标准**。候选内部的 floor/span、gain/cap 等
 > 参数扫描只是该候选的调参，不引入新候选，单列在 §6。测量台与实验命令不因本票回退。
+>
+> **勘误（dead-scoring-code-removal 工单 02）**：候选 C「赛跑差定价」的机制
+> （`PointsConfig.RACE_DIFF_PRICING` / `ScoreCalculator.raceDiffPoints` / `ActionResolver` 应用点 /
+> `CANDIDATE_C` / `RACE_DIFF_POINTS_CONFIG`）已随死旋钮删除，故 `--candidate race-diff` 不再可用。
+> 下文候选 C 的历史测量与结论作为归档保留，不再复现；其余候选与生产基线不受影响。
 
 ## 0. 复跑命令
 
@@ -15,10 +20,10 @@
 npm run benchmark:candidate-validation -- --candidate progress-pricing --matches 2000 --seed 20000
 npm run benchmark:candidate-validation -- --candidate progress-pricing --matches 2000 --seed 10000
 
-# 五个候选 A–E 的筛查（每座次 300 局，种子 10000），每个都跑完四条标准
+# 候选 A/B/D/E 的筛查（每座次 300 局，种子 10000），每个都跑完四条标准
+# （候选 C「race-diff」已删除，见文首勘误）
 npm run benchmark:candidate-validation -- --candidate progress-pricing --matches 300 --seed 10000
 npm run benchmark:candidate-validation -- --candidate weaken-zero --matches 300 --seed 10000
-npm run benchmark:candidate-validation -- --candidate race-diff --matches 300 --seed 10000
 npm run benchmark:candidate-validation -- --candidate structured-reduction --matches 300 --seed 10000
 npm run benchmark:candidate-validation -- --candidate board-progress-settlement --matches 300 --seed 10000
 
@@ -59,7 +64,7 @@ D 的强/温和）只是该候选的调参，不是新候选（§6）。
 | --- | --- | --- | --- | --- | --- | --- |
 | **A 进度定价** | 攻击状态分 × `floor + span × 对手归一进度`（0.3/0.9） | 无法判定（4 对 within-noise） | 过 | 过（归元率 90.40%） | 失败（M=300 样本不足；M=2000 + 调优动态全胜） | **采纳** |
 | **B 空枪定价** | `WEAKEN: 200 → 0` | **失败**（激进压制 6/6 占优） | 过 | 过（88.40%） | 失败（对激进压制 50.50%） | 拒绝：命中面 ~2.7% 太窄 |
-| **C 赛跑差定价** | 攻击动作附加 `120 × (己方落后量 − 对手落后量)`，无 cap | 无法判定（8 对 within-noise） | 过 | 过（80.80%，先手 45.40% 贴边） | 失败（对激进压制 48.83%） | 拒绝：翻转不可达 |
+| **C 赛跑差定价** | 攻击动作附加 `120 × (己方落后量 − 对手落后量)`，无 cap（机制已删除，见文首勘误） | 无法判定（8 对 within-noise） | 过 | 过（80.80%，先手 45.40% 贴边） | 失败（对激进压制 48.83%） | 拒绝：翻转不可达 |
 | **D 结构化下调** | `WEAKEN → 0` + `CAUSE_DMG → 120/100` | **失败**（激进压制 6/6 占优） | 过 | **失败**（归元率 97.80% > 95%） | 失败 | 拒绝：与 ADR 0010 同款击穿护栏 |
 | **E 盘面进度结算** | 计分不变，回合上限按盘面进度判负（`isBoardSettlement: true`） | **失败**（剥离计分 6/6 占优） | 过 | 过（88.40%） | 失败（对剥离计分 36.75%） | 拒绝：盘面结算同样奖励压制 |
 

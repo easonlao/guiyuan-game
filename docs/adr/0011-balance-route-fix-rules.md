@@ -251,3 +251,11 @@ npm run benchmark:candidate-validation -- --candidate progress-pricing --matches
 | **E 盘面进度结算** | 计分不变，回合上限按盘面进度判负（`isBoardSettlement: true`） | C1（剥离计分 6/6 占优）、C4（对剥离计分 36.75%） |
 
 候选内部的参数扫描（A 的 floor/span、C 的 gain/cap、D 的强/温和）是该候选的调参，不引入新机制、不占新候选名额。A 的可行域 0.25–0.45 × 0.7–0.95，采纳 0.3/0.9（选点依据是搜索实测——A(0.3, 0.9) 四条验收标准全过，见 §2；并非「居中」，可行域中心实为 0.35/0.825，0.3 距下界仅 0.05）。
+
+## 勘误：死旋钮已按本 ADR 建议删除（后续修订追加）
+
+本节只记录现状，不改变上述决策本身。
+
+「证据 1」缺陷 8 与「决策 3」所述「`TurnManagerOptions.rules` / `ActionCandidatesOptions.rules` 仍无消费者」已由 dead-scoring-code-removal 工单 02 处置为 **DELETE**（规则只属于策略层，不影响候选生成）：`TurnManagerOptions.rules`、`ActionCandidatesOptions.rules` 及其转发链已删除。同一工单还删除了同样只转发不生效的 `BenchmarkOptions.recordActions`（`BenchmarkMetrics` 不暴露逐动作记录），以及从未在 `POINTS_CONFIG` 中设置、恒等 0 的 `PointsConfig.RACE_DIFF_PRICING`（连同 `ScoreCalculator.raceDiffPoints` 与 `ActionResolver` 应用点）。
+
+「决策 3」中稀有度整条链（`RARITY_MULTIPLIER` / `NO_RARITY_ACTIONS` / `applyRarityBonus` / `isNoRarityAction`）已由工单 01 删除；`PointsConfig.DAMAGE_PENALTY` 仍为「仅终局生效」的活参数（终局读、AI 不读），未删除。现状清单见 `docs/headless/knob-census.md` §5。
