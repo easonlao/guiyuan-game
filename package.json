@@ -13,6 +13,8 @@
     "benchmark:headless": "npx tsx src/core/headless/HeadlessBenchmark.ts",
     "benchmark:experiment": "npx tsx src/core/headless/ExperimentRunner.ts",
     "benchmark:head-to-head": "npx tsx src/core/headless/ExperimentRunner.ts --scan head-to-head",
+    "benchmark:board-only": "npx tsx src/core/headless/ExperimentRunner.ts --scan head-to-head --mode board-only",
+    "benchmark:board-value": "npx tsx src/core/headless/ExperimentRunner.ts --scan head-to-head --mode both",
     "build:minigame": "node scripts/build-minigame.mjs",
     "dev:minigame": "node scripts/build-minigame.mjs --watch",
     "stryker": "stryker run"
