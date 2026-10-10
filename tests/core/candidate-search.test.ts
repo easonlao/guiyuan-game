@@ -118,7 +118,7 @@ describe('Ticket 05 - 候选 A/B/D/E 的机制与注册', () => {
       expect(resolved.pointsConfig).toBeDefined();
       expect(resolved.rules).toBeDefined();
     }
-    // 生产基线不在五个候选内，但注册表包含它。
+    // 生产基线不在四个候选内，但注册表包含它。
     expect(candidates.map(spec => spec.name)).not.toContain(PRODUCTION_CANDIDATE.name);
     expect(CANDIDATE_REGISTRY[PRODUCTION_CANDIDATE.name]).toBeDefined();
   });
