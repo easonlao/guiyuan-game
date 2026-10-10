@@ -23,6 +23,9 @@ dist-ssr/
 # Regenerable codegraph index
 .codegraph/
 
+# Mutation testing reports (Stryker)
+reports/
+
 # Logs
 logs/
 *.log
