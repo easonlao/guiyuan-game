@@ -1,6 +1,6 @@
 # 指标口径表 (Metric Definitions)
 
-> 本文是测量台所有指标的**唯一定义处**。每个指标都只从 `HeadlessMatch.run` 的返回值 `MatchResult` 派生。
+> 本文是测量台所有指标的**唯一定义处**。除场景接缝的 `atkTempoGain`（从两张受控 `BoardState` 派生）外，每个指标都只从 `HeadlessMatch.run` 的返回值 `MatchResult` 派生。
 > 代码实现在 `src/core/headless/Metrics.ts`；陷阱回归测试在 `tests/core/metric-definitions.test.ts`。
 > 术语以 `GLOSSARY.md` 为准。任何报告引用指标时，请引用本表，不要另起口径。
 
@@ -13,7 +13,7 @@
 | `createGameMetricsAccumulator()` / `accumulateMatchMetrics` / `finalizeGameMetrics` | 增量聚合（`HeadlessBenchmark.run` 使用，避免缓存全部对局） |
 
 - 终局形态、胜负、回合数、天命揭牌、盘面指标直接读 `MatchResult` 字段与 `finalState`。
-- 压制度量与建设度量需要 `MatchOptions.collectStats = true`；未采集时单局值为 `null`（不臆造 0）。
+- 压制度量与建设度量需要 `MatchOptions.shouldCollectStats = true`；未采集时单局值为 `null`（不臆造 0）。
   `HeadlessBenchmark.run` 始终采集，因此批量报告恒有这两项。
 - 单局与批量的区别：`MatchMetrics` 是单局快照；`GameMetrics` 是批量均值/比率。
 
@@ -39,9 +39,10 @@
 | 对手残留道损 `opponentResidualDamage` | 终局盘面上等级为 -1 的侧数（双方盘面残留道损的场均） | 每局 `(countBoardDamage(P1) + countBoardDamage(P2)) / 2` 的场均 | 只统计终局残留，不是整局累计造成的伤害。累计伤害见压制度量。 |
 | 未点亮侧数 `unlightedSides` | 盘面上等级 < 1 的侧数（虚空 0 与道损 -1 都算） | `10 - 已点亮侧数` | 把道损 -1 与虚空 0 等同。一个道损侧「差 1 侧到归一」其实需要 2 次提升，进度会被高估。 |
 | 归一节点数 `guiYiNodes` | 阴阳两侧均 >= 1 的节点数 | `isNodeGuiYi` 计数 | 只看归一节点数看不出等级：全 1 与全 2 都算归一，掩盖亢极与后续爆发能力。 |
-| 听牌临界态 `tingPai` | 未点亮侧数严格等于 1 | `countUnlightedSides === 1` | **反直觉**：唯一未点亮侧若处于道损 -1，单抽天干数学上无法点亮（`canTianGanLightUnlightedSide` 返回 false），此时「听牌」并不等于「还差 1 次行动」——进度差见盘面进度 `actionsToGuiYuan`（道损的最后一侧记 2 次行动）。 |
+| 听牌临界态 `isTingPai` | 未点亮侧数严格等于 1 | `countUnlightedSides === 1` | **反直觉**：唯一未点亮侧若处于道损 -1，单抽天干数学上无法点亮（`canTianGanLightUnlightedSide` 返回 false），此时「听牌」并不等于「还差 1 次行动」——进度差见盘面进度 `actionsToGuiYuan`（道损的最后一侧记 2 次行动）。 |
 | 道损数 `residualDamage` | 等级为 -1 的侧数 | `countBoardDamage` | 与压制度量混淆：道损数是终局快照，压制度量是整局累计的等级下降量；一次 2 -> 1 不产生道损。 |
 | 盘面进度 `actionsToGuiYuan` | 还差几次行动到五行归元（单侧提升 1 级记 1 次行动） | `未点亮侧数 + 道损数`（`countActionsToGuiYuan`）：虚空 0 需 1 次，道损 -1 需 2 次；五行归元完成时为 0 | 把它读成「还需几次抽天干」会低估：一个行动不必然点亮一侧（受生克与极性限制），本指标是**最少**行动数下界，不是实际抽数。 |
+| 【破】盘面边际收益 `atkTempoGain` | 一次【破】使对手「还差几次行动到五行归元」增加的次数（ticket 08 的盘面价值口径） | `countActionsToGuiYuan(opponentAfter) - countActionsToGuiYuan(opponentBefore)`：虚空 0 -> 道损 -1 记 +1；点亮 1 -> 虚空 0 记 +1；加持 2 -> 点亮 1 记 0；已道损（封顶）记 0 | 把它当成一次【破】的得分收益会混淆盘面与计分。它只读盘面等级，不读分数、权重或计分配置，因此专门用于**剥离计分**地测量压制动作的盘面价值（ticket 08/09）。注意它是**绝对**盘面收益，不含机会成本：一次【破】的 +1 与一次推进的 +1 在赛跑上是等价的。 |
 
 > 受控盘面 fixture 构造器在 `src/core/headless/BoardFixture.ts`：`boardWith(overrides)` 构造棋盘，`gameStateWith(options)` 在 `createInitialGameState()` 之上构造完整总状态（spec Implementation Decisions #9）。
 
@@ -53,7 +54,7 @@
 
 - **旧错误**：压制度量按「未点亮侧数」统计。`(2,2) -> (1,2)` 的未点亮侧数不变，于是记为 0 削弱，得出「压制无价值」的相反结论。
 - **正确口径**：按等级下降量统计，`2 -> 1`、`1 -> 0`、`0 -> -1` 各记 1。
-- **实现**：`measureBoardDiff`（`src/core/logic/State.ts`），由 `HeadlessMatch` 在 `collectStats` 时逐步累加，经 `Metrics.deriveMatchMetrics` 暴露为 `suppressionLevels`。
+- **实现**：`measureBoardDiff`（`src/core/logic/State.ts`），由 `HeadlessMatch` 在 `shouldCollectStats` 时逐步累加，经 `Metrics.deriveMatchMetrics` 暴露为 `suppressionLevels`。
 - **测试**：`陷阱 A: 加持 2 -> 点亮 1 必须记为 1 次削弱`。旧口径断言为 0（证明旧错误确实给出相反结论），正确口径断言为 1。
 
 ### 陷阱 B：占优结论必须附带跨策略对拼矩阵
@@ -85,7 +86,7 @@ import { balancedStrategy } from '../src/core/ai/Strategy.js';
 const result = new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
   seed: 10000,
   maxRounds: 30,
-  collectStats: true
+  shouldCollectStats: true
 });
 const single = deriveMatchMetrics(result);
 // single.suppressionLevels.P1 / .P2、single.board.P1.unlightedSides ...

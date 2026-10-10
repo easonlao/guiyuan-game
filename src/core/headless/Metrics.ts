@@ -5,7 +5,7 @@
  * 每个指标都只从 HeadlessMatch.run 的返回值 MatchResult 派生：
  *   - 终局形态 / 胜负 / 回合数 / 天命揭牌：直接读 MatchResult 字段；
  *   - 盘面进度指标（未点亮侧数、归一节点数、听牌临界态、道损数）：读 finalState；
- *   - 压制度量 / 建设度量：读 MatchResult.stats（需 collectStats: true）。
+ *   - 压制度量 / 建设度量：读 MatchResult.stats（需 shouldCollectStats: true）。
  *
  * 口径陷阱见 docs/headless/metric-definitions.md 与 tests/core/metric-definitions.test.ts。
  */
@@ -77,7 +77,7 @@ export interface PlayerBoardMetrics {
   /** 归一节点数：阴阳两侧均 >= 1 的节点数 */
   readonly guiYiNodes: number;
   /** 听牌临界态：未点亮侧数严格等于 1 */
-  readonly tingPai: boolean;
+  readonly isTingPai: boolean;
   /** 道损数：等级为 -1 的侧数 */
   readonly residualDamage: number;
   /**
@@ -103,12 +103,12 @@ export interface MatchMetrics {
   readonly board: Readonly<Record<PlayerId, PlayerBoardMetrics>>;
   /**
    * 压制度量：本局施加于对手盘面的等级下降量之和（2 -> 1 记 1）。
-   * 需要 MatchOptions.collectStats 为 true；未采集时为 null。
+   * 需要 MatchOptions.shouldCollectStats 为 true；未采集时为 null。
    */
   readonly suppressionLevels: Readonly<Record<PlayerId, number>> | null;
   /**
    * 建设度量：本局己方盘面等级上升量之和。
-   * 需要 MatchOptions.collectStats 为 true；未采集时为 null。
+   * 需要 MatchOptions.shouldCollectStats 为 true；未采集时为 null。
    */
   readonly constructionLevels: Readonly<Record<PlayerId, number>> | null;
 }
@@ -122,7 +122,7 @@ export function deriveMatchMetrics(result: MatchResult): MatchMetrics {
     return {
       unlightedSides: countUnlightedSides(board),
       guiYiNodes: countBoardGuiYi(board),
-      tingPai: isBoardTingPai(board),
+      isTingPai: isBoardTingPai(board),
       residualDamage: countBoardDamage(board),
       actionsToGuiYuan: countActionsToGuiYuan(board)
     };

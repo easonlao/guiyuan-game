@@ -17,10 +17,10 @@
 
 | 分类 | 参数 |
 | --- | --- |
-| **活参数（AI 估值读取）** | `PointsConfig.ACTION.{AUTO,CONVERT,TRANS,ATK,BURST,BURST_ATK}`、`PointsConfig.STATE_CHANGE.*`（9 个标量）、`PointsConfig.GUI_YI_MILESTONE`、`StrategyWeights.*`（12 个）、`RuleSwitches.boardOnly`（经策略构造器绑定） |
+| **活参数（AI 估值读取）** | `PointsConfig.ACTION.{AUTO,CONVERT,TRANS,ATK,BURST,BURST_ATK}`、`PointsConfig.STATE_CHANGE.*`（9 个标量）、`PointsConfig.GUI_YI_MILESTONE`、`StrategyWeights.*`（12 个）、`RuleSwitches.isBoardOnly`（经策略构造器或权重模板策略绑定） |
 | **仅终局生效（终局读、AI 不读）** | `PointsConfig.DAMAGE_PENALTY`（**当前唯一成员**） |
 | **死参数（AI 不读、终局不读、扰动无变化）** | `PointsConfig.ACTION.DISSIPATE`、`PointsConfig.ACTION.PASS`、`PointsConfig.RARITY_MULTIPLIER`、`PointsConfig.NO_RARITY_ACTIONS`、`ACTION_PROBABILITY`、`ScoreConfig`/`DEFAULT_SCORE_CONFIG`、`ScoreCalculator.applyRarityBonus`/`isNoRarityAction` |
-| **接线但无消费者（转发死参数）** | `MatchOptions.rules`、`BenchmarkOptions.rules`、`HeadlessMatchConfig.rules`、`TurnManagerOptions.rules`、`ActionCandidatesOptions.rules`、`BenchmarkOptions.recordActions` |
+| **接线但无消费者（转发死参数）** | `TurnManagerOptions.rules`、`ActionCandidatesOptions.rules`、`BenchmarkOptions.recordActions` |
 
 ---
 
@@ -79,10 +79,11 @@
 
 | 参数 | 消费者 | AI 估值读取 | 终局判定读取 | 扰动输出变化 | 结论 |
 | --- | --- | :---: | :---: | :---: | --- |
-| `boardOnly` | `ActionEvaluator.evaluate`（`ActionEvaluator.ts:188`）：为 true 时 `scoreDeltaPoints = 0` | 是 | 否 | 是 | 活，**但只在经策略构造器绑定时** |
+| `isBoardOnly` | `ActionEvaluator.evaluate`（`ActionEvaluator.ts:188`）：为 true 时 `scoreDeltaPoints = 0` | 是 | 否 | 是 | 活 |
 
-**唯一活路径**：`createStrategy(weights, { rules })`（`Strategy.ts:176`）或 `createScoreBoundStrategy(weights, config, rules)`（`Strategy.ts:203-207`）把 `rules` 交给估值器；`GameManager` 走这条路（`game-manager.ts:95`）。
-**其余转发路径均无消费者**：`getAvailableActions` 只读 `options?.isExtraTurn`，从不读 `options?.rules`（`ActionCandidates.ts:168`；`rules` 字段在 `:56` 声明后无人读）。因此 `MatchOptions.rules`（`HeadlessMatch.ts:231`）、`BenchmarkOptions.rules`（`HeadlessBenchmark.ts:85`）、`HeadlessMatchConfig.rules`（`HeadlessMatch.ts:160`）、`TurnManagerOptions.rules`（`TurnManager.ts:250`）全部是转发死参数。
+**活路径**：`createStrategy(weights, { rules })`（`Strategy.ts:176`）或 `createScoreBoundStrategy(weights, config, rules)`（`Strategy.ts:203-207`）把 `rules` 交给估值器；`GameManager` 走这条路（`game-manager.ts:95`）。
+无头入口新增第三条活路径（ticket 01/04 修复）：`HeadlessMatch.run(strategy=weights, { rules })` 与 `HeadlessBenchmark.run({ strategyP1: weights, rules })` 由 `resolveStrategy`（`HeadlessMatch.ts`）用同一份 `rules` 构造 score-bound 策略，因此 `MatchOptions.rules`（`HeadlessMatch.ts`）、`BenchmarkOptions.rules`（`HeadlessBenchmark.ts`）、`HeadlessMatchConfig.rules`（`HeadlessMatch.ts`）在策略为权重模板时都到达 AI 估值器。
+**仍无消费者的转发路径**：`getAvailableActions` 只读 `options?.isExtraTurn`，从不读 `options?.rules`（`ActionCandidates.ts:168`；`rules` 字段在 `:56` 声明后无人读）。因此 `TurnManagerOptions.rules`（`TurnManager.ts:250`）与 `ActionCandidatesOptions.rules` 仍是转发死参数。
 
 ### 2.2 `ActionCandidatesOptions`（`ActionCandidates.ts:50`）
 
@@ -108,7 +109,7 @@
 | `seed` | 间接 | 间接 | 是 | 活 |
 | `initialState` | 间接 | 间接 | 是 | 活 |
 | `prng` | 间接 | 间接 | 是 | 活 |
-| `rules` | 是（绑定到 `createStrategy`，`game-manager.ts:95`） | 否 | 是 | 活（唯一把 `boardOnly` 真正接到 AI 的游戏内入口） |
+| `rules` | 是（绑定到 `createStrategy`，`game-manager.ts:95`） | 否 | 是 | 活（游戏内把 `isBoardOnly` 接到 AI 的入口） |
 
 ### 2.5 `MatchOptions`（`HeadlessMatch.ts:37`）
 
@@ -117,9 +118,10 @@
 | `seed` | 间接 | 间接 | 是 | 活 |
 | `maxRounds` | 间接（影响对局长度） | 是（触发 `MAX_ROUNDS`） | 是 | 活 |
 | `recordActions` | 否 | 否 | 是（`record.actions`，`HeadlessMatch.ts:248`） | 活（仅输出采集） |
-| `scoreConfig` | **否** | 是（终局分数，`HeadlessMatch.ts:157-159`） | 是 | 解析器专用注入；**不达 AI 估值器**（Ticket 01 缺陷的残留形态）。要让 AI 读到计分，必须用 `createScoreBoundStrategy` |
-| `rules` | 否 | 否 | 否 | 死转发 |
-| `collectStats` | 否 | 否 | 是（`MatchResult.stats`） | 活（仅输出采集） |
+| `scoreConfig` | 是（策略为权重模板时经 `resolveStrategy` 绑定 AI 估值器） | 是（终局分数，`HeadlessMatch.ts:157-159`） | 是 | 活：同时到达解析器与 AI 估值器；已构造的 `DecisionStrategy` 仍按自身估值器运行 |
+| `rules` | 是（策略为权重模板时） | 否 | 是 | 活（同上；候选接缝仍不读） |
+| `shouldCollectStats` | 否 | 否 | 是（`MatchResult.stats`） | 活（仅输出采集） |
+| `isBoardSettlement` | 否 | 是（回合上限按盘面进度判胜负，不读计分） | 是（仅 MAX_ROUNDS 局的胜者） | 活（ticket 09 board-only 实验模式；默认 false，生产规则不变） |
 
 ### 2.6 `BenchmarkOptions`（`HeadlessBenchmark.ts:23`）
 
@@ -128,10 +130,11 @@
 | `matches` | 否 | 否 | 是（样本量/聚合） | 活（仅批量聚合） |
 | `baseSeed` | 间接 | 间接 | 是 | 活 |
 | `maxRounds` | 间接 | 是 | 是 | 活 |
-| `strategyP1` / `strategyP2` | 是 | 间接 | 是 | 活 |
+| `strategyP1` / `strategyP2` | 是（权重模板经 `resolveStrategy` 绑定 AI 估值器；已构造策略按其自身估值器） | 间接 | 是 | 活（接受 `DecisionStrategy` 或 `StrategyWeights`） |
 | `recordActions` | 否 | 否 | **否** | 死转发：转发到 `HeadlessMatch`（`HeadlessBenchmark.ts:83`），但 `BenchmarkMetrics` 不暴露逐动作记录 |
-| `scoreConfig` | **否** | 是（平均分） | 是 | 同 `MatchOptions.scoreConfig`：只到解析器 |
-| `rules` | 否 | 否 | 否 | 死转发 |
+| `scoreConfig` | 是（策略为权重模板时） | 是（平均分） | 是 | 活：同时到达解析器与 AI 估值器 |
+| `rules` | 是（策略为权重模板时） | 否 | 是 | 活（同上） |
+| `isBoardSettlement` | 否 | 是（回合上限按盘面进度判胜负） | 是 | 活（ticket 09 board-only 实验模式；默认 false） |
 
 ### 2.7 `HeadlessMatchConfig`（`HeadlessMatch.ts:28`）与 `StrategyOptions`（`Strategy.ts:132`）
 
@@ -139,7 +142,8 @@
 | --- | --- | :---: | :---: | :---: | --- |
 | `HeadlessMatchConfig.resolver` | `HeadlessMatch` 结算 | 否 | 是 | 是 | 活（结算注入） |
 | `HeadlessMatchConfig.scoreCalculator` | 构造 resolver | 否 | 是 | 是 | 活（结算注入） |
-| `HeadlessMatchConfig.rules` | 转发到候选接缝 | 否 | 否 | 否 | 死转发 |
+| `HeadlessMatchConfig.scoreConfig` | AI 估值路径的计分配置 | 是（策略为权重模板时） | 否 | 是 | 活 |
+| `HeadlessMatchConfig.rules` | 转发到候选接缝，并作为权重模板策略的规则默认值 | 是（策略为权重模板时） | 否 | 是 | 活（权重模板策略） |
 | `StrategyOptions.evaluator` | `createStrategy` | 是 | 否 | 是 | 活 |
 | `StrategyOptions.tieBreaker` | `createStrategy` 并列裁决 | 是（并列时改选动作） | 否 | 是 | 活 |
 | `StrategyOptions.rules` | `evaluateAll` → 估值器 | 是 | 否 | 是 | 活 |
@@ -184,13 +188,13 @@
 
 **规则与选项（到达真实消费者）**
 
-- `RuleSwitches.boardOnly`（**仅**经 `createStrategy({rules})` / `createScoreBoundStrategy(..., rules)` 绑定；`GameManagerOptions.rules` 是游戏内唯一活路径）
+- `RuleSwitches.isBoardOnly`（经 `createStrategy({rules})` / `createScoreBoundStrategy(..., rules)` / 无头入口的权重模板策略绑定）
 - `ActionCandidatesOptions.isExtraTurn`
 - `TurnManagerOptions.{initialState,prng,resolver}`
 - `GameManagerOptions.{seed,initialState,prng,rules}`
-- `MatchOptions.{seed,maxRounds,recordActions,scoreConfig,collectStats}`
-- `BenchmarkOptions.{matches,baseSeed,maxRounds,strategyP1,strategyP2,scoreConfig}`
-- `HeadlessMatchConfig.{resolver,scoreCalculator}`
+- `MatchOptions.{seed,maxRounds,recordActions,scoreConfig,rules,shouldCollectStats,isBoardSettlement}`
+- `BenchmarkOptions.{matches,baseSeed,maxRounds,strategyP1,strategyP2,scoreConfig,rules,isBoardSettlement}`
+- `HeadlessMatchConfig.{resolver,scoreCalculator,scoreConfig,rules}`
 - `StrategyOptions.{evaluator,tieBreaker,rules}`
 - `StrategyWeights.*`（全部 12 项）
 
@@ -209,7 +213,8 @@
 | `ScoreConfig` / `DEFAULT_SCORE_CONFIG` | 生产路径只消费 `PointsConfig`；仅测试引用 | **DELETE**（或把测试改为引用 `POINTS_CONFIG` 后删除） |
 | `PointsConfig.ACTION.DISSIPATE` | 规则规定亢极散气计 0 分；`resolve` 强制 `scoreDelta = 0` | **DELETE**（保留字段会诱导「调它试试」的无效实验） |
 | `PointsConfig.ACTION.PASS` | 规则规定消散过牌计 0 分；`resolve` 强制 `scoreDelta = 0` | **DELETE** |
-| `MatchOptions.rules` / `BenchmarkOptions.rules` / `HeadlessMatchConfig.rules` / `TurnManagerOptions.rules` / `ActionCandidatesOptions.rules` | 只转发到候选接缝，而候选接缝从不读 `rules` | **WIRE 或 DELETE（二选一）**：若规则模式应同时影响候选生成，则让 `getAvailableActions` 读 `boardOnly`（统一入口）；若规则只属于策略，则删除这些转发字段。当前「转发但无消费者」最危险——它让 `BenchmarkOptions.rules` 看起来生效 |
+| `MatchOptions.rules` / `BenchmarkOptions.rules` / `HeadlessMatchConfig.rules` | **已接线**（ticket 01/04 修复）：策略为权重模板时经 `resolveStrategy` 绑定 AI 估值器 | **已移出死参数清单** |
+| `TurnManagerOptions.rules` / `ActionCandidatesOptions.rules` | 只转发到候选接缝，而候选接缝从不读 `rules` | **WIRE 或 DELETE（二选一）**：若规则模式应同时影响候选生成，则让 `getAvailableActions` 读 `isBoardOnly`（统一入口）；若规则只属于策略，则删除这些转发字段 |
 | `BenchmarkOptions.recordActions` | 转发到 `HeadlessMatch`，但 `BenchmarkMetrics` 不暴露逐动作记录 | **WIRE 或 DELETE**：若批量报告需要逐动作证据，在 `BenchmarkMetrics` 暴露；否则删除该字段，避免误以为批量运行会采集动作 |
 
 ---

@@ -21,8 +21,6 @@
  * `runHeadToHeadMatrix`；策略是标准 `DecisionStrategy`，不新增第三处接缝，也不新增指标定义。
  */
 
-import { pathToFileURL } from 'node:url';
-import { resolve } from 'node:path';
 import { GameState, OVERCOMING_CYCLE, PlayerId, Polarity, TianGanInfo } from '../types/domain.js';
 import { getMinusTargetPolarity, type RuleSwitches } from '../logic/ActionCandidates.js';
 import { POINTS_CONFIG, type PointsConfig } from '../logic/ScoreCalculator.js';
@@ -30,6 +28,7 @@ import { AGGRESSIVE_WEIGHTS, RUSH_GUIYUAN_WEIGHTS } from '../ai/Strategy.js';
 import type { DecisionStrategy, StrategyWeights } from '../ai/types.js';
 import { HeadlessMatch } from './HeadlessMatch.js';
 import { countActionsToGuiYuan } from './Metrics.js';
+import { runCliIfDirect } from './cli.js';
 import {
   DEFAULT_BASE_SEED,
   DEFAULT_MATCHES_PER_CELL,
@@ -38,9 +37,11 @@ import {
   DEFAULT_SCORE_CONFIG_VARIANTS,
   DEFAULT_STRATEGY_VARIANTS,
   buildVariantStrategy,
+  isBoardSettlementFor,
   ruleSwitchesFor,
   runHeadToHeadMatrix,
   type RuleMode,
+  type RunConfig,
   type ScoreConfigVariant,
   type StrategyVariant
 } from './ExperimentRunner.js';
@@ -111,7 +112,7 @@ export function bestAvailableAtkTempoGain(
 /**
  * 动态切换策略的参数。
  *
- * `advanceSelfMax` 与 `advanceWhenNoAtkTempo` 是实验旋钮：报告用不同取值做对照，
+ * `advanceSelfMax` 与 `shouldAdvanceWhenNoAtkTempo` 是实验旋钮：报告用不同取值做对照，
  * 以区分「设计意图不成立」与「本实现不足」。
  */
 export interface DynamicSwitchPolicy {
@@ -125,9 +126,9 @@ export interface DynamicSwitchPolicy {
   /** 赛跑领先量 >= 此值时切换到推进（大幅领先）；默认 Infinity 表示关闭 */
   readonly advanceWhenLeadAtLeast: number;
   /** 本回合最佳【破】无盘面收益（0 或 null）时切换到推进 */
-  readonly advanceWhenNoAtkTempo: boolean;
+  readonly shouldAdvanceWhenNoAtkTempo: boolean;
   /** 本回合最佳【破】盘面收益恰为 0（只能打加持侧，ticket 08 软拐点）时切换到推进 */
-  readonly advanceWhenAtkTempoZero: boolean;
+  readonly shouldAdvanceWhenAtkTempoZero: boolean;
   /** 推进模式权重 */
   readonly advanceWeights: StrategyWeights;
   /** 压制模式权重 */
@@ -164,10 +165,10 @@ export function decideSwitchMode(
   if (criterion.lead >= policy.advanceWhenLeadAtLeast) {
     return { mode: 'advance', reason: 'race-lead', criterion };
   }
-  if (policy.advanceWhenNoAtkTempo && bestAtkTempoGain !== 1) {
+  if (policy.shouldAdvanceWhenNoAtkTempo && bestAtkTempoGain !== 1) {
     return { mode: 'advance', reason: 'suppression-has-no-board-tempo', criterion };
   }
-  if (policy.advanceWhenAtkTempoZero && bestAtkTempoGain === 0) {
+  if (policy.shouldAdvanceWhenAtkTempoZero && bestAtkTempoGain === 0) {
     return { mode: 'advance', reason: 'suppression-has-no-board-tempo', criterion };
   }
   return { mode: 'suppress', reason: 'suppress-default', criterion };
@@ -332,8 +333,8 @@ export const DEFAULT_DYNAMIC_POLICY: DynamicSwitchPolicy = {
   minLeadForAdvance: 1,
   advanceWhenOpponentActionsAtLeast: Number.POSITIVE_INFINITY,
   advanceWhenLeadAtLeast: Number.POSITIVE_INFINITY,
-  advanceWhenNoAtkTempo: false,
-  advanceWhenAtkTempoZero: true,
+  shouldAdvanceWhenNoAtkTempo: false,
+  shouldAdvanceWhenAtkTempoZero: true,
   advanceWeights: RUSH_GUIYUAN_WEIGHTS,
   suppressWeights: AGGRESSIVE_WEIGHTS
 };
@@ -345,8 +346,8 @@ export const RACE_ONLY_POLICY: DynamicSwitchPolicy = {
   minLeadForAdvance: 1,
   advanceWhenOpponentActionsAtLeast: Number.POSITIVE_INFINITY,
   advanceWhenLeadAtLeast: Number.POSITIVE_INFINITY,
-  advanceWhenNoAtkTempo: false,
-  advanceWhenAtkTempoZero: false,
+  shouldAdvanceWhenNoAtkTempo: false,
+  shouldAdvanceWhenAtkTempoZero: false,
   advanceWeights: RUSH_GUIYUAN_WEIGHTS,
   suppressWeights: AGGRESSIVE_WEIGHTS
 };
@@ -358,8 +359,8 @@ export const TEMPO_ONLY_POLICY: DynamicSwitchPolicy = {
   minLeadForAdvance: 0,
   advanceWhenOpponentActionsAtLeast: Number.POSITIVE_INFINITY,
   advanceWhenLeadAtLeast: Number.POSITIVE_INFINITY,
-  advanceWhenNoAtkTempo: false,
-  advanceWhenAtkTempoZero: true,
+  shouldAdvanceWhenNoAtkTempo: false,
+  shouldAdvanceWhenAtkTempoZero: true,
   advanceWeights: RUSH_GUIYUAN_WEIGHTS,
   suppressWeights: AGGRESSIVE_WEIGHTS
 };
@@ -371,8 +372,8 @@ export const PURE_EXTREMES_POLICY: DynamicSwitchPolicy = {
   minLeadForAdvance: 1,
   advanceWhenOpponentActionsAtLeast: Number.POSITIVE_INFINITY,
   advanceWhenLeadAtLeast: Number.POSITIVE_INFINITY,
-  advanceWhenNoAtkTempo: false,
-  advanceWhenAtkTempoZero: true,
+  shouldAdvanceWhenNoAtkTempo: false,
+  shouldAdvanceWhenAtkTempoZero: true,
   advanceWeights: {
     repairDamage: 120,
     reachGuiYi: 300,
@@ -413,8 +414,8 @@ export const OPPONENT_UNDEVELOPED_POLICY: DynamicSwitchPolicy = {
   minLeadForAdvance: 0,
   advanceWhenOpponentActionsAtLeast: 8,
   advanceWhenLeadAtLeast: Number.POSITIVE_INFINITY,
-  advanceWhenNoAtkTempo: false,
-  advanceWhenAtkTempoZero: false,
+  shouldAdvanceWhenNoAtkTempo: false,
+  shouldAdvanceWhenAtkTempoZero: false,
   advanceWeights: RUSH_GUIYUAN_WEIGHTS,
   suppressWeights: AGGRESSIVE_WEIGHTS
 };
@@ -429,8 +430,8 @@ export const NEVER_SWITCH_POLICY: DynamicSwitchPolicy = {
   minLeadForAdvance: 0,
   advanceWhenOpponentActionsAtLeast: Number.POSITIVE_INFINITY,
   advanceWhenLeadAtLeast: Number.POSITIVE_INFINITY,
-  advanceWhenNoAtkTempo: false,
-  advanceWhenAtkTempoZero: false,
+  shouldAdvanceWhenNoAtkTempo: false,
+  shouldAdvanceWhenAtkTempoZero: false,
   advanceWeights: RUSH_GUIYUAN_WEIGHTS,
   suppressWeights: AGGRESSIVE_WEIGHTS
 };
@@ -480,16 +481,13 @@ export interface DynamicSwitchingReport {
   readonly policies: readonly DynamicPolicyReport[];
 }
 
-export interface DynamicSwitchingExperimentOptions {
+export interface DynamicSwitchingExperimentOptions extends RunConfig {
   readonly policies?: readonly DynamicSwitchPolicy[];
   readonly statics?: readonly StrategyVariant[];
   readonly mode?: RuleMode;
   readonly scoreConfig?: ScoreConfigVariant;
-  readonly matches?: number;
-  readonly baseSeed?: number;
-  readonly maxRounds?: number;
   /** 是否运行逐决策统计采集（默认 true） */
-  readonly collectStats?: boolean;
+  readonly shouldCollectStats?: boolean;
 }
 
 /**
@@ -508,6 +506,7 @@ export function collectDynamicSwitchStats(
 ): DynamicSwitchStatsSnapshot {
   const stats = new DynamicSwitchStats();
   const rules = ruleSwitchesFor(mode);
+  const isBoardSettlement = isBoardSettlementFor(mode);
   const dynamic = createDynamicSwitchingStrategy(policy, scoreConfig.config, rules, stats);
   const match = new HeadlessMatch();
 
@@ -516,9 +515,9 @@ export function collectDynamicSwitchStats(
     for (let i = 0; i < matches; i++) {
       const seed = baseSeed + i;
       stats.beginMatch();
-      match.run(dynamic, staticStrategy, { seed, maxRounds, rules });
+      match.run(dynamic, staticStrategy, { seed, maxRounds, rules, isBoardSettlement });
       stats.beginMatch();
-      match.run(staticStrategy, dynamic, { seed, maxRounds, rules });
+      match.run(staticStrategy, dynamic, { seed, maxRounds, rules, isBoardSettlement });
     }
   }
 
@@ -539,7 +538,7 @@ export function runDynamicSwitchingExperiment(
   const matches = options.matches ?? DEFAULT_MATCHES_PER_CELL;
   const baseSeed = options.baseSeed ?? DEFAULT_BASE_SEED;
   const maxRounds = options.maxRounds ?? DEFAULT_MAX_ROUNDS;
-  const collectStats = options.collectStats ?? true;
+  const shouldCollectStats = options.shouldCollectStats ?? true;
 
   const policyReports: DynamicPolicyReport[] = policies.map(policy => {
     const dynamicVariant = dynamicStrategyVariant(policy);
@@ -572,7 +571,7 @@ export function runDynamicSwitchingExperiment(
       };
     });
 
-    const stats = collectStats
+    const stats = shouldCollectStats
       ? collectDynamicSwitchStats(
           policy,
           statics,
@@ -763,13 +762,14 @@ const HELP_TEXT = `归元弈 (Guiyuan) 动态切换策略实验 (Ticket 10)
   --seed <N>          种子基数，每局使用 seed + i (默认 ${DEFAULT_BASE_SEED})
   --max-rounds <N>    回合上限 (默认 ${DEFAULT_MAX_ROUNDS})
   --mode <mode>       规则模式: scoring (默认) / board-only
+                      board-only = 关闭 AI 计分读取，且回合上限按盘面进度判定胜负
   --policy <name>     只跑单个动态策略 (动态切换 / 动态切换(仅赛跑) / 动态切换(仅破节奏) / 动态切换(纯推进/纯压制))
   --no-sweep          只跑主策略（默认跑全部对照策略）
   --help, -h          显示本帮助
 `;
 
 export interface ParsedDynamicArgs {
-  readonly help: boolean;
+  readonly isHelp: boolean;
   readonly matches?: number;
   readonly baseSeed?: number;
   readonly maxRounds?: number;
@@ -780,7 +780,7 @@ export interface ParsedDynamicArgs {
 
 /** 解析 CLI 参数；未知参数或非法值抛错。 */
 export function parseDynamicArgs(argv: readonly string[]): ParsedDynamicArgs {
-  let help = false;
+  let isHelp = false;
   let matches: number | undefined;
   let baseSeed: number | undefined;
   let maxRounds: number | undefined;
@@ -791,7 +791,7 @@ export function parseDynamicArgs(argv: readonly string[]): ParsedDynamicArgs {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--help' || arg === '-h') {
-      help = true;
+      isHelp = true;
       continue;
     }
     if (arg === '--no-sweep') {
@@ -831,7 +831,7 @@ export function parseDynamicArgs(argv: readonly string[]): ParsedDynamicArgs {
     throw new Error(`未知参数: ${arg}`);
   }
 
-  return { help, matches, baseSeed, maxRounds, mode, policy, sweep };
+  return { isHelp, matches, baseSeed, maxRounds, mode, policy, sweep };
 }
 
 function selectPolicies(parsed: ParsedDynamicArgs): readonly DynamicSwitchPolicy[] {
@@ -848,35 +848,25 @@ function selectPolicies(parsed: ParsedDynamicArgs): readonly DynamicSwitchPolicy
 }
 
 // 支持 CLI 命令行直接执行
-if (typeof process !== 'undefined' && process.argv && process.argv[1]) {
-  try {
-    const isDirectRun =
-      import.meta.url === pathToFileURL(process.argv[1]).href ||
-      import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
-    if (isDirectRun) {
-      const parsed = parseDynamicArgs(process.argv.slice(2));
-      if (parsed.help) {
-        console.log(HELP_TEXT);
-      } else {
-        const matches = parsed.matches ?? DEFAULT_MATCHES_PER_CELL;
-        const baseSeed = parsed.baseSeed ?? DEFAULT_BASE_SEED;
-        const maxRounds = parsed.maxRounds ?? DEFAULT_MAX_ROUNDS;
-        const policies = selectPolicies(parsed);
-        console.log(
-          `🚀 运行动态切换策略实验: ${matches} 局/座次, 种子基数 ${baseSeed}, 回合上限 ${maxRounds}, 模式 ${parsed.mode}, ${policies.length} 个动态策略...`
-        );
-        const report = runDynamicSwitchingExperiment({
-          policies,
-          mode: parsed.mode,
-          matches,
-          baseSeed,
-          maxRounds
-        });
-        console.log(formatDynamicSwitchingReport(report));
-      }
-    }
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
-    process.exitCode = 1;
+runCliIfDirect(import.meta.url, () => {
+  const parsed = parseDynamicArgs(process.argv.slice(2));
+  if (parsed.isHelp) {
+    console.log(HELP_TEXT);
+  } else {
+    const matches = parsed.matches ?? DEFAULT_MATCHES_PER_CELL;
+    const baseSeed = parsed.baseSeed ?? DEFAULT_BASE_SEED;
+    const maxRounds = parsed.maxRounds ?? DEFAULT_MAX_ROUNDS;
+    const policies = selectPolicies(parsed);
+    console.log(
+      `🚀 运行动态切换策略实验: ${matches} 局/座次, 种子基数 ${baseSeed}, 回合上限 ${maxRounds}, 模式 ${parsed.mode}, ${policies.length} 个动态策略...`
+    );
+    const report = runDynamicSwitchingExperiment({
+      policies,
+      mode: parsed.mode,
+      matches,
+      baseSeed,
+      maxRounds
+    });
+    console.log(formatDynamicSwitchingReport(report));
   }
-}
+});

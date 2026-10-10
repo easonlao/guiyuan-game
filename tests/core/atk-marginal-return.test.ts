@@ -160,7 +160,7 @@ describe('【破】连续序列的不变量（不是复述报告数字）', () =
     });
 
     expect(sequence.steps).toHaveLength(0);
-    expect(sequence.capped).toBe(true);
+    expect(sequence.isCapped).toBe(true);
     expect(sequence.totalGain).toBe(0);
   });
 
@@ -182,7 +182,7 @@ describe('【破】连续序列的不变量（不是复述报告数字）', () =
   it('封顶条件是全盘道损：序列终止时对手每一侧都是 -1', () => {
     const report = runAtkMarginalReturn();
     for (const phase of report.phases) {
-      if (!phase.sequence.capped) continue;
+      if (!phase.sequence.isCapped) continue;
       expect(phase.sequence.finalActionsToGuiYuan).toBe(20);
     }
   });

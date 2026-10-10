@@ -8,7 +8,7 @@
 
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
-import { HeadlessMatch, DecisionStrategy } from './HeadlessMatch.js';
+import { HeadlessMatch, type StrategySpec, resolveStrategy } from './HeadlessMatch.js';
 import {
   accumulateMatchMetrics,
   createGameMetricsAccumulator,
@@ -16,21 +16,27 @@ import {
   finalizeGameMetrics,
   type GameMetrics
 } from './Metrics.js';
-import { balancedStrategy } from '../ai/Strategy.js';
-import { PointsConfig } from '../logic/ScoreCalculator.js';
+import { BALANCED_WEIGHTS } from '../ai/Strategy.js';
+import { POINTS_CONFIG, PointsConfig } from '../logic/ScoreCalculator.js';
 import { RuleSwitches } from '../logic/ActionCandidates.js';
 
 export interface BenchmarkOptions {
   matches: number;
   baseSeed?: number;
   maxRounds?: number;
-  strategyP1?: DecisionStrategy;
-  strategyP2?: DecisionStrategy;
+  /**
+   * 策略规格：既接受已构造的 DecisionStrategy（按自身估值器运行），
+   * 也接受 StrategyWeights 权重模板（用 scoreConfig/rules 构造 score-bound 策略）。
+   */
+  strategyP1?: StrategySpec;
+  strategyP2?: StrategySpec;
   recordActions?: boolean;
-  /** 批量推演使用的计分配置；不传时沿用 HeadlessMatch 的默认配置 */
+  /** 批量推演使用的计分配置；同时到达解析器与（权重模板策略的）AI 估值器 */
   scoreConfig?: PointsConfig;
-  /** 批量推演使用的规则开关；不传时沿用 HeadlessMatch 的默认开关 */
+  /** 批量推演使用的规则开关；同时到达候选生成与（权重模板策略的）AI 估值器 */
   rules?: RuleSwitches;
+  /** board-only 实验模式：回合上限时按盘面进度判定胜负，不读取计分。默认 false */
+  isBoardSettlement?: boolean;
 }
 
 /** 批量评测指标 = 对局指标 (Metrics.ts) + 运行期指标 (耗时 / 内存) */
@@ -58,11 +64,22 @@ export class HeadlessBenchmark {
     const totalMatches = options?.matches ?? 10000;
     const baseSeed = options?.baseSeed ?? 10000;
     const maxRounds = options?.maxRounds ?? 30;
-    const strategyP1 = options?.strategyP1 ?? balancedStrategy;
-    const strategyP2 = options?.strategyP2 ?? balancedStrategy;
     const recordActions = options?.recordActions ?? false;
     const scoreConfig = options?.scoreConfig;
     const rules = options?.rules;
+    const isBoardSettlement = options?.isBoardSettlement ?? false;
+    // 权重模板策略用同一份注入配置构造，使一份 scoreConfig/rules 同时到达
+    // AI 估值器与解析器；已构造的 DecisionStrategy 按其自身估值器运行。
+    const strategyP1 = resolveStrategy(
+      options?.strategyP1 ?? BALANCED_WEIGHTS,
+      scoreConfig ?? POINTS_CONFIG,
+      rules ?? {}
+    );
+    const strategyP2 = resolveStrategy(
+      options?.strategyP2 ?? BALANCED_WEIGHTS,
+      scoreConfig ?? POINTS_CONFIG,
+      rules ?? {}
+    );
 
     // 内存检测前置准备（若处于 expose-gc 环境则尽可能触发全量 GC 获得干净初始基线）
     if (typeof globalThis.gc === 'function') {
@@ -83,7 +100,8 @@ export class HeadlessBenchmark {
         recordActions,
         scoreConfig,
         rules,
-        collectStats: true
+        shouldCollectStats: true,
+        isBoardSettlement
       });
 
       totalP1Score += matchResult.finalP1Score;

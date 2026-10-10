@@ -126,7 +126,7 @@ describe('指标口径模块由 MatchResult 派生', () => {
     const result = new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
       seed: 4242,
       maxRounds: 30,
-      collectStats: true
+      shouldCollectStats: true
     });
     const metrics = deriveMatchMetrics(result);
 
@@ -157,7 +157,7 @@ describe('指标口径模块由 MatchResult 派生', () => {
       const result = new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
         seed: 10000 + i,
         maxRounds: 30,
-        collectStats: true
+        shouldCollectStats: true
       });
       matches.push(deriveMatchMetrics(result));
     }

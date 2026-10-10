@@ -13,6 +13,7 @@ import {
   formatCombinedReport,
   parseExperimentArgs,
   ruleSwitchesFor,
+  isBoardSettlementFor,
   DEFAULT_STRATEGY_VARIANTS,
   DEFAULT_SCORE_CONFIG_VARIANTS,
   DEFAULT_RULE_MODES,
@@ -25,12 +26,16 @@ import type {
 } from '../../src/core/headless/ExperimentRunner.js';
 import {
   balancedStrategy,
+  aggressiveStrategy,
   pureRushStrategy,
   pureSuppressStrategy,
   scoreStrippedStrategy
 } from '../../src/core/ai/Strategy.js';
 import { HeadlessBenchmark } from '../../src/core/headless/HeadlessBenchmark.js';
-import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
+import { HeadlessMatch, defaultBaselineStrategy } from '../../src/core/headless/HeadlessMatch.js';
+import { isDirectRun } from '../../src/core/headless/cli.js';
+import { countBoardDamage, countBoardGuiYi, countUnlightedSides } from '../../src/core/logic/State.js';
+import { pathToFileURL } from 'node:url';
 
 const MAX_ROUNDS = 30;
 const BASE_SEED = 10000;
@@ -187,8 +192,11 @@ describe('Ticket 06 - 声明式矩阵 (strategy × scoreConfig × rule mode)', (
     const scored = report.cells.find(cell => cell.mode === 'scoring')!;
     const boardOnly = report.cells.find(cell => cell.mode === 'board-only')!;
 
-    expect(ruleSwitchesFor('board-only')).toEqual({ boardOnly: true });
-    expect(ruleSwitchesFor('scoring')).toEqual({ boardOnly: false });
+    expect(ruleSwitchesFor('board-only')).toEqual({ isBoardOnly: true });
+    expect(ruleSwitchesFor('scoring')).toEqual({ isBoardOnly: false });
+    // board-only 同时剥离终局计分结算（ticket 09 强化隔离）
+    expect(isBoardSettlementFor('board-only')).toBe(true);
+    expect(isBoardSettlementFor('scoring')).toBe(false);
     expect(
       scored.guiYuanRate !== boardOnly.guiYuanRate ||
         scored.avgRounds !== boardOnly.avgRounds
@@ -435,7 +443,7 @@ describe('Ticket 06 - 报告输出 (paste-able markdown)', () => {
 
   it('CLI 参数解析：默认 all/scoring、支持 --scan/--mode/--matches/--seed/--max-rounds，未知参数抛错', () => {
     expect(parseExperimentArgs([])).toEqual({
-      help: false,
+      isHelp: false,
       scan: 'all',
       mode: 'scoring',
       matches: undefined,
@@ -445,7 +453,7 @@ describe('Ticket 06 - 报告输出 (paste-able markdown)', () => {
     expect(
       parseExperimentArgs(['--scan', 'head-to-head', '--matches', '50', '--seed', '7', '--max-rounds', '30'])
     ).toEqual({
-      help: false,
+      isHelp: false,
       scan: 'head-to-head',
       mode: 'scoring',
       matches: 50,
@@ -454,7 +462,7 @@ describe('Ticket 06 - 报告输出 (paste-able markdown)', () => {
     });
     expect(parseExperimentArgs(['--mode', 'board-only']).mode).toBe('board-only');
     expect(parseExperimentArgs(['--mode', 'both']).mode).toBe('both');
-    expect(parseExperimentArgs(['--help']).help).toBe(true);
+    expect(parseExperimentArgs(['--help']).isHelp).toBe(true);
     expect(() => parseExperimentArgs(['--scan', 'nope'])).toThrow(/未知扫描类型/);
     expect(() => parseExperimentArgs(['--mode', 'nope'])).toThrow(/未知规则模式/);
     expect(() => parseExperimentArgs(['--bogus'])).toThrow(/未知参数/);
@@ -538,5 +546,87 @@ describe('Ticket 09 - 计分轴开启 vs 关闭 (board-only) 逐格对照', () =
         syntheticReport('board-only', [['A', 'C', 0.4], ['C', 'A', 0.6]])
       )
     ).toThrow(/同一策略族/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Ticket E - 共享 CLI 直接执行守卫
+// ---------------------------------------------------------------------------
+describe('共享 CLI 直接执行守卫 (isDirectRun)', () => {
+  const modulePath = '/repo/src/core/headless/ExperimentRunner.ts';
+  const moduleUrl = pathToFileURL(modulePath).href;
+
+  it('模块 URL 与 argv[1] 指向同一文件时为直接执行', () => {
+    expect(isDirectRun(moduleUrl, ['node', modulePath])).toBe(true);
+  });
+
+  it('模块 URL 与 argv[1] 不同、或缺少 argv[1] 时不是直接执行', () => {
+    expect(isDirectRun('file:///other/module.ts', ['node', modulePath])).toBe(false);
+    expect(isDirectRun(moduleUrl, ['node'])).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Ticket 09 强化：board-only 终局结算剥离计分
+// ---------------------------------------------------------------------------
+describe('Ticket 09 - board-only 终局结算按盘面进度（剥离计分）', () => {
+  /** 盘面进度口径 = Metrics.countActionsToGuiYuan = 未点亮侧数 + 道损数 */
+  const boardProgress = (result: ReturnType<HeadlessMatch['run']>, id: 'P1' | 'P2'): number =>
+    countUnlightedSides(result.finalState.players[id].board) +
+    countBoardDamage(result.finalState.players[id].board);
+
+  /** 与实现一致的盘面结算：进度少者胜 → 归一节点多者胜 → 全同判 DRAW */
+  const expectedBoardWinner = (result: ReturnType<HeadlessMatch['run']>): 'P1' | 'P2' | 'DRAW' => {
+    const p1 = boardProgress(result, 'P1');
+    const p2 = boardProgress(result, 'P2');
+    if (p1 !== p2) return p1 < p2 ? 'P1' : 'P2';
+    const g1 = countBoardGuiYi(result.finalState.players.P1.board);
+    const g2 = countBoardGuiYi(result.finalState.players.P2.board);
+    if (g1 !== g2) return g1 > g2 ? 'P1' : 'P2';
+    return 'DRAW';
+  };
+
+  it('回合上限时按盘面进度判定胜负（不读计分；盘面全同则 DRAW）', () => {
+    const match = new HeadlessMatch();
+    let maxRoundsGames = 0;
+    for (let seed = 10000; seed < 10030; seed++) {
+      const result = match.run(defaultBaselineStrategy, defaultBaselineStrategy, {
+        seed,
+        maxRounds: 1,
+        isBoardSettlement: true
+      });
+      expect(result.endReason).toBe('MAX_ROUNDS');
+      maxRoundsGames++;
+      expect(result.winner).toBe(expectedBoardWinner(result));
+    }
+    expect(maxRoundsGames).toBe(30);
+  });
+
+  it('默认（计分）结算与盘面结算确实不同：同一对局批次的胜负分布改变', () => {
+    const benchmark = new HeadlessBenchmark();
+    const base = {
+      matches: 300,
+      baseSeed: 10000,
+      maxRounds: MAX_ROUNDS,
+      strategyP1: aggressiveStrategy,
+      strategyP2: pureSuppressStrategy,
+      rules: { isBoardOnly: true }
+    };
+    const scored = benchmark.run(base);
+    const board = benchmark.run({ ...base, isBoardSettlement: true });
+    expect(scored.maxRoundsCount).toBeGreaterThan(0);
+    expect([board.p1Wins, board.p2Wins]).not.toEqual([scored.p1Wins, scored.p2Wins]);
+  });
+
+  it('默认路径不受影响：不传 isBoardSettlement 时与历史逐字节一致', () => {
+    const match = new HeadlessMatch();
+    const a = match.run(balancedStrategy, balancedStrategy, { seed: 4242, maxRounds: MAX_ROUNDS });
+    const b = match.run(balancedStrategy, balancedStrategy, {
+      seed: 4242,
+      maxRounds: MAX_ROUNDS,
+      isBoardSettlement: false
+    });
+    expect(b.winner).toBe(a.winner);
+    expect(b.record).toEqual(a.record);
   });
 });

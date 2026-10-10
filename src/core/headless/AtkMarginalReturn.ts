@@ -15,8 +15,6 @@
  * 复跑命令见 package.json：`npm run benchmark:atk-marginal`。
  */
 
-import { pathToFileURL } from 'node:url';
-import { resolve } from 'node:path';
 import {
   ActionType,
   BoardState,
@@ -33,6 +31,7 @@ import {
   gameStateWith
 } from './BoardFixture.js';
 import { atkTempoGain, countActionsToGuiYuan } from './Metrics.js';
+import { runCliIfDirect } from './cli.js';
 
 /**
  * 攻方【破】的源五行轮转顺序。每个源对应一个被克目标：
@@ -71,7 +70,7 @@ export interface AtkStep {
 export interface AtkSequence {
   readonly steps: readonly AtkStep[];
   /** 全盘封顶：对手 10 侧全部处于道损 (-1)，已无合法【破】目标 */
-  readonly capped: boolean;
+  readonly isCapped: boolean;
   readonly initialActionsToGuiYuan: number;
   readonly finalActionsToGuiYuan: number;
   readonly totalGain: number;
@@ -83,7 +82,7 @@ export interface AtkSideCurve {
   readonly gains: readonly number[];
   readonly totalGain: number;
   readonly hitsToCap: number;
-  readonly capped: boolean;
+  readonly isCapped: boolean;
 }
 
 /** 单个阶段的连续【破】测量 */
@@ -167,7 +166,7 @@ export function measureAtkSequence(opponentOverrides: BoardOverrides): AtkSequen
 
   return {
     steps,
-    capped: !hasAnyAtkTarget(state.players.P2.board),
+    isCapped: !hasAnyAtkTarget(state.players.P2.board),
     initialActionsToGuiYuan,
     finalActionsToGuiYuan: countActionsToGuiYuan(state.players.P2.board),
     totalGain: cumulativeGain
@@ -199,7 +198,7 @@ export function measureSideCurves(): AtkSideCurve[] {
       gains: sequence.steps.map(step => step.gain),
       totalGain: sequence.totalGain,
       hitsToCap: sequence.steps.length,
-      capped: sequence.capped
+      isCapped: sequence.isCapped
     };
   });
 }
@@ -306,7 +305,7 @@ export function formatAtkMarginalReturnReport(report: AtkMarginalReturnReport): 
     lines.push(
       `| ${formatLevel(curve.startLevel)} | ${cells.join(' | ')} | ${curve.totalGain} | ${
         curve.hitsToCap
-      } | ${curve.capped ? '是' : '否'} |`
+      } | ${curve.isCapped ? '是' : '否'} |`
     );
   }
   lines.push('');
@@ -324,7 +323,7 @@ export function formatAtkMarginalReturnReport(report: AtkMarginalReturnReport): 
     lines.push('| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |');
     const gains = seq.steps.map(step => step.gain);
     const first10 = Array.from({ length: 10 }, (_, i) => gains[i] ?? '—');
-    lines.push(`| 边际收益 | ${first10.join(' | ')} | ${seq.capped ? '0（封顶）' : '—'} |`);
+    lines.push(`| 边际收益 | ${first10.join(' | ')} | ${seq.isCapped ? '0（封顶）' : '—'} |`);
   }
   lines.push('');
   lines.push('### 收益随阶段');
@@ -342,7 +341,7 @@ export function formatAtkMarginalReturnReport(report: AtkMarginalReturnReport): 
         first3[1] ?? '—'
       } | ${first3[2] ?? '—'} | ${seq.steps.length} | ${seq.totalGain} | ${avg.toFixed(
         3
-      )} | ${seq.finalActionsToGuiYuan} | ${seq.capped ? '是' : '否'} |`
+      )} | ${seq.finalActionsToGuiYuan} | ${seq.isCapped ? '是' : '否'} |`
     );
   }
   lines.push('');
@@ -363,7 +362,7 @@ export function formatAtkMarginalReturnReport(report: AtkMarginalReturnReport): 
         } |`
       );
     }
-    if (phase.sequence.capped) {
+    if (phase.sequence.isCapped) {
       lines.push('');
       lines.push(
         `> 第 ${phase.sequence.steps.length + 1} 次起封顶：对手 10 侧全部道损，已无合法【破】目标，边际收益 0。`
@@ -379,16 +378,6 @@ export function formatAtkMarginalReturnReport(report: AtkMarginalReturnReport): 
 // CLI
 // ---------------------------------------------------------------------------
 
-if (typeof process !== 'undefined' && process.argv && process.argv[1]) {
-  try {
-    const isDirectRun =
-      import.meta.url === pathToFileURL(process.argv[1]).href ||
-      import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
-    if (isDirectRun) {
-      console.log(formatAtkMarginalReturnReport(runAtkMarginalReturn()));
-    }
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
-    process.exitCode = 1;
-  }
-}
+runCliIfDirect(import.meta.url, () => {
+  console.log(formatAtkMarginalReturnReport(runAtkMarginalReturn()));
+});

@@ -16,9 +16,8 @@
  * 不是平局率（`winner === 'DRAW'`）。两者是不同概念，见 Metrics.ts 口径表。
  */
 
-import { pathToFileURL } from 'node:url';
-import { resolve } from 'node:path';
 import { HeadlessBenchmark } from './HeadlessBenchmark.js';
+import { runCliIfDirect } from './cli.js';
 import {
   assertDominanceVerdictHasMatrix,
   formatDominanceVerdict,
@@ -47,7 +46,7 @@ import type { RuleSwitches } from '../logic/ActionCandidates.js';
 /**
  * 规则模式：计分轴开关。
  * - `scoring`   : 计分轴开启（AI 估值读取规则得分），生产默认。
- * - `board-only`: 计分轴关闭（AI 只按盘面判优），对应 RuleSwitches.boardOnly = true。
+ * - `board-only`: 计分轴关闭（AI 只按盘面判优），对应 RuleSwitches.isBoardOnly = true。
  */
 export type RuleMode = 'scoring' | 'board-only';
 
@@ -55,7 +54,17 @@ export const DEFAULT_RULE_MODES: readonly RuleMode[] = ['scoring', 'board-only']
 
 /** 规则模式 -> 规则开关（唯一映射处） */
 export function ruleSwitchesFor(mode: RuleMode): RuleSwitches {
-  return { boardOnly: mode === 'board-only' };
+  return { isBoardOnly: mode === 'board-only' };
+}
+
+/**
+ * 规则模式 -> 终局结算方式。
+ * board-only 不仅关闭 AI 的计分读取，也剥离回合上限结算的计分：
+ * 回合上限时按盘面进度判定胜负（见 HeadlessMatch.settleMaxRoundsByBoard）。
+ * 这样 board-only 结论不再被 MAX_ROUNDS 局的计分结算污染。
+ */
+export function isBoardSettlementFor(mode: RuleMode): boolean {
+  return mode === 'board-only';
 }
 
 /**
@@ -142,13 +151,20 @@ export const DEFAULT_MATCHES_PER_CELL = 2000;
 export const DEFAULT_BASE_SEED = 10000;
 export const DEFAULT_MAX_ROUNDS = 30;
 
-export interface ExperimentMatrixOptions {
-  readonly modes?: readonly RuleMode[];
-  readonly scoreConfigs?: readonly ScoreConfigVariant[];
-  readonly strategies?: readonly StrategyVariant[];
+/**
+ * 无头实验的公共运行配置：样本量、种子基数、回合上限。
+ * 被 `ExperimentMatrixOptions`、`HeadToHeadMatrixOptions`、`DynamicSwitchingExperimentOptions` 复用。
+ */
+export interface RunConfig {
   readonly matches?: number;
   readonly baseSeed?: number;
   readonly maxRounds?: number;
+}
+
+export interface ExperimentMatrixOptions extends RunConfig {
+  readonly modes?: readonly RuleMode[];
+  readonly scoreConfigs?: readonly ScoreConfigVariant[];
+  readonly strategies?: readonly StrategyVariant[];
 }
 
 // ---------------------------------------------------------------------------
@@ -206,7 +222,8 @@ function runCell(
     strategyP1: strategy,
     strategyP2: strategy,
     scoreConfig: scoreConfigVariant.config,
-    rules
+    rules,
+    isBoardSettlement: isBoardSettlementFor(mode)
   });
 
   return {
@@ -302,13 +319,10 @@ export interface HeadToHeadReport {
   readonly scoreConfigName: string;
 }
 
-export interface HeadToHeadMatrixOptions {
+export interface HeadToHeadMatrixOptions extends RunConfig {
   readonly strategies?: readonly StrategyVariant[];
   readonly mode?: RuleMode;
   readonly scoreConfig?: ScoreConfigVariant;
-  readonly matches?: number;
-  readonly baseSeed?: number;
-  readonly maxRounds?: number;
 }
 
 interface SeatRun {
@@ -342,7 +356,8 @@ function runSeat(
     strategyP1: buildVariantStrategy(strategyP1, scoreConfig.config, rules),
     strategyP2: buildVariantStrategy(strategyP2, scoreConfig.config, rules),
     scoreConfig: scoreConfig.config,
-    rules
+    rules,
+    isBoardSettlement: isBoardSettlementFor(mode)
   });
   return {
     totalMatches: metrics.totalMatches,
@@ -478,7 +493,8 @@ function formatPercent(value: number): string {
 
 const RULE_MODE_NOTES: Readonly<Record<RuleMode, string>> = {
   scoring: '`scoring` = 计分轴开启（AI 估值读取规则得分，生产默认）',
-  'board-only': '`board-only` = 计分轴关闭（AI 只按盘面判优，RuleSwitches.boardOnly）'
+  'board-only':
+    '`board-only` = 计分轴关闭（AI 只按盘面判优，RuleSwitches.isBoardOnly）；回合上限时按盘面进度判定胜负，不读计分'
 };
 
 const SCORE_CONFIG_NOTES: Readonly<Record<string, string>> = {
@@ -885,6 +901,7 @@ const HELP_TEXT = `归元弈 (Guiyuan) 平衡实验运行器
   --scan <kind>       扫描类型: all (默认) / matrix / head-to-head
   --mode <mode>       规则模式: scoring (默认) / board-only / both
                       (head-to-head 与 all 有效；both = 跑两次并输出逐格对照)
+                      board-only = 关闭 AI 计分读取，且回合上限按盘面进度判定胜负
   --matches <N>       每个对照格 / 每座次的样本量 (默认 ${DEFAULT_MATCHES_PER_CELL})
   --seed <N>          种子基数，每格使用 seed + i (默认 ${DEFAULT_BASE_SEED})
   --max-rounds <N>    回合上限 (默认 ${DEFAULT_MAX_ROUNDS})
@@ -897,7 +914,7 @@ const HELP_TEXT = `归元弈 (Guiyuan) 平衡实验运行器
 `;
 
 export interface ParsedArgs {
-  readonly help: boolean;
+  readonly isHelp: boolean;
   readonly scan: ScanKind;
   readonly mode: ModeArg;
   readonly matches?: number;
@@ -907,7 +924,7 @@ export interface ParsedArgs {
 
 /** 解析 CLI 参数；未知参数或非法值抛错。 */
 export function parseExperimentArgs(argv: readonly string[]): ParsedArgs {
-  let help = false;
+  let isHelp = false;
   let scan: ScanKind = 'all';
   let mode: ModeArg = 'scoring';
   let matches: number | undefined;
@@ -917,7 +934,7 @@ export function parseExperimentArgs(argv: readonly string[]): ParsedArgs {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--help' || arg === '-h') {
-      help = true;
+      isHelp = true;
       continue;
     }
     if (arg === '--scan') {
@@ -957,57 +974,47 @@ export function parseExperimentArgs(argv: readonly string[]): ParsedArgs {
     throw new Error(`未知参数: ${arg}`);
   }
 
-  return { help, scan, mode, matches, baseSeed, maxRounds };
+  return { isHelp, scan, mode, matches, baseSeed, maxRounds };
 }
 
 // 支持 CLI 命令行直接执行
-if (typeof process !== 'undefined' && process.argv && process.argv[1]) {
-  try {
-    const isDirectRun =
-      import.meta.url === pathToFileURL(process.argv[1]).href ||
-      import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
-    if (isDirectRun) {
-      const parsed = parseExperimentArgs(process.argv.slice(2));
-      if (parsed.help) {
-        console.log(HELP_TEXT);
-      } else {
-        const matches = parsed.matches ?? DEFAULT_MATCHES_PER_CELL;
-        const baseSeed = parsed.baseSeed ?? DEFAULT_BASE_SEED;
-        const maxRounds = parsed.maxRounds ?? DEFAULT_MAX_ROUNDS;
-        const mode = parsed.mode;
-        const runHeadToHead = (ruleMode: RuleMode): HeadToHeadReport =>
-          runHeadToHeadMatrix({ matches, baseSeed, maxRounds, mode: ruleMode });
+runCliIfDirect(import.meta.url, () => {
+  const parsed = parseExperimentArgs(process.argv.slice(2));
+  if (parsed.isHelp) {
+    console.log(HELP_TEXT);
+  } else {
+    const matches = parsed.matches ?? DEFAULT_MATCHES_PER_CELL;
+    const baseSeed = parsed.baseSeed ?? DEFAULT_BASE_SEED;
+    const maxRounds = parsed.maxRounds ?? DEFAULT_MAX_ROUNDS;
+    const mode = parsed.mode;
+    const runHeadToHead = (ruleMode: RuleMode): HeadToHeadReport =>
+      runHeadToHeadMatrix({ matches, baseSeed, maxRounds, mode: ruleMode });
+    console.log(
+      `🚀 运行平衡实验运行器 (${parsed.scan}, ${mode}): ${matches} 局/格, 种子基数 ${baseSeed}, 回合上限 ${maxRounds}...`
+    );
+    if (parsed.scan === 'matrix') {
+      console.log(formatExperimentReport(runExperimentMatrix({ matches, baseSeed, maxRounds })));
+    } else if (parsed.scan === 'head-to-head') {
+      console.log(
+        mode === 'both'
+          ? formatHeadToHeadComparisonReport(
+              compareHeadToHeadMatrices(runHeadToHead('scoring'), runHeadToHead('board-only'))
+            )
+          : formatHeadToHeadReport(runHeadToHead(mode))
+      );
+    } else {
+      const experiment = runExperimentMatrix({ matches, baseSeed, maxRounds });
+      if (mode === 'both') {
+        console.log(formatExperimentReport(experiment));
+        console.log('---');
         console.log(
-          `🚀 运行平衡实验运行器 (${parsed.scan}, ${mode}): ${matches} 局/格, 种子基数 ${baseSeed}, 回合上限 ${maxRounds}...`
+          formatHeadToHeadComparisonReport(
+            compareHeadToHeadMatrices(runHeadToHead('scoring'), runHeadToHead('board-only'))
+          )
         );
-        if (parsed.scan === 'matrix') {
-          console.log(formatExperimentReport(runExperimentMatrix({ matches, baseSeed, maxRounds })));
-        } else if (parsed.scan === 'head-to-head') {
-          console.log(
-            mode === 'both'
-              ? formatHeadToHeadComparisonReport(
-                  compareHeadToHeadMatrices(runHeadToHead('scoring'), runHeadToHead('board-only'))
-                )
-              : formatHeadToHeadReport(runHeadToHead(mode))
-          );
-        } else {
-          const experiment = runExperimentMatrix({ matches, baseSeed, maxRounds });
-          if (mode === 'both') {
-            console.log(formatExperimentReport(experiment));
-            console.log('---');
-            console.log(
-              formatHeadToHeadComparisonReport(
-                compareHeadToHeadMatrices(runHeadToHead('scoring'), runHeadToHead('board-only'))
-              )
-            );
-          } else {
-            console.log(formatCombinedReport(experiment, runHeadToHead(mode)));
-          }
-        }
+      } else {
+        console.log(formatCombinedReport(experiment, runHeadToHead(mode)));
       }
     }
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
-    process.exitCode = 1;
   }
-}
+});

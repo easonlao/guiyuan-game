@@ -17,8 +17,9 @@
  * 已确认结论（见文档）：
  *   - 死旋钮：RARITY_MULTIPLIER、NO_RARITY_ACTIONS、ACTION.DISSIPATE、ACTION.PASS
  *   - 仅终局生效（AI 不可见）：DAMAGE_PENALTY
- *   - 规则开关 boardOnly 的活消费者是估值器；MatchOptions/BenchmarkOptions/TurnManager/
- *     ActionCandidates/HeadlessMatchConfig 上的 `rules` 转发当前无消费者（死）。
+ *   - 规则开关 isBoardOnly 的活消费者是估值器；无头入口的 `rules` 在策略为权重模板时
+ *     与 scoreConfig 一起绑定 AI 估值器（活）；TurnManager / ActionCandidates 上的
+ *     `rules` 只转发到候选接缝，当前无消费者（死）。
  */
 
 import { describe, it, expect } from 'vitest';
@@ -40,8 +41,7 @@ import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
 import { ActionEvaluator, DEFAULT_STRATEGY_WEIGHTS } from '../../src/core/ai/ActionEvaluator.js';
 import {
   BALANCED_WEIGHTS,
-  createScoreBoundStrategy,
-  balancedStrategy
+  createScoreBoundStrategy
 } from '../../src/core/ai/Strategy.js';
 import type { StrategyWeights } from '../../src/core/ai/types.js';
 import { gameStateWith } from '../../src/core/headless/BoardFixture.js';
@@ -574,7 +574,7 @@ describe('Ticket 05 — 死旋钮不改变任何批量指标（同断言下活�
 // ---------------------------------------------------------------------------
 
 describe('Ticket 05 — 规则开关 (RuleSwitches) 与选项参数普查', () => {
-  it('RuleSwitches.boardOnly：AI 估值器直接读取（活旋钮）', () => {
+  it('RuleSwitches.isBoardOnly：AI 估值器直接读取（活旋钮）', () => {
     const scenario = SCORING_KNOBS.find(row => row.knob === 'ACTION.ATK')!.scenario();
     const evaluator = new ActionEvaluator(new ActionResolver());
     const scoring = evaluator.evaluate(
@@ -582,48 +582,48 @@ describe('Ticket 05 — 规则开关 (RuleSwitches) 与选项参数普查', () =
       scenario.tianGan,
       scenario.action,
       DEFAULT_STRATEGY_WEIGHTS,
-      { boardOnly: false }
+      { isBoardOnly: false }
     ).score;
     const boardOnly = evaluator.evaluate(
       scenario.state,
       scenario.tianGan,
       scenario.action,
       DEFAULT_STRATEGY_WEIGHTS,
-      { boardOnly: true }
+      { isBoardOnly: true }
     ).score;
     expect(boardOnly).not.toBe(scoring);
   });
 
-  it('BenchmarkOptions.rules：只转发到候选接缝，当前无消费者（死）', () => {
-    // 策略不绑定 rules，仅 benchmark 选项带 rules。若转发真的到达 AI，轨迹会变。
+  it('BenchmarkOptions.rules：经权重模板策略到达 AI 估值器（活旋钮）', () => {
+    // 修复后：入口收到权重模板时，rules 与 scoreConfig 一起绑定 AI 估值器，指标改变。
+    // （若策略是已构造函数，rules 才观察不到变化——见 Ticket 04 主表的 disconnected 分支。）
     const benchmark = new HeadlessBenchmark();
     const base = { matches: 40, baseSeed: 10000, maxRounds: 30 } as const;
-    const strategy = createScoreBoundStrategy(BALANCED_WEIGHTS, POINTS_CONFIG);
-    const control = benchmark.run({ ...base, strategyP1: strategy, strategyP2: strategy });
+    const control = benchmark.run({
+      ...base,
+      strategyP1: BALANCED_WEIGHTS,
+      strategyP2: BALANCED_WEIGHTS
+    });
     const withRules = benchmark.run({
       ...base,
-      strategyP1: strategy,
-      strategyP2: strategy,
-      rules: { boardOnly: true }
+      strategyP1: BALANCED_WEIGHTS,
+      strategyP2: BALANCED_WEIGHTS,
+      rules: { isBoardOnly: true }
     });
-    expect(deterministicMetrics(withRules)).toEqual(deterministicMetrics(control));
+    expect(deterministicMetrics(withRules)).not.toEqual(deterministicMetrics(control));
   });
 
-  it('HeadlessMatchConfig.rules：只转发到候选接缝，当前无消费者（死）', () => {
-    const control = new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
+  it('HeadlessMatchConfig.rules：经权重模板策略到达 AI 估值器（活旋钮）', () => {
+    const control = new HeadlessMatch().run(BALANCED_WEIGHTS, BALANCED_WEIGHTS, {
       seed: 4242,
       maxRounds: 30
     });
-    const withRules = new HeadlessMatch({ rules: { boardOnly: true } }).run(
-      balancedStrategy,
-      balancedStrategy,
+    const withRules = new HeadlessMatch({ rules: { isBoardOnly: true } }).run(
+      BALANCED_WEIGHTS,
+      BALANCED_WEIGHTS,
       { seed: 4242, maxRounds: 30 }
     );
-    expect(withRules.record.actions).toEqual(control.record.actions);
-    expect([withRules.finalP1Score, withRules.finalP2Score]).toEqual([
-      control.finalP1Score,
-      control.finalP2Score
-    ]);
+    expect(withRules.record.actions).not.toEqual(control.record.actions);
   });
 });
 

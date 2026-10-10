@@ -170,7 +170,7 @@ describe('Ticket 10 - 动态 vs 静态对拼矩阵 (seat-balanced head-to-head)'
       matches: 3,
       baseSeed: BASE_SEED,
       maxRounds: MAX_ROUNDS,
-      collectStats: false
+      shouldCollectStats: false
     });
 
     expect(report.statics).toEqual(DEFAULT_STRATEGY_VARIANTS.map(v => v.name));
@@ -189,7 +189,7 @@ describe('Ticket 10 - 动态 vs 静态对拼矩阵 (seat-balanced head-to-head)'
       matches: 3,
       baseSeed: 4242,
       maxRounds: MAX_ROUNDS,
-      collectStats: true
+      shouldCollectStats: true
     } as const;
     expect(runDynamicSwitchingExperiment(options)).toEqual(runDynamicSwitchingExperiment(options));
   });
@@ -200,7 +200,7 @@ describe('Ticket 10 - 动态 vs 静态对拼矩阵 (seat-balanced head-to-head)'
       matches: 3,
       baseSeed: BASE_SEED,
       maxRounds: MAX_ROUNDS,
-      collectStats: true
+      shouldCollectStats: true
     });
     const stats = report.policies[0].stats;
     expect(stats.decisions).toBeGreaterThan(0);

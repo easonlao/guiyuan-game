@@ -82,7 +82,7 @@ describe('Ticket 01 - headless scoring-config injection', () => {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
         scoreConfig: POINTS_CONFIG,
-        rules: { boardOnly: false }
+        rules: { isBoardOnly: false }
       });
 
       expect(injected.record).toEqual(plain.record);
@@ -91,35 +91,47 @@ describe('Ticket 01 - headless scoring-config injection', () => {
     });
   });
 
-  describe('scoring config reaches the AI valuation path', () => {
-    it('a deliberately different config changes terminal scores AND the AI action trajectory', () => {
+  describe('scoring config reaches the AI valuation path from a single injection', () => {
+    it('a single scoreConfig passed to HeadlessMatch.run changes the AI action trajectory (weights spec)', () => {
+      // Ticket 01 的核心接缝：入口同时收到 scoreConfig 与权重模板，
+      // 同一份配置到达解析器与 AI 估值器，而不是只到解析器。
       const match = new HeadlessMatch();
-      const defaultStrategy = createScoreBoundStrategy(BALANCED_WEIGHTS, POINTS_CONFIG);
-      const heavyStrategy = createScoreBoundStrategy(BALANCED_WEIGHTS, ATTACK_HEAVY_POINTS_CONFIG);
-
-      const defaultResult = match.run(defaultStrategy, defaultStrategy, {
+      const baseline = match.run(BALANCED_WEIGHTS, BALANCED_WEIGHTS, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
         scoreConfig: POINTS_CONFIG
       });
-      const heavyResult = match.run(heavyStrategy, heavyStrategy, {
+      const heavy = match.run(BALANCED_WEIGHTS, BALANCED_WEIGHTS, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
         scoreConfig: ATTACK_HEAVY_POINTS_CONFIG
       });
 
       expect(
-        heavyResult.finalP1Score !== defaultResult.finalP1Score ||
-          heavyResult.finalP2Score !== defaultResult.finalP2Score
+        heavy.finalP1Score !== baseline.finalP1Score ||
+          heavy.finalP2Score !== baseline.finalP2Score
       ).toBe(true);
-      expect(heavyResult.record).not.toEqual(defaultResult.record);
+      expect(heavy.record).not.toEqual(baseline.record);
     });
 
-    it('resolver-only injection leaves the AI trajectory unchanged (the silent-ignore defect)', () => {
-      // 这一条锁住缺陷本身：只把配置交给解析器、不绑定到 AI 估值器时，
-      // 换一套计分数值只改变终局分数，AI 动作轨迹逐字节不变。
+    it('a single scoreConfig passed to HeadlessBenchmark.run changes the AI action trajectory (default weights)', () => {
+      const benchmark = new HeadlessBenchmark();
+      const base = { matches: 40, baseSeed: 10000, maxRounds: MAX_ROUNDS };
+      const baseline = benchmark.run({ ...base, scoreConfig: POINTS_CONFIG });
+      const heavy = benchmark.run({ ...base, scoreConfig: ATTACK_HEAVY_POINTS_CONFIG });
+
+      expect([heavy.guiYuanCount, heavy.p1Wins, heavy.avgRounds]).not.toEqual([
+        baseline.guiYuanCount,
+        baseline.p1Wins,
+        baseline.avgRounds
+      ]);
+    });
+
+    it('an explicit pre-built DecisionStrategy keeps its own evaluator (explicit wins)', () => {
+      // 已构造的函数策略按自身估值器运行，入口配置不改写它（向后兼容）。
+      // 要让它读到注入配置，须传权重模板（上一用例）或自行用 createScoreBoundStrategy 绑定。
       const match = new HeadlessMatch();
-      const defaultResult = match.run(balancedStrategy, balancedStrategy, {
+      const baseline = match.run(balancedStrategy, balancedStrategy, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
         scoreConfig: POINTS_CONFIG
@@ -131,10 +143,10 @@ describe('Ticket 01 - headless scoring-config injection', () => {
       });
 
       expect(
-        resolverOnly.finalP1Score !== defaultResult.finalP1Score ||
-          resolverOnly.finalP2Score !== defaultResult.finalP2Score
+        resolverOnly.finalP1Score !== baseline.finalP1Score ||
+          resolverOnly.finalP2Score !== baseline.finalP2Score
       ).toBe(true);
-      expect(resolverOnly.record).toEqual(defaultResult.record);
+      expect(resolverOnly.record).toEqual(baseline.record);
     });
   });
 
@@ -143,7 +155,7 @@ describe('Ticket 01 - headless scoring-config injection', () => {
       const match = new HeadlessMatch();
       const defaultStrategy = createScoreBoundStrategy(BALANCED_WEIGHTS, POINTS_CONFIG);
       const boardOnlyStrategy = createScoreBoundStrategy(BALANCED_WEIGHTS, POINTS_CONFIG, {
-        boardOnly: true
+        isBoardOnly: true
       });
 
       const defaultResult = match.run(defaultStrategy, defaultStrategy, {
@@ -153,7 +165,7 @@ describe('Ticket 01 - headless scoring-config injection', () => {
       const boardOnlyResult = match.run(boardOnlyStrategy, boardOnlyStrategy, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
-        rules: { boardOnly: true }
+        rules: { isBoardOnly: true }
       });
 
       expect(boardOnlyResult.record).not.toEqual(defaultResult.record);
@@ -165,7 +177,7 @@ describe('Ticket 01 - headless scoring-config injection', () => {
       const explicitFalse = match.run(balancedStrategy, balancedStrategy, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
-        rules: { boardOnly: false }
+        rules: { isBoardOnly: false }
       });
 
       expect(explicitFalse.record).toEqual(omitted.record);
@@ -176,7 +188,7 @@ describe('Ticket 01 - headless scoring-config injection', () => {
       const state = createInitialGameState(MAX_ROUNDS);
       const tianGan = TIAN_GAN_LIST[0];
       const plain = getAvailableActions(state, tianGan);
-      const withSwitch = getAvailableActions(state, tianGan, { rules: { boardOnly: true } });
+      const withSwitch = getAvailableActions(state, tianGan, { rules: { isBoardOnly: true } });
 
       expect(withSwitch).toEqual(plain);
     });
@@ -219,7 +231,7 @@ describe('Ticket 01 - headless scoring-config injection', () => {
     it('board-only strategies change batch metrics', () => {
       const benchmark = new HeadlessBenchmark();
       const boardOnlyStrategy = createScoreBoundStrategy(BALANCED_WEIGHTS, POINTS_CONFIG, {
-        boardOnly: true
+        isBoardOnly: true
       });
       const base = { matches: 30, baseSeed: 10000, maxRounds: MAX_ROUNDS };
       const defaultMetrics = benchmark.run({
@@ -231,7 +243,7 @@ describe('Ticket 01 - headless scoring-config injection', () => {
         ...base,
         strategyP1: boardOnlyStrategy,
         strategyP2: boardOnlyStrategy,
-        rules: { boardOnly: true }
+        rules: { isBoardOnly: true }
       });
 
       expect(boardOnlyMetrics.guiYuanCount).not.toBe(defaultMetrics.guiYuanCount);
@@ -241,7 +253,7 @@ describe('Ticket 01 - headless scoring-config injection', () => {
   describe('in-game entry (TurnManager / GameManager)', () => {
     it('TurnManager accepts rules and keeps candidate generation unchanged by default', () => {
       const plain = new TurnManager({ prng: createPRNG(777), rules: {} });
-      const switched = new TurnManager({ prng: createPRNG(777), rules: { boardOnly: true } });
+      const switched = new TurnManager({ prng: createPRNG(777), rules: { isBoardOnly: true } });
 
       expect(switched.startTurn()).toEqual(plain.startTurn());
     });
@@ -282,7 +294,7 @@ describe('Ticket 01 - headless scoring-config injection', () => {
         };
       };
 
-      const driveAiOnce = (rules?: { boardOnly?: boolean }): GameState => {
+      const driveAiOnce = (rules?: { isBoardOnly?: boolean }): GameState => {
         const gm = new GameManager({ prng: fixedPrng, initialState: controlledState(), rules });
         for (let i = 0; i < 90; i++) {
           gm.update();
@@ -291,7 +303,7 @@ describe('Ticket 01 - headless scoring-config injection', () => {
       };
 
       const defaultState = driveAiOnce();
-      const boardOnlyState = driveAiOnce({ boardOnly: true });
+      const boardOnlyState = driveAiOnce({ isBoardOnly: true });
 
       // 默认：BURST_ATK 消耗木阳 1 -> 0
       expect(defaultState.players.P2.board[WuXing.WOOD].yang).toBe(0);

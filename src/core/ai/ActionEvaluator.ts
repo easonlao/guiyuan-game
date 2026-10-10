@@ -185,7 +185,7 @@ export class ActionEvaluator {
     // 5. 规则得分奖励
     // board-only：关闭计分轴，忽略规则得分，只按盘面判优（默认关闭，恒等）
     const scoreWeight = weights.scoreDeltaWeight ?? 1;
-    const scoreDeltaPoints = rules?.boardOnly ? 0 : result.scoreDelta * scoreWeight;
+    const scoreDeltaPoints = rules?.isBoardOnly ? 0 : result.scoreDelta * scoreWeight;
 
     // 6. 动作基础偏好
     const biasScore = weights.baseActionBias?.[action.actionType] ?? 0;

@@ -65,7 +65,7 @@ export interface RuleSwitches {
    * 关闭计分轴（board-only）：AI 动作估值忽略规则得分（scoreDelta），只按盘面判优。
    * 该开关由 ActionEvaluator 读取；不改变动作合法性、状态转移或终局结算。默认 false。
    */
-  readonly boardOnly?: boolean;
+  readonly isBoardOnly?: boolean;
 }
 
 /**

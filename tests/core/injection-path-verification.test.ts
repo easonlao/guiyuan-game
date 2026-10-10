@@ -18,9 +18,9 @@
  *   - 场景接缝：ActionResolver.resolve（受控盘面）
  *
  * 相关既有测试（本文件建立在其上，不重复）：
- *   - tests/core/headless-config-injection.test.ts 已锁定「resolver-only 注入下 AI 轨迹不变」的
- *     修复前形态；本文件的 scoreConfig(AI 估值器路径) 行的 disconnected 分支复用它。
- *   - tests/core/headless-config-injection.test.ts 已确认 GameManager 的 boardOnly 会影响 AI 决策；
+ *   - tests/core/headless-config-injection.test.ts 已锁定「单一 scoreConfig 经权重模板同时到达解析器与 AI 估值器」
+ *     与「显式传入已构造策略时配置不改写其估值器」两类行为；本文件的 disconnected 分支复用后者。
+ *   - tests/core/headless-config-injection.test.ts 已确认 GameManager 的 isBoardOnly 会影响 AI 决策；
  *     本文件在「两个入口」小节确认无头入口，并引用该用例覆盖游戏内入口。
  *
  * 转交 Ticket 05（死旋钮清单）：见文件末尾的 scoreConfig 子项普查。
@@ -178,16 +178,16 @@ const MATCH_INJECTION_POINTS: readonly InjectionPoint<MatchResult>[] = [
     observe: r => r.record.actions.length
   },
   {
-    point: 'collectStats',
+    point: 'shouldCollectStats',
     consumer: 'MatchOptions → MatchResult.stats 采集',
     terminalOnly: false,
     run: (perturbed, connected) => {
       // 断开时恒为 true（总是采集）
-      const collectStats = connected ? !perturbed : true;
+      const shouldCollectStats = connected ? !perturbed : true;
       return new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
-        collectStats
+        shouldCollectStats
       });
     },
     observe: r => (r.stats ? 'present' : 'absent')
@@ -209,15 +209,14 @@ const MATCH_INJECTION_POINTS: readonly InjectionPoint<MatchResult>[] = [
   },
   {
     point: 'scoreConfig（AI 估值器路径）',
-    consumer: 'createScoreBoundStrategy → ActionEvaluator → AI 动作轨迹',
+    consumer: 'HeadlessMatch.run(strategy=weights, scoreConfig) → ActionEvaluator → AI 动作轨迹',
     terminalOnly: false,
     run: (perturbed, connected) => {
       const config = connected ? (perturbed ? ATTACK_HEAVY_POINTS_CONFIG : POINTS_CONFIG) : POINTS_CONFIG;
-      // 断开形态 = 修复前缺陷：策略是 plain balancedStrategy，估值器保留默认解析器，
+      // 连通形态 = 修复后：入口收到权重模板，同一份 scoreConfig 同时绑定 AI 估值器与解析器。
+      // 断开形态 = 修复前缺陷：策略是已构造的 balancedStrategy，估值器保留默认解析器，
       // 配置只到达 match.run 的解析器。此形态下换配置只改终局分数，AI 轨迹逐字节不变。
-      const strategy = connected
-        ? createScoreBoundStrategy(BALANCED_WEIGHTS, config)
-        : balancedStrategy;
+      const strategy = connected ? BALANCED_WEIGHTS : balancedStrategy;
       return new HeadlessMatch().run(strategy, strategy, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
@@ -243,14 +242,14 @@ const MATCH_INJECTION_POINTS: readonly InjectionPoint<MatchResult>[] = [
     observe: r => r.record.actions
   },
   {
-    point: 'RuleSwitches.boardOnly（AI 估值器路径）',
-    consumer: 'createScoreBoundStrategy(rules) → ActionEvaluator（关闭计分轴）',
+    point: 'RuleSwitches.isBoardOnly（AI 估值器路径）',
+    consumer: 'HeadlessMatch.run(strategy=weights, rules) → ActionEvaluator（关闭计分轴）',
     terminalOnly: false,
     run: (perturbed, connected) => {
-      // 断开形态 = 策略构造时丢掉 rules，估值器退回「读取计分轴」
-      const rules = connected ? { boardOnly: perturbed } : undefined;
-      const strategy = createScoreBoundStrategy(BALANCED_WEIGHTS, POINTS_CONFIG, rules);
-      return new HeadlessMatch().run(strategy, strategy, {
+      // 连通形态：权重模板 + rules 经无头入口同时绑定 AI 估值器。
+      // 断开形态：不把 rules 交给入口，估值器退回「读取计分轴」，扰动观察不到变化。
+      const rules = connected ? { isBoardOnly: perturbed } : undefined;
+      return new HeadlessMatch().run(BALANCED_WEIGHTS, BALANCED_WEIGHTS, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
         rules
@@ -345,6 +344,28 @@ const BENCHMARK_INJECTION_POINTS: readonly InjectionPoint<BenchmarkMetrics>[] = 
       });
     },
     observe: m => [m.avgP1Score, m.avgP2Score]
+  },
+  {
+    point: 'scoreConfig（批量 AI 估值器路径）',
+    consumer: 'BenchmarkOptions(strategy=weights) + scoreConfig → ActionEvaluator → 聚合指标',
+    terminalOnly: false,
+    run: (perturbed, connected) => {
+      const scoreConfig = connected ? (perturbed ? ATTACK_HEAVY_POINTS_CONFIG : POINTS_CONFIG) : POINTS_CONFIG;
+      // 连通形态：批量入口收到权重模板，同一份 scoreConfig 到达 AI 估值器。
+      // 断开形态：已构造策略，估值器保留默认配置。
+      const strategyP1 = connected
+        ? BALANCED_WEIGHTS
+        : createScoreBoundStrategy(BALANCED_WEIGHTS, POINTS_CONFIG);
+      return new HeadlessBenchmark().run({
+        matches: 40,
+        baseSeed: 10000,
+        maxRounds: MAX_ROUNDS,
+        scoreConfig,
+        strategyP1,
+        strategyP2: strategyP1
+      });
+    },
+    observe: m => [m.guiYuanCount, m.avgRounds]
   }
   // 说明：BenchmarkOptions.recordActions 与 .rules 转发到 HeadlessMatch.run，但
   // BenchmarkMetrics 不暴露逐动作记录；recordActions 在单局表已覆盖，rules 的
@@ -408,7 +429,7 @@ describe('规则开关在候选接缝上是默认恒等（消费者是估值器�
     const state = createInitialGameState(MAX_ROUNDS);
     const tianGan = TIAN_GAN_LIST[0];
     const plain = getAvailableActions(state, tianGan);
-    const switched = getAvailableActions(state, tianGan, { rules: { boardOnly: true } });
+    const switched = getAvailableActions(state, tianGan, { rules: { isBoardOnly: true } });
     expect(switched).toEqual(plain);
   });
 
@@ -433,22 +454,19 @@ describe('规则开关在候选接缝上是默认恒等（消费者是估值器�
     expect(getAvailableActions(state, tianGan, { isExtraTurn: true }).some(isBurst)).toBe(false);
   });
 
-  it('MatchOptions.rules 单独设置 boardOnly 不改变 AI 轨迹', () => {
-    // 事实记录：无头入口的 MatchOptions.rules 只转发到 getAvailableActions，
-    // 而 boardOnly 的真实消费者是 ActionEvaluator。AI 要读到规则，必须由策略构造器
-    // (createScoreBoundStrategy / createStrategy({ rules })) 绑定。这是转交 Ticket 05 的
-    // 「已接线但当前无消费者」条目，不是本票要修的缺陷。
-    const plain = new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
+  it('MatchOptions.rules 经权重模板策略到达 AI 估值器（活旋钮）', () => {
+    // 修复后：入口收到权重模板时，MatchOptions.rules 与 scoreConfig 一起绑定 AI 估值器；
+    // 只把 rules 交给候选生成器、策略为已构造函数时才观察不到变化（见主表 disconnected 分支）。
+    const plain = new HeadlessMatch().run(BALANCED_WEIGHTS, BALANCED_WEIGHTS, {
       seed: SEED,
       maxRounds: MAX_ROUNDS
     });
-    const withRule = new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
+    const withRule = new HeadlessMatch().run(BALANCED_WEIGHTS, BALANCED_WEIGHTS, {
       seed: SEED,
       maxRounds: MAX_ROUNDS,
-      rules: { boardOnly: true }
+      rules: { isBoardOnly: true }
     });
-    expect(withRule.record.actions).toEqual(plain.record.actions);
-    expect(withRule.finalP1Score).toBe(plain.finalP1Score);
+    expect(withRule.record.actions).not.toEqual(plain.record.actions);
   });
 });
 
@@ -525,7 +543,7 @@ describe('注入同时覆盖游戏内回合管理与无头推演两个入口', (
       };
     };
 
-    const driveAiOnce = (rules?: { boardOnly?: boolean }): GameState => {
+    const driveAiOnce = (rules?: { isBoardOnly?: boolean }): GameState => {
       const gm = new GameManager({ prng: fixedPrng, initialState: controlledState(), rules });
       for (let i = 0; i < 90; i++) {
         gm.update();
@@ -534,7 +552,7 @@ describe('注入同时覆盖游戏内回合管理与无头推演两个入口', (
     };
 
     expect(driveAiOnce().players.P2.board[WuXing.WOOD].yang).toBe(0);
-    expect(driveAiOnce({ boardOnly: true }).players.P2.board[WuXing.WOOD].yang).toBe(1);
+    expect(driveAiOnce({ isBoardOnly: true }).players.P2.board[WuXing.WOOD].yang).toBe(1);
   });
 });
 
