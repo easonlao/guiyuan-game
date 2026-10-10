@@ -5,6 +5,7 @@ import {
   findSeatBalancedWinRate,
   toHeadToHeadMatrix,
   computeDominanceVerdicts,
+  analyzeDominance,
   compareHeadToHeadMatrices,
   formatExperimentReport,
   formatHeadToHeadReport,
@@ -418,6 +419,28 @@ describe('Ticket 06 - 报告输出 (paste-able markdown)', () => {
     expect(markdown).toContain('占优结论');
     // 占优结论段落始终由 Metrics.ts 守卫消费矩阵
     expect(formatDominanceSection(report)).toMatch(/占优|矩阵/);
+  });
+
+  it('全格无法判定时报告「无法判定」，而不是「无占优」（不静默通过）', () => {
+    // 样本量 10 远低于 MIN_DOMINANCE_MATCHES（100）：两座次合计 20 局/格，
+    // 全部格子均为「样本不足」而不可判定，没有任何格子能支撑占优结论。
+    const report = runHeadToHeadMatrix({
+      strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 2),
+      matches: 10,
+      baseSeed: BASE_SEED,
+      maxRounds: MAX_ROUNDS
+    });
+
+    const analysis = analyzeDominance(report);
+    expect(analysis.verdicts.every(verdict => verdict.dominates.length === 0)).toBe(true);
+    expect(analysis.undecidable.length).toBeGreaterThan(0);
+    expect(analysis.undecidable.every(item => item.reason === 'insufficient')).toBe(true);
+
+    const section = formatDominanceSection(report);
+    // 关键区分：不能把「无法判定」写成「未发现占优」。
+    expect(section).toContain('无法判定');
+    expect(section).toContain('样本不足');
+    expect(section).not.toContain('未发现任何策略');
   });
 
   it('组合报告同时包含对照表与对拼矩阵', () => {

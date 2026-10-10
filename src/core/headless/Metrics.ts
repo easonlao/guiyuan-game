@@ -365,8 +365,205 @@ export interface DominanceVerdict {
 }
 
 /**
+ * 占优判定要求的最小样本量（每个有序对两个座次合计）。
+ * 100 是「检测 10 个百分点优势」所需样本的下界：
+ * z=1.96 时需 0.10 >= 1.96 × 0.5 / √n，解得 n >= (1.96 × 0.5 / 0.10)² = 96.04。
+ * 样本量必须为整数，向上取整为 97；这里取整十数 100 作为更保守的下界。
+ * 样本量不足时，再高的胜率也只是小样本噪声，不能作为占优证据。
+ */
+export const MIN_DOMINANCE_MATCHES = 100;
+
+/**
+ * 占优判定的显著性倍数 z（单侧检验）。
+ * 零假设「座次平衡胜率 = 50%」下，二项标准误 SE = 0.5 / √n（p=0.5 时方差最大）。
+ * 要求实测胜率高出 50% 的幅度 >= z × SE 才算占优证据。
+ * z = 1.96 是标准正态分布的双侧 95% 分位点，等价于单侧 97.5% 分位点；
+ * 本判定是单侧检验（只在胜率显著高于 50% 时才判定占优），因此实际假阳性率约为 2.5%。
+ */
+export const DOMINANCE_SIGNIFICANCE_Z = 1.96;
+
+/** 在矩阵中查找 A 对 B 的格子（允许 A/B 反向存储）。 */
+function findHeadToHeadCell(
+  matrix: HeadToHeadMatrix,
+  strategy: string,
+  opponent: string
+): HeadToHeadCell | undefined {
+  return matrix.cells.find(
+    cell =>
+      (cell.p1Strategy === strategy && cell.p2Strategy === opponent) ||
+      (cell.p1Strategy === opponent && cell.p2Strategy === strategy)
+  );
+}
+
+/** 读取格子里 strategy 的座次平衡胜率（反向格取互补值）。 */
+function seatBalancedRateFor(cell: HeadToHeadCell, strategy: string): number {
+  return cell.p1Strategy === strategy ? cell.seatBalancedWinRate : 1 - cell.seatBalancedWinRate;
+}
+
+/** 占优证据阈值：胜率需高出 50% 的最小幅度（由样本量推出的二项标准误 × z）。 */
+function dominanceMarginThreshold(matches: number): number {
+  return DOMINANCE_SIGNIFICANCE_Z * (0.5 / Math.sqrt(matches));
+}
+
+/** 占优证据的判定结果（唯一定义处；守卫与结论计算共用）。 */
+export type DominanceEvidence =
+  | {
+      readonly kind: 'supported';
+      readonly matches: number;
+      readonly rate: number;
+      readonly margin: number;
+      readonly threshold: number;
+    }
+  | { readonly kind: 'missing' }
+  | { readonly kind: 'insufficient'; readonly matches: number; readonly rate: number }
+  | {
+      readonly kind: 'contradicted';
+      readonly matches: number;
+      readonly rate: number;
+      readonly margin: number;
+    }
+  | {
+      readonly kind: 'undecidable';
+      readonly matches: number;
+      readonly rate: number;
+      readonly margin: number;
+      readonly threshold: number;
+    };
+
+/**
+ * 判定「strategy 对 opponent 占优」的证据强度（唯一决策处）。
+ *
+ * 判定顺序（先硬性门槛，再显著性）：
+ *   - 缺格 → `missing`；
+ *   - 样本量 < MIN_DOMINANCE_MATCHES → `insufficient`；
+ *   - 实测座次平衡胜率不高于 50% → `contradicted`（反证，是「已判定无占优」而非「无法判定」）；
+ *   - 高出 50% 的幅度 < z × SE → `undecidable`（与 50% 无法区分）；
+ *   - 否则 → `supported`。
+ *
+ * `isDominanceSupportedByMatrix` 与 `assertDominanceVerdictHasMatrix` 都消费本函数，
+ * 保证结论计算与守卫不会各自漂移。
+ */
+export function evaluateDominanceEvidence(
+  matrix: HeadToHeadMatrix,
+  strategy: string,
+  opponent: string
+): DominanceEvidence {
+  const cell = findHeadToHeadCell(matrix, strategy, opponent);
+  if (!cell) return { kind: 'missing' };
+
+  const rate = seatBalancedRateFor(cell, strategy);
+  if (cell.matches < MIN_DOMINANCE_MATCHES) {
+    return { kind: 'insufficient', matches: cell.matches, rate };
+  }
+
+  const margin = rate - 0.5;
+  if (margin <= 0) {
+    return { kind: 'contradicted', matches: cell.matches, rate, margin };
+  }
+
+  const threshold = dominanceMarginThreshold(cell.matches);
+  if (margin < threshold) {
+    return { kind: 'undecidable', matches: cell.matches, rate, margin, threshold };
+  }
+
+  return { kind: 'supported', matches: cell.matches, rate, margin, threshold };
+}
+
+/** 该格是否足以支撑「strategy 对 opponent 占优」——样本量足且显著高于 50%。 */
+export function isDominanceSupportedByMatrix(
+  matrix: HeadToHeadMatrix,
+  strategy: string,
+  opponent: string
+): boolean {
+  return evaluateDominanceEvidence(matrix, strategy, opponent).kind === 'supported';
+}
+
+/** 无法判定的原因：缺格 / 样本不足 / 与 50% 无法区分。 */
+export type UndecidableMatchup =
+  | { readonly strategy: string; readonly opponent: string; readonly reason: 'missing' }
+  | {
+      readonly strategy: string;
+      readonly opponent: string;
+      readonly reason: 'insufficient';
+      readonly rate: number;
+      readonly matches: number;
+    }
+  | {
+      readonly strategy: string;
+      readonly opponent: string;
+      readonly reason: 'within-noise';
+      readonly rate: number;
+      readonly matches: number;
+      readonly threshold: number;
+    };
+
+export type DominanceUndecidableReason = UndecidableMatchup['reason'];
+
+/** 占优分析：被矩阵支撑的结论，以及无法判定、不能据此排除占优的对。 */
+export interface DominanceAnalysis {
+  readonly verdicts: readonly DominanceVerdict[];
+  readonly undecidable: readonly UndecidableMatchup[];
+}
+
+/**
+ * 从对拼矩阵计算占优结论，并单独收集无法判定的对。
+ * `verdicts` 只含被矩阵支撑的结论；`undecidable` 列出缺格 / 样本不足 /
+ * 与 50% 无法区分的对——这些对不能作为占优证据，也不能被当作「已确认无占优」。
+ */
+export function analyzeDominanceMatrix(matrix: HeadToHeadMatrix): DominanceAnalysis {
+  const verdicts: DominanceVerdict[] = [];
+  const undecidable: UndecidableMatchup[] = [];
+
+  for (const strategy of matrix.strategies) {
+    const dominates: string[] = [];
+    for (const opponent of matrix.strategies) {
+      if (opponent === strategy) continue;
+      const evidence = evaluateDominanceEvidence(matrix, strategy, opponent);
+      switch (evidence.kind) {
+        case 'supported':
+          dominates.push(opponent);
+          break;
+        case 'missing':
+          undecidable.push({ strategy, opponent, reason: 'missing' });
+          break;
+        case 'insufficient':
+          undecidable.push({
+            strategy,
+            opponent,
+            reason: 'insufficient',
+            rate: evidence.rate,
+            matches: evidence.matches
+          });
+          break;
+        case 'undecidable':
+          undecidable.push({
+            strategy,
+            opponent,
+            reason: 'within-noise',
+            rate: evidence.rate,
+            matches: evidence.matches,
+            threshold: evidence.threshold
+          });
+          break;
+        case 'contradicted':
+          // 反证：实测不高于 50%，属于「已判定无占优」，不计入无法判定。
+          break;
+      }
+    }
+    verdicts.push({ strategy, dominates });
+  }
+
+  return { verdicts, undecidable };
+}
+
+/**
  * 守卫：任何「占优 / 严格占优」结论都必须由跨策略对拼矩阵支撑。
  * 自对弈归元率不能回答「某策略是否占优」——缺少矩阵时必须拒绝输出结论。
+ *
+ * 本守卫不只检查矩阵在场，还会从矩阵重算每个被点名对手的座次平衡胜率：
+ *   - 缺格 / 样本不足 → 拒绝；
+ *   - 实测胜率未高于 50% → 结论与矩阵矛盾，拒绝；
+ *   - 胜率高于 50% 但未越过显著性阈值（与 50% 无法区分）→ 无法判定，拒绝。
  */
 export function assertDominanceVerdictHasMatrix(
   verdict: DominanceVerdict,
@@ -377,15 +574,24 @@ export function assertDominanceVerdictHasMatrix(
   }
 
   for (const opponent of verdict.dominates) {
-    const hasCell = matrix.cells.some(
-      cell =>
-        (cell.p1Strategy === verdict.strategy && cell.p2Strategy === opponent) ||
-        (cell.p1Strategy === opponent && cell.p2Strategy === verdict.strategy)
-    );
-    if (!hasCell) {
-      throw new Error(
-        `占优结论缺少对拼数据：${verdict.strategy} vs ${opponent}`
-      );
+    const evidence = evaluateDominanceEvidence(matrix, verdict.strategy, opponent);
+    switch (evidence.kind) {
+      case 'supported':
+        break;
+      case 'missing':
+        throw new Error(`占优结论缺少对拼数据：${verdict.strategy} vs ${opponent}`);
+      case 'insufficient':
+        throw new Error(
+          `占优结论样本不足：${verdict.strategy} vs ${opponent} 仅 ${evidence.matches} 局（需 ≥ ${MIN_DOMINANCE_MATCHES}）`
+        );
+      case 'contradicted':
+        throw new Error(
+          `占优结论与矩阵矛盾：${verdict.strategy} vs ${opponent} 实测座次平衡胜率 ${(evidence.rate * 100).toFixed(2)}%，并未高于 50%`
+        );
+      case 'undecidable':
+        throw new Error(
+          `占优结论无法判定：${verdict.strategy} vs ${opponent} 实测座次平衡胜率 ${(evidence.rate * 100).toFixed(2)}%，与 50% 无法区分（需高出 ≥ ${(evidence.threshold * 100).toFixed(2)} 个百分点）`
+        );
     }
   }
 }

@@ -20,10 +20,15 @@ import { HeadlessBenchmark } from './HeadlessBenchmark.js';
 import { runCliIfDirect } from './cli.js';
 import {
   assertDominanceVerdictHasMatrix,
+  analyzeDominanceMatrix,
   formatDominanceVerdict,
   formatDrawRateWithWinRates,
+  MIN_DOMINANCE_MATCHES,
+  type DominanceAnalysis,
+  type DominanceUndecidableReason,
   type DominanceVerdict,
-  type HeadToHeadMatrix
+  type HeadToHeadMatrix,
+  type UndecidableMatchup
 } from './Metrics.js';
 import {
   BALANCED_WEIGHTS,
@@ -564,28 +569,60 @@ export function formatSeatBalancedMatrix(report: HeadToHeadReport): string {
   return lines.join('\n');
 }
 
-/** 计算每个策略严格占优的对手列表（座次平衡胜率 > 50%）。 */
-export function computeDominanceVerdicts(report: HeadToHeadReport): DominanceVerdict[] {
-  return report.strategies.map(strategy => ({
-    strategy,
-    dominates: report.strategies.filter(
-      opponent =>
-        opponent !== strategy &&
-        (findSeatBalancedWinRate(report, strategy, opponent) ?? 0) > 0.5
-    )
-  }));
+/** 计算每个策略严格占优的对手列表（座次平衡胜率显著高于 50%，且样本量足够）。 */
+export function computeDominanceVerdicts(report: HeadToHeadReport): readonly DominanceVerdict[] {
+  return analyzeDominanceMatrix(toHeadToHeadMatrix(report)).verdicts;
 }
 
-/** 占优结论段落：每个结论都由对拼矩阵守卫支撑。 */
+/** 从对拼报告计算占优结论，并单独收集无法判定的对（不能据此断言「无占优」）。 */
+export function analyzeDominance(report: HeadToHeadReport): DominanceAnalysis {
+  return analyzeDominanceMatrix(toHeadToHeadMatrix(report));
+}
+
+const UNDECIDABLE_REASON_LABEL: Readonly<Record<DominanceUndecidableReason, string>> = {
+  missing: '矩阵缺格',
+  insufficient: '样本不足',
+  'within-noise': '与 50% 无法区分'
+};
+
+/** 汇总无法判定的对：总数 + 按原因拆分。 */
+function formatUndecidableSummary(undecidable: readonly UndecidableMatchup[]): string {
+  const counts = new Map<DominanceUndecidableReason, number>();
+  for (const item of undecidable) {
+    counts.set(item.reason, (counts.get(item.reason) ?? 0) + 1);
+  }
+  const parts = [...counts.entries()].map(
+    ([reason, count]) => `${UNDECIDABLE_REASON_LABEL[reason]} ${count} 对`
+  );
+  return `不可判定 ${undecidable.length} 对（${parts.join(' / ')}）`;
+}
+
+/** 单个无法判定对的明细行，说明是缺格 / 样本不足 / 与 50% 无法区分。 */
+function formatUndecidableDetail(item: UndecidableMatchup): string {
+  const head = `  - ${item.strategy} vs ${item.opponent}：`;
+  switch (item.reason) {
+    case 'missing':
+      return `${head}${UNDECIDABLE_REASON_LABEL.missing}`;
+    case 'insufficient':
+      return `${head}${UNDECIDABLE_REASON_LABEL.insufficient}（${item.matches} 局，需 ≥ ${MIN_DOMINANCE_MATCHES}），实测 ${formatPercent(item.rate)}`;
+    case 'within-noise':
+      return `${head}${UNDECIDABLE_REASON_LABEL['within-noise']}（实测 ${formatPercent(item.rate)}，需高出 ≥ ${(item.threshold * 100).toFixed(2)} 个百分点）`;
+  }
+}
+
+/**
+ * 占优结论段落：每个结论都由对拼矩阵守卫支撑。
+ * 「未发现占优」与「无法判定」必须可区分：只要存在无法判定的对，就明确拒绝
+ * 把结果读成「已确认无占优」。
+ */
 export function formatDominanceSection(report: HeadToHeadReport): string {
   const matrix = toHeadToHeadMatrix(report);
+  const analysis = analyzeDominanceMatrix(matrix);
   const lines: string[] = [];
   lines.push('### 占优结论');
   lines.push('');
 
-  const verdicts: DominanceVerdict[] = computeDominanceVerdicts(report).filter(
-    verdict => verdict.dominates.length > 0
-  );
+  const verdicts = analysis.verdicts.filter(verdict => verdict.dominates.length > 0);
 
   if (verdicts.length === 0) {
     // 即使结论是「无占优」，也必须先由矩阵守卫确认矩阵在场。
@@ -593,12 +630,30 @@ export function formatDominanceSection(report: HeadToHeadReport): string {
       { strategy: report.strategies[0] ?? '', dominates: [] },
       matrix
     );
-    lines.push('本对拼矩阵未发现任何策略对全部其它策略严格占优。');
+    if (analysis.undecidable.length === 0) {
+      lines.push('本对拼矩阵未发现任何策略对全部其它策略严格占优（全部格子均已判定）。');
+    } else {
+      lines.push(
+        `本对拼矩阵无法判定是否存在严格占优：${formatUndecidableSummary(analysis.undecidable)}，不能据此断言「无占优」。`
+      );
+      lines.push('');
+      for (const item of analysis.undecidable) {
+        lines.push(formatUndecidableDetail(item));
+      }
+    }
     return lines.join('\n');
   }
 
   for (const verdict of verdicts) {
     lines.push(`- ${formatDominanceVerdict(verdict, matrix)}`);
+  }
+
+  if (analysis.undecidable.length > 0) {
+    lines.push('');
+    lines.push(`${formatUndecidableSummary(analysis.undecidable)}，不能作为占优证据：`);
+    for (const item of analysis.undecidable) {
+      lines.push(formatUndecidableDetail(item));
+    }
   }
   return lines.join('\n');
 }
