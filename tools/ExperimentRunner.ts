@@ -39,10 +39,10 @@ import {
   PURE_SUPPRESS_WEIGHTS,
   SCORE_STRIPPED_WEIGHTS,
   createScoreBoundStrategy,
-} from '../src/core/ai/Strategy.js';
-import type { DecisionStrategy, StrategyWeights } from '../src/core/ai/types.js';
-import { POINTS_CONFIG, type PointsConfig } from '../src/core/logic/ScoreCalculator.js';
-import type { RuleSwitches } from '../src/core/logic/ActionCandidates.js';
+} from '@guiyuan/game/core/ai/Strategy.js';
+import type { DecisionStrategy, StrategyWeights } from '@guiyuan/game/core/ai/types.js';
+import { POINTS_CONFIG, type PointsConfig } from '@guiyuan/game/core/logic/ScoreCalculator.js';
+import type { RuleSwitches } from '@guiyuan/game/core/logic/ActionCandidates.js';
 
 // ---------------------------------------------------------------------------
 // 声明式矩阵输入

@@ -1,0 +1,10 @@
+{
+  "name": "@guiyuan/game",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "游戏核心：会打进 minigame/game.js、跑在微信小游戏环境里的那一块（没有 Node 内建模块）。",
+  "exports": {
+    "./*.js": "./*.ts"
+  }
+}

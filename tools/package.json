@@ -1,0 +1,10 @@
+{
+  "name": "@guiyuan/devtools",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "开发工具：无头推演、批量评测与 CLI，只在你电脑上用 Node.js 跑，不进 game.js。",
+  "dependencies": {
+    "@guiyuan/game": "*"
+  }
+}

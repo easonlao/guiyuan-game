@@ -27,11 +27,14 @@ import {
   PlayerId,
   Polarity,
   TianGanInfo,
-} from '../src/core/types/domain.js';
-import { getMinusTargetPolarity, type RuleSwitches } from '../src/core/logic/ActionCandidates.js';
-import { POINTS_CONFIG, type PointsConfig } from '../src/core/logic/ScoreCalculator.js';
-import { AGGRESSIVE_WEIGHTS, RUSH_GUIYUAN_WEIGHTS } from '../src/core/ai/Strategy.js';
-import type { DecisionStrategy, StrategyWeights } from '../src/core/ai/types.js';
+} from '@guiyuan/game/core/types/domain.js';
+import {
+  getMinusTargetPolarity,
+  type RuleSwitches,
+} from '@guiyuan/game/core/logic/ActionCandidates.js';
+import { POINTS_CONFIG, type PointsConfig } from '@guiyuan/game/core/logic/ScoreCalculator.js';
+import { AGGRESSIVE_WEIGHTS, RUSH_GUIYUAN_WEIGHTS } from '@guiyuan/game/core/ai/Strategy.js';
+import type { DecisionStrategy, StrategyWeights } from '@guiyuan/game/core/ai/types.js';
 import { HeadlessMatch } from './HeadlessMatch.js';
 import { countActionsToGuiYuan } from './Metrics.js';
 import { runCliIfDirect } from './cli.js';

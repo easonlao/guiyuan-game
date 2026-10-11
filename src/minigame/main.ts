@@ -1,4 +1,4 @@
-import { GameManager } from './game-manager';
+import { GameManager } from './game-manager.js';
 
 // 声明微信小游戏全局对象
 declare const wx: {
