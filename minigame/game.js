@@ -1685,9 +1685,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       case "lose":
         bobY = 2;
         break;
-      default:
+      case "idle":
         bobY = Math.sin(animTick * 0.08) * 2;
         break;
+      default: {
+        const unhandled = state;
+        throw new Error(`未处理的角色姿势：${String(unhandled)}`);
+      }
     }
     const robeColor = isPlayer ? "#3182ce" : "#805ad5";
     const robeTrim = isPlayer ? "#63b3ed" : "#b794f4";
@@ -1895,12 +1899,30 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     ctx.fill();
     ctx.restore();
   }
+  function isAttackAction(actionType) {
+    switch (actionType) {
+      case ActionType.ATK:
+      case ActionType.BURST_ATK:
+        return true;
+      case ActionType.AUTO:
+      case ActionType.CONVERT:
+      case ActionType.TRANS:
+      case ActionType.BURST:
+      case ActionType.DISSIPATE:
+      case ActionType.PASS:
+        return false;
+      default: {
+        const unhandled = actionType;
+        throw new Error(`未处理的动作类型：${String(unhandled)}`);
+      }
+    }
+  }
   function getActionTargetElement(act, fallbackElement) {
     const srcElem = act.sourceElement ?? act.element ?? fallbackElement ?? WuXing.WOOD;
     if (act.actionType === ActionType.TRANS || act.actionType === ActionType.BURST) {
       return act.targetElement ?? GENERATION_CYCLE[srcElem];
     }
-    if (act.actionType === ActionType.ATK || act.actionType === ActionType.BURST_ATK) {
+    if (isAttackAction(act.actionType)) {
       return act.targetElement ?? OVERCOMING_CYCLE[srcElem];
     }
     return act.targetElement ?? act.element ?? srcElem;
@@ -2487,6 +2509,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const OUTER_RADIUS_RATIO = 0.4;
   const SEAL_SIZE_RATIO = 0.06;
   const SLOT_SIDE_RATIO = 0.7;
+  const READOUT_PADDING_X = 12;
+  const READOUT_PADDING_Y = 8;
+  const READOUT_GAP = 6;
   const DEFAULT_BOARD_LAYOUT = {
     centerX: 0,
     centerY: 0,
@@ -2496,6 +2521,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     startAngle: -Math.PI / 2
   };
   const VOID_LEVEL = 0;
+  const VOID_NODE = { yin: VOID_LEVEL, yang: VOID_LEVEL };
   const BOARD_BG_COLOR = "#111827";
   const VOID_COLOR = "#374151";
   const BLESSED_COLOR = "#f6e05e";
@@ -2527,6 +2553,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "_boards", { P1: null, P2: null });
       /** 当前动作会走的连线（键为 `kind:from`）；高亮与盘面等级无关（票 02）。 */
       __publicField(this, "_activePaths", /* @__PURE__ */ new Set());
+      /** 最近一次 `resize` 的视口高度；未 resize 过时为 null（读数不做贴边兜底）。 */
+      __publicField(this, "_viewportHeight", null);
       this._layout = { ...DEFAULT_BOARD_LAYOUT, ...layout };
       this._rebuild();
     }
@@ -2537,6 +2565,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 按视口自适应：圆心取视口中心，内外环半径与主印半径按短边等比缩放。 */
     resize(width, height) {
       const span = Math.min(width, height);
+      this._viewportHeight = height;
       this._layout = {
         ...this._layout,
         centerX: width / 2,
@@ -2558,6 +2587,18 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 十条连线：五条内环相生边 + 五条跨环径向线。 */
     get connections() {
       return this._connections;
+    }
+    /**
+     * 归元进度读数（「己 x/5 · 敌 y/5 归一」）的版面投影：底板宽度由文案与字号推出，
+     * 位置排在对方盘外侧，与任何主印圆（含半环与归一外环）都不相交。
+     */
+    get readout() {
+      return projectReadout(
+        this._layout,
+        this._viewportHeight,
+        this._countGuiYi(OWN_PLAYER),
+        this._countGuiYi(OPPONENT_PLAYER)
+      );
     }
     /** 按玩家、主印与极性取一个槽位的投影视图；未知玩家 / 元素 / 极性抛错。 */
     getSlot(player, element, polarity) {
@@ -2593,38 +2634,25 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         ring.forEach((element, index) => {
           const rayIndex = player === OWN_PLAYER ? index : (index - OUTER_RING_OFFSET + WUXING_COUNT) % WUXING_COUNT;
           const angle = this._layout.startAngle + rayIndex * RING_STEP;
-          const node = this._boards[player]?.[element];
-          const yin = node?.yin ?? VOID_LEVEL;
-          const yang = node?.yang ?? VOID_LEVEL;
-          const isGuiYi = yin >= 1 && yang >= 1;
-          const isKangJi = yin === 2 && yang === 2;
+          const node = this._boards[player]?.[element] ?? VOID_NODE;
           const x = this._layout.centerX + radius * Math.cos(angle);
           const y = this._layout.centerY + radius * Math.sin(angle);
-          this._elements.push({ player, element, angle, x, y, yin, yang, isGuiYi, isKangJi });
-          const sideOffset = this._layout.sealSize * SLOT_SIDE_RATIO;
+          const view = {
+            player,
+            element,
+            angle,
+            x,
+            y,
+            yin: node.yin,
+            yang: node.yang,
+            // 归一 / 亢极的真源在核心层（`src/core/logic/State.ts`），这里不再各推一份。
+            isGuiYi: isNodeGuiYi(node),
+            isKangJi: isNodeKangJi(node)
+          };
+          this._elements.push(view);
           this._slots.push(
-            this._projectSlot(
-              player,
-              element,
-              Polarity.YIN,
-              yin,
-              angle,
-              x - sideOffset,
-              y,
-              isGuiYi,
-              isKangJi
-            ),
-            this._projectSlot(
-              player,
-              element,
-              Polarity.YANG,
-              yang,
-              angle,
-              x + sideOffset,
-              y,
-              isGuiYi,
-              isKangJi
-            )
+            this._projectSlot(view, Polarity.YIN),
+            this._projectSlot(view, Polarity.YANG)
           );
         });
       }
@@ -2658,7 +2686,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         y1: source.y,
         x2: target.x,
         y2: target.y,
-        active: this._activePaths.has(connectionKey(kind, from))
+        isActive: this._activePaths.has(connectionKey(kind, from))
       };
     }
     _elementView(player, element) {
@@ -2670,8 +2698,21 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       return view;
     }
-    _projectSlot(player, element, polarity, level, angle, x, y, isGuiYi, isKangJi) {
-      return { player, element, polarity, level, angle, x, y, isGuiYi, isKangJi };
+    /** 槽位投影：只收主印视图与极性，落点由主印中心向阴 / 阳一侧偏移推出。 */
+    _projectSlot(element, polarity) {
+      const isYin = polarity === Polarity.YIN;
+      const sideOffset = this._layout.sealSize * SLOT_SIDE_RATIO;
+      return {
+        player: element.player,
+        element: element.element,
+        polarity,
+        level: isYin ? element.yin : element.yang,
+        angle: element.angle,
+        x: element.x + (isYin ? -sideOffset : sideOffset),
+        y: element.y,
+        isGuiYi: element.isGuiYi,
+        isKangJi: element.isKangJi
+      };
     }
     /** 先画环级底晕与连线，再画主印，最后叠加归元读数（读数压在最上层）。 */
     renderSelf(ctx) {
@@ -2729,8 +2770,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         ctx.beginPath();
         ctx.moveTo(line.x1, line.y1);
         ctx.lineTo(line.x2, line.y2);
-        ctx.strokeStyle = line.active ? CONNECTION_ACTIVE[line.kind] : CONNECTION_IDLE[line.kind];
-        ctx.lineWidth = line.active ? 3 : 1.5;
+        ctx.strokeStyle = line.isActive ? CONNECTION_ACTIVE[line.kind] : CONNECTION_IDLE[line.kind];
+        ctx.lineWidth = line.isActive ? 3 : 1.5;
         ctx.lineCap = "round";
         if (line.kind === "attack") {
           ctx.setLineDash([6, 5]);
@@ -2742,7 +2783,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 十个主印：底盘 + 阴/阳半环 + 归一/亢极高亮 + 五行名；内外环主印共用同一套画法。 */
     _drawSeals(ctx) {
       const sealRadius = this._layout.sealSize;
-      const halfRingRadius = sealRadius + Math.max(3, sealRadius * 0.16);
+      const ringRadius = halfRingRadius(sealRadius);
       for (const entry of this._elements) {
         const palette = WUXING_PALETTE[entry.element];
         ctx.save();
@@ -2753,11 +2794,11 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         ctx.lineWidth = 2;
         ctx.strokeStyle = entry.isKangJi ? BLESSED_COLOR : palette.dark;
         ctx.stroke();
-        drawHalfRing(ctx, entry.x, entry.y, halfRingRadius, true, entry.yin, entry.element);
-        drawHalfRing(ctx, entry.x, entry.y, halfRingRadius, false, entry.yang, entry.element);
+        drawHalfRing(ctx, entry.x, entry.y, ringRadius, true, entry.yin, entry.element);
+        drawHalfRing(ctx, entry.x, entry.y, ringRadius, false, entry.yang, entry.element);
         if (entry.isGuiYi) {
           ctx.beginPath();
-          ctx.arc(entry.x, entry.y, halfRingRadius + 5, 0, Math.PI * 2);
+          ctx.arc(entry.x, entry.y, ringRadius + 5, 0, Math.PI * 2);
           ctx.strokeStyle = entry.isKangJi ? BLESSED_COLOR : GUI_YI_COLOR;
           ctx.lineWidth = entry.isKangJi ? 3 : 1.5;
           ctx.setLineDash(entry.isKangJi ? [] : [4, 3]);
@@ -2778,18 +2819,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     /** 归元进度读数：统计内外环各自的归一节点数，补上「谁离归元更近」的数值口径。 */
     _drawGuiYuanReadout(ctx) {
-      const own = this._countGuiYi(OWN_PLAYER);
-      const opponent = this._countGuiYi(OPPONENT_PLAYER);
-      const x = this._layout.centerX;
-      const y = this._layout.centerY + this._layout.outerRadius - this._layout.sealSize - 10;
+      const readout = this.readout;
       ctx.save();
       ctx.fillStyle = BOARD_BG_COLOR;
-      ctx.fillRect(x - 70, y - 10, 140, 20);
+      ctx.fillRect(readout.x, readout.y, readout.width, readout.height);
       ctx.fillStyle = READOUT_COLOR;
-      ctx.font = `bold ${Math.round(Math.max(11, this._layout.sealSize * 0.55))}px monospace`;
+      ctx.font = `bold ${String(readout.fontSize)}px monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(`己 ${own}/${WUXING_COUNT} · 敌 ${opponent}/${WUXING_COUNT} 归一`, x, y);
+      ctx.fillText(readout.text, readout.x + readout.width / 2, readout.y + readout.height / 2);
       ctx.restore();
     }
     _countGuiYi(player) {
@@ -2844,6 +2882,27 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     ctx.restore();
   }
+  function halfRingRadius(sealRadius) {
+    return sealRadius + Math.max(3, sealRadius * 0.16);
+  }
+  function sealOuterRadius(sealRadius) {
+    return halfRingRadius(sealRadius) + 5 + 1.5;
+  }
+  function projectReadout(layout, viewportHeight, own, opponent) {
+    const fontSize = Math.round(Math.max(11, layout.sealSize * 0.55));
+    const text = `己 ${own}/${WUXING_COUNT} · 敌 ${opponent}/${WUXING_COUNT} 归一`;
+    const width = Math.ceil(estimateTextWidth(text, fontSize)) + READOUT_PADDING_X;
+    const height = fontSize + READOUT_PADDING_Y;
+    const clearance = sealOuterRadius(layout.sealSize) + READOUT_GAP;
+    let y = layout.centerY - layout.outerRadius - clearance - height;
+    if (viewportHeight !== null) {
+      if (y < 0) {
+        y = layout.centerY + layout.outerRadius + clearance;
+      }
+      y = Math.min(Math.max(y, 0), Math.max(0, viewportHeight - height));
+    }
+    return { x: layout.centerX - width / 2, y, width, height, text, fontSize };
+  }
   function buildGenerationRing() {
     const ring = [];
     let current = WuXing.WOOD;
@@ -2857,18 +2916,22 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     return `${kind}:${from}`;
   }
   function resolveActionPath(actionType, element) {
+    if (isAttackAction(actionType)) {
+      return { kind: "attack", from: element };
+    }
     switch (actionType) {
       case ActionType.TRANS:
       case ActionType.BURST:
         return { kind: "generation", from: element };
-      case ActionType.ATK:
-      case ActionType.BURST_ATK:
-        return { kind: "attack", from: element };
       case ActionType.AUTO:
       case ActionType.CONVERT:
       case ActionType.DISSIPATE:
       case ActionType.PASS:
         return null;
+      default: {
+        const unhandled = actionType;
+        throw new Error(`未处理的动作类型：${String(unhandled)}`);
+      }
     }
   }
   const AVATAR_WIDTH = 88;
@@ -3792,7 +3855,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const state = this._turnManager.getState();
       const actor = event.player;
       const target = resolveActionTarget(action, event.actionType, actor, this._turnManager);
-      const isAttack = event.actionType === ActionType.ATK || event.actionType === ActionType.BURST_ATK;
+      const isAttack = isAttackAction(event.actionType);
       this.hideActionBar();
       this.characters.update(state, { isExtraTurn: this._turnManager.isExtraTurnActive() });
       this.characters.setExpression(actor, isAttack ? "attack" : "cast", this.expressionHold);
@@ -3809,7 +3872,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       });
     }
     /**
-     * `node:stateChanged`：某侧由 <1 变 ≥1 且同一节点对侧已 ≥1 时该节点达成归一——
+     * `node:stateChanged`：某侧由 <1 变 ≥1 且该节点达成归一（核心真源 `isNodeGuiYi`）——
      * 按归属方在对应角色上播庆祝（票 03）。事件派发时 `turnManager.getState()` 已是新状态。
      */
     handleNodeStateChanged(event) {
@@ -3817,8 +3880,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         return;
       }
       const node = this._turnManager.getState().players[event.player].board[event.element];
-      const otherSide = event.polarity === Polarity.YIN ? node.yang : node.yin;
-      if (otherSide >= 1) {
+      if (isNodeGuiYi(node)) {
         this.characters.setExpression(event.player, "celebrate", this.celebrateHold);
       }
     }
@@ -4012,7 +4074,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     const tianGan = turnManager.getCurrentTianGan();
     const element = action === null ? tianGan?.element ?? WuXing.WOOD : getActionTargetElement(action, tianGan?.element);
     const polarity = action?.polarity ?? tianGan?.polarity ?? Polarity.YANG;
-    const isAttack = actionType === ActionType.ATK || actionType === ActionType.BURST_ATK;
+    const isAttack = isAttackAction(actionType);
     return { player: isAttack ? opponentOf(actor) : actor, element, polarity };
   }
   class InputManager {
