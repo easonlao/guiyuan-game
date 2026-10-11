@@ -8,11 +8,11 @@
 
 **验收清单：**
 
-- [ ] `legacy/` 不在版本库，工作区也不存在
-- [ ] `docs/` 下无指向 `legacy/` 的活引用
-- [ ] `tsconfig.json` 与 `stryker.config.json` 不再为 `legacy` 留排除项
-- [ ] spec / map 的 Out of Scope 同步
-- [ ] `npm test` / `typecheck` / `check:deps` / `lint` 全绿
+- [x] `legacy/` 不在版本库，工作区也不存在。证据：`git ls-files legacy` 为空；`test -d legacy` 失败。
+- [x] `docs/` 下无指向 `legacy/` 的活引用。证据：剩余提及全部带「已删除」说明；`grep -rn '](.*legacy' docs/` 无命中。
+- [x] `tsconfig.json` 与 `stryker.config.json` 不再为 `legacy` 留排除项。证据：`grep -rn legacy tsconfig.json stryker.config.json package.json` 无命中。
+- [x] spec / map 的 Out of Scope 同步。证据：spec 删掉「删不得」那条；map 去掉 `legacy/` 的处置，Decisions so far 记入本票。
+- [x] `npm test` / `typecheck` / `check:deps` / `lint` 全绿。证据：39 文件 / 728 用例；deps 46 模块 / 130 依赖零违规。
 
 **已核实的事实：**
 
@@ -34,3 +34,11 @@
 - 配置：`tsconfig.json` / `stryker.config.json` / `package.json` 里 `grep legacy` 无命中。
 - 全绿：`npm run typecheck`、`npm run check:deps`（46 模块 / 130 依赖零违规）、`npm test`（39 文件 / 728 用例）、`npm run lint`。
 - 反转记录：spec 的 Out of Scope 删掉「删不得」那条；map 的 Out of scope 去掉 `legacy/` 的处置，Decisions so far 记入本票；ADR 0003 文末追加勘误；ADR 0002 勘误节更新路径状态。
+
+**复核后补充（code-review 两轴，固定点 `5db0a2e`）：**
+
+- `docs/FSR.md` 的「可基于其设计重建网络适配层」里「其」已无指代物 → 改为「重建网络适配层」。
+- `docs/SRS.md` FR-5.1–5.3 括号里列了 `RoomManager` 等模块名，但删 legacy 后这些符号全仓无出处；且按 `AGENTS.md` 的归属表，模块名归 HLD、SRS 只写需求 → 去掉括号里的模块名。
+- `docs/adr/0002` 勘误节里「（该目录不入版本库）」已失真（`.scratch/` 自票 01 起入库）→ 删掉该括号。
+- 票 01 的「复核后补充」里有三句关于 `legacy/` 的描述被本票推翻，已在票 01 文末追加 `## Comments` 说明。
+- `.scratch/archive/` 的处置政策（链接可修、结论不重写）未写进 `docs/agents/issue-tracker.md`；本票只记录实际做法，政策留 09 定。

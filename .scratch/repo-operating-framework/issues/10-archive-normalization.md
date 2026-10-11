@@ -8,11 +8,11 @@
 
 **验收清单：**
 
-- [ ] `.scratch/archive/` 根下无 `.md` 文件，只剩 feature 目录
-- [ ] `001-headless-strategy-evaluation.md` → `headless-strategy-evaluation/spec.md`
-- [ ] `002-balance-diagnostics.md` → `balance-diagnostics/spec.md`
-- [ ] `003`–`007`（milestone 1 的 wayfinder 代）→ `core-engine/wayfinder/`，与 `core-engine/` 现有的 spec + issues 分开存放
-- [ ] 跨文件链接不悬空
+- [x] `.scratch/archive/` 根下无 `.md` 文件，只剩 feature 目录。证据：`find .scratch/archive -maxdepth 1 -type f` 为空。
+- [x] `001-headless-strategy-evaluation.md` → `headless-strategy-evaluation/spec.md`。证据：`git mv` 后文件就位。
+- [x] `002-balance-diagnostics.md` → `balance-diagnostics/spec.md`。证据：同上。
+- [x] `003`–`007`（milestone 1 的 wayfinder 代）→ `core-engine/wayfinder/`，与 `core-engine/` 现有的 spec + issues 分开存放。证据：`ls .scratch/archive/core-engine/wayfinder/` = 5 个，文件名未改。
+- [x] 跨文件链接不悬空。证据：08 的入链改为 `../../balance-diagnostics/spec.md`；003 的两处出链改为同目录相对路径。
 
 **已核实的事实：**
 
