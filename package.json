@@ -31,6 +31,7 @@
     "build:minigame": "node scripts/build-minigame.mjs",
     "dev:minigame": "node scripts/build-minigame.mjs --watch",
     "mutation": "stryker run",
+    "mutation:milestone": "npm run mutation && npm run mutation:check",
     "mutation:changed": "node scripts/mutation-changed.mjs",
     "mutation:baseline": "node scripts/mutation-baseline.mjs",
     "mutation:check": "node scripts/mutation-check.mjs"

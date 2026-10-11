@@ -11,7 +11,7 @@
 | 场景 | 命令 |
 | --- | --- |
 | 改完核心逻辑（`implement` 收尾） | `npm run mutation:changed`（**只看存活、补断言**；子集报告不做棘轮对比） |
-| 里程碑全量（每个 spec 收尾 / 发版 / 提审前） | `npm run mutation` → `npm run mutation:check`（棘轮只认全量） |
+| 里程碑全量（每个 spec 收尾 / 发版 / 提审前） | `npm run mutation:milestone`（= 全量变异 + 棘轮对比，棘轮只认全量） |
 | 只跑相对某个 ref 的改动 | `npm run mutation:changed -- HEAD~1`（默认 `HEAD`，含未提交改动） |
 | 确认等价突变体后接受进基线 | `npm run mutation`（全量）→ `npm run mutation:baseline` |
 
@@ -39,15 +39,15 @@
 
 ### 2.2 里程碑全量（每个 spec 收尾 + 发版/提审前）
 
-- **命令**：`npm run mutation`，跑 `stryker.config.json` 里 `mutate` 的全部目标。
+- **命令**：`npm run mutation:milestone`（= `npm run mutation` → `npm run mutation:check`）。前者跑 `stryker.config.json` 里 `mutate` 的全部目标，后者拿报告和基线比一次。
 - **时机**：
   1. **每个 spec 收尾**——跨多个 `implement` 的累积效果在这里体检，防止「每次改动都过、合起来漏了」。
   2. **发版 / 提审前**——对外交付前的最后一道体检。
-- 全量后跑 `npm run mutation:check`，把结果和基线比一次。
+- **触发者只能是 agent**：需求方不会去按按钮，所以「spec 收尾时跑全量 + 棘轮」写进了 `AGENTS.md`。为什么不自动触发（不挂 CI 定时）见 ADR 0012。
 
 ### 2.3 为什么门禁必须落在「本地/agent 循环」
 
-本仓库没有 CI，也没有 pre-commit hook。所以门禁的「红」没有流水线兜底，唯一消费者是跑它的那个 agent。`mutation:check` 自己算退出码（仓库刻意不配 `thresholds.break`，Stryker 不会因存活而失败），这条必须在 agent 内循环里成立。
+CI 只把 `mutation:changed` 当**观察项**（红了不阻断、只落盘），全量 + 棘轮那条只能手动触发（工程方案见 `docs/HLD.md` §4.5，理由见 ADR 0012）。所以棘轮门禁的「红」没有流水线兜底，唯一消费者是跑它的那个 agent。`mutation:check` 自己算退出码（仓库刻意不配 `thresholds.break`，Stryker 不会因存活而失败），这条必须在 agent 内循环里成立。
 
 ---
 
@@ -203,6 +203,7 @@ if (score >= 0) { /* ... */ }
 | 命令 | 作用 | 退出码 |
 | --- | --- | --- |
 | `npm run mutation` | 全量变异（`mutate` 全部目标） | Stryker 自身（无 `thresholds`，存活不改退出码） |
+| `npm run mutation:milestone` | 里程碑全量 + 棘轮（= `mutation` → `mutation:check`） | 棘轮无新增 `0` / 有新增 `1` / 报告来自子集跑 `2` |
 | `npm run mutation:changed [-- <ref>]` | 只变异相对 `<ref>`（默认 `HEAD`）改动的逻辑文件 | 无改动文件 → `0`；否则透传 Stryker |
 | `npm run mutation:baseline` | 从报告生成 / 刷新基线 `mutation-baseline.jsonl`（只接受全量报告） | 缺报告 / 结构无效 / 非全量跑 → `2` |
 | `npm run mutation:check` | 报告与基线对比，只报基线之外的存活/无覆盖 | 无新增 `0` / 有新增 `1` / 缺报告、缺基线或报告来自子集跑 `2` |

@@ -1,0 +1,54 @@
+# 里程碑：全量变异 + 棘轮对比，**只能手动触发**。
+#
+# 工程方案与「为什么不挂定时」见 `docs/HLD.md` §4.5 与 ADR 0012。
+#
+# ── 谁来按这个按钮 ──
+# 需求方不是开发者、不会手动触发，实际触发者只能是 agent：每个 spec 收尾时由 agent
+# 跑一次全量 + 棘轮。这条写进了 `AGENTS.md`，对应命令 `npm run mutation:milestone`。
+#
+# ── 只调命名脚本 ──
+# 唯一的执行步是 `npm run mutation:milestone`（= 全量变异 + 棘轮对比），yaml 里不写裸命令。
+
+name: mutation-milestone
+
+on:
+  workflow_dispatch:
+
+# 只读源码，最小权限；手动触发的 job 不出现任何凭证引用。
+permissions:
+  contents: read
+
+jobs:
+  milestone:
+    name: 全量变异 + 棘轮 (mutation:milestone)
+    runs-on: ubuntu-latest
+    # 全量实测约 33 分钟（见 `docs/MUTATION-TESTING.md`），超时给够。
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # `npm ci` 会跑 `postinstall`（patch-package），给 Stryker 的 vitest-runner 打补丁；
+      # 补丁不生效时非 static 突变体会被一律误报为 Survived（见 `docs/MUTATION-TESTING.md` §8）。
+      - name: Install
+        run: npm ci
+
+      # 棘轮对比发现基线之外的新增存活/无覆盖时退出 `1`，这一步判红——这就是门禁本身。
+      - name: mutation:milestone
+        run: npm run mutation:milestone
+
+      # 门禁红了也要传产物——红的那次最需要看存活明细。`if: always()` 保证失败也上传。
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutation-milestone-report
+          path: reports/
+          if-no-files-found: warn
+          retention-days: 30
