@@ -1,12 +1,10 @@
----
-title: "T0: 确定性随机生成器 (PRNG) 与轻量对局日志契约"
-parent: "003-wayfinder-milestone1-map.md"
-labels:
-  - "wayfinder:task"
-  - "closed"
-assignee: "agent"
-closed_at: "2026-10-07T23:47:00Z"
----
+# T0: 确定性随机生成器 (PRNG) 与轻量对局日志契约
+
+**Type:** task
+
+**Blocked by:** None (can start immediately)
+
+**Status:** resolved
 
 ## Question
 

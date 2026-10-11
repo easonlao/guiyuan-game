@@ -1,12 +1,8 @@
----
-title: "03: 万局无头推演基线评测与内存/GC双指标诊断"
-parent: "../spec.md"
-blocked_by:
-  - "01-turn-manager.md"
-  - "02-strategy-ai-and-terminal-viewer.md"
-labels:
-  - "completed"
----
+# 03: 万局无头推演基线评测与内存/GC双指标诊断
+
+**Blocked by:** 01、02
+
+**Status:** resolved
 
 ## Context & Question
 

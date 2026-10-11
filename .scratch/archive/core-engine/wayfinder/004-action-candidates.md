@@ -1,14 +1,10 @@
----
-title: "T1: 完备规则与合法动作候选生成器 (ActionCandidates) 及增量状态转换"
-parent: "003-wayfinder-milestone1-map.md"
-blocked_by:
-  - "007-deterministic-prng-and-record.md"
-labels:
-  - "wayfinder:task"
-  - "closed"
-assignee: "agent"
-closed_at: "2026-10-07T23:53:00Z"
----
+# T1: 完备规则与合法动作候选生成器 (ActionCandidates) 及增量状态转换
+
+**Type:** task
+
+**Blocked by:** 007
+
+**Status:** resolved
 
 ## Question
 

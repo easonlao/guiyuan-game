@@ -1,12 +1,10 @@
----
-title: "T2: 回合生命周期引擎 (TurnManager) 与连动/终局结算对齐"
-parent: "003-wayfinder-milestone1-map.md"
-blocked_by:
-  - "004-action-candidates.md"
-labels:
-  - "wayfinder:task"
-  - "ready-for-agent"
----
+# T2: 回合生命周期引擎 (TurnManager) 与连动/终局结算对齐
+
+**Type:** task
+
+**Blocked by:** 004
+
+**Status:** ready-for-agent
 
 ## Question
 
