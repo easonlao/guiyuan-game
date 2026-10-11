@@ -148,7 +148,7 @@ if (score >= 0) { /* ... */ }
 ## 6. 范围与边界
 
 - **纳入**：`src/core/logic/**/*.ts`，排除纯 re-export 的入口 `src/core/logic/index.ts`。
-- **暂不纳入**：`src/core/ai/**`、`src/core/headless/**`（实验 / 工具代码，错了不污染对局结果）。
+- **暂不纳入**：`src/core/ai/**`、`tools/**`（实验 / 工具代码，错了不污染对局结果）。
 - **`EventBus` 这类管道**的低价值存活不单独追：框架管道噪音确认等价后就地 disable，不靠全局规则排除。
 - 变异测试是**测试质量的反馈**，不是团队 KPI，也不是绝对质量指标。
 

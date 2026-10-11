@@ -3,10 +3,10 @@ import { ActionType, GameState, Polarity, WuXing } from '../../src/core/types/do
 import { createInitialGameState } from '../../src/core/logic/State.js';
 import { EventBus } from '../../src/core/logic/EventBus.js';
 import { TurnManager } from '../../src/core/logic/TurnManager.js';
-import { TerminalBoardViewer } from '../../src/core/headless/TerminalBoardViewer.js';
+import { TerminalBoardViewer } from '../../tools/TerminalBoardViewer.js';
 import { balancedStrategy } from '../../src/core/ai/Strategy.js';
 
-describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
+describe('TerminalBoardViewer (tools/TerminalBoardViewer)', () => {
   const viewer = new TerminalBoardViewer();
 
   describe('1. formatBoard()', () => {

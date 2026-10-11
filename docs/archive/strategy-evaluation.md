@@ -1,6 +1,6 @@
 # Headless strategy evaluation
 
-> **已归档（2026-10-10）**：本文描述的是已归档的旧 JS 实现（`legacy/src/logic/headless/`，已于 2026-10 删除）。其中的模块名、导出符号（如 `runHeadlessMatch`）与 npm 脚本（如 `headless:compare` / `headless:evaluate`）均已不存在。现行 TS 实现见 `src/core/headless/`；现行口径见 `docs/headless/candidate-search.md`、`docs/headless/candidate-rule-design-and-screening.md` 与 `docs/GDD.md`。
+> **已归档（2026-10-10）**：本文描述的是已归档的旧 JS 实现（`legacy/src/logic/headless/`，已于 2026-10 删除）。其中的模块名、导出符号（如 `runHeadlessMatch`）与 npm 脚本（如 `headless:compare` / `headless:evaluate`）均已不存在。现行 TS 实现见 `tools/`；现行口径见 `docs/headless/candidate-search.md`、`docs/headless/candidate-rule-design-and-screening.md` 与 `docs/GDD.md`。
 
 `npm run headless:evaluate -- [options]` runs the preregistered small study using the frozen reachable positions in `tests/fixtures/fixed-position-continuations/reachable-positions.js`. It evaluates the formal scoring baseline, each independent scoring switch, and the combined switches. Each scoring selection is compared with the formal baseline through `runBatchComparison`; because that public API owns both sides of each paired report, its formal-baseline matches are repeated once per selection. The report counts those controls transparently rather than presenting them as independent samples.
 

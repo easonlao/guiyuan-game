@@ -9,7 +9,7 @@ import {
 import { createInitialGameState } from '../../src/core/logic/State.js';
 import { TurnManager, TurnPhase } from '../../src/core/logic/TurnManager.js';
 import { EventBus } from '../../src/core/logic/EventBus.js';
-import { boardWith, gameStateWith } from '../../src/core/headless/BoardFixture.js';
+import { boardWith, gameStateWith } from '../../tools/BoardFixture.js';
 
 /**
  * TurnManager 生命周期与候选匹配的补充行为断言。

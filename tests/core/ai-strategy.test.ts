@@ -15,7 +15,7 @@ import {
   aggressiveStrategy,
   defensiveStrategy,
 } from '../../src/core/ai/Strategy.js';
-import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
+import { HeadlessMatch } from '../../tools/HeadlessMatch.js';
 import { TurnManager } from '../../src/core/logic/TurnManager.js';
 
 describe('AI Strategy Engine (src/core/ai)', () => {

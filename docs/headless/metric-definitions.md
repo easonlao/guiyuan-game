@@ -1,7 +1,7 @@
 # 指标口径表 (Metric Definitions)
 
 > 本文是测量台所有指标的**唯一定义处**。除场景接缝的 `atkTempoGain`（从两张受控 `BoardState` 派生）外，每个指标都只从 `HeadlessMatch.run` 的返回值 `MatchResult` 派生。
-> 代码实现在 `src/core/headless/Metrics.ts`；陷阱回归测试在 `tests/core/metric-definitions.test.ts`。
+> 代码实现在 `tools/Metrics.ts`；陷阱回归测试在 `tests/core/metric-definitions.test.ts`。
 > 术语以 `GLOSSARY.md` 为准。任何报告引用指标时，请引用本表，不要另起口径。
 
 ## 0. 派生入口与采集前提
@@ -44,7 +44,7 @@
 | 盘面进度 `actionsToGuiYuan` | 还差几次行动到五行归元（单侧提升 1 级记 1 次行动） | `未点亮侧数 + 道损数`（`countActionsToGuiYuan`）：虚空 0 需 1 次，道损 -1 需 2 次；五行归元完成时为 0 | 把它读成「还需几次抽天干」会低估：一个行动不必然点亮一侧（受生克与极性限制），本指标是**最少**行动数下界，不是实际抽数。 |
 | 【破】盘面边际收益 `atkTempoGain` | 一次【破】使对手「还差几次行动到五行归元」增加的次数（ticket 08 的盘面价值口径） | `countActionsToGuiYuan(opponentAfter) - countActionsToGuiYuan(opponentBefore)`：虚空 0 -> 道损 -1 记 +1；点亮 1 -> 虚空 0 记 +1；加持 2 -> 点亮 1 记 0；已道损（封顶）记 0 | 把它当成一次【破】的得分收益会混淆盘面与计分。它只读盘面等级，不读分数、权重或计分配置，因此专门用于**剥离计分**地测量压制动作的盘面价值（ticket 08/09）。注意它是**绝对**盘面收益，不含机会成本：一次【破】的 +1 与一次推进的 +1 在赛跑上是等价的。 |
 
-> 受控盘面 fixture 构造器在 `src/core/headless/BoardFixture.ts`：`boardWith(overrides)` 构造棋盘，`gameStateWith(options)` 在 `createInitialGameState()` 之上构造完整总状态（spec Implementation Decisions #9）。
+> 受控盘面 fixture 构造器在 `tools/BoardFixture.ts`：`boardWith(overrides)` 构造棋盘，`gameStateWith(options)` 在 `createInitialGameState()` 之上构造完整总状态（spec Implementation Decisions #9）。
 
 ## 2. 三个已确认的口径陷阱与回归测试
 
@@ -74,13 +74,13 @@
 ## 3. 使用示例
 
 ```ts
-import { HeadlessMatch } from '../src/core/headless/HeadlessMatch.js';
+import { HeadlessMatch } from '../tools/HeadlessMatch.js';
 import {
   deriveMatchMetrics,
   aggregateMatchMetrics,
   assertDominanceVerdictHasMatrix,
   formatDrawRateWithWinRates
-} from '../src/core/headless/Metrics.js';
+} from '../tools/Metrics.js';
 import { balancedStrategy } from '../src/core/ai/Strategy.js';
 
 const result = new HeadlessMatch().run(balancedStrategy, balancedStrategy, {

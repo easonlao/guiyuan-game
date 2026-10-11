@@ -19,7 +19,7 @@
 
 ### 1.3 交付形态定义 (Delivery Formats)
 系统支持三种不同运行形态（前两种已实现，第三种为远期规划）：
-1.  **无头仿真与诊断平台 (Headless Engine)**：运行于 Node.js 环境，用于批量对战、AI 算法博弈、数值平衡测试与突变测试。已实现于 `src/core/headless/`。
+1.  **无头仿真与诊断平台 (Headless Engine)**：运行于 Node.js 环境，用于批量对战、AI 算法博弈、数值平衡测试与突变测试。已实现于 `tools/`。
 2.  **轻量单机小游戏端 (Standalone Mini-game MVP)**：已实现的首发形态，纯 TypeScript + Canvas 2D 直出微信小游戏（ADR 0004），零服务器成本，纯本地运行。
 3.  **多玩家联机对弈端 (Online Multiplayer Platform)**：远期规划，**尚未实现**。旧版 Supabase 实时房间与 PVP 原型已删除（ADR 0003 及其勘误）；联机形态届时重新设计。
 
@@ -83,7 +83,7 @@
 ### 4.2 计算性能与帧率保障 (NFR-2: Performance)
 *   **主线程计算阈值**：单次 AI 决策计算耗时必须控制在 **16ms** 以内（满足 60FPS 满帧流畅要求）。
 *   **无头对战基线**：单局纯逻辑无头对战实测基线约 **0.3ms/局**（阶段一验收数据，见 §5）。
-*   **无头对战内存带**：推演的堆内存增量上界由 `src/core/headless/GuardrailBand.ts` 的 `GUARDRAIL_HEAP_MAX_MB` 定义，本文档不复写数值。
+*   **无头对战内存带**：推演的堆内存增量上界由 `tools/GuardrailBand.ts` 的 `GUARDRAIL_HEAP_MAX_MB` 定义，本文档不复写数值。
 *   **异步线程预留**：AI 决策默认同步返回，但接口须预留异步能力，使策略深度搜索引起卡顿时可切换至 Web Worker 或微信小游戏 Worker 运行（进程模型见 `docs/HLD.md` §2）。
 
 ### 4.3 小游戏包体约束 (NFR-3: Package Budget)

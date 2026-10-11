@@ -8,7 +8,7 @@ import {
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
 import { TurnManager } from '../../src/core/logic/TurnManager.js';
 import { EventBus } from '../../src/core/logic/EventBus.js';
-import { boardWith, gameStateWith } from '../../src/core/headless/BoardFixture.js';
+import { boardWith, gameStateWith } from '../../tools/BoardFixture.js';
 
 describe('TingPai Detection & 30-Round Advancement Model', () => {
   describe('1. 盘面听牌检测算法 (countLightedSides & isBoardTingPai)', () => {

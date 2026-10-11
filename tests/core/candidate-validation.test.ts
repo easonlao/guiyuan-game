@@ -4,7 +4,7 @@ import { POINTS_CONFIG, type PointsConfig } from '../../src/core/logic/ScoreCalc
 import {
   ATTACK_ZERO_POINTS_CONFIG,
   DEFAULT_STRATEGY_VARIANTS,
-} from '../../src/core/headless/ExperimentRunner.js';
+} from '../../tools/ExperimentRunner.js';
 import {
   DEFAULT_VALIDATION_MATCHES_PER_SEAT,
   PRODUCTION_CANDIDATE,
@@ -12,17 +12,14 @@ import {
   validateCandidate,
   type CandidateSpec,
   type CandidateValidationReport,
-} from '../../src/core/headless/CandidateValidation.js';
-import {
-  GUARDRAIL_GUIYUAN_MAX,
-  GUARDRAIL_GUIYUAN_MIN,
-} from '../../src/core/headless/GuardrailBand.js';
-import { parseCandidateArgs } from '../../src/core/headless/CandidateValidationCli.js';
-import { runActionValueCensus } from '../../src/core/headless/ActionValueCensus.js';
+} from '../../tools/CandidateValidation.js';
+import { GUARDRAIL_GUIYUAN_MAX, GUARDRAIL_GUIYUAN_MIN } from '../../tools/GuardrailBand.js';
+import { parseCandidateArgs } from '../../tools/CandidateValidationCli.js';
+import { runActionValueCensus } from '../../tools/ActionValueCensus.js';
 import {
   formatActionSummaryTable,
   formatActionValueCensusReport,
-} from '../../src/core/headless/ActionValueCensusReport.js';
+} from '../../tools/ActionValueCensusReport.js';
 
 /**
  * 候选验证命令测试（Ticket 05）。

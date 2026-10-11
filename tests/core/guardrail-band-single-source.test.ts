@@ -6,7 +6,7 @@ import {
   GUARDRAIL_P1_WIN_MIN,
   GUARDRAIL_P1_WIN_MAX,
   type GuardrailMetrics,
-} from '../../src/core/headless/GuardrailBand.js';
+} from '../../tools/GuardrailBand.js';
 
 /**
  * 护栏带防再漂移守卫（工单 03）。

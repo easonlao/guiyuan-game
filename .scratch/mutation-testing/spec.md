@@ -15,7 +15,7 @@
 
 1. **形态**：`implement` 收尾时对本次改动的文件跑变异、当场补断言（反馈最紧，且补测试本就属于 implement）；全量体检放里程碑（每个 spec 收尾 + 发版/提审前）。
 2. **规则放哪**：写进 committed 的 `docs/MUTATION-TESTING.md`，`AGENTS.md` 加一行指针，`package.json` 加脚本。**不写 `.pi/skills/`**——它被 gitignore 且按 `AGENTS.md` 的说法会被更新覆盖，改动活不过一次更新。
-3. **范围**：`src/core/logic/**`，排除只有 re-export 的入口文件；`EventBus` 这类管道的低价值存活进基线后不再追；暂不纳入 `src/core/ai/**` 与 `src/core/headless/**`（实验/工具，错了不污染对局结果）。
+3. **范围**：`src/core/logic/**`，排除只有 re-export 的入口文件；`EventBus` 这类管道的低价值存活进基线后不再追；暂不纳入 `src/core/ai/**` 与 `tools/**`（实验/工具，错了不污染对局结果）。
 4. **等价突变体**：遇到确认等价的才就地 `// Stryker disable next-line` 并写理由。**不做全局排除规则**——计分表本身就是一堆数字常量，禁掉字面量突变等于把最该测的东西排除掉。
 5. **门禁**：**基线棘轮**，不设全局固定阈值。仓库里存一份基线（当前全部存活突变体），跑完只对"基线里没有的"存活报警。固定阈值会被跟测试无关的变化误报（删死代码分数涨、加新模块分数跌），最后必然被关掉。
 6. **先删死代码再建基线**（死代码删除见 `.scratch/dead-scoring-code-removal/`），否则基线里混着永远杀不掉的噪音。
@@ -38,6 +38,6 @@
 
 ## Out of Scope
 
-- `src/core/ai/**`、`src/core/headless/**` 的变异测试。
+- `src/core/ai/**`、`tools/**` 的变异测试。
 - 把变异分当作团队 KPI 或绝对质量指标。
 - 引入 CI（本次只做本地/agent 内循环）。

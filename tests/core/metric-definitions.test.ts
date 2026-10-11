@@ -5,9 +5,9 @@ import {
   countUnlightedSides,
   isBoardTingPai,
 } from '../../src/core/logic/State.js';
-import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
-import type { MatchResult } from '../../src/core/headless/HeadlessMatch.js';
-import { boardWith, gameStateWith } from '../../src/core/headless/BoardFixture.js';
+import { HeadlessMatch } from '../../tools/HeadlessMatch.js';
+import type { MatchResult } from '../../tools/HeadlessMatch.js';
+import { boardWith, gameStateWith } from '../../tools/BoardFixture.js';
 import { balancedStrategy } from '../../src/core/ai/Strategy.js';
 import {
   deriveMatchMetrics,
@@ -18,7 +18,7 @@ import {
   formatDrawRateWithWinRates,
   type DominanceVerdict,
   type HeadToHeadMatrix,
-} from '../../src/core/headless/Metrics.js';
+} from '../../tools/Metrics.js';
 
 describe('陷阱 A: 加持 2 -> 点亮 1 必须记为 1 次削弱', () => {
   it('旧口径（未点亮侧数）把 2 -> 1 记为 0 削弱 —— 与事实相反', () => {

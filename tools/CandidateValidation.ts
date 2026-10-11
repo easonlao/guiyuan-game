@@ -28,10 +28,10 @@
  * 复跑命令见 package.json：`npm run benchmark:candidate-validation`。
  */
 
-import { type ActionType } from '../types/domain.js';
-import type { RuleSwitches } from '../logic/ActionCandidates.js';
-import { POINTS_CONFIG, type PointsConfig } from '../logic/ScoreCalculator.js';
-import { BALANCED_WEIGHTS } from '../ai/Strategy.js';
+import { type ActionType } from '../src/core/types/domain.js';
+import type { RuleSwitches } from '../src/core/logic/ActionCandidates.js';
+import { POINTS_CONFIG, type PointsConfig } from '../src/core/logic/ScoreCalculator.js';
+import { BALANCED_WEIGHTS } from '../src/core/ai/Strategy.js';
 import { HeadlessBenchmark } from './HeadlessBenchmark.js';
 import {
   GUARDRAIL_GUIYUAN_MIN,

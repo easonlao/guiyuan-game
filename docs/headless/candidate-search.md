@@ -36,7 +36,7 @@ npx vitest run tests/core/attack-progress-scale.test.ts tests/core/candidate-sea
 
 `--candidate progress-pricing` 选中 `CANDIDATE_REGISTRY` 中的候选 A，并对其标准 4 使用
 调优动态策略（dyn-v3-self7）；B/C/D/E 使用默认动态策略。不带 `--candidate` 时默认
-`production`，行为与引入本票前一致。命令入口是 `src/core/headless/CandidateValidationCli.ts`
+`production`，行为与引入本票前一致。命令入口是 `tools/CandidateValidationCli.ts`
 （确定性；唯一例外是运行期堆内存诊断）。
 
 ## 1. 判据（缺一不可）
@@ -49,7 +49,7 @@ npx vitest run tests/core/attack-progress-scale.test.ts tests/core/candidate-sea
 2. **每个行为都有价值** —— 动作价值普查中没有在所有被测盘面上都被支配的动作。
 3. **护栏全绿** —— 500 局平衡自对弈、种子 10000、回合上限 30：归元率 ∈ [0.89, 0.95]、
    先手胜率 ∈ [0.47, 0.51]、堆内存增量 < 15MB。流局率始终与先后手胜率成对报告。
-   带值唯一定义在 `src/core/headless/GuardrailBand.ts`（CLI 判据与 live 测试共用），
+   带值唯一定义在 `tools/GuardrailBand.ts`（CLI 判据与 live 测试共用），
    锚点 90.40% / 50.40%，并须把「无进度定价」的回退 88.40% / 51.20% 挡在带外。
 4. **动态策略打赢全部静态预设** —— 动态切换策略对全部 7 个静态预设的座次平衡胜率**显著**高于 50%
    （95% CI 下界 > 50%，不是裸 > 50%）。
@@ -120,7 +120,7 @@ factor = floor + span × (countBoardGuiYi(行动前对手盘面) / 5)
 ### 3.2 配套调优动态策略（dyn-v3-self7）
 
 ```ts
-// src/core/headless/DynamicSwitching.ts
+// tools/DynamicSwitching.ts
 export const TUNED_DYNAMIC_POLICY: DynamicSwitchPolicy = {
   name: '动态切换(调优v3)',
   advanceSelfMax: 7,

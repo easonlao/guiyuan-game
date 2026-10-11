@@ -10,13 +10,13 @@ import {
   TICKET_05_CANDIDATE,
   resolveCandidate,
   validateCandidate,
-} from '../../src/core/headless/CandidateValidation.js';
-import { parseCandidateArgs } from '../../src/core/headless/CandidateValidationCli.js';
+} from '../../tools/CandidateValidation.js';
+import { parseCandidateArgs } from '../../tools/CandidateValidationCli.js';
 import {
   DEFAULT_DYNAMIC_POLICY,
   TUNED_DYNAMIC_POLICY,
   createDynamicSwitchingStrategy,
-} from '../../src/core/headless/DynamicSwitching.js';
+} from '../../tools/DynamicSwitching.js';
 import { AGGRESSIVE_WEIGHTS } from '../../src/core/ai/Strategy.js';
 
 /**

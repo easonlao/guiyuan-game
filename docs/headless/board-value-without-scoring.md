@@ -52,7 +52,7 @@ npm run benchmark:head-to-head -- --matches 2000 --seed 10000 --max-rounds 30
 1. **AI 估值**：`RuleSwitches.isBoardOnly = true` 时 `ActionEvaluator` 的 `scoreDeltaPoints = 0`，
    AI 只按盘面权重判优。不改动作合法性、状态转移或候选集。
 2. **终局结算**：`MatchOptions.isBoardSettlement = true` 时，回合上限（`MAX_ROUNDS`）的胜负
-   **不读任何计分**，按盘面进度依次比较（`src/core/headless/HeadlessMatch.ts` 的 `settleMaxRoundsByBoard`）：
+   **不读任何计分**，按盘面进度依次比较（`tools/HeadlessMatch.ts` 的 `settleMaxRoundsByBoard`）：
    1. `actionsToGuiYuan`（未点亮侧数 + 道损数，ticket 07 口径）少者胜；
    2. 相同则 `guiYiNodes`（阴阳均 >= 1 的节点数）多者胜；
    3. 仍相同则盘面无法区分，判 `DRAW`。

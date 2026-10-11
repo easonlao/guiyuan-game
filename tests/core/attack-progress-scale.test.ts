@@ -6,8 +6,8 @@ import {
   type PointsConfig,
 } from '../../src/core/logic/ScoreCalculator.js';
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
-import { gameStateWith } from '../../src/core/headless/BoardFixture.js';
-import type { BoardOverrides } from '../../src/core/headless/BoardFixture.js';
+import { gameStateWith } from '../../tools/BoardFixture.js';
+import type { BoardOverrides } from '../../tools/BoardFixture.js';
 
 /**
  * Ticket 05 候选 A：攻击进度定价（`ATTACK_PROGRESS_SCALE`）。

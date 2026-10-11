@@ -2,13 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { ActionType, TIAN_GAN_LIST, WuXing } from '../../src/core/types/domain.js';
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
 import { ScoreCalculator, type PointsConfig } from '../../src/core/logic/ScoreCalculator.js';
-import { gameStateWith } from '../../src/core/headless/BoardFixture.js';
-import { atkTempoGain } from '../../src/core/headless/Metrics.js';
+import { gameStateWith } from '../../tools/BoardFixture.js';
+import { atkTempoGain } from '../../tools/Metrics.js';
 import {
   evaluateActionValues,
   runActionValueCensus,
   type ActionValue,
-} from '../../src/core/headless/ActionValueCensus.js';
+} from '../../tools/ActionValueCensus.js';
 
 /** 全零计分配置：证明价值函数可注入 PointsConfig，且 scoreDeltaPoints 归零。 */
 const ZERO_POINTS_CONFIG: PointsConfig = {
