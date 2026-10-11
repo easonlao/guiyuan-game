@@ -15,8 +15,6 @@ import { Container } from '../scene/container.js';
 export interface CharacterViewOptions {
   /** 视口宽度（父坐标系）。 */
   readonly width: number;
-  /** 视口高度（父坐标系）。 */
-  readonly height: number;
   /** 安全区顶部偏移（刘海屏），默认 24。 */
   readonly safeTop?: number;
 }
@@ -58,7 +56,6 @@ const PLAYER_COLOR: Record<PlayerId, string> = { P1: P1_COLOR, P2: P2_COLOR };
 
 export class CharacterView extends Container {
   private _width: number;
-  private _height: number;
   private _safeTop: number;
 
   private _round = 0;
@@ -80,13 +77,7 @@ export class CharacterView extends Container {
   public constructor(options: CharacterViewOptions) {
     super();
     this._width = options.width;
-    this._height = options.height;
     this._safeTop = options.safeTop ?? 24;
-  }
-
-  /** 当前视口尺寸（投影与安全区自适应的入参）。 */
-  public get viewport(): { width: number; height: number } {
-    return { width: this._width, height: this._height };
   }
 
   /** 回合数（未投影时为 0）。 */
@@ -134,9 +125,8 @@ export class CharacterView extends Container {
   }
 
   /** 视口自适应（安全区与宽度变化时调用）。 */
-  public resize(width: number, height: number, safeTop?: number): void {
+  public resize(width: number, safeTop?: number): void {
     this._width = width;
-    this._height = height;
     this._safeTop = safeTop ?? this._safeTop;
   }
 

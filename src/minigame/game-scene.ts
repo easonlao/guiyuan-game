@@ -222,7 +222,6 @@ export class GameScene extends Container {
     this.runeFlight = this.buildRuneFlight();
     this.characters = new CharacterView({
       width: this.width,
-      height: this.height,
       safeTop: this.safeTop,
     });
     this.actionBar = this.buildActionBar(this._turnManager);
@@ -254,7 +253,7 @@ export class GameScene extends Container {
     this.safeTop = safeTop ?? this.safeTop;
     this.safeBottom = safeBottom ?? this.safeBottom;
     this.board.resize(width, height);
-    this.characters.resize(width, height, this.safeTop);
+    this.characters.resize(width, this.safeTop);
     this.actionBar.x = ACTION_BAR_MARGIN;
     this.actionBar.y = this.actionBarY();
     if (this._phase === 'idle' || this._phase === 'game-over') {
