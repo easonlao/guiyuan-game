@@ -1,17 +1,15 @@
 #!/bin/sh
 # 提交信息门禁：拦 `Co-Authored-By` trailer。
 #
-# 为什么有这道门禁：截至 2026-10，仓库 245 条提交里有 70 条带 `Co-Authored-By`
-# trailer（最新一条 2026-02-06，HEAD 2026-10-11）。GitHub 把 trailer 里的邮箱算作
-# contributor，于是仓库页面多出并非本项目作者的贡献者。本仓库的主要提交者是 agent，
-# 而 trailer 正是 agent 手写的典型产物，所以这道门禁是防复发，不是救火。
-#
-# 历史里那 70 条**未**改写——改写历史是破坏性操作，见 spec 的 Out of Scope。
-# 本钩子只管从现在起不再新增。
+# 为什么：GitHub 把 trailer 里的邮箱算作 contributor，历史提交里已因此多出并非本项目
+# 作者的贡献者。本仓库的主要提交者是 agent，而 trailer 正是 agent 手写的典型产物，
+# 所以这道门禁是防复发。历史里已有的那些**不改写**（破坏性操作，见 spec 的 Out of
+# Scope），本钩子只管从现在起不再新增。背景数字见 spec 的 02 号票。
 #
 # 行为：两种模式，默认剥离后放行并把改写结果打到 stderr。
 #   COMMIT_MSG_MODE=strip（默认）  剥离并警告，提交继续
 #   COMMIT_MSG_MODE=fail           判红退出 1，提交中止
+#   其它取值 → 判红退出 1（门禁不做静默降级）
 # 绕过：--no-verify。门禁的价值就在于拦得住，所以不建议用。
 #
 # 只管 trailer。标题风格（Conventional Commits，见 CONTRIBUTING.md §3）不在这道
@@ -22,28 +20,44 @@ set -eu
 MODE="${COMMIT_MSG_MODE:-strip}"
 MSG_FILE="$1"
 
-# 可移植写法：不用 awk 的 IGNORECASE（mawk 没有这个扩展）。
-FORBIDDEN='^[Cc]o-[Aa]uthored-[Bb]y[[:space:]]*:'
+# 判定口径对齐 `git interpret-trailers`：大小写不敏感，冒号前允许空白
+# （git 认 `CO-AUTHORED-BY:`，也把 `Co-Authored-By :` 归一成 trailer）；缩进的行
+# git 不认，所以这里也要求顶格。
+# 模式只写一遍，grep 与 awk 共用，免得两处漂移。
+PATTERN='^co-authored-by[[:space:]]*:'
 
-if ! grep -qE "$FORBIDDEN" "$MSG_FILE"; then
+if ! grep -qiE "$PATTERN" "$MSG_FILE"; then
 	exit 0
 fi
 
 echo "提交信息含 Co-Authored-By trailer：" >&2
-grep -nE "$FORBIDDEN" "$MSG_FILE" >&2
+grep -niE "$PATTERN" "$MSG_FILE" >&2
 
-if [ "$MODE" = "fail" ]; then
+case "$MODE" in
+fail)
 	echo "判红。删掉上面那几行再提交；或本次用 COMMIT_MSG_MODE=strip 临时自动剥离。" >&2
 	exit 1
-fi
+	;;
+strip) ;;
+*)
+	echo "COMMIT_MSG_MODE 只接受 strip / fail，收到 '$MODE'；判红。" >&2
+	exit 1
+	;;
+esac
 
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
 # 先滤掉违规行，再去掉尾部空行（git 要求提交信息以单个换行结尾）。
-awk '!/^[Cc]o-[Aa]uthored-[Bb]y[[:space:]]*:/' "$MSG_FILE" |
+# awk 没有可移植的 IGNORECASE（mawk 就没有），所以比对小写化后的行。
+awk -v p="$PATTERN" 'tolower($0) !~ p' "$MSG_FILE" |
 	awk '{ l[NR] = $0 } END { n = NR; while (n > 0 && l[n] ~ /^[[:space:]]*$/) n--; for (i = 1; i <= n; i++) print l[i] }' \
 	>"$TMP"
+
+if [ ! -s "$TMP" ]; then
+	echo "剥离后提交信息为空，提交中止。" >&2
+	exit 1
+fi
 
 echo "已剥离，剥离后的提交信息如下：" >&2
 sed 's/^/  | /' "$TMP" >&2
