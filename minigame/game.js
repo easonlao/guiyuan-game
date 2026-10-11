@@ -2687,6 +2687,149 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       return this.lastShowdownInfo;
     }
   }
+  class Node {
+    constructor() {
+      __publicField(this, "x", 0);
+      __publicField(this, "y", 0);
+      __publicField(this, "scaleX", 1);
+      __publicField(this, "scaleY", 1);
+      /** 局部透明度，最终渲染透明度是整条祖先链的乘积。 */
+      __publicField(this, "alpha", 1);
+      __publicField(this, "visible", true);
+      /** 局部命中矩形；不设置即不参与命中检测（触摸会穿透到下层节点）。 */
+      __publicField(this, "hitArea", null);
+      __publicField(this, "onTouchStart");
+      __publicField(this, "onTouchEnd");
+      __publicField(this, "onTap");
+      __publicField(this, "_parent", null);
+      __publicField(this, "_children", []);
+    }
+    get parent() {
+      return this._parent;
+    }
+    get children() {
+      return this._children;
+    }
+    /** 挂载子节点；若子节点已有父节点则先摘除（即「移动」而非「复制」）。 */
+    addChild(child) {
+      if (isSelfOrAncestorOf(child, this)) {
+        throw new Error("场景树不允许成环：不能把自身或祖先挂为自己的子节点。");
+      }
+      child.removeFromParent();
+      child._parent = this;
+      this._children.push(child);
+      return this;
+    }
+    /** 摘除子节点；不是自己的孩子时静默忽略。 */
+    removeChild(child) {
+      const index = this._children.indexOf(child);
+      if (index < 0) {
+        return;
+      }
+      this._children.splice(index, 1);
+      child._parent = null;
+    }
+    removeFromParent() {
+      this._parent?.removeChild(this);
+    }
+    /** 递归渲染：应用局部变换与透明度后先画自己，再按挂载顺序画子节点（后者覆盖前者）。 */
+    render(ctx) {
+      if (!this.visible || this.alpha <= 0) {
+        return;
+      }
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.scale(this.scaleX, this.scaleY);
+      ctx.globalAlpha *= this.alpha;
+      this.renderSelf(ctx);
+      for (const child of this._children) {
+        child.render(ctx);
+      }
+      ctx.restore();
+    }
+    /** 子类在这里画自己；变换与透明度已由 `render` 就位。 */
+    renderSelf(_ctx) {
+    }
+    /**
+     * 自顶向下命中检测：`(x, y)` 与 `x` / `y` 同一坐标系（即父节点坐标系，根舞台即屏幕坐标）。
+     * 命中时返回该节点，未命中返回 `null`。
+     */
+    hitTest(x, y) {
+      if (!this.visible || this.alpha <= 0 || this.scaleX === 0 || this.scaleY === 0) {
+        return null;
+      }
+      const localX = (x - this.x) / this.scaleX;
+      const localY = (y - this.y) / this.scaleY;
+      for (let index = this._children.length - 1; index >= 0; index -= 1) {
+        const hit = this._children[index].hitTest(localX, localY);
+        if (hit !== null) {
+          return hit;
+        }
+      }
+      return this.containsPoint(localX, localY) ? this : null;
+    }
+    /** 局部坐标是否落在命中区（默认取 `hitArea`）；子类可覆盖以实现圆形等异形命中区。 */
+    containsPoint(localX, localY) {
+      const area = this.hitArea;
+      if (area === null) {
+        return false;
+      }
+      return localX >= area.x && localX <= area.x + area.width && localY >= area.y && localY <= area.y + area.height;
+    }
+  }
+  function isSelfOrAncestorOf(candidate, node) {
+    for (let current = node; current !== null; current = current.parent) {
+      if (current === candidate) {
+        return true;
+      }
+    }
+    return false;
+  }
+  class Container extends Node {
+  }
+  class InputManager {
+    constructor(stage) {
+      __publicField(this, "stage");
+      /** 本次触摸按下时命中的节点；抬起时与同一节点重合才算一次点击。 */
+      __publicField(this, "pressedNode", null);
+      this.stage = stage;
+    }
+    handleTouchStart(screenX, screenY) {
+      const target = this.stage.hitTest(screenX, screenY);
+      this.pressedNode = target;
+      target?.onTouchStart?.(screenX, screenY);
+    }
+    handleTouchEnd(screenX, screenY) {
+      const target = this.stage.hitTest(screenX, screenY);
+      target?.onTouchEnd?.(screenX, screenY);
+      const pressed = this.pressedNode;
+      this.pressedNode = null;
+      if (pressed !== null && pressed === target) {
+        pressed.onTap?.(screenX, screenY);
+      }
+    }
+    /** 绑定 `wx.onTouchStart` / `wx.onTouchEnd` 风格的事件源。 */
+    bindTouchEvents(source) {
+      source.onTouchStart((event) => {
+        const point = firstTouch(event, false);
+        if (point !== null) {
+          this.handleTouchStart(point.x, point.y);
+        }
+      });
+      source.onTouchEnd((event) => {
+        const point = firstTouch(event, true);
+        if (point !== null) {
+          this.handleTouchEnd(point.x, point.y);
+        }
+      });
+    }
+  }
+  function firstTouch(event, preferChanged) {
+    const primary = preferChanged ? event.changedTouches : event.touches;
+    const fallback = preferChanged ? event.touches : event.changedTouches;
+    const touch = primary?.[0] ?? fallback?.[0];
+    return touch === void 0 ? null : { x: touch.clientX, y: touch.clientY };
+  }
   function initMiniGame() {
     if (typeof wx === "undefined") {
       console.log("[Guiyuan] 非微信小游戏环境，跳过 Canvas 初始化");
@@ -2703,16 +2846,20 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     ctx.scale(pixelRatio, pixelRatio);
     const game = new GameManager();
     game.resize(windowWidth, windowHeight, pixelRatio, safeTop, safeBottom);
+    const stage = new Container();
+    const input = new InputManager(stage);
+    input.bindTouchEvents(wx);
     console.log("[Guiyuan] 左右对抗像素风对局初始化成功！");
     wx.onTouchStart((e) => {
-      if (e.touches && e.touches.length > 0) {
-        const touch = e.touches[0];
+      const touch = e.touches?.[0];
+      if (touch) {
         game.handleTouch(touch.clientX, touch.clientY);
       }
     });
     function loop() {
       game.update();
       game.render(ctx);
+      stage.render(ctx);
       if (typeof requestAnimationFrame !== "undefined") {
         requestAnimationFrame(loop);
       }
