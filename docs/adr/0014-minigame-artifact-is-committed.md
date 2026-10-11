@@ -32,3 +32,7 @@ status: accepted
 - **落点不得在任何 `dist/` 下**：`.gitignore` 的无锚点 `dist/` 是已知的坑（参考仓库 ADR-0007 专门记过）；本仓库的落点是 `minigame/game.js`，与 `src/minigame/` 同族但不同层，由门禁第一条判定钉住。
 - **门禁与 `check:boundary` 是两条不同的门**：`check:boundary` 管「包边界机制还成立吗」（声明式解析），`check:artifact` 管「入库产物 == 现打产物」。判定对象不同，不合并。
 - **构建面必须只有一处**：写回侧（`build:minigame`）与核查侧（`check:artifact`）共用 `scripts/lib/minigame-build.mjs` 的同一次构建调用。各写一份 vite 配置，两者就可能悄悄用上两条不同的构建命令——那正是分叉的入口。
+
+## 勘误
+
+- （2026-10-11）文中引用的 `docs/DEVELOPMENT.md` 真机验收步骤已移至 `docs/HLD.md` §4.6（该文档已删，其模块职责部分与 HLD §2 重复）。决定所依据的「有一步给人走的真机验收流程」仍成立，结论不变。

@@ -62,5 +62,4 @@
 
 按顺序读：[FSR](docs/FSR.md)（why）→ [SRS](docs/SRS.md)（what）→ [GDD](docs/GDD.md)（规则）→ [HLD](docs/HLD.md)（how）→ [LLD](docs/LLD.md)（契约）。
 
-- [开发导航](docs/DEVELOPMENT.md)：主要代码流程与模块职责
 - [项目术语表](GLOSSARY.md)：游戏领域术语
