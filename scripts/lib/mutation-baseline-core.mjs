@@ -72,18 +72,11 @@ function collectReportEntries(raw) {
 
 /**
  * 读取 Stryker JSON 报告，返回全部 Survived / NoCoverage 记录（未排序）。
- * 结构不合法时按空报告处理（供不参与门禁的调用方使用）。
- */
-export function readReportEntries(reportPath) {
-  return collectReportEntries(JSON.parse(readFileSync(reportPath, 'utf-8'))).entries;
-}
-
-/**
- * 严格读取 Stryker JSON 报告，返回全部 Survived / NoCoverage 记录（未排序）。
  *
- * 与 `readReportEntries` 的区别：结构不合法（顶层不是对象、缺对象类型的 `files`、
- * 某文件的 `mutants` 不是数组）或报告内 mutant 总数为 0 时**抛错**。
- * 门禁必须走这条：否则空报告 / 坏报告会被当成「零存活」静默放行（假绿）。
+ * 结构不合法（顶层不是对象、缺对象类型的 `files`、某文件的 `mutants` 不是数组）
+ * 或报告内 mutant 总数为 0 时**抛错**。
+ * `mutation:baseline` 与 `mutation:check` 都必须走这条：否则空报告 / 坏报告会被
+ * 当成「零存活」静默放行（假绿），或在刷基线时把坏报告写成空基线。
  */
 export function readReportEntriesStrict(reportPath) {
   const raw = JSON.parse(readFileSync(reportPath, 'utf-8'));

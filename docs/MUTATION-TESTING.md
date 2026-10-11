@@ -32,8 +32,9 @@
 
 - **命令**：`npm run mutation:changed`，默认对比 `HEAD`（含未提交改动），只对 `src/core/logic/**` 里改动的 `.ts` 文件跑（排除纯 re-export 的 `src/core/logic/index.ts`）。
 - **时机**：`implement` 收尾。反馈最紧——刚写的代码、刚写的测试，改动小、跑得快，能当场把漏掉的断言补上。补测试本来就属于 `implement` 的职责，所以变异收敛到这一步，而不是留到事后。
-- **为什么不用全量**：全量一次约 33 分钟（1073 个突变体 / 6 个文件，其中 923 个计分），不适合每次改动都跑。
+- **为什么不用全量**：全量一次约 33 分钟（1073 个突变体 / 6 个文件，其中 993 个计分），不适合每次改动都跑。
 - **子集报告不能做棘轮对比**：Stryker 的 perTest 覆盖按**被变异文件集**选测试，子集跑出的存活集与全量不同。`mutation:check` 会识别并**拒绝**子集报告（退出 `2`），见 §3.1。
+- **实际覆盖粒度是 per-test，与 `coverageAnalysis` 配置无关**：`stryker.config.json` 里的 `coverageAnalysis: "off"` **并不生效**——`@stryker-mutator/vitest-runner@10.0.0` 的 `dryRun()` 无条件调用 `readMutantCoverage()`，实际总是按 per-test 收集覆盖（报告里每个 mutant 都带 `coveredBy`）。保留 `off` 只是沿用既有值，**不代表**「所有测试都打每个突变体」；也因此 `NoCoverage` 是真实存在的状态（不是结构性恒 0），纳入棘轮有意义（§3.1）。
 - **无改动文件时**：退出 `0`（合法状态，不是失败）。
 
 ### 2.2 里程碑全量（每个 spec 收尾 + 发版/提审前）
@@ -58,7 +59,8 @@
 - 每行一条 JSON：`{file, line, column, mutatorName, replacement}`，按 `file → line → column → mutatorName → replacement` 稳定排序。
 - 跑完变异后，`npm run mutation:check` 拿报告和基线对比，**只报告基线里没有的**存活/无覆盖。
 - 有新增 → 退出 `1`；无新增 → 退出 `0`；缺报告、缺基线、或报告来自**子集跑** → 退出 `2`。
-- **子集报告防护**：`mutation:check` 读 `stryker.config.json` 的 `mutate`，并比对报告 `config.mutate`（Stryker 回填的是 CLI 覆盖后的**最终**值）。两者不一致、或报告缺 `config.mutate`，即判定为子集跑，退出 `2` 并提示「棘轮只对全量跑有效，请先跑 `npm run mutation`」。
+- **子集报告防护**：`mutation:check` 读 `stryker.config.json` 的 `mutate`，并比对报告 `config.mutate`（Stryker 回填的是 CLI 覆盖后的**最终**值）。两者不一致、或报告缺 `config.mutate`，即判定为子集跑，退出 `2` 并提示「棘轮只对全量跑有效，请先跑 `npm run mutation`」。`mutation:baseline` 同样只接受全量报告（§3.2），否则会把基线缩到子集、与门禁口径不一致。
+- **覆盖粒度是 per-test（非配置决定）**：`coverageAnalysis: "off"` 字段不生效，runner 总是回传 per-test 覆盖（见 §2.1）。所以 `NoCoverage` 是真实存在的状态、不是结构性恒 0，纳入棘轮有意义。
 - 棘轮只收 `Survived + NoCoverage`。`Timeout` 既不入基线、又被 Stryker 计入「已探测」，所以 Killed↔Timeout 的抖动对门禁与分数**都无影响**（见 §3.4）。
 - 身份键是 `{file, mutatorName, line, column, replacement}`，**不是** Stryker 的 `mutants[].id`（那个只在单次报告内唯一）。
 
@@ -68,15 +70,16 @@
 
 确认某个存活是**等价突变体**（见 §4）后，用 `npm run mutation:baseline` 重新生成基线。基线是入库文本，更新后 `git diff` 里新增/删除的行就是「新出现 / 消失」的存活，可 review。
 
+- **只能对全量报告刷基线**：`mutation:baseline` 与 `mutation:check` 一样校验报告来自全量跑（读 `stryker.config.json` 的 `mutate` 并比对报告 `config.mutate`），且拒绝结构无效 / 空的报告。缺报告、结构无效或报告来自子集跑（`mutation:changed` 的 `--mutate` 结果）都退出 `2`。**禁止对子集报告刷基线**——那会把基线缩到子集，使口径与门禁不一致（后续 `mutation:check` 会报更多新增）。
 - **不要**为了让门禁变绿而无脑重刷基线——那等于把门禁关掉。只有「确认等价」或「有意识接受一个新缺口」才更新。
 - 基线收缩（删掉已杀死的条目）是好信号，会在 diff 里体现。
 
-### 3.3 现状快照（截至 2026-10-10）
+### 3.3 现状快照（截至 2026-10-11）
 
-- 基线规模：**0 条**（Survived 0 + NoCoverage 0）。
-- 全量变异分 **100.00%**：923 个计分突变体（Killed 922 / Timeout 1 / Survived 0 / NoCoverage 0），另有 150 个被**就地 disable**、Stryker 记为 `Ignored`。
-- **100% 是「等价 / 不可观测项被显式 disable 后的结果」，不是追求目标**。这些 disable 是阶段 3a 逐个确认等价后**就地**加的（带理由注释），不是靠全局排除规则堆出来的；见 §4。
-- 这个分数**不是门禁**，只是当前状态的一个快照，会随代码变化浮动。门禁只盯「有没有新增存活 / 无覆盖」（§3.1）。
+- 基线规模：**34 条**（Survived 34 + NoCoverage 0）。全部是「同一行同一 mutator 上还有可杀兄弟、无法单独 disable」的等价 / 不可观测突变体（逐条理由见 `mutation-baseline.jsonl` 与阶段 4a commit `57e8029`）。
+- 全量变异分 **96.58%**：共 **1073** 个突变体，其中 **993** 个计分（Killed 957 / Timeout 2 / Survived 34 / NoCoverage 0）；另有 **80 个**被**就地 disable**、Stryker 记为 `Ignored`（来自 **54 行** `// Stryker disable next-line` 注释，一行可覆盖多个 mutator）。
+- **这个分数不是门禁，也不值得追高**：它只是当前状态快照，会随代码变化浮动。门禁只盯「有没有新增存活 / 无覆盖」（§3.1）。
+- **诚实说明（阶段 3a → 4a 的纠正）**：阶段 3a 一度把 disable 加到 **71 行**，对外呈现基线 **0 条** / 分数 **100.00%**。但 Stryker 的 disable 是「行 + mutator」粒度：一行 disable 会把该行该 mutator 的**全部取值**一起禁掉，其中 **35 个本可被现有测试杀死**。阶段 4a（`57e8029`）机械重做——只保留「该行该 mutator 全部取值都未被测试抓住」的 disable（54 行 / 80 个 `Ignored`），其余等价项落回基线（34 条）。所以「0 条 / 100%」是**过度 disable 造成的假象**，**34 条 / 96.58%** 才是准确口径。
 
 ### 3.4 Timeout：为什么抬到 30s，且不影响门禁
 
@@ -91,10 +94,11 @@
 有些突变体和原代码**行为完全等价**（例如某个比较在边界上永远走同一分支、某些常量替换被后续逻辑吸收），测试再怎么补也杀不掉它。处理办法：
 
 - **就地**加 `// Stryker disable next-line <Mutator>` 注释，**并写清为什么等价**。
+- **disable 的粒度是「行 + mutator」，必须整组都不可杀才用**：`next-line` 会把**该行该 mutator 的全部取值**（如 `ConditionalExpression` 的 `true` / `false` 两个方向）一并禁掉。所以只有当这一整组取值都未被现有测试抓住时才 disable；**只要同行同 mutator 还有可杀的兄弟（Killed / Timeout），就绝不能用 disable**——那会顺带掩盖可杀突变体，制造假绿。这类「同行有可杀兄弟、自己又等价」的突变体走**基线**（`mutation-baseline.jsonl`），不用 disable。
 - 只对**已确认等价**的突变体这么做，不要因为「懒得补测试」而 disable。
 - **不做全局排除规则**（不在 `stryker.config.json` 里加 `mutator.excludedMutations`）。原因：本仓库的计分表本身就是一堆数字常量，禁掉字面量突变（`StringLiteral` / 数值替换）等于把**最该测的东西**排除掉。全局规则会随一次误判永久生效，就地注释则带上下文、可 review。
 
-**现状（阶段 3a）**：活代码上的存活已用真实行为断言清零，剩余杀不掉的**等价 / 不可观测**突变体（共 150 个）已逐个**就地** `// Stryker disable next-line` 并附理由。这正是 100% 的来源——它是「等价项被显式 disable 后的结果」，**不是**靠补出扭曲断言硬凑出来的分数。
+**现状（阶段 4a 后）**：活代码上的存活已用真实行为断言清零；剩余杀不掉的**等价 / 不可观测**突变体按上面两条分别处置：**整组不可杀**的 **54 行 / 80 个**用就地 `// Stryker disable next-line` 并附理由（Stryker 记为 `Ignored`）；**同行有可杀兄弟**的 **34 条**留在基线里。这个划分是「行 + mutator」粒度的**必然结果**，不是可以自由选择的——想给某个等价突变体单独 disable，只能连带禁掉同组可杀的兄弟，所以它只能进基线。
 
 示例（语法，非本仓库现有内容）：
 
@@ -135,7 +139,7 @@ if (score >= 0) { /* ... */ }
 
 - 这些是**参考**，用来判断「我们现在大概在什么水平」，**不是**要接线的红线。
 - **100% 不值得追**：等价突变体是理论天花板，永远杀不完；把变异分当 KPI 会逼出「为杀而杀」的测试（断言内部实现细节，反而更脆）。
-- 本仓库当前全量 100.00%（等价项已就地 disable），高于「高保障」档——但这只是现状快照，**不是**要守住的 KPI。门禁是基线棘轮（§3），不是这个档位。
+- 本仓库当前全量 **96.58%**（等价项按 §4 分别 disable 或入基线），高于「高保障」档——但这只是现状快照，**不是**要守住的 KPI。门禁是基线棘轮（§3），不是这个档位。
 
 ---
 
@@ -198,7 +202,7 @@ if (score >= 0) { /* ... */ }
 | --- | --- | --- |
 | `npm run mutation` | 全量变异（`mutate` 全部目标） | Stryker 自身（无 `thresholds`，存活不改退出码） |
 | `npm run mutation:changed [-- <ref>]` | 只变异相对 `<ref>`（默认 `HEAD`）改动的逻辑文件 | 无改动文件 → `0`；否则透传 Stryker |
-| `npm run mutation:baseline` | 从报告生成 / 刷新基线 `mutation-baseline.jsonl` | 缺报告 → `2` |
+| `npm run mutation:baseline` | 从报告生成 / 刷新基线 `mutation-baseline.jsonl`（只接受全量报告） | 缺报告 / 结构无效 / 非全量跑 → `2` |
 | `npm run mutation:check` | 报告与基线对比，只报基线之外的存活/无覆盖 | 无新增 `0` / 有新增 `1` / 缺报告、缺基线或报告来自子集跑 `2` |
 
 产物：
@@ -207,4 +211,4 @@ if (score >= 0) { /* ... */ }
 - `mutation-baseline.jsonl` —— 基线（**入库**）。
 - 控制台 `clear-text` —— 存活明细（文件 / 行号 / 变异类型 / diff）。
 
-配置：`stryker.config.json`（`mutate`、`reporters`、`coverageAnalysis: "off"`）、`vitest.stryker.config.ts`（Stryker 专用 Vitest 配置）。
+配置：`stryker.config.json`（`mutate`、`reporters`、`timeoutMS`；`coverageAnalysis: "off"` 字段名不副实、实际不生效，见 §2.1）、`vitest.stryker.config.ts`（Stryker 专用 Vitest 配置）。
