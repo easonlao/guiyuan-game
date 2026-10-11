@@ -1,8 +1,6 @@
 import {
   BoardState,
-  GameState,
   NodeLevel,
-  PlayerId,
   Polarity,
   WuXing,
   GENERATION_CYCLE,
@@ -170,11 +168,6 @@ export class BoardView extends Container {
   public update(board: BoardState): void {
     this._board = board;
     this._rebuild();
-  }
-
-  /** 从只读 `GameState` 快照中取指定玩家的棋盘并投影。 */
-  public updateFromState(state: GameState, player: PlayerId): void {
-    this.update(state.players[player].board);
   }
 
   private _rebuild(): void {
