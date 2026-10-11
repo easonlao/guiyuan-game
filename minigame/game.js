@@ -1657,50 +1657,158 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     drawPixelRect(ctx, x, y, pixelSize, h, borderColor);
     drawPixelRect(ctx, x + w - pixelSize, y, pixelSize, h, borderColor);
   }
+  const CHARACTER_PIXEL_SIZE = 4;
+  const CHARACTER_SPRITE_BOUNDS = {
+    top: -15,
+    bottom: 12
+  };
   function drawPixelCharacter(ctx, x, y, isPlayer, state, animTick) {
-    const p = 3;
-    let bobY = 0;
-    if (state === "idle") {
-      bobY = Math.sin(animTick * 0.08) * 3;
-    } else if (state === "attack") {
-      bobY = -2;
-    } else if (state === "hurt") {
-      bobY = 4;
+    const p = CHARACTER_PIXEL_SIZE;
+    const dir = isPlayer ? 1 : -1;
+    let bobY;
+    switch (state) {
+      case "attack":
+        bobY = -2;
+        break;
+      case "hurt":
+        bobY = 2;
+        break;
+      case "cast":
+        bobY = Math.sin(animTick * 0.06) * 1.5;
+        break;
+      case "celebrate":
+        bobY = -Math.abs(Math.sin(animTick * 0.12)) * 3;
+        break;
+      case "win":
+        bobY = Math.sin(animTick * 0.08) * 1.5;
+        break;
+      case "lose":
+        bobY = 2;
+        break;
+      default:
+        bobY = Math.sin(animTick * 0.08) * 2;
+        break;
     }
     const robeColor = isPlayer ? "#3182ce" : "#805ad5";
     const robeTrim = isPlayer ? "#63b3ed" : "#b794f4";
+    const robeShade = isPlayer ? "#2c5282" : "#553c9a";
     const skinColor = "#fed7aa";
+    const skinShade = "#f6ad55";
     const hairColor = isPlayer ? "#1a202c" : "#edf2f7";
+    const eyeColor = isPlayer ? "#2d3748" : "#e53e3e";
+    const mouthColor = "#c05621";
     const beltColor = isPlayer ? "#d69e2e" : "#e53e3e";
+    const shoeColor = "#1a202c";
+    const glowColor = isPlayer ? "#f6e05e" : "#e9d8fd";
+    const px = (lx, ly, lw, lh, color) => {
+      drawPixelRect(ctx, lx * p, ly * p, lw * p, lh * p, color);
+    };
+    const mx = (lx, lw) => dir > 0 ? lx : -lx - lw;
     ctx.save();
     ctx.translate(x, y + bobY);
-    if (!isPlayer) {
-      ctx.scale(-1, 1);
-    }
-    drawPixelRect(ctx, -p * 2, -p * 11, p * 4, p * 3, hairColor);
-    if (!isPlayer) {
-      drawPixelRect(ctx, -p * 4, -p * 8, p * 2, p * 6, hairColor);
+    px(-6.5, 3.5, 13, 6, robeColor);
+    px(-6.5, 8.5, 13, 1, robeTrim);
+    px(-1, 3.5, 2, 5, robeTrim);
+    if (state === "celebrate") {
+      px(-5.5, 9.5, 3.5, 2, shoeColor);
+      px(2, 9.5, 3.5, 2, shoeColor);
     } else {
-      drawPixelRect(ctx, 0, -p * 12, p * 2, p * 2, "#d69e2e");
+      px(-4.5, 9.5, 3.5, 2, shoeColor);
+      px(1, 9.5, 3.5, 2, shoeColor);
     }
-    drawPixelRect(ctx, -p * 3, -p * 8, p * 6, p * 5, skinColor);
-    const eyeColor = isPlayer ? "#2d3748" : "#e53e3e";
-    drawPixelRect(ctx, p * 1, -p * 7, p * 1.5, p * 1.5, eyeColor);
-    drawPixelRect(ctx, -p * 4, -p * 3, p * 8, p * 7, robeColor);
-    drawPixelRect(ctx, -p * 1, -p * 3, p * 2, p * 7, robeTrim);
-    drawPixelRect(ctx, -p * 4, p * 1, p * 8, p * 2, beltColor);
-    drawPixelRect(ctx, -p * 5, p * 4, p * 10, p * 5, robeColor);
-    drawPixelRect(ctx, -p * 3, p * 9, p * 6, p * 2, "#1a202c");
-    if (state === "attack") {
-      drawPixelRect(ctx, p * 3, -p * 2, p * 6, p * 3, robeColor);
-      drawPixelRect(ctx, p * 8, -p * 2, p * 3, p * 3, skinColor);
-    } else if (state === "cast") {
-      drawPixelRect(ctx, p * 2, -p * 6, p * 3, p * 5, robeColor);
-      drawPixelRect(ctx, p * 2, -p * 8, p * 3, p * 2, skinColor);
-    } else if (state === "hurt") {
-      drawPixelRect(ctx, -p * 3, -p * 5, p * 3, p * 4, robeColor);
+    px(-5.5, 2, 11, 2, beltColor);
+    px(-1.5, 2, 3, 2.5, robeShade);
+    px(-5.5, -4.5, 11, 2, robeColor);
+    px(-5, -4.5, 10, 6.5, robeColor);
+    px(-2.5, -5, 5, 1.5, robeTrim);
+    px(-1, -4.5, 2, 5, robeTrim);
+    const headDrop = state === "lose" ? 1.5 : state === "hurt" ? 0.5 : 0;
+    const headY = -13 + headDrop;
+    px(-1.5, -6.5, 3, 2, skinShade);
+    px(-4.5, headY, 9, 8, skinColor);
+    px(-5, headY - 1, 10, 2.5, hairColor);
+    px(-5, headY + 1.5, 10, 1, hairColor);
+    if (isPlayer) {
+      px(mx(3, 3), headY + 0.5, 3, 0.75, "#d69e2e");
     } else {
-      drawPixelRect(ctx, p * 2, -p * 1, p * 2.5, p * 4, robeColor);
+      px(-6.5, headY + 1.5, 2, 9, hairColor);
+      px(4.5, headY + 1.5, 2, 9, hairColor);
+    }
+    const eyeX = mx(1, 2);
+    if (state === "celebrate" || state === "win") {
+      px(eyeX - 0.5, headY + 3.5, 1, 0.75, eyeColor);
+      px(eyeX + 0.5, headY + 2.75, 1, 0.75, eyeColor);
+      px(eyeX + 1.5, headY + 3.5, 1, 0.75, eyeColor);
+    } else if (state === "hurt" || state === "lose") {
+      px(eyeX - 0.5, headY + 3.25, 3, 0.75, eyeColor);
+    } else {
+      px(eyeX, headY + 2.75, 2, 2, eyeColor);
+      px(eyeX + 0.5, headY + 3.25, 0.75, 0.75, "#ffffff");
+    }
+    if (state === "celebrate" || state === "win") {
+      px(mx(0, 2), headY + 5.5, 2, 1, mouthColor);
+    } else if (state === "lose") {
+      px(mx(0.5, 1.5), headY + 6, 1.5, 0.5, mouthColor);
+    } else {
+      px(mx(0, 1.5), headY + 6, 1.5, 0.5, mouthColor);
+    }
+    switch (state) {
+      case "attack": {
+        px(mx(4, 4.5), -2.5, 4.5, 3, robeColor);
+        px(mx(8.5, 2), -2.5, 2, 3, skinColor);
+        px(mx(-7.5, 3), -3.5, 3, 5, robeShade);
+        break;
+      }
+      case "cast": {
+        px(mx(1.5, 2.5), -5, 2.5, 5, robeColor);
+        px(mx(-4, 2.5), -5, 2.5, 5, robeShade);
+        px(mx(1.5, 2.5), -6.5, 2.5, 1.5, skinColor);
+        px(mx(-4, 2.5), -6.5, 2.5, 1.5, skinColor);
+        px(mx(-0.5, 1), -7.5, 1, 1, glowColor);
+        break;
+      }
+      case "celebrate": {
+        px(mx(4, 2.5), -12.5, 2.5, 8.5, robeColor);
+        px(mx(-6.5, 2.5), -12.5, 2.5, 8.5, robeShade);
+        px(mx(4, 2.5), -14, 2.5, 1.5, skinColor);
+        px(mx(-6.5, 2.5), -14, 2.5, 1.5, skinColor);
+        px(mx(7, 1), -11, 1, 1, glowColor);
+        px(mx(-8, 1), -9, 1, 1, glowColor);
+        px(mx(6.5, 1), 0.5, 1, 1, glowColor);
+        break;
+      }
+      case "win": {
+        px(mx(4, 2.5), -12.5, 2.5, 8.5, robeColor);
+        px(mx(4, 2.5), -14, 2.5, 1.5, skinColor);
+        px(mx(-6.5, 3), -1.5, 3, 4.5, robeColor);
+        px(mx(-6.5, 3), -3, 3, 1.5, skinColor);
+        break;
+      }
+      case "hurt": {
+        px(mx(3, 3), -11, 3, 6, robeColor);
+        px(mx(-6, 3), -11, 3, 6, robeShade);
+        px(mx(3, 3), -12.5, 3, 1.5, skinColor);
+        px(mx(-6, 3), -12.5, 3, 1.5, skinColor);
+        break;
+      }
+      case "lose": {
+        px(mx(5, 2.5), -2, 2.5, 6.5, robeShade);
+        px(mx(-7.5, 2.5), -2, 2.5, 6.5, robeShade);
+        px(mx(5, 2.5), 4.5, 2.5, 1.5, skinColor);
+        px(mx(-7.5, 2.5), 4.5, 2.5, 1.5, skinColor);
+        break;
+      }
+      case "idle": {
+        px(mx(5, 2.5), -4, 2.5, 7, robeColor);
+        px(mx(-7.5, 2.5), -4, 2.5, 7, robeShade);
+        px(mx(5, 2.5), 3, 2.5, 1.5, skinColor);
+        px(mx(-7.5, 2.5), 3, 2.5, 1.5, skinColor);
+        break;
+      }
+      default: {
+        const unhandled = state;
+        throw new Error(`未处理的角色姿势：${String(unhandled)}`);
+      }
     }
     ctx.restore();
   }
@@ -2735,7 +2843,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     return ring;
   }
-  const AVATAR_SIZE = 54;
+  const AVATAR_WIDTH = 88;
+  const AVATAR_HEIGHT = 112;
   const SIDE_MARGIN = 10;
   const TOP_BAR_HEIGHT = 26;
   const BANNER_GAP = 10;
@@ -2753,7 +2862,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     idle: null,
     attack: "#f6e05e",
     hurt: HURT_COLOR,
-    cast: "#4fd1c5"
+    cast: "#4fd1c5",
+    celebrate: "#ed8936",
+    win: "#48bb78",
+    lose: "#a0aec0"
   };
   const PLAYER_LABEL = { P1: "玩家 P1", P2: "天道 P2" };
   const PLAYER_COLOR = { P1: P1_COLOR, P2: P2_COLOR };
@@ -2821,7 +2933,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this._width = width;
       this._safeTop = safeTop ?? this._safeTop;
     }
-    /** 表情反馈：`holdSeconds` 秒后自动回落待机；重复触发会重新计时。 */
+    /**
+     * 表情反馈：`holdSeconds` 秒后自动回落待机；`holdSeconds <= 0` 表示**持续**到下一次表情
+     * 覆盖或 `resetFeedback()`（终局胜 / 负用）。重复触发会重新计时。
+     */
     setExpression(player, expression, holdSeconds = 0.6) {
       this._expressions[player] = expression;
       this._expressionTimers[player] = expression === "idle" ? 0 : Math.max(0, holdSeconds);
@@ -2829,6 +2944,14 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 指定玩家当前的表情。 */
     getExpression(player) {
       return this._expressions[player];
+    }
+    /** 清空双方表情与气泡（重开一局时调用）：终局胜 / 负的持续姿势不跨局残留。 */
+    resetFeedback() {
+      for (const player of PLAYER_IDS) {
+        this._expressions[player] = "idle";
+        this._expressionTimers[player] = 0;
+        this._bubbles[player] = null;
+      }
     }
     /** 气泡播报：`holdSeconds` 秒后消散。 */
     announce(player, text, holdSeconds = 1.6) {
@@ -2892,33 +3015,38 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     drawAvatar(ctx, player) {
       const isPlayer = player === "P1";
-      const frameX = isPlayer ? SIDE_MARGIN : this._width - SIDE_MARGIN - AVATAR_SIZE;
+      const frameX = isPlayer ? SIDE_MARGIN : this._width - SIDE_MARGIN - AVATAR_WIDTH;
       const frameY = this._safeTop + TOP_BAR_HEIGHT + 4;
       const isCurrent = this._currentPlayer === player;
       const expression = this._expressions[player];
       const border = EXPRESSION_COLOR[expression] ?? (isCurrent ? ACTIVE_COLOR : isPlayer ? P1_COLOR : P2_COLOR);
       ctx.save();
-      drawPixelBox(ctx, frameX, frameY, AVATAR_SIZE, AVATAR_SIZE, PANEL_COLOR, border, 2);
+      drawPixelBox(ctx, frameX, frameY, AVATAR_WIDTH, AVATAR_HEIGHT, PANEL_COLOR, border, 2);
+      const spriteTop = CHARACTER_SPRITE_BOUNDS.top * CHARACTER_PIXEL_SIZE;
+      const spriteHeight = (CHARACTER_SPRITE_BOUNDS.bottom - CHARACTER_SPRITE_BOUNDS.top) * CHARACTER_PIXEL_SIZE;
       ctx.save();
-      ctx.translate(frameX + AVATAR_SIZE / 2, frameY + AVATAR_SIZE / 2 + 6);
-      ctx.scale(0.66, 0.66);
+      ctx.translate(
+        frameX + AVATAR_WIDTH / 2,
+        frameY + (AVATAR_HEIGHT - spriteHeight) / 2 - spriteTop
+      );
       drawPixelCharacter(ctx, 0, 0, isPlayer, expression, this._tick * 60);
       ctx.restore();
-      ctx.textAlign = "center";
+      const labelX = isPlayer ? frameX : frameX + AVATAR_WIDTH;
+      ctx.textAlign = isPlayer ? "left" : "right";
       ctx.textBaseline = "middle";
       ctx.fillStyle = PLAYER_COLOR[player];
       ctx.font = "bold 11px monospace";
-      ctx.fillText(PLAYER_LABEL[player], frameX + AVATAR_SIZE / 2, frameY + AVATAR_SIZE + 12);
+      ctx.fillText(PLAYER_LABEL[player], labelX, frameY + AVATAR_HEIGHT + 12);
       ctx.fillStyle = TEXT_COLOR;
       ctx.font = "bold 12px monospace";
-      ctx.fillText(`${this._scores[player]} 分`, frameX + AVATAR_SIZE / 2, frameY + AVATAR_SIZE + 26);
+      ctx.fillText(`${this._scores[player]} 分`, labelX, frameY + AVATAR_HEIGHT + 26);
       if (isCurrent) {
         ctx.fillStyle = this._isExtraTurn ? EXTRA_TURN_COLOR : ACTIVE_COLOR;
-        ctx.font = "bold 10px monospace";
+        ctx.font = "bold 9px monospace";
         ctx.fillText(
           this._isExtraTurn ? "连动行动中" : "行动中",
-          frameX + AVATAR_SIZE / 2,
-          frameY + AVATAR_SIZE + 40
+          labelX,
+          frameY + AVATAR_HEIGHT + 40
         );
       }
       const bubble = this._bubbles[player];
@@ -2927,15 +3055,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       ctx.restore();
     }
-    /** 气泡：挂在头像上方，宽度按头像列夹紧，文本超宽时截断。 */
+    /** 气泡：挂在头像上方，宽度夹在头像列与居中回合条之间，文本超宽时截断。 */
     drawBubble(ctx, player, frameX, frameY, text) {
       const isPlayer = player === "P1";
-      const maxWidth = this._width / 2 - SIDE_MARGIN * 2;
+      const maxWidth = this._width / 2 - SIDE_MARGIN - AVATAR_WIDTH - 12;
       const fontSize = 10;
       const label = truncateToWidth(text, maxWidth - 12, fontSize);
       const width = estimateTextWidth(label, fontSize) + 12;
       const height = 20;
-      const x = isPlayer ? Math.min(frameX, Math.max(SIDE_MARGIN, frameX + AVATAR_SIZE - width)) : Math.max(frameX + AVATAR_SIZE - width, this._width - SIDE_MARGIN - width);
+      const x = isPlayer ? Math.min(frameX, Math.max(SIDE_MARGIN, frameX + AVATAR_WIDTH - width)) : Math.max(frameX + AVATAR_WIDTH - width, this._width - SIDE_MARGIN - width);
       const y = frameY - height - 4;
       drawPixelRect(ctx, x, y, width, height, "#1a202c");
       drawPixelRect(ctx, x, y, width, 2, EXTRA_TURN_COLOR);
@@ -2950,7 +3078,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       if (this._bannerText === "" && this._bannerSubText === "") {
         return;
       }
-      const x = SIDE_MARGIN + AVATAR_SIZE + BANNER_GAP;
+      const x = SIDE_MARGIN + AVATAR_WIDTH + BANNER_GAP;
       const width = Math.max(80, this._width - 2 * x);
       const y = this._safeTop + TOP_BAR_HEIGHT + 4;
       ctx.save();
@@ -3326,6 +3454,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const DEFAULT_AUTO_EXECUTE_DELAY = 0.75;
   const DEFAULT_AI_THINK_DELAY = 0.55;
   const DEFAULT_EXPRESSION_HOLD = 0.6;
+  const DEFAULT_CELEBRATE_HOLD = 1.2;
   const ACTION_BAR_HEIGHT = 130;
   const ACTION_BAR_MARGIN = 14;
   const SHAKE_DURATION = 0.28;
@@ -3381,6 +3510,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "autoExecuteDelay");
       __publicField(this, "aiThinkDelay");
       __publicField(this, "expressionHold");
+      __publicField(this, "celebrateHold");
       __publicField(this, "entranceDuration");
       __publicField(this, "flightDuration");
       __publicField(this, "impactDuration");
@@ -3411,6 +3541,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.autoExecuteDelay = options.autoExecuteDelay ?? DEFAULT_AUTO_EXECUTE_DELAY;
       this.aiThinkDelay = options.aiThinkDelay ?? DEFAULT_AI_THINK_DELAY;
       this.expressionHold = options.expressionHold ?? DEFAULT_EXPRESSION_HOLD;
+      this.celebrateHold = options.celebrateHold ?? DEFAULT_CELEBRATE_HOLD;
       this.entranceDuration = options.entranceDuration ?? 0.44;
       this.flightDuration = options.flightDuration ?? 0.55;
       this.impactDuration = options.impactDuration ?? 0.35;
@@ -3476,6 +3607,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this._turnManager = new TurnManager({ prng });
       this.lastShowdown = null;
       this.actionInFlight = null;
+      this.characters.resetFeedback();
       this.actionBar.dispose();
       this.actionBar.removeFromParent();
       this.actionBar = this.buildActionBar(this._turnManager);
@@ -3622,6 +3754,20 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         onComplete: () => this.afterFlight()
       });
     }
+    /**
+     * `node:stateChanged`：某侧由 <1 变 ≥1 且同一节点对侧已 ≥1 时该节点达成归一——
+     * 按归属方在对应角色上播庆祝（票 03）。事件派发时 `turnManager.getState()` 已是新状态。
+     */
+    handleNodeStateChanged(event) {
+      if (event.prevLevel >= 1 || event.newLevel < 1) {
+        return;
+      }
+      const node = this._turnManager.getState().players[event.player].board[event.element];
+      const otherSide = event.polarity === Polarity.YIN ? node.yang : node.yin;
+      if (otherSide >= 1) {
+        this.characters.setExpression(event.player, "celebrate", this.celebrateHold);
+      }
+    }
     /** 飞行结束：投影结算后的双盘，然后进入下一回合或终局。 */
     afterFlight() {
       const state = this._turnManager.getState();
@@ -3664,6 +3810,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
             this.runeFlight.flyTo("P2", element, polarity, {
               onComplete: () => {
                 this.board.update(state.players.P1.board, state.players.P2.board);
+                this.showFinalPoses(state);
               }
             });
           }
@@ -3674,7 +3821,17 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         state.winner === "P1" ? "★ 五行归元 ★ 玩家大胜！" : "天道通玄 · 遗憾惜败！",
         describeEndReason(state.endReason)
       );
+      this.showFinalPoses(state);
       this.projectBoards(state);
+    }
+    /** 终局姿势：胜方「胜」、负方「负」，持续到重开（`restart()` 清掉）；平局不摆姿势。 */
+    showFinalPoses(state) {
+      const winner = state.winner;
+      if (winner !== "P1" && winner !== "P2") {
+        return;
+      }
+      this.characters.setExpression(winner, "win", 0);
+      this.characters.setExpression(opponentOf(winner), "lose", 0);
     }
     /** 回合开始的播报：连动标记、天干名与「势在必行」的自动流转提示。 */
     announceTurnStart(state, tianGan, actions) {
@@ -3735,6 +3892,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.unsubscribes.push(
         bus.on("action:execute", (event) => this.handleActionExecute(event)),
         bus.on("action:executed", (event) => this.handleActionExecuted(event)),
+        bus.on("node:stateChanged", (event) => this.handleNodeStateChanged(event)),
         bus.on("showdown:draw", (event) => {
           this.lastShowdown = { tianGan: event.tianGan, success: event.success };
         })

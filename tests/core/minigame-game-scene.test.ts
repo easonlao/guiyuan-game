@@ -719,6 +719,127 @@ describe('GameScene：终轮天命揭牌与终局', () => {
     expect(scene.characters.bannerText).toBe('★ 五行归元 ★ 玩家大胜！');
     expect(scene.characters.bannerSubText).toBe('五行归元');
   });
+
+  it('常规终局：胜方角色播「胜」、负方播「负」，且姿势不随时间回落', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        round: 5,
+        isGameOver: true,
+        winner: 'P1',
+        endReason: 'GUI_YUAN',
+        P1: fullGuiYuanBoard,
+        P2: boardWith({ [WuXing.WATER]: { yin: 0, yang: 0 } }),
+      }),
+      prng: scriptedPrng([0]),
+    });
+
+    scene.start();
+    expect(scene.characters.getExpression('P1')).toBe('win');
+    expect(scene.characters.getExpression('P2')).toBe('lose');
+
+    // 终局姿势是持续的：推进 10 秒仍是胜 / 负，不回到待机。
+    advance(scene, 10);
+    expect(scene.characters.getExpression('P1')).toBe('win');
+    expect(scene.characters.getExpression('P2')).toBe('lose');
+  });
+
+  it('天命揭牌的终局：揭牌落点后胜方播「胜」、负方播「负」', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: showdownState(),
+      prng: scriptedPrng([8]),
+    });
+
+    scene.start();
+    // 揭牌动效期间先播施法 / 受击（P2 抽中揭牌 -> P2 施法、P1 受击）。
+    expect(scene.characters.getExpression('P2')).toBe('cast');
+    expect(scene.characters.getExpression('P1')).toBe('hurt');
+
+    advance(scene, 1);
+    expect(scene.turnManager.getState().winner).toBe('P2');
+    expect(scene.characters.getExpression('P2')).toBe('win');
+    expect(scene.characters.getExpression('P1')).toBe('lose');
+  });
+
+  it('重开一局清掉上一局的终局姿势', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: showdownState(),
+      prng: scriptedPrng([8]),
+    });
+    scene.start();
+    advance(scene, 1);
+    expect(scene.characters.getExpression('P2')).toBe('win');
+    expect(scene.characters.getExpression('P1')).toBe('lose');
+
+    scene.handleTap();
+    expect(scene.characters.getExpression('P1')).toBe('idle');
+    expect(scene.characters.getExpression('P2')).toBe('idle');
+  });
+});
+
+/**
+ * 归一庆祝（票 03）：`node:stateChanged` 里某侧由 <1 变 ≥1 且同一节点对侧已 ≥1 时，
+ * 按归属方在对应角色上播庆祝。触发信号来自核心事件，场景里不做盘面比对。
+ */
+describe('GameScene：归一庆祝由 node:stateChanged 触发', () => {
+  it('己方补全归一节点：玩家角色庆祝，天道不动', () => {
+    // 甲木（木·阳）已点亮、木阴虚空 -> 唯一【调息】把木阴 0 -> 1，木节点归一。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 0, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: -1, yang: -1 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    scene.start();
+    const before = scene.turnManager.getState();
+    advanceUntil(scene, () => scene.turnManager.getState() !== before);
+
+    expect(scene.turnManager.getState().players.P1.board[WuXing.WOOD]).toEqual({
+      yin: 1,
+      yang: 1,
+    });
+    expect(scene.characters.getExpression('P1')).toBe('celebrate');
+    expect(scene.characters.getExpression('P2')).toBe('idle');
+  });
+
+  it('天道补全自己的归一节点：庆祝的是天道，玩家不动', () => {
+    // 天道木阴已点亮、木阳虚空 -> 甲木只给唯一【吸纳】，补全木阳 -> 木节点归一。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        currentPlayer: 'P2',
+        P2: { [WuXing.WOOD]: { yin: 1 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    scene.start();
+    advanceUntil(scene, () => scene.turnManager.getState().players.P2.board[WuXing.WOOD].yang >= 1);
+
+    expect(scene.characters.getExpression('P2')).toBe('celebrate');
+    expect(scene.characters.getExpression('P1')).toBe('idle');
+  });
+
+  it('只点亮一侧不算归一：对侧仍虚空时不庆祝', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: createInitialGameState(),
+      prng: scriptedPrng([0]),
+    });
+    scene.start();
+    const before = scene.turnManager.getState();
+    advanceUntil(scene, () => scene.turnManager.getState() !== before);
+
+    expect(scene.turnManager.getState().players.P1.board[WuXing.WOOD]).toEqual({
+      yin: 0,
+      yang: 1,
+    });
+    // 行动本身的表情（吸纳 -> 施法）照常，但不得升级成归一庆祝。
+    expect(scene.characters.getExpression('P1')).not.toBe('celebrate');
+  });
 });
 
 describe('GameScene：视口自适应', () => {
