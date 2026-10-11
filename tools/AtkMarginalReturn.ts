@@ -22,9 +22,9 @@ import {
   OVERCOMING_CYCLE,
   Polarity,
   WuXing,
-} from '../types/domain.js';
-import { ActionResolver } from '../logic/ActionResolver.js';
-import { getMinusTargetPolarity } from '../logic/ActionCandidates.js';
+} from '../src/core/types/domain.js';
+import { ActionResolver } from '../src/core/logic/ActionResolver.js';
+import { getMinusTargetPolarity } from '../src/core/logic/ActionCandidates.js';
 import { type BoardOverrides, type NodeLevelOverride, gameStateWith } from './BoardFixture.js';
 import { atkTempoGain, countActionsToGuiYuan } from './Metrics.js';
 import { runCliIfDirect } from './cli.js';

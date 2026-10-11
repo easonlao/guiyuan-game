@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { GameManager } from '../../src/minigame/game-manager.js';
 import { WuXing } from '../../src/core/types/domain.js';
-import { boardWith, gameStateWith } from '../../src/core/headless/BoardFixture.js';
+import { boardWith, gameStateWith } from '../../tools/BoardFixture.js';
 
 describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
   // 辅助棋盘：全五行归一 (10 侧点亮，归元棋盘)

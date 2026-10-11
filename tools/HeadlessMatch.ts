@@ -3,8 +3,8 @@
  * 脱离任何 UI 引擎，纯在 Node.js 中执行批量对弈与平衡性/性能验证
  */
 
-import { ActionType, GameState, PlayerId, TianGanInfo } from '../types/domain.js';
-import { GameRecord, ActionRecord } from '../types/record.js';
+import { ActionType, GameState, PlayerId, TianGanInfo } from '../src/core/types/domain.js';
+import { GameRecord, ActionRecord } from '../src/core/types/record.js';
 import {
   createInitialGameState,
   canTianGanLightUnlightedSide,
@@ -14,13 +14,13 @@ import {
   countBoardDamage,
   countBoardGuiYi,
   countUnlightedSides,
-} from '../logic/State.js';
-import { ActionResolver } from '../logic/ActionResolver.js';
-import { ScoreCalculator, PointsConfig, POINTS_CONFIG } from '../logic/ScoreCalculator.js';
-import { getAvailableActions, RuleSwitches } from '../logic/ActionCandidates.js';
-import { createScoreBoundStrategy } from '../ai/Strategy.js';
-import { createPRNG, drawTianGan, PRNG } from '../utils/prng.js';
-import type { DecisionStrategy, StrategyWeights } from '../ai/types.js';
+} from '../src/core/logic/State.js';
+import { ActionResolver } from '../src/core/logic/ActionResolver.js';
+import { ScoreCalculator, PointsConfig, POINTS_CONFIG } from '../src/core/logic/ScoreCalculator.js';
+import { getAvailableActions, RuleSwitches } from '../src/core/logic/ActionCandidates.js';
+import { createScoreBoundStrategy } from '../src/core/ai/Strategy.js';
+import { createPRNG, drawTianGan, PRNG } from '../src/core/utils/prng.js';
+import type { DecisionStrategy, StrategyWeights } from '../src/core/ai/types.js';
 
 export type { DecisionStrategy };
 

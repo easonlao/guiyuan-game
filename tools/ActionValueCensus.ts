@@ -30,13 +30,17 @@ import {
   TianGanInfo,
   TIAN_GAN_LIST,
   WuXing,
-} from '../types/domain.js';
-import { ActionResolver } from '../logic/ActionResolver.js';
-import { getAvailableActions, type RuleSwitches } from '../logic/ActionCandidates.js';
-import { measureBoardDiff } from '../logic/State.js';
-import { POINTS_CONFIG, ScoreCalculator, type PointsConfig } from '../logic/ScoreCalculator.js';
-import { ActionEvaluator, DEFAULT_STRATEGY_WEIGHTS } from '../ai/ActionEvaluator.js';
-import type { StrategyWeights } from '../ai/types.js';
+} from '../src/core/types/domain.js';
+import { ActionResolver } from '../src/core/logic/ActionResolver.js';
+import { getAvailableActions, type RuleSwitches } from '../src/core/logic/ActionCandidates.js';
+import { measureBoardDiff } from '../src/core/logic/State.js';
+import {
+  POINTS_CONFIG,
+  ScoreCalculator,
+  type PointsConfig,
+} from '../src/core/logic/ScoreCalculator.js';
+import { ActionEvaluator, DEFAULT_STRATEGY_WEIGHTS } from '../src/core/ai/ActionEvaluator.js';
+import type { StrategyWeights } from '../src/core/ai/types.js';
 import { ATK_PHASES } from './AtkMarginalReturn.js';
 import { gameStateWith, type BoardOverrides } from './BoardFixture.js';
 

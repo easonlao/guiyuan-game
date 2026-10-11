@@ -7,8 +7,8 @@ import {
   TIAN_GAN_LIST,
   WuXing,
 } from '../../src/core/types/domain.js';
-import { gameStateWith } from '../../src/core/headless/BoardFixture.js';
-import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
+import { gameStateWith } from '../../tools/BoardFixture.js';
+import { HeadlessMatch } from '../../tools/HeadlessMatch.js';
 import {
   DEFAULT_DYNAMIC_POLICY,
   DynamicSwitchStats,
@@ -16,9 +16,9 @@ import {
   createDynamicSwitchingStrategy,
   dynamicStrategyVariant,
   runDynamicSwitchingExperiment,
-} from '../../src/core/headless/DynamicSwitching.js';
+} from '../../tools/DynamicSwitching.js';
 import { aggressiveStrategy } from '../../src/core/ai/Strategy.js';
-import { DEFAULT_STRATEGY_VARIANTS } from '../../src/core/headless/ExperimentRunner.js';
+import { DEFAULT_STRATEGY_VARIANTS } from '../../tools/ExperimentRunner.js';
 
 const JIA_WOOD_YANG = TIAN_GAN_LIST[0]; // 甲木 (阳)
 const MAX_ROUNDS = 30;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
+import { HeadlessMatch } from '../../tools/HeadlessMatch.js';
 
 describe('HeadlessMatch (Headless Simulation)', () => {
   it('should run a simulation match to completion without error', () => {

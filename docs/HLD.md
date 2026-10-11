@@ -29,7 +29,7 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 *   `ActionResolver`: 处理各类动作（吸纳、化、破）的合法性校验及状态变更。
 *   `ScoreCalculator`: 基于动作与状态变动进行双轨制计分。
 *   `TurnManager`: 回合状态机调度器与连动规则保障。
-*   `Strategy` & `ActionEvaluator`: 基于 `StrategyWeights` 权重的启发式 AI 决策；`HeadlessMatch`: 无头对战模拟器，也是性能测试的核心依据。
+*   `Strategy` & `ActionEvaluator`: 基于 `StrategyWeights` 权重的启发式 AI 决策。
 *   **AI 算力与执行保障**：
     *   单局推演与单次决策的性能预算见 `docs/SRS.md` §4.2；本层只保证内存增量平稳。
     *   AI 决策默认纯同步极速返回，满足小游戏零掉帧要求；异步 / Worker 降级路径为**预留项，未实现**。
@@ -49,6 +49,13 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 *   **模块化业务视图**：拆分为 `BoardView`（五行阵盘与生克连线）、`ActionBarView`（可选动作按钮面板）、`CharacterView`（角色化身与表情）以及 `RuneFlightView`（天干轨迹动效），由 `GameScene` 控制器对齐 `TurnManager` 状态进行纯数据驱动投影。
 *   **极速构建管线**：通过 Vite 构建单文件 `minigame/game.js`，Windows 微信开发者工具直连开发与实时仿真调试。
 *   **轻量低消耗**：零重型引擎包袱，首包体积 < 1MB（远低于 4MB 上限），启动秒开。
+
+#### ⚪ 开发工具块 (`tools/`) — 不进 `game.js`
+无头推演、批量评测与命令行实验入口**不在** Layer 1 内，独立于 `src/` 之外。切分判据是**独立运行时**：`tools/` 跑在 Node.js 上（使用 `node:url` / `node:path`），而小游戏侧（整个 `src/` 树，含 `src/core` / `src/adapters` / `src/minigame`）都会打进 `minigame/game.js`、运行在没有 Node 内建模块的微信小游戏环境里。两者之间只有单向依赖 `tools/` → `src/`；反向由 §4.2 的 depcruise 规则拦截。判据与理由见 ADR 0013。
+*   `HeadlessMatch` / `HeadlessBenchmark`：无头对战与万局自动化基线评测。
+*   `ExperimentRunner` / `DynamicSwitching` / `ActionValueCensus` / `CandidateValidation` / `AtkMarginalReturn`：批量实验与平衡诊断。
+*   `TerminalBoardViewer`：纯文本控制台 ASCII 棋盘检视器。
+*   `cli.ts`：各实验入口共享的直接执行守卫与错误处理。
 
 ---
 
@@ -82,7 +89,7 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 ### 4.2 架构可视化与依赖防腐 (dependency-cruiser)
 *   **工具集**：[dependency-cruiser](https://github.com/sverweij/dependency-cruiser)
 *   **用途**：扫描工程依赖，绘制可视化的关系网络（如 Mermaid 图表），并可通过规则验证依赖的合法性。
-*   **流程定位**：用于架构巡检。严格监控并阻止“UI 视图层反向依赖核心逻辑层”、“网络层未解耦”等破坏 AI-First 架构边界的行为，防止项目随着长期迭代退化为“意大利面条式”的循环依赖。
+*   **流程定位**：用于架构巡检。当前生效的规则以根目录 `.dependency-cruiser.js` 为真源，其中与分区直接相关的两条是：`game-side-not-to-local-outside-src`（小游戏侧 `src/` 不得依赖 `src/` 之外的任何本地模块，无头推演只是其中最典型的一块）与 `game-side-not-to-node-builtins`（`src/` 不得 import 任何 Node 内建模块）。注意 depcruise 会剥掉 `node:` 前缀（`node:fs` 记为 `fs`），所以第二条按 `dependencyTypes: ['core']` 匹配而非按路径。规则为什么是枚举式的、为什么它不够、以及已知的 npm 依赖覆盖缺口，见 ADR 0013。
 
 ### 4.3 突变测试与健壮性体检 (Stryker.js)
 *   **工具集**：[Stryker.js](https://stryker-mutator.io/)

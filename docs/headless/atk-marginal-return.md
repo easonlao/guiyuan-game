@@ -2,7 +2,7 @@
 
 > Ticket 08 / spec `balance-audit-and-dominance`。本文是【破】盘面边际收益的**可复跑证伪记录**。
 > 本诊断**剥离计分**：只测盘面价值，计分轴的作用由 ticket 09 单独测量。
-> 指标口径的唯一来源是 `src/core/headless/Metrics.ts` 与 `docs/headless/metric-definitions.md`。
+> 指标口径的唯一来源是 `tools/Metrics.ts` 与 `docs/headless/metric-definitions.md`。
 
 ## 1. 复跑命令
 
@@ -10,7 +10,7 @@
 npm run benchmark:atk-marginal
 ```
 
-命令由 `package.json` 长期保留，入口是 `src/core/headless/AtkMarginalReturn.ts`（确定性，无随机种子）。
+命令由 `package.json` 长期保留，入口是 `tools/AtkMarginalReturn.ts`（确定性，无随机种子）。
 
 ## 2. 口径：为什么它隔离盘面价值
 

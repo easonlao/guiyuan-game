@@ -27,11 +27,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { HeadlessMatch, type MatchResult } from '../../src/core/headless/HeadlessMatch.js';
-import {
-  HeadlessBenchmark,
-  type BenchmarkMetrics,
-} from '../../src/core/headless/HeadlessBenchmark.js';
+import { HeadlessMatch, type MatchResult } from '../../tools/HeadlessMatch.js';
+import { HeadlessBenchmark, type BenchmarkMetrics } from '../../tools/HeadlessBenchmark.js';
 import {
   createScoreBoundStrategy,
   balancedStrategy,

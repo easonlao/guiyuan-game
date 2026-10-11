@@ -21,7 +21,7 @@ import {
   aggressiveStrategy,
   defensiveStrategy,
 } from '../../src/core/ai/Strategy.js';
-import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
+import { HeadlessMatch } from '../../tools/HeadlessMatch.js';
 
 describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
   const resolver = new ActionResolver();

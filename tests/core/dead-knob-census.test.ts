@@ -43,9 +43,9 @@ import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
 import { ActionEvaluator, DEFAULT_STRATEGY_WEIGHTS } from '../../src/core/ai/ActionEvaluator.js';
 import { BALANCED_WEIGHTS, createScoreBoundStrategy } from '../../src/core/ai/Strategy.js';
 import type { StrategyWeights } from '../../src/core/ai/types.js';
-import { gameStateWith } from '../../src/core/headless/BoardFixture.js';
-import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
-import { HeadlessBenchmark } from '../../src/core/headless/HeadlessBenchmark.js';
+import { gameStateWith } from '../../tools/BoardFixture.js';
+import { HeadlessMatch } from '../../tools/HeadlessMatch.js';
+import { HeadlessBenchmark } from '../../tools/HeadlessBenchmark.js';
 
 const JIA_WOOD_YANG = TIAN_GAN_LIST[0]; // 甲木（阳）
 const YI_WOOD_YIN = TIAN_GAN_LIST[1]; // 乙木（阴）

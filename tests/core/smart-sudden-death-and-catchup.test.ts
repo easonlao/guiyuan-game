@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { WuXing, Polarity, ActionType, TIAN_GAN_LIST } from '../../src/core/types/domain.js';
 import { isBoardTingPai, isBoardGuiYuan } from '../../src/core/logic/State.js';
-import { boardWith, gameStateWith } from '../../src/core/headless/BoardFixture.js';
+import { boardWith, gameStateWith } from '../../tools/BoardFixture.js';
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
 import { TurnManager } from '../../src/core/logic/TurnManager.js';
 import { EventBus } from '../../src/core/logic/EventBus.js';

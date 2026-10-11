@@ -12,12 +12,9 @@ import {
   ScoreCalculator,
   type PointsConfig,
 } from '../../src/core/logic/ScoreCalculator.js';
-import { gameStateWith } from '../../src/core/headless/BoardFixture.js';
-import { atkTempoGain, countActionsToGuiYuan } from '../../src/core/headless/Metrics.js';
-import {
-  measureAtkSequence,
-  runAtkMarginalReturn,
-} from '../../src/core/headless/AtkMarginalReturn.js';
+import { gameStateWith } from '../../tools/BoardFixture.js';
+import { atkTempoGain, countActionsToGuiYuan } from '../../tools/Metrics.js';
+import { measureAtkSequence, runAtkMarginalReturn } from '../../tools/AtkMarginalReturn.js';
 
 /** 全零计分配置：用于证明盘面边际收益口径与计分无关 */
 const ZERO_POINTS_CONFIG: PointsConfig = {

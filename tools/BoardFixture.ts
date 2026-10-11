@@ -8,11 +8,11 @@
  * - `boardWith(overrides)` 构造仅覆盖被测节点的棋盘，其余节点保持虚空 (0,0)。
  * - `gameStateWith(options)` 在 `createInitialGameState()` 之上构造完整 `GameState`。
  *
- * 既可从测试使用，也可从测量台/实验代码（`src/core/headless/`）使用。
+ * 既可从测试使用，也可从测量台/实验代码（`tools/`）使用。
  */
 
-import { BoardState, GameState, NodeLevel, PlayerId, WuXing } from '../types/domain.js';
-import { createInitialGameState } from '../logic/State.js';
+import { BoardState, GameState, NodeLevel, PlayerId, WuXing } from '../src/core/types/domain.js';
+import { createInitialGameState } from '../src/core/logic/State.js';
 
 /** 单节点覆盖：只覆盖列出的侧，未列出的侧保持虚空 (0) */
 export interface NodeLevelOverride {

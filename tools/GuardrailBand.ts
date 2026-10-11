@@ -3,7 +3,7 @@
  *
  * 这是仓库里「护栏带」的**唯一**定义。两个消费者都从这里 import，任何一处都不得再
  * 硬编码这几个数：
- *   - `src/core/headless/CandidateValidation.ts`（`npm run benchmark:candidate-validation`
+ *   - `tools/CandidateValidation.ts`（`npm run benchmark:candidate-validation`
  *     的四条验收标准之「标准 3 护栏全绿」）；
  *   - `tests/core/ai-evaluator-benchmark-guardrails.test.ts`（`npm test` 的 live 红线）。
  *

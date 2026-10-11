@@ -21,11 +21,17 @@
  * `runHeadToHeadMatrix`；策略是标准 `DecisionStrategy`，不新增第三处接缝，也不新增指标定义。
  */
 
-import { GameState, OVERCOMING_CYCLE, PlayerId, Polarity, TianGanInfo } from '../types/domain.js';
-import { getMinusTargetPolarity, type RuleSwitches } from '../logic/ActionCandidates.js';
-import { POINTS_CONFIG, type PointsConfig } from '../logic/ScoreCalculator.js';
-import { AGGRESSIVE_WEIGHTS, RUSH_GUIYUAN_WEIGHTS } from '../ai/Strategy.js';
-import type { DecisionStrategy, StrategyWeights } from '../ai/types.js';
+import {
+  GameState,
+  OVERCOMING_CYCLE,
+  PlayerId,
+  Polarity,
+  TianGanInfo,
+} from '../src/core/types/domain.js';
+import { getMinusTargetPolarity, type RuleSwitches } from '../src/core/logic/ActionCandidates.js';
+import { POINTS_CONFIG, type PointsConfig } from '../src/core/logic/ScoreCalculator.js';
+import { AGGRESSIVE_WEIGHTS, RUSH_GUIYUAN_WEIGHTS } from '../src/core/ai/Strategy.js';
+import type { DecisionStrategy, StrategyWeights } from '../src/core/ai/types.js';
 import { HeadlessMatch } from './HeadlessMatch.js';
 import { countActionsToGuiYuan } from './Metrics.js';
 import { runCliIfDirect } from './cli.js';

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ActionType, WuXing, Polarity, TIAN_GAN_LIST } from '../../src/core/types/domain.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
-import { gameStateWith } from '../../src/core/headless/BoardFixture.js';
+import { gameStateWith } from '../../tools/BoardFixture.js';
 import { ActionEvaluator } from '../../src/core/ai/ActionEvaluator.js';
 import {
   balancedStrategy,
@@ -9,8 +9,8 @@ import {
   aggressiveStrategy,
   defensiveStrategy,
 } from '../../src/core/ai/Strategy.js';
-import { HeadlessBenchmark } from '../../src/core/headless/HeadlessBenchmark.js';
-import { checkGuardrailBand } from '../../src/core/headless/GuardrailBand.js';
+import { HeadlessBenchmark } from '../../tools/HeadlessBenchmark.js';
+import { checkGuardrailBand } from '../../tools/GuardrailBand.js';
 
 describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', () => {
   const evaluator = new ActionEvaluator();
@@ -156,7 +156,7 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
       });
 
       // 护栏 1/3/内存：与带比较的唯一实现是 `checkGuardrailBand`
-      // （`src/core/headless/GuardrailBand.ts`）。本测试只调用谓词、不与任何数字比较，
+      // （`tools/GuardrailBand.ts`）。本测试只调用谓词、不与任何数字比较，
       // 因此没有可硬编码的副本。锚点 = 500 局平衡自对弈、baseSeed 默认 10000、
       // maxRounds 默认 30 下的实测 90.40%（同口径先手 50.40%）。带为何取
       // 0.89 / 0.95 / 0.47 / 0.51（把「无进度定价」的回退 88.40% / 51.20% 挡在带外）

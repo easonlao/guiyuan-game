@@ -16,9 +16,9 @@ import {
   finalizeGameMetrics,
   type GameMetrics,
 } from './Metrics.js';
-import { BALANCED_WEIGHTS } from '../ai/Strategy.js';
-import { POINTS_CONFIG, PointsConfig } from '../logic/ScoreCalculator.js';
-import { RuleSwitches } from '../logic/ActionCandidates.js';
+import { BALANCED_WEIGHTS } from '../src/core/ai/Strategy.js';
+import { POINTS_CONFIG, PointsConfig } from '../src/core/logic/ScoreCalculator.js';
+import { RuleSwitches } from '../src/core/logic/ActionCandidates.js';
 
 export interface BenchmarkOptions {
   matches: number;

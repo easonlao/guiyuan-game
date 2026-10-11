@@ -14,9 +14,9 @@ import {
   WuXing,
   GENERATION_CYCLE,
   OVERCOMING_CYCLE,
-} from '../types/domain.js';
-import { isNodeGuiYi, isNodeKangJi } from '../logic/State.js';
-import { EventBus } from '../logic/EventBus.js';
+} from '../src/core/types/domain.js';
+import { isNodeGuiYi, isNodeKangJi } from '../src/core/logic/State.js';
+import { EventBus } from '../src/core/logic/EventBus.js';
 
 export const WUXING_NAMES: Readonly<Record<WuXing, string>> = {
   [WuXing.WOOD]: '木',

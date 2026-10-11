@@ -1,11 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import {
-  HeadlessBenchmark,
-  BenchmarkMetrics,
-  rushGuiyuanStrategy,
-  aggressiveStrategy,
-  balancedStrategy,
-} from '../../src/core/index.js';
+import { HeadlessBenchmark, type BenchmarkMetrics } from '../../tools/index.js';
+import { rushGuiyuanStrategy, aggressiveStrategy, balancedStrategy } from '../../src/core/index.js';
 
 describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
   it('should run 100 matches and produce complete valid metrics', () => {

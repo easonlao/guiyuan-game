@@ -17,16 +17,16 @@
 | # | 条目 | 出处 | 量测口径（回合 / AI / 种子 / 样本） | 现状 | 是否仍有效 |
 | --- | --- | --- | --- | --- | --- |
 | G1a | 同水平归元率带 **25%–80%** | `docs/adr/0001-unity-rate-guardrails.md` | 60 次行动机会（=30 大回合）；**搜索深度 1/2 自对弈**（偏分 / 偏点亮三组权重）；200 种子；交换先手 | 只对其量测 AI 有效；**与 G1b 无法比较** | 有效（口径限定为搜索深度 1/2） |
-| G1b | 同水平归元率带 **75%–95%** | `tests/core/ai-evaluator-benchmark-guardrails.test.ts`（成文时）；现由 `src/core/headless/GuardrailBand.ts` 统一定义 | 30 大回合（`maxRounds` 默认 30）；**`balancedStrategy` 自对弈（启发式预设，非搜索）**；默认 `baseSeed=10000`；500 局 | **当时的 live**（带已收紧为 [0.89, 0.95]，见注）；**与 G1a 无法比较** | live 有效；**无 ADR 背书** |
+| G1b | 同水平归元率带 **75%–95%** | `tests/core/ai-evaluator-benchmark-guardrails.test.ts`（成文时）；现由 `tools/GuardrailBand.ts` 统一定义 | 30 大回合（`maxRounds` 默认 30）；**`balancedStrategy` 自对弈（启发式预设，非搜索）**；默认 `baseSeed=10000`；500 局 | **当时的 live**（带已收紧为 [0.89, 0.95]，见注）；**与 G1a 无法比较** | live 有效；**无 ADR 背书** |
 | G2 | 强弱对阵强方胜率 **≥65%** | `docs/adr/0001-unity-rate-guardrails.md`；`docs/adr/0002-attack-buff-and-rarity-nerf.md` | 60 次行动机会（=30 大回合）；**搜索深度 1/2 自对弈**；200 种子；2400 局（含交换先手） | 无 live 断言 | 有效（口径限定为搜索深度 1/2） |
 | G3a | 先手胜率 95% 置信区间不更偏离 50% | `docs/adr/0001-unity-rate-guardrails.md`；`docs/adr/0002-attack-buff-and-rarity-nerf.md` | 同上（搜索深度 1/2，200 种子） | 无 live 断言 | 有效（口径限定为搜索深度 1/2） |
-| G3b | 先手胜率带 **p1 ∈ [0.45, 0.55]** | `tests/core/ai-evaluator-benchmark-guardrails.test.ts`（成文时）；现由 `src/core/headless/GuardrailBand.ts` 统一定义 | 30 大回合；`balancedStrategy` 启发式自对弈；`baseSeed=10000`；500 局 | **当时的 live**（带已收紧为 [0.47, 0.51]，见注） | live 有效；**无 ADR**；与 G3a 口径不同，**无法比较** |
-| G4 | 500 局堆内存增量 **< 15MB** | `src/core/headless/GuardrailBand.ts`（`GUARDRAIL_HEAP_MAX_MB`） | 30 大回合；500 局 | live | 有效（工程护栏，非平衡护栏） |
+| G3b | 先手胜率带 **p1 ∈ [0.45, 0.55]** | `tests/core/ai-evaluator-benchmark-guardrails.test.ts`（成文时）；现由 `tools/GuardrailBand.ts` 统一定义 | 30 大回合；`balancedStrategy` 启发式自对弈；`baseSeed=10000`；500 局 | **当时的 live**（带已收紧为 [0.47, 0.51]，见注） | live 有效；**无 ADR**；与 G3a 口径不同，**无法比较** |
+| G4 | 500 局堆内存增量 **< 15MB** | `tools/GuardrailBand.ts`（`GUARDRAIL_HEAP_MAX_MB`） | 30 大回合；500 局 | live | 有效（工程护栏，非平衡护栏） |
 
 > **注（工单 03 / ppf）：** 上表 G1b / G3b 记录的是本表成文时的 live 带（**当时的带**）。
 > 该带已由后续工单 02 / 03 收紧为 归元率 `[0.89, 0.95]`、先手胜率 `[0.47, 0.51]`
 > （锚点 90.40% / 50.40%），并成为 CLI 判据与 live 测试共用的**唯一定义**
-> （`src/core/headless/GuardrailBand.ts`）。此处保留原值不改写。
+> （`tools/GuardrailBand.ts`）。此处保留原值不改写。
 
 ### 1.2 测量、基线与决策记录
 
@@ -63,7 +63,7 @@
   - AI 类型不同：ADR 0001 用**搜索深度 1/2 自对弈**；测试用**启发式预设 `balancedStrategy`**。
   - 记录状态不同：测试带**没有任何 ADR** 记录其来源与变更理由。
   - 数字本身不可互推：启发式预设的归元率显著高于搜索型 AI，因此 88.64% 落在测试带内、却超出 ADR 0001 的 80% 上界。
-- **处置（已由 ADR 0011 结清）**：**两条带都保留、互不代换**。ADR 0001 的 25%–80% 只在搜索深度 1/2 口径下有效、当前无 live 断言，作为历史护栏保留；启发式带（成文时 75%–95%，**现收紧为 [0.89, 0.95]**）是启发式预设口径、当前 `npm test` 实际执行的红线，其出处与口径由 ADR 0011「决策 2」正式记录、定义收敛到 `src/core/headless/GuardrailBand.ts`，不再「无 ADR」。两条带 AI 口径不同，**禁止互相代入比较**。这些带描述的是规则改动前的现状，后续规则改动后须复跑重设。
+- **处置（已由 ADR 0011 结清）**：**两条带都保留、互不代换**。ADR 0001 的 25%–80% 只在搜索深度 1/2 口径下有效、当前无 live 断言，作为历史护栏保留；启发式带（成文时 75%–95%，**现收紧为 [0.89, 0.95]**）是启发式预设口径、当前 `npm test` 实际执行的红线，其出处与口径由 ADR 0011「决策 2」正式记录、定义收敛到 `tools/GuardrailBand.ts`，不再「无 ADR」。两条带 AI 口径不同，**禁止互相代入比较**。这些带描述的是规则改动前的现状，后续规则改动后须复跑重设。
 
 ### C2. 强弱对阵 ≥65% — **无法比较（口径限定）**
 
@@ -73,7 +73,7 @@
 
 ### C3. 先手胜率：95% CI（搜索）vs [0.45, 0.55]（启发式）— **无法比较**
 
-- **出处**：`ADR 0001`、`ADR 0002`（95% CI）；`src/core/headless/GuardrailBand.ts`（区间带）。
+- **出处**：`ADR 0001`、`ADR 0002`（95% CI）；`tools/GuardrailBand.ts`（区间带）。
 - **为何无法比较**：CI 来自搜索深度 1/2 自对弈；区间带来自启发式预设自对弈。二者 AI 口径不同。测试带本身**无 ADR**。
 - **处置（已由 ADR 0011 结清）**：**保留并注明不可比较**。测试带作为启发式口径的 live 红线，其口径由 ADR 0011「决策 2」记录；不得用它验证或否决 ADR 0001 护栏 3。
 
@@ -87,7 +87,7 @@
 
 - **冲突（历史）**：`ai-evaluator-benchmark-guardrails.test.ts` 的注释写「80%~95%」，断言却是 0.75–0.95。
 - **处置**：**修测试注释与标题**（不改变任何断言或行为），改为 75%~95%，并注明与 ADR 0001 的 25%–80% 无法比较。
-- **后续**：该带已统一到 `src/core/headless/GuardrailBand.ts`，测试与 CLI 均调用 `checkGuardrailBand`，不再各自持有数字（见 §1.1 注）。
+- **后续**：该带已统一到 `tools/GuardrailBand.ts`，测试与 CLI 均调用 `checkGuardrailBand`，不再各自持有数字（见 §1.1 注）。
 
 ### C6. ADR 0002「第 30 回合」的单位残留歧义 — **已修 ADR（追加勘误）**
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { WuXing } from '../../src/core/types/domain.js';
-import { boardWith, gameStateWith } from '../../src/core/headless/BoardFixture.js';
+import { boardWith, gameStateWith } from '../../tools/BoardFixture.js';
 import { createEmptyBoard, createInitialGameState } from '../../src/core/logic/State.js';
 
 describe('盘面 fixture 构造器 (Board Fixture)', () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
-import { HeadlessBenchmark } from '../../src/core/headless/HeadlessBenchmark.js';
+import { HeadlessMatch } from '../../tools/HeadlessMatch.js';
+import { HeadlessBenchmark } from '../../tools/HeadlessBenchmark.js';
 import {
   createScoreBoundStrategy,
   balancedStrategy,

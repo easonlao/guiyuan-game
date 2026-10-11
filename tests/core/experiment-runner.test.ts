@@ -19,12 +19,12 @@ import {
   DEFAULT_SCORE_CONFIG_VARIANTS,
   DEFAULT_RULE_MODES,
   DEFAULT_MATCHES_PER_CELL,
-} from '../../src/core/headless/ExperimentRunner.js';
+} from '../../tools/ExperimentRunner.js';
 import type {
   HeadToHeadMatchup,
   HeadToHeadReport,
   RuleMode,
-} from '../../src/core/headless/ExperimentRunner.js';
+} from '../../tools/ExperimentRunner.js';
 import {
   balancedStrategy,
   aggressiveStrategy,
@@ -32,9 +32,9 @@ import {
   pureSuppressStrategy,
   scoreStrippedStrategy,
 } from '../../src/core/ai/Strategy.js';
-import { HeadlessBenchmark } from '../../src/core/headless/HeadlessBenchmark.js';
-import { HeadlessMatch, defaultBaselineStrategy } from '../../src/core/headless/HeadlessMatch.js';
-import { isDirectRun } from '../../src/core/headless/cli.js';
+import { HeadlessBenchmark } from '../../tools/HeadlessBenchmark.js';
+import { HeadlessMatch, defaultBaselineStrategy } from '../../tools/HeadlessMatch.js';
+import { isDirectRun } from '../../tools/cli.js';
 import {
   countBoardDamage,
   countBoardGuiYi,
@@ -592,7 +592,7 @@ describe('Ticket 09 - 计分轴开启 vs 关闭 (board-only) 逐格对照', () =
 // Ticket E - 共享 CLI 直接执行守卫
 // ---------------------------------------------------------------------------
 describe('共享 CLI 直接执行守卫 (isDirectRun)', () => {
-  const modulePath = '/repo/src/core/headless/ExperimentRunner.ts';
+  const modulePath = '/repo/tools/ExperimentRunner.ts';
   const moduleUrl = pathToFileURL(modulePath).href;
 
   it('模块 URL 与 argv[1] 指向同一文件时为直接执行', () => {

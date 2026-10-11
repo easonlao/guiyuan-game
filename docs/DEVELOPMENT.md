@@ -14,8 +14,8 @@
 ## 对手与策略推演
 
 - [`Strategy`](../src/core/ai/Strategy.ts) & [`ActionEvaluator`](../src/core/ai/ActionEvaluator.ts)：纯 TS 策略 AI 与权重估值器，支持多套博弈倾向。
-- [`HeadlessMatch`](../src/core/headless/HeadlessMatch.ts) & [`HeadlessBenchmark`](../src/core/headless/HeadlessBenchmark.ts)：无头推演与万局自动化基线评测。
-- [`TerminalBoardViewer`](../src/core/headless/TerminalBoardViewer.ts)：纯文本控制台 ASCII 棋盘检视器。
+- [`HeadlessMatch`](../tools/HeadlessMatch.ts) & [`HeadlessBenchmark`](../tools/HeadlessBenchmark.ts)：无头推演与万局自动化基线评测。
+- [`TerminalBoardViewer`](../tools/TerminalBoardViewer.ts)：纯文本控制台 ASCII 棋盘检视器。
 
 ## 多端存储适配 (Layer 2: `src/adapters/`)
 

@@ -3,7 +3,7 @@
 > Ticket 10 / spec `balance-audit-and-dominance`。本文是**实验**记录，不是规则改动建议。
 > spec 第 19 条明确把**生产用**动态切换规则放在范围之外；本文只回答「按盘面在推进与压制之间切换」
 > 这一设计意图能否在既有规则下打赢全部固定权重预设。
-> 指标口径的唯一来源是 `src/core/headless/Metrics.ts` 与 `docs/headless/metric-definitions.md`；
+> 指标口径的唯一来源是 `tools/Metrics.ts` 与 `docs/headless/metric-definitions.md`；
 > 本实验**未新增任何指标定义**，也未新增第三处接缝。
 >
 > **口径说明（后续追加）**：本文「静态预设」对照数据是在**攻击进度定价采纳之前**测的。生产自工单 06 起默认启用 `ATTACK_PROGRESS_SCALE: { floor: 0.3, span: 0.9 }`（`src/core/logic/ScoreCalculator.ts`），因此这些数字不再复现于当前生产；`--mode board-only` 列不受影响。
@@ -26,7 +26,7 @@ npm run benchmark:dynamic-switching -- --matches 5000 --seed 30000 --no-sweep
 npm run benchmark:dynamic-switching -- --mode board-only --matches 2000 --seed 10000
 ```
 
-命令由 `package.json` 长期保留，入口是 `src/core/headless/DynamicSwitching.ts`（确定性）。
+命令由 `package.json` 长期保留，入口是 `tools/DynamicSwitching.ts`（确定性）。
 
 ## 1. 方法
 

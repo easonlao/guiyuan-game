@@ -5,8 +5,8 @@ import {
   analyzeDominance,
   DEFAULT_STRATEGY_VARIANTS,
   DEFAULT_SCORE_CONFIG_VARIANTS,
-} from '../../src/core/headless/ExperimentRunner.js';
-import type { HeadToHeadReport } from '../../src/core/headless/ExperimentRunner.js';
+} from '../../tools/ExperimentRunner.js';
+import type { HeadToHeadReport } from '../../tools/ExperimentRunner.js';
 
 /**
  * 占优回归护栏（绊线 / characterization pin）——工单 06 采纳进度定价后重写。

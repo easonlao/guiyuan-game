@@ -39,10 +39,10 @@ import {
   PURE_SUPPRESS_WEIGHTS,
   SCORE_STRIPPED_WEIGHTS,
   createScoreBoundStrategy,
-} from '../ai/Strategy.js';
-import type { DecisionStrategy, StrategyWeights } from '../ai/types.js';
-import { POINTS_CONFIG, type PointsConfig } from '../logic/ScoreCalculator.js';
-import type { RuleSwitches } from '../logic/ActionCandidates.js';
+} from '../src/core/ai/Strategy.js';
+import type { DecisionStrategy, StrategyWeights } from '../src/core/ai/types.js';
+import { POINTS_CONFIG, type PointsConfig } from '../src/core/logic/ScoreCalculator.js';
+import type { RuleSwitches } from '../src/core/logic/ActionCandidates.js';
 
 // ---------------------------------------------------------------------------
 // 声明式矩阵输入
