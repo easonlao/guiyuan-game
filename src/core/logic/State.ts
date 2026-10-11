@@ -145,18 +145,14 @@ export function canTianGanLightUnlightedSide(board: BoardState, tianGan: TianGan
   }
 
   // 1. AUTO (自动吸纳): 天干五行与极性与未点亮侧完全一致
-  if (
-    tianGan.element === targetElement &&
-    // Stryker disable next-line ConditionalExpression: 走到此处说明 AUTO 未命中，五行相等即蕴含极性相反，第二个操作数恒真（等价）
-    tianGan.polarity === targetPolarity
-  ) {
+  if (tianGan.element === targetElement && tianGan.polarity === targetPolarity) {
     return true;
   }
 
   // 2. CONVERT (调息): 同五行但相反极性，且天干所在极性侧处于中位态 (>= 1)
   if (
     tianGan.element === targetElement &&
-    // Stryker disable next-line ConditionalExpression: 走到此处说明 AUTO 未命中，五行相等即蕴含极性相反（等价）
+    // Stryker disable next-line ConditionalExpression: AUTO 未命中时五行相等即蕴含极性相反，第二个操作数恒真（等价）
     tianGan.polarity !== targetPolarity &&
     // Stryker disable next-line ConditionalExpression: 唯一未点亮侧的对侧必定 >= 1，否则未点亮侧数会是 2（等价）
     board[targetElement][tianGan.polarity] >= 1
@@ -175,7 +171,6 @@ export function canTianGanLightUnlightedSide(board: BoardState, tianGan: TianGan
       return true;
     }
     // 若未点亮侧是阳极，只有在阴极已满 2 时，化气才会强化阳极
-    // Stryker disable next-line ConditionalExpression: 上一分支已对 YIN 返回，能走到这里 targetPolarity 必为 YANG（等价）
     if (targetPolarity === Polarity.YANG && board[targetElement].yin === 2) {
       return true;
     }
@@ -189,9 +184,7 @@ export function canTianGanLightUnlightedSide(board: BoardState, tianGan: TianGan
  * -1: 道损, 0: 虚空, 1: 点亮, 2: 加持
  */
 export function clampNodeLevel(level: number): NodeLevel {
-  // Stryker disable next-line EqualityOperator: level === -1 时 < 与 <= 同样返回 -1（等价）
   if (level <= -1) return -1;
-  // Stryker disable next-line EqualityOperator: level === 2 时 > 与 >= 同样返回 2（等价）
   if (level >= 2) return 2;
   return level as NodeLevel;
 }
@@ -221,18 +214,12 @@ export function measureBoardDiff(prevBoard: BoardState, nextBoard: BoardState): 
     const nextNode = nextBoard[element];
 
     const yinDelta = nextNode.yin - prevNode.yin;
-    // Stryker disable next-line EqualityOperator: yinDelta === 0 时累加 0，> 与 >= 等价
     if (yinDelta > 0) constructionLevels += yinDelta;
-    else
-    // Stryker disable next-line EqualityOperator,ConditionalExpression: 仅在 yinDelta === 0 发散且累加 -0，等价
-    if (yinDelta < 0) suppressionLevels += -yinDelta;
+    else if (yinDelta < 0) suppressionLevels += -yinDelta;
 
     const yangDelta = nextNode.yang - prevNode.yang;
-    // Stryker disable next-line EqualityOperator: yangDelta === 0 时累加 0，> 与 >= 等价
     if (yangDelta > 0) constructionLevels += yangDelta;
-    else
-    // Stryker disable next-line EqualityOperator,ConditionalExpression: 仅在 yangDelta === 0 发散且累加 -0，等价
-    if (yangDelta < 0) suppressionLevels += -yangDelta;
+    else if (yangDelta < 0) suppressionLevels += -yangDelta;
   }
 
   return { constructionLevels, suppressionLevels };

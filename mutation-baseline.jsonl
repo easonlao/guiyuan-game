@@ -2,3 +2,37 @@
 # 由 `npm run mutation:baseline` 从 Stryker 报告生成；`npm run mutation:check` 只报告本文件之外的存活/无覆盖。
 # 每行一条 JSON 记录：{"file","line","column","mutatorName","replacement"}，已按 file/line/column/mutatorName/replacement 稳定排序。
 # 身份键：{file, mutatorName, line, column, replacement}。不要用 Stryker 的 id（单次报告内才唯一）。
+{"file":"src/core/logic/ActionCandidates.ts","line":119,"column":7,"mutatorName":"ConditionalExpression","replacement":"true"}
+{"file":"src/core/logic/ActionResolver.ts","line":121,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":129,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":129,"column":13,"mutatorName":"EqualityOperator","replacement":"prevLevel > 2"}
+{"file":"src/core/logic/ActionResolver.ts","line":146,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":170,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":179,"column":13,"mutatorName":"ConditionalExpression","replacement":"true"}
+{"file":"src/core/logic/ActionResolver.ts","line":179,"column":13,"mutatorName":"EqualityOperator","replacement":"prevLevel <= 2"}
+{"file":"src/core/logic/ActionResolver.ts","line":192,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":217,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":250,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":290,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":317,"column":9,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":332,"column":9,"mutatorName":"ConditionalExpression","replacement":"true"}
+{"file":"src/core/logic/ActionResolver.ts","line":332,"column":9,"mutatorName":"EqualityOperator","replacement":"guiYiDelta >= 0"}
+{"file":"src/core/logic/ActionResolver.ts","line":405,"column":15,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":405,"column":15,"mutatorName":"EqualityOperator","replacement":"finalActiveScore >= finalOpponentScore"}
+{"file":"src/core/logic/EventBus.ts","line":70,"column":9,"mutatorName":"ConditionalExpression","replacement":"true"}
+{"file":"src/core/logic/ScoreCalculator.ts","line":162,"column":9,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/State.ts","line":148,"column":44,"mutatorName":"ConditionalExpression","replacement":"true"}
+{"file":"src/core/logic/State.ts","line":174,"column":9,"mutatorName":"ConditionalExpression","replacement":"true"}
+{"file":"src/core/logic/State.ts","line":187,"column":7,"mutatorName":"EqualityOperator","replacement":"level < -1"}
+{"file":"src/core/logic/State.ts","line":188,"column":7,"mutatorName":"EqualityOperator","replacement":"level > 2"}
+{"file":"src/core/logic/State.ts","line":217,"column":9,"mutatorName":"EqualityOperator","replacement":"yinDelta >= 0"}
+{"file":"src/core/logic/State.ts","line":218,"column":14,"mutatorName":"ConditionalExpression","replacement":"true"}
+{"file":"src/core/logic/State.ts","line":218,"column":14,"mutatorName":"EqualityOperator","replacement":"yinDelta <= 0"}
+{"file":"src/core/logic/State.ts","line":221,"column":9,"mutatorName":"EqualityOperator","replacement":"yangDelta >= 0"}
+{"file":"src/core/logic/State.ts","line":222,"column":14,"mutatorName":"ConditionalExpression","replacement":"true"}
+{"file":"src/core/logic/State.ts","line":222,"column":14,"mutatorName":"EqualityOperator","replacement":"yangDelta <= 0"}
+{"file":"src/core/logic/TurnManager.ts","line":176,"column":13,"mutatorName":"ConditionalExpression","replacement":"true"}
+{"file":"src/core/logic/TurnManager.ts","line":294,"column":50,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/TurnManager.ts","line":329,"column":9,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/TurnManager.ts","line":341,"column":16,"mutatorName":"ConditionalExpression","replacement":"true"}
+{"file":"src/core/logic/TurnManager.ts","line":416,"column":9,"mutatorName":"ConditionalExpression","replacement":"false"}
