@@ -67,6 +67,7 @@
 
 1. **双盘投影**：`BoardView.update(p1Board: BoardState, p2Board: BoardState)`——同时接收己方盘与对方盘两块快照，一次投影；表现层**不再**按当前行动方切换单一棋盘（ADR 0015 的动机）。
 2. **槽位定位**：`BoardView.getSlot(player: PlayerId, element: WuXing, polarity: Polarity): BoardSlotView`——返回指定**某一方**、某元素、某极性槽位的投影视图（含父坐标系下的 `x/y` 与角度），供 `RuneFlightView` 取飞行落点。`player` 决定取内环（己方）还是外环（对方）。
-3. **飞行落点**：`RuneFlightView` 的飞行目标坐标**唯一来源**是 `BoardView.getSlot(player, …)`；调用方必须传入被作用方的 `player`（`ATK`/`BURST_ATK` 为对方，其余为己方）。
+3. **飞行落点**：`RuneFlightView` 的飞行目标坐标**唯一来源**是 `BoardView.getSlot(player, …)`；调用方必须传入被作用方的 `player`：`ATK`/`BURST_ATK` 为对方，其余为己方；**终轮天命揭牌是唯一的例外**——揭牌恒由天道 P2 抽牌并作用于对方盘（P2 盘），落点为抽中天干在 P2 盘上的槽位，与抽牌前的行动方无关（`flyTo('P2', …)`）。
 4. **同心双环语义**：内环恒为己方盘、外环恒为对方盘；外环相对内环逆时针偏移 2 格，每根射线满足「己方克对方」。该几何是契约而非样式（板盘测试按坐标断言）。
 5. **动作路径高亮**：`BoardView.setActivePaths(paths: readonly BoardActivePath[])` 按 `(kind, from)` 点亮「当前动作会走」的连线（`BoardActivePath = { kind: 'generation' | 'attack'; from: WuXing }`）；`resolveActionPath(actionType, element)` 是动作到路径的纯映射（`TRANS`/`BURST` → 相生边，`ATK`/`BURST_ATK` → 径向线，其余动作 `null`）。高亮只由 `GameScene` 在 `awaiting-player` 阶段按当前天干与候选动作驱动，其余阶段清空；不再由主印等级驱动。
+6. **归元读数版面**：`BoardView.readout` 返回读数的投影视图 `BoardReadoutView`（底板左上角 `x/y` + `width/height` + `text` + `fontSize`，文案形如「己 x/5 · 敌 y/5 归一」）。底板宽度由 `text` 与 `fontSize` 按 `src/minigame/text-metrics.ts` 的字宽口径推出（不写死像素宽），字号随主印半径缩放；位置必须落在视口内且与任何主印圆（含半环与归一外环的外沿）不相交——半环是阴阳等级的唯一载体，读数不得遮挡。
