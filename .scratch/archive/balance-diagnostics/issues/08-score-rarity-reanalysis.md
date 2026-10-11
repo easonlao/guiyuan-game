@@ -2,7 +2,7 @@
 
 **Blocked by:** 07 — 计分与五行归元进度重合度诊断
 
-**Status:** closed
+**Status:** resolved
 
 ---
 

@@ -10,7 +10,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** completed
+**Status:** resolved
 
 - [x] P1 回合当且仅当候选动作仅有唯一的 `AUTO` 时，激活自动吸纳调度计时器。
 - [x] 计时器归零时自动触发吸纳动作调度，推进回合与棋盘节点状态更新。

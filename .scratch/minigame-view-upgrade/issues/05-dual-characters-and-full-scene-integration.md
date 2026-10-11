@@ -1,5 +1,7 @@
 # 05: 双方对战角色卡与完整对局主场景串联 (Dual Characters & Full Game Scene Integration)
 
+**Type:** task
+
 **What to build:** 实现 `CharacterView`（展示玩家与天道化身、行动指示器、表情反馈与计分播报），并由 `GameScene` 控制器将五行阵盘、动作按钮、天干飞行动效与双方角色交互完整串联为自闭环对局，废除旧版命令式代码，完成 Vite 打包与真机验证。
 
 **Blocked by:** 04: 轻量缓动引擎与天干降临/流星飞行动效 (Tween Engine & Rune Flight Animation)

@@ -4,7 +4,7 @@
 
 **Blocked by:** 01、02
 
-**Status:** done
+**Status:** resolved
 
 - [x] 新 agent 只读这份文档就能跑对命令，并说清门禁是什么
 - [x] 写明两条路径：改动处跑（`implement` 收尾）、里程碑全量（每个 spec 收尾 + 发版/提审前）

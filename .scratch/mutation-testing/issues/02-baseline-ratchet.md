@@ -4,7 +4,7 @@
 
 **Blocked by:** 01；`.scratch/dead-scoring-code-removal` 的 01、02（先删死代码，基线才干净）
 
-**Status:** done
+**Status:** resolved
 
 - [x] 干净检出、`npm test` 全绿后跑全量变异，**不报任何"新增存活"**
 - [x] 故意在核心逻辑里加一段没被测到的行为 → 报出新增存活，退出非 0
@@ -28,7 +28,7 @@
 - `npm run mutation:check`：`scripts/mutation-check.mjs`，只打印基线之外的存活/无覆盖，有新增 `exit 1`、无则 `exit 0`；缺报告/缺基线 `exit 2`。退出码由脚本自算（仓库没配 `thresholds.break`，Stryker 不会因存活失败）。
 - 共享逻辑在 `scripts/lib/mutation-baseline-core.mjs`，保证生成与对比用同一套键。对"同 file+mutatorName+replacement 但行列变了"的新增给"疑似只是移位"提示（仅当老位置确实从本次报告消失时提示，避免同类替换误报）。
 
-**验证记录：**
+## Answer
 
 1. 干净工作树 + `npm test` 665 全绿后全量变异（`npm run mutation`，33m10s，1085 mutants / 6 files），`npm run mutation:check` → "没有新增存活/无覆盖（基线内 223 条全部命中）"，`exit 0`。
 2. 在 `src/core/logic/ActionCandidates.ts` 末尾加一段无测试覆盖的 `__baselineRatchetProbe`，`npx stryker run --mutate src/core/logic/ActionCandidates.ts` 后 `mutation:check` 报出 7 个新增（`ActionCandidates.ts:205:63`、`206:7`×4、`206:18`、`207:12`），`exit 1`。

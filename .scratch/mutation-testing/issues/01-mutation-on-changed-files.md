@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** done
+**Status:** resolved
 
 - [x] 有一个命令能只对"相对某个 git ref 改动的文件"跑变异，并产出报告（`npm run mutation:changed [-- <ref>]`，默认 `HEAD`）
 - [x] 有一个命令能跑全量（`npm run mutation`）

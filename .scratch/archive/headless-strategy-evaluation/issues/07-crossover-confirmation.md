@@ -6,7 +6,9 @@
 
 **Status:** resolved
 
-**Resolution:** 用户已确认需求与结论边界；agent 完成分类、独立确认、遗漏计数及报告契约核验。专项测试 16/16、全套测试 118/118、构建通过；历史报告全部 1440 条已完成固定首步续局重放一致。未发现需修复的技术缺陷，未修改运行逻辑、未开展 08 的评价实验。核验依据与可复现命令见 [docs/crossover-confirmation.md](../../../docs/crossover-confirmation.md#issue-07-closure-verification)。
+## Answer
+
+用户已确认需求与结论边界；agent 完成分类、独立确认、遗漏计数及报告契约核验。专项测试 16/16、全套测试 118/118、构建通过；历史报告全部 1440 条已完成固定首步续局重放一致。未发现需修复的技术缺陷，未修改运行逻辑、未开展 08 的评价实验。核验依据与可复现命令见 [docs/crossover-confirmation.md](../../../docs/crossover-confirmation.md#issue-07-closure-verification)。
 
 ## 用户确认已完成，无需再次人工验收
 

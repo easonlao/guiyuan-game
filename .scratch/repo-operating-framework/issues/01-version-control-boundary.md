@@ -1,10 +1,12 @@
 # 01: 版本库边界与任务层规格
 
+**Type:** task
+
 **What to build:** 克隆下来就能看到「有哪些任务、做到哪了」，以及每条边界为什么这么划。库里不留临时垃圾和废弃路径的残骸。
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 **验收清单：**
 
@@ -43,7 +45,7 @@
 
 `https://github.com/orionpax1997/model-war`，本地可能在 `/tmp/model-war-*`（clone 会丢，需要时重新 clone）。只看它的 `.gitignore` 与 `docs/agents/issue-tracker.md` 两个文件——本票的做法都从这两处来。**不要**照抄它的目录结构（它是 6 包的 monorepo，判据不同，见 `spec.md` 的决定 1）。
 
-**验证记录：**
+## Answer
 
 复核命令与结果（本票改动后，索引即下一次提交的内容）：
 

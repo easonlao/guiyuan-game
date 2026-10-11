@@ -5,7 +5,7 @@
 
 **Blocked by:** 02: 2.5倍攻击压制状态分与爆发动作稀有度黑名单豁免实装
 
-**Status:** completed
+**Status:** resolved
 
 - [x] ActionEvaluator 评估动作时无缝消费 ActionResolver.resolve 产出的真实 scoreDelta，使其能够平衡攻防权重。
 - [x] 确保各项预设策略（平衡策略、激进策略、自保策略等）在真实计分体系下表现出符合设计的行为倾向。

@@ -1,10 +1,12 @@
 # 10: `.scratch/archive` 按 feature 目录归位
 
+**Type:** task
+
 **What to build:** `.scratch/archive/` 根下 7 个散落的 `.md` 收进各自的 feature 目录，archive 里不再有游离在 feature 目录外的文件。
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 **验收清单：**
 
@@ -26,7 +28,7 @@
 - `004`–`007` **保留原文件名**、原封不动放进 `core-engine/wayfinder/`。它们互相的 `parent:` / `blocked_by:` 引用是相对路径且同目录，改名就得改 frontmatter——归档件不值得动。编号不重排，因为这是历史产物、不是新票。
 - `001`/`002` 改名成 `spec.md`：它们本来就是对应 feature 的规格书，目录里也正好缺 `spec.md`。
 
-**验证记录：**
+## Answer
 
 - `.scratch/archive/` 根下无 `.md`：`find .scratch/archive -maxdepth 1 -type f` 为空。
 - `001` → `headless-strategy-evaluation/spec.md`、`002` → `balance-diagnostics/spec.md` 就位。

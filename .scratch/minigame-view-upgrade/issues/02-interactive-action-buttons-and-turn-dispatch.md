@@ -1,5 +1,7 @@
 # 02: 交互式操作按钮组件与动作派发切片 (Interactive Action Button & TurnManager Dispatch)
 
+**Type:** task
+
 **What to build:** 实现响应式按钮组件 `Button` 与操作面板 `ActionBarView`，端到端打通玩家输入到核心状态机：根据当前回合天干及合法动作候选，自动动态渲染【吸纳】【调息】【化】【破】【强化】等按钮组，触摸时提供触觉级按压缩放微动，点击有效按钮时向 `TurnManager` 提交 `ActionPayload` 推进回合。
 
 **Blocked by:** 01: 极简场景树基座与触控调度 (Scene Graph Core & Input Dispatcher)

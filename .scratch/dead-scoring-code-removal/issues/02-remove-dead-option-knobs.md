@@ -4,7 +4,7 @@
 
 **Blocked by:** None
 
-**Status:** done
+**Status:** resolved
 
 ## 决定（2026-10-10）
 

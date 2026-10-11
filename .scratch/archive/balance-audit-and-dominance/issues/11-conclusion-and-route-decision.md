@@ -6,7 +6,7 @@
 
 **Blocked by:** 03 判据与文档溯源对表、10 动态策略
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 记录审计发现的全部方法缺陷及其修复情况。证据：`docs/adr/0011-balance-route-fix-rules.md`（`60df8ba`，并入 `c1254a4`）证据 1。
 - [x] 记录对「是否存在严格占优路线」的最终判定。证据：ADR 0011 证据 2（存在，由计分造成）。

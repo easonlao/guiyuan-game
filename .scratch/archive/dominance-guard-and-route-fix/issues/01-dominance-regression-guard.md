@@ -10,7 +10,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 特征化断言：现状计分配置下，激进压制对全部六个对手严格占优（6/6）
 - [x] 关键格钉成带容差的基线（至少含激进压制对其余六者的座次平衡胜率）

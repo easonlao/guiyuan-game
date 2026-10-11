@@ -1,5 +1,7 @@
 # 01: 极简场景树基座与触控调度 (Scene Graph Core & Input Dispatcher)
 
+**Type:** task
+
 **What to build:** 构建轻量场景树与触控调度器。在微信小游戏 Canvas 环境中提供分层容器与递归渲染能力，支持局部坐标变换（位置、缩放、透明度、可见性），并自动将屏幕触摸输入（`wx.onTouchStart` / `onTouchEnd`）转化为逆序（自顶向下）的命中检测与点击事件分发，阻止事件穿透，为所有视觉组件建立纯代码交互基础。
 
 **Blocked by:** None (can start immediately)

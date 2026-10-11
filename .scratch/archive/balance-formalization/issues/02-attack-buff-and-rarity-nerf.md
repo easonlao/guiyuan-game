@@ -5,7 +5,7 @@
 
 **Blocked by:** 01: 双轨制行为分与己方建设状态分全链路实装
 
-**Status:** completed
+**Status:** resolved
 
 - [x] 在计分配置中硬编码实装 ADR 0002 规定的 2.5 倍攻击压制状态分常量 (CAUSE_DMG 阳 300 / 阴 250, BREAK_LIGHT 阳 200 / 阴 150, WEAKEN 200)。
 - [x] 在计分配置中配置稀有度黑名单 NO_RARITY_ACTIONS (['BURST', 'BURST_ATK']) 与默认稀有度乘数 (1.5)。

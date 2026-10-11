@@ -5,7 +5,7 @@
 
 **Blocked by:** 03: 智能快刀终局裁决与听牌绝地追平全链路
 
-**Status:** closed
+**Status:** resolved
 
 - [x] `HeadlessMatch` 对齐智能快刀判定与 30 大回合生命周期。
 - [x] `HeadlessBenchmark` 批量推演支持输出同轮双归元、常规秒结与终局形态完整度量。

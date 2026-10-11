@@ -6,7 +6,9 @@
 
 **Status:** resolved
 
-**Resolution:** `4e23de0` on `integration/headless-strategy-evaluation`; full suite (36 tests) and production build passed.
+## Answer
+
+`4e23de0` on `integration/headless-strategy-evaluation`; full suite (36 tests) and production build passed.
 
 - [x] 建立当前六类动作与计分的特征测试，锁定自损仍获正分、强化与强破子步骤累计行为分、稀有度加成及部分效果达到边界的行为。
 - [x] 以最小必要抽离提供共享回合结算、下一玩家及终局判定入口；核心入口不导入展示、网络、存储或学习记录，不复制另一套规则。

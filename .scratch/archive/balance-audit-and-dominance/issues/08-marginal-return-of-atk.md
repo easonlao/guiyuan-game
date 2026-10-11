@@ -8,7 +8,7 @@
 
 **Blocked by:** 02 指标口径表与陷阱回归测试、07 盘面 fixture 构造器与盘面进度指标
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 边际收益的口径不依赖计分（例如盘面节奏差，或达成五行归元所需行动数之差）。证据：`Metrics.atkTempoGain`；`docs/headless/atk-marginal-return.md`（`60283e5`，并入 `650cb5c`）。
 - [x] 测第 1、2、3 次【破】的边际收益。证据：`docs/headless/atk-marginal-return.md`；`tests/core/atk-marginal-return.test.ts`。

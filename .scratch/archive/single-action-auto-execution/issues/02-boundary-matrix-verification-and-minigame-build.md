@@ -4,7 +4,7 @@
 
 **Blocked by:** 01: 唯一合法动作全场景自动流转与交互表现 (Single-Candidate Auto-Execution Pipeline)
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 编写专门的边界矩阵回归测试，覆盖 ADR-0008 明确定义的单动作场景：
   - 连动额外回合中抽到已归一节点：验证仅生成单个 ATK（阳干）或 TRANS（阴干），且自动激活流转倒计时。

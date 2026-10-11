@@ -6,7 +6,9 @@
 
 **Status:** resolved
 
-**Resolution:** `318aa35` implements the evaluator; `680d468` fixes review findings, merged into `integration/headless-strategy-evaluation`. Public API/contract: `src/js/logic/headless/HeadlessMatch.js`, `docs/headless-match.md`. Full suite: 58 tests passed; production build passed. Standards/spec reviews completed and follow-up verified. Explicit experimental scoring configuration remains ticket 04; this ticket uses the shared host baseline without mutating rule configuration.
+## Answer
+
+`318aa35` implements the evaluator; `680d468` fixes review findings, merged into `integration/headless-strategy-evaluation`. Public API/contract: `src/js/logic/headless/HeadlessMatch.js`, `docs/headless-match.md`. Full suite: 58 tests passed; production build passed. Standards/spec reviews completed and follow-up verified. Explicit experimental scoring configuration remains ticket 04; this ticket uses the shared host baseline without mutating rule configuration.
 
 - [x] 输入包含双方阴阳节点、积分、当前玩家与天干、回合计数及上限、额外行动及影响后续规则的状态；缺失或非法输入明确失败，不静默补齐影响胜负的值。
 - [x] 复用正式候选动作、动作结算、计分及共享回合规则；核心运行不依赖 DOM、动画、网络、存储、学习记录或完整事件总线编排。

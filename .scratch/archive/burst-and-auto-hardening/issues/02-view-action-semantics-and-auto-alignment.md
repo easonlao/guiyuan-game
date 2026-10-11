@@ -8,7 +8,7 @@
 
 **Blocked by:** 01: 天干虚空强制自动吸纳与当前天干归一爆发判定守卫
 
-**Status:** completed
+**Status:** resolved
 
 - [x] 操作面板严格按照 `TurnManager.getAvailableActions` 映射按钮，在虚空吸纳状态下仅渲染唯一的【吸纳】按钮。
 - [x] 爆发动作（BURST / BURST_ATK）按钮的副标题文案正确解析相生目标（`GENERATION_CYCLE[elem]`）与相克目标（`OVERCOMING_CYCLE[elem]`）。

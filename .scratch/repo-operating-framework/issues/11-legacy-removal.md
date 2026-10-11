@@ -1,10 +1,12 @@
 # 11: 删除 `legacy/`
 
+**Type:** task
+
 **What to build:** 把 `legacy/`（132 文件 / 27470 行旧 Web JS）整体删除，并修掉所有指向它的文档引用。联机规划改为届时重做，不保留旧协议代码。
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 **验收清单：**
 
@@ -27,7 +29,7 @@
 - `docs/archive/` 的 7 处 banner 是同一行，统一加「该目录已于 2026-10 删除」。
 - `.scratch/archive/` 里的历史票提到 `legacy` 的地方**不改**——归档件不重写。
 
-**验证记录：**
+## Answer
 
 - `legacy/` 已删：`git ls-files legacy` 为空，工作区无该目录。
 - `docs/` 无活引用：`grep -rn legacy docs/` 剩下的全是带「已删除」说明的历史记录；ADR 0003 正文那句保留（ADR 是追加式，不动正文），删除事实写在文末勘误。

@@ -5,7 +5,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** completed
+**Status:** resolved
 
 - [x] 在核心计分配置中声明完整的行为基础分 (ACTION: CONVERT 50, TRANS 30, ATK 40, BURST 100, BURST_ATK 80, AUTO 0)。
 - [x] 在核心计分配置中声明己方建设状态分 (REPAIR_DMG 200, LIGHT_UP 100, BLESSING 200)。

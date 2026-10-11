@@ -14,7 +14,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 对每个动作类型，给出它在受控盘面上的价值，并找出它成为最优的盘面条件。证据：`src/core/headless/ActionValueCensus.ts`（`1d2a275`）；报告 `docs/headless/action-value-census.md`。
 - [x] 报出在所有被测状态下都被支配的动作。证据：`runActionValueCensus().globallyDominated`（生产计分下为空；工具能报出被支配动作，见 `tests/core/action-value-census.test.ts`）。

@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — 评估参数化（需正式回合上限）
 
-**Status:** closed
+**Status:** resolved
 
 **背景证据：** 公共策略只按动作类型与对手点亮侧数排序，不读分数（`PublicStrategies.js:27-56`）；分数虽传入上下文（`SeededMatch.js:62-65`）但未被使用。合法动作见 `ActionCandidates.js`；强制吸纳在 `HeadlessMatch.js:428-430` 不经策略。
 

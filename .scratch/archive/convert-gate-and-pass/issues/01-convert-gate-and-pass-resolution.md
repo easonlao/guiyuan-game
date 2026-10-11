@@ -8,7 +8,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 当抽中天干节点对侧处于点亮 (1) 或加持 (2) 时，候选动作列表中严格排除调息（CONVERT）。
 - [x] 当抽中天干节点对侧处于虚空 (0) 或道损 (-1) 时，且满足中位态前提，调息动作正常可用。
