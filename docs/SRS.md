@@ -100,7 +100,7 @@
 | :--- | :--- | :--- | :--- |
 | **阶段 1 (已完成)** | Web 原型与无头诊断平台 | 原生 JS + Vite + DOM UI + Headless 模拟器 + Supabase 网络层（资产已删除） | 成功完成多轮数值调优与机制验证，跑通几千场批处理实验 |
 | **阶段 2 (已完成)** | 逻辑脱水与 TS 强类型重构 | 剥离 DOM 依赖，全面 TS 化，完善 Vitest / oxlint / Stryker 工具链 | `npm test` 100% 通过（693 用例），无头对战脱机运行零错误 |
-| **阶段 3 (进行中)** | 纯 TS Canvas 微信小游戏 MVP（ADR 0004） | 纯本地单机版，Canvas 2D 直出，本地存档；表现层轻量化场景树重构见 `.scratch/minigame-view-upgrade` | 微信开发者工具首包 < 4MB，真机流畅运行 |
+| **阶段 3 (进行中)** | 纯 TS Canvas 微信小游戏 MVP（ADR 0004） | 纯本地单机版，Canvas 2D 直出，本地存档；表现层轻量化场景树重构已完成（留档 `.scratch/archive/minigame-view-upgrade`） | 微信开发者工具首包 < 4MB，真机流畅运行 |
 | **阶段 4 (远期规划)** | 跨端联机与商业化版本 | 恢复并强化 Supabase 联机对战，引入社交排行榜与跨平台互通 | 支持实时 PvP 匹配与断线重连 |
 
 ---
