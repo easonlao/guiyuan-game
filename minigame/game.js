@@ -1704,147 +1704,87 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     ctx.restore();
   }
-  function drawCenterTianGanRune(ctx, centerX, centerY, tg, mode, animTick) {
+  function drawCenterTianGanRune(ctx, centerX, centerY, tg, animTick) {
     const elemCfg = WUXING_PALETTE[tg.element] ?? WUXING_PALETTE[WuXing.WOOD];
     const polarityName = tg.polarity === Polarity.YANG ? "阳" : "阴";
     const floatY = Math.sin(animTick * 0.08) * 3;
     const boxY = centerY + floatY;
     ctx.save();
-    if (mode === "pixel") {
-      const ringRadius = 38;
-      ctx.strokeStyle = "#2d3748";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(centerX - ringRadius, boxY - ringRadius, ringRadius * 2, ringRadius * 2);
-      for (let i = 0; i < 4; i++) {
-        const angle = animTick * 0.06 + i * Math.PI / 2;
-        const px = centerX + Math.cos(angle) * 32;
-        const py = boxY + Math.sin(angle) * 32;
-        drawPixelRect(ctx, px - 2, py - 2, 4, 4, elemCfg.light);
-      }
-      const boxSize = 50;
-      drawPixelBox(
-        ctx,
-        centerX - boxSize / 2,
-        boxY - boxSize / 2,
-        boxSize,
-        boxSize,
-        "#171e2e",
-        elemCfg.main,
-        2
-      );
-      drawPixelRect(
-        ctx,
-        centerX - boxSize / 2 + 4,
-        boxY - boxSize / 2 + 4,
-        boxSize - 8,
-        2,
-        elemCfg.light
-      );
-      ctx.fillStyle = "#0a0d14";
-      ctx.font = "bold 24px monospace";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(tg.name, centerX + 1, boxY + 1);
-      ctx.fillStyle = elemCfg.light;
-      ctx.fillText(tg.name, centerX, boxY);
-      const tagW = 46;
-      const tagH = 16;
-      const tagY = boxY + boxSize / 2 + 4;
-      drawPixelBox(ctx, centerX - tagW / 2, tagY, tagW, tagH, "#111827", elemCfg.dark, 1);
-      ctx.fillStyle = elemCfg.light;
-      ctx.font = "bold 10px monospace";
-      ctx.fillText(`${elemCfg.name}·${polarityName}`, centerX, tagY + tagH / 2);
+    const glowRadius = 46 + Math.sin(animTick * 0.08) * 5;
+    const grad = ctx.createRadialGradient(centerX, boxY, 8, centerX, boxY, glowRadius);
+    grad.addColorStop(0, elemCfg.light + "66");
+    grad.addColorStop(0.6, elemCfg.main + "22");
+    grad.addColorStop(1, "transparent");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(centerX, boxY, glowRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.save();
+    ctx.translate(centerX, boxY);
+    ctx.rotate(animTick * 0.02);
+    ctx.strokeStyle = elemCfg.main + "99";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, 36, 0, Math.PI * 1.5);
+    ctx.stroke();
+    ctx.strokeStyle = elemCfg.light + "cc";
+    ctx.beginPath();
+    ctx.arc(0, 0, 30, Math.PI, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = "#162032";
+    ctx.beginPath();
+    ctx.arc(centerX, boxY, 24, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = elemCfg.light;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.save();
+    ctx.shadowColor = elemCfg.light;
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 22px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(tg.name, centerX, boxY);
+    ctx.restore();
+    const tagW = 48;
+    const tagH = 18;
+    const tagY = boxY + 28;
+    ctx.fillStyle = "#111827dd";
+    ctx.strokeStyle = elemCfg.main;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(centerX - tagW / 2, tagY, tagW, tagH, 9);
     } else {
-      const glowRadius = 46 + Math.sin(animTick * 0.08) * 5;
-      const grad = ctx.createRadialGradient(centerX, boxY, 8, centerX, boxY, glowRadius);
-      grad.addColorStop(0, elemCfg.light + "66");
-      grad.addColorStop(0.6, elemCfg.main + "22");
-      grad.addColorStop(1, "transparent");
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(centerX, boxY, glowRadius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.save();
-      ctx.translate(centerX, boxY);
-      ctx.rotate(animTick * 0.02);
-      ctx.strokeStyle = elemCfg.main + "99";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(0, 0, 36, 0, Math.PI * 1.5);
-      ctx.stroke();
-      ctx.strokeStyle = elemCfg.light + "cc";
-      ctx.beginPath();
-      ctx.arc(0, 0, 30, Math.PI, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-      ctx.fillStyle = "#162032";
-      ctx.beginPath();
-      ctx.arc(centerX, boxY, 24, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = elemCfg.light;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.save();
-      ctx.shadowColor = elemCfg.light;
-      ctx.shadowBlur = 12;
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 22px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(tg.name, centerX, boxY);
-      ctx.restore();
-      const tagW = 48;
-      const tagH = 18;
-      const tagY = boxY + 28;
-      ctx.fillStyle = "#111827dd";
-      ctx.strokeStyle = elemCfg.main;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      if (ctx.roundRect) {
-        ctx.roundRect(centerX - tagW / 2, tagY, tagW, tagH, 9);
-      } else {
-        ctx.rect(centerX - tagW / 2, tagY, tagW, tagH);
-      }
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = elemCfg.light;
-      ctx.font = "bold 10px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(`${elemCfg.name}·${polarityName}`, centerX, tagY + tagH / 2);
+      ctx.rect(centerX - tagW / 2, tagY, tagW, tagH);
     }
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = elemCfg.light;
+    ctx.font = "bold 10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`${elemCfg.name}·${polarityName}`, centerX, tagY + tagH / 2);
     ctx.restore();
   }
   function drawImpactEffect(ctx, impact) {
     ctx.save();
-    const { x, y, radius, maxRadius, color, lightColor, alpha, mode } = impact;
+    const { x, y, radius, maxRadius, lightColor, alpha } = impact;
     ctx.globalAlpha = Math.max(0, alpha);
-    if (mode === "pixel") {
-      const sparkCount = 8;
-      const sparkDist = radius;
-      for (let i = 0; i < sparkCount; i++) {
-        const angle = i * Math.PI * 2 / sparkCount;
-        const sx = x + Math.cos(angle) * sparkDist;
-        const sy = y + Math.sin(angle) * sparkDist;
-        drawPixelRect(ctx, sx - 2, sy - 2, 4, 4, i % 2 === 0 ? lightColor : color);
-      }
-      if (radius < maxRadius * 0.4) {
-        drawPixelRect(ctx, x - 5, y - 5, 10, 10, "#ffffff");
-      }
-    } else {
-      ctx.strokeStyle = lightColor;
-      ctx.lineWidth = 3 * (1 - radius / maxRadius) + 1;
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.stroke();
-      const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
-      grad.addColorStop(0, lightColor + "44");
-      grad.addColorStop(1, "transparent");
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    ctx.strokeStyle = lightColor;
+    ctx.lineWidth = 3 * (1 - radius / maxRadius) + 1;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    grad.addColorStop(0, lightColor + "44");
+    grad.addColorStop(1, "transparent");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
   function getActionTargetElement(act, fallbackElement) {
@@ -1857,7 +1797,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     return act.targetElement ?? act.element ?? srcElem;
   }
-  function formatActionButton(act, isAutoAbsorb = false) {
+  function formatActionButton(act) {
     let label = "";
     let subLabel = "";
     let color = "#63b3ed";
@@ -1866,60 +1806,60 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     const srcName = WUXING_PALETTE[srcElem]?.name ?? "";
     switch (act.actionType) {
       case ActionType.AUTO: {
-        label = isAutoAbsorb ? "【自动吸纳】" : "【吸纳】";
-        subLabel = isAutoAbsorb ? "天干能量自动吸纳中（点击可立即吸纳）" : "天干能量吸纳（充盈虚空/修复道损）";
+        label = "【吸纳】";
+        subLabel = "天干能量吸纳（充盈虚空/修复道损）";
         color = "#68d391";
         break;
       }
       case ActionType.CONVERT: {
-        label = isAutoAbsorb ? "【自动调息】" : "【调息】";
-        subLabel = isAutoAbsorb ? `转同属${act.polarity === Polarity.YANG ? "阳" : "阴"}（点击立即调息）` : `转同属${act.polarity === Polarity.YANG ? "阳" : "阴"}`;
+        label = "【调息】";
+        subLabel = `转同属${act.polarity === Polarity.YANG ? "阳" : "阴"}`;
         color = "#63b3ed";
         break;
       }
       case ActionType.TRANS: {
-        label = isAutoAbsorb ? "【自动化气】" : "【化】";
+        label = "【化】";
         const targetElem = getActionTargetElement(act);
         const targetName = WUXING_PALETTE[targetElem]?.name ?? "";
-        subLabel = isAutoAbsorb ? `生${targetName}(${act.polarity === Polarity.YANG ? "阳" : "阴"})+1（点击立即化气）` : `生${targetName}(${act.polarity === Polarity.YANG ? "阳" : "阴"})+1`;
+        subLabel = `生${targetName}(${act.polarity === Polarity.YANG ? "阳" : "阴"})+1`;
         color = "#4fd1c5";
         break;
       }
       case ActionType.ATK: {
-        label = isAutoAbsorb ? "【自动击破】" : "【破】";
+        label = "【破】";
         const targetElem = getActionTargetElement(act);
         const targetName = WUXING_PALETTE[targetElem]?.name ?? "";
-        subLabel = isAutoAbsorb ? `克敌${targetName}(${act.polarity === Polarity.YANG ? "阳" : "阴"})-1（点击立即击破）` : `克敌${targetName}(${act.polarity === Polarity.YANG ? "阳" : "阴"})-1`;
+        subLabel = `克敌${targetName}(${act.polarity === Polarity.YANG ? "阳" : "阴"})-1`;
         color = "#fc8181";
         break;
       }
       case ActionType.BURST: {
-        label = isAutoAbsorb ? "【自动强化】" : "【强化】";
+        label = "【强化】";
         const targetElem = getActionTargetElement(act);
         const targetName = WUXING_PALETTE[targetElem]?.name ?? "";
-        subLabel = isAutoAbsorb ? `消耗${srcName}·生${targetName}+2（点击立即强化）` : `消耗${srcName}·生${targetName}+2`;
+        subLabel = `消耗${srcName}·生${targetName}+2`;
         color = "#f6e05e";
         isBurst = true;
         break;
       }
       case ActionType.BURST_ATK: {
-        label = isAutoAbsorb ? "【自动强破】" : "【强破】";
+        label = "【强破】";
         const targetElem = getActionTargetElement(act);
         const targetName = WUXING_PALETTE[targetElem]?.name ?? "";
-        subLabel = isAutoAbsorb ? `消耗${srcName}·克${targetName}-2（点击立即强破）` : `消耗${srcName}·克${targetName}-2`;
+        subLabel = `消耗${srcName}·克${targetName}-2`;
         color = "#f56565";
         isBurst = true;
         break;
       }
       case ActionType.DISSIPATE: {
-        label = isAutoAbsorb ? "【亢极散气】" : "【散气】";
-        subLabel = isAutoAbsorb ? "亢极满溢自动散气中（点击立即散气）" : `天道满溢则亏·${act.polarity === Polarity.YANG ? "阳" : "阴"}回落至加持(-1)`;
+        label = "【散气】";
+        subLabel = `天道满溢则亏·${act.polarity === Polarity.YANG ? "阳" : "阴"}回落至加持(-1)`;
         color = "#e2e8f0";
         break;
       }
       case ActionType.PASS: {
         label = "【消散】";
-        subLabel = isAutoAbsorb ? "无有效动作·消散过牌中（点击立即消散）" : "无有效动作·消散过牌交接回合";
+        subLabel = "无有效动作·消散过牌交接回合";
         color = "#a0aec0";
         break;
       }
@@ -2145,6 +2085,23 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
     }
   }
+  const FULL_WIDTH_RATIO = 1.2;
+  const HALF_WIDTH_RATIO = 0.6;
+  function isFullWidth(char) {
+    return (char.codePointAt(0) ?? 0) >= 11904;
+  }
+  function estimateTextWidth(text, fontSize) {
+    let fullWidthCount = 0;
+    let totalCount = 0;
+    for (const char of text) {
+      totalCount += 1;
+      if (isFullWidth(char)) {
+        fullWidthCount += 1;
+      }
+    }
+    const halfWidthCount = totalCount - fullWidthCount;
+    return (fullWidthCount * FULL_WIDTH_RATIO + halfWidthCount * HALF_WIDTH_RATIO) * fontSize;
+  }
   const PADDING_X = 12;
   const PADDING_Y = 8;
   const LABEL_FONT_SIZE = 14;
@@ -2263,25 +2220,17 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
   }
   function autoWidth(label, subLabel) {
-    const contentWidth = Math.max(
-      measureText(label, LABEL_FONT_SIZE),
-      measureText(subLabel, SUB_LABEL_FONT_SIZE)
+    const contentWidth = Math.ceil(
+      Math.max(
+        estimateTextWidth(label, LABEL_FONT_SIZE),
+        estimateTextWidth(subLabel, SUB_LABEL_FONT_SIZE)
+      )
     );
     return Math.max(MIN_WIDTH, PADDING_X * 2 + contentWidth);
   }
   function autoHeight(subLabel) {
     const lines = subLabel === "" ? LABEL_LINE_HEIGHT : LABEL_LINE_HEIGHT + SUB_LABEL_LINE_HEIGHT;
     return PADDING_Y * 2 + lines;
-  }
-  function measureText(text, fontSize) {
-    let width = 0;
-    for (const char of text) {
-      width += isFullWidth$1(char) ? fontSize : fontSize / 2;
-    }
-    return width;
-  }
-  function isFullWidth$1(char) {
-    return (char.codePointAt(0) ?? 0) >= 11904;
   }
   const DEFAULT_MAX_COLUMNS = 2;
   const DEFAULT_GAP_X = 12;
@@ -2498,10 +2447,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     update(board) {
       this._board = board;
       this._rebuild();
-    }
-    /** 从只读 `GameState` 快照中取指定玩家的棋盘并投影。 */
-    updateFromState(state, player) {
-      this.update(state.players[player].board);
     }
     _rebuild() {
       this._elements.length = 0;
@@ -2740,7 +2685,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     constructor(options) {
       super();
       __publicField(this, "_width");
-      __publicField(this, "_height");
       __publicField(this, "_safeTop");
       __publicField(this, "_round", 0);
       __publicField(this, "_maxRounds", 0);
@@ -2758,12 +2702,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       /** 头像呼吸动画的累积时间（秒）。 */
       __publicField(this, "_tick", 0);
       this._width = options.width;
-      this._height = options.height;
       this._safeTop = options.safeTop ?? 24;
-    }
-    /** 当前视口尺寸（投影与安全区自适应的入参）。 */
-    get viewport() {
-      return { width: this._width, height: this._height };
     }
     /** 回合数（未投影时为 0）。 */
     get round() {
@@ -2802,9 +2741,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this._scores = { P1: state.players.P1.score, P2: state.players.P2.score };
     }
     /** 视口自适应（安全区与宽度变化时调用）。 */
-    resize(width, height, safeTop) {
+    resize(width, safeTop) {
       this._width = width;
-      this._height = height;
       this._safeTop = safeTop ?? this._safeTop;
     }
     /** 表情反馈：`holdSeconds` 秒后自动回落待机；重复触发会重新计时。 */
@@ -2966,13 +2904,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
   }
   const PLAYER_IDS = ["P1", "P2"];
-  function estimateTextWidth(text, fontSize) {
-    let width = 0;
-    for (const char of text) {
-      width += isFullWidth(char) ? fontSize * 1.2 : fontSize * 0.6;
-    }
-    return width;
-  }
   function wrapText(text, maxWidth, fontSize, maxLines) {
     if (text === "") {
       return [];
@@ -3009,9 +2940,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       chars.pop();
     }
     return `${chars.join("")}…`;
-  }
-  function isFullWidth(char) {
-    return (char.codePointAt(0) ?? 0) >= 11904;
   }
   const DEFAULT_ENTRANCE_DURATION = 0.44;
   const DEFAULT_FLIGHT_DURATION = 0.55;
@@ -3059,13 +2987,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.entranceDuration = options.entranceDuration ?? DEFAULT_ENTRANCE_DURATION;
       this.flightDuration = options.flightDuration ?? DEFAULT_FLIGHT_DURATION;
       this.impactDuration = options.impactDuration ?? DEFAULT_IMPACT_DURATION;
-      const mode = options.mode ?? "flow";
-      this.rune = new RuneNode(mode);
+      this.rune = new RuneNode();
       this.rune.x = this.centerX;
       this.rune.y = this.centerY;
       this.rune.visible = false;
       this.addChild(this.rune);
-      this.ripple = new ImpactNode(mode);
+      this.ripple = new ImpactNode();
       this.ripple.visible = false;
       this.addChild(this.ripple);
     }
@@ -3199,7 +3126,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.ripple.x = targetX;
       this.ripple.y = targetY;
       this.ripple.maxRadius = IMPACT_MAX_RADIUS;
-      this.ripple.color = palette.main;
       this.ripple.lightColor = palette.light;
       this.ripple.visible = true;
       return new Tween(
@@ -3236,14 +3162,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
   }
   class RuneNode extends Node {
-    constructor(mode) {
-      super();
+    constructor() {
+      super(...arguments);
       __publicField(this, "tianGan", null);
       __publicField(this, "haloStyle", "corona");
       /** 动画帧计数，交给 `drawCenterTianGanRune` 驱动呼吸与旋转。 */
       __publicField(this, "tick", 0);
-      __publicField(this, "mode");
-      this.mode = mode;
     }
     renderSelf(ctx) {
       const tianGan = this.tianGan;
@@ -3256,7 +3180,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       } else {
         this.drawMoonlight(ctx, palette.light);
       }
-      drawCenterTianGanRune(ctx, 0, 0, tianGan, this.mode, this.tick);
+      drawCenterTianGanRune(ctx, 0, 0, tianGan, this.tick);
     }
     /** 金乌日冕：暖金色放射日珥 + 随呼吸胀缩的光晕。 */
     drawCorona(ctx, elementLight) {
@@ -3299,14 +3223,11 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
   }
   class ImpactNode extends Node {
-    constructor(mode) {
-      super();
+    constructor() {
+      super(...arguments);
       __publicField(this, "radius", 0);
       __publicField(this, "maxRadius", IMPACT_MAX_RADIUS);
-      __publicField(this, "color", "#ffffff");
       __publicField(this, "lightColor", "#ffffff");
-      __publicField(this, "mode");
-      this.mode = mode;
     }
     renderSelf(ctx) {
       if (this.radius <= 0) {
@@ -3317,11 +3238,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         y: 0,
         radius: this.radius,
         maxRadius: this.maxRadius,
-        color: this.color,
         lightColor: this.lightColor,
         // 绘制例程直接赋值 `globalAlpha`，这里把节点自身的淡出值传进去。
-        alpha: this.alpha,
-        mode: this.mode
+        alpha: this.alpha
       });
     }
   }
@@ -3382,7 +3301,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "_turnManager");
       __publicField(this, "strategy");
       __publicField(this, "rules");
-      __publicField(this, "animationMode");
       __publicField(this, "autoExecuteDelay");
       __publicField(this, "aiThinkDelay");
       __publicField(this, "expressionHold");
@@ -3415,7 +3333,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.safeTop = options.safeTop ?? DEFAULT_SAFE_TOP;
       this.safeBottom = options.safeBottom ?? DEFAULT_SAFE_BOTTOM;
       this.rules = options.rules ?? {};
-      this.animationMode = options.animationMode ?? "flow";
       this.autoExecuteDelay = options.autoExecuteDelay ?? DEFAULT_AUTO_EXECUTE_DELAY;
       this.aiThinkDelay = options.aiThinkDelay ?? DEFAULT_AI_THINK_DELAY;
       this.expressionHold = options.expressionHold ?? DEFAULT_EXPRESSION_HOLD;
@@ -3432,7 +3349,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.runeFlight = this.buildRuneFlight();
       this.characters = new CharacterView({
         width: this.width,
-        height: this.height,
         safeTop: this.safeTop
       });
       this.actionBar = this.buildActionBar(this._turnManager);
@@ -3461,7 +3377,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.safeTop = safeTop ?? this.safeTop;
       this.safeBottom = safeBottom ?? this.safeBottom;
       this.board.resize(width, height);
-      this.characters.resize(width, height, this.safeTop);
+      this.characters.resize(width, this.safeTop);
       this.actionBar.x = ACTION_BAR_MARGIN;
       this.actionBar.y = this.actionBarY();
       if (this._phase === "idle" || this._phase === "game-over") {
@@ -3731,7 +3647,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         board: this.board,
         centerX: this.width / 2,
         centerY: this.height / 2,
-        mode: this.animationMode,
         entranceDuration: this.entranceDuration,
         flightDuration: this.flightDuration,
         impactDuration: this.impactDuration
