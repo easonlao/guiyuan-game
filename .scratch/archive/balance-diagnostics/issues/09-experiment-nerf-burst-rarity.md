@@ -2,8 +2,7 @@
 
 **Blocked by:** 08 诊断报告结论
 
-**Status:** ready-for-agent
-
+**Status:** resolved
 ---
 
 ## Agent Brief

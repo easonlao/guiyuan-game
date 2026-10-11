@@ -4,8 +4,7 @@
 
 **Blocked by:** 005
 
-**Status:** ready-for-agent
-
+**Status:** wontfix
 ## Question
 
 如何将 `legacy/` 中的启发式打分与策略评估重构为纯 TS 引擎，并构建一个纯文本/ASCII 棋盘回放器作为 Mock 消费者，以此在脱离 Cocos 的前提下验证事件流的完备性与对局观感？

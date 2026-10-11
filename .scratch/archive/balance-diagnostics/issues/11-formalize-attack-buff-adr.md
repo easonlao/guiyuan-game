@@ -2,8 +2,7 @@
 
 **Blocked by:** 10 实验结论验证通过
 
-**Status:** ready-for-human
-
+**Status:** resolved
 ---
 
 ## Agent Brief
