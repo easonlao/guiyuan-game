@@ -46,6 +46,7 @@
 * `refactor`: 重构代码（不改变功能，仅优化内部实现）
 * `test`: 新增或修改测试用例（如 Vitest 或 Headless Match 脚本）
 * `docs`: 文档变更（修改 MD 文件、注释等）
+* `style`: 纯格式化，不改变语义（如 `npm run fmt` 的结果）
 * `chore`: 构建过程或辅助工具的变动（如更新 npm 依赖）
 
 **示例：**

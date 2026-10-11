@@ -26,7 +26,7 @@
 
 - `package.json` 加 `packageManager: "npm@11.13.0"` 与 `engines.node: "^24.16.0"`；新增 `.npmrc`（`engine-strict=true`）让 `engines` 真正生效，`.nvmrc`（`24.16.0`）保留为人类精确 pin。
 - 装 `oxfmt@0.72.0`（devDependency），配置 `.oxfmtrc.json`（`singleQuote: true`，忽略生成的 `minigame/game.js`）。命名脚本 `npm run fmt`（就地写）与 `npm run fmt:check`（只检查、非零退出），覆盖 `src tests scripts` 与三个根配置文件，共 91 个文件。
-- 全仓按 oxfmt 格式化一次（74 个源文件 + 3 个根配置文件；纯格式改动，`typecheck` / `lint` / 728 用例均无变化）。
+- 全仓按 oxfmt 格式化一次（76 个文件：73 个源文件 + 3 个根配置文件；纯格式改动，`typecheck` / `lint` / 728 用例均无变化）。
 - `scripts/run-tests.mjs` 整体删除，`npm test` 改为 `vitest run`，直接读仓库里的 `vitest.config.ts`。`vitest.stryker.config.ts` 保留（`stryker.config.json` 引用，承载 Stryker 专属的 `hookTimeout` 与 `exclude`，理由见文件头注）。
 - `docs/HLD.md` §4.1 改写为「oxlint 检查 + oxfmt 格式化」并点名 `npm run lint` / `npm run fmt:check`；`CONTRIBUTING.md` §2.2 与 §5 同步加格式化一条。
 
@@ -46,7 +46,12 @@
 | `npm run typecheck`（tsc --noEmit） | 退出 0 |
 | `npm run check:deps`（depcruise） | 退出 0（46 modules / 130 dependencies） |
 | `npm test`（`vitest run`） | 39 文件 / 728 用例全绿 |
+| `npm run mutation:check`（全量报告 + 刷过的基线） | 退出 0（34 条存活/无覆盖均在基线内） |
+
+**格式化撞上 Stryker `next-line`（复核发现，已修）**：`// Stryker disable next-line` 禁用的是注释后那个 AST 节点**所在的行**。oxfmt 把 `ActionResolver.ts` 里 11 处超 100 列的目标行（9 个不可达 `return` 对象 + 2 个 `const sourceElement` 赋值）拆成多行，禁用落到错误的行上，目标突变体变成未禁用：全量跑从「Killed 957 / Survived 34 / NoCoverage 0」变成「Killed 954 / Survived 37 / NoCoverage 22」。修法是在这 11 处 Stryker 注释前加 `// oxfmt-ignore` 钉住不换行（`oxfmt` 支持该指令，实测 `// oxfmt-ignore` 后跟 `// Stryker disable next-line` 仍能同时生效）。修后重跑全量，指标恢复为 Killed 957 / Timeout 2 / Survived 34 / NoCoverage 0（与格式化前的文档快照一致）。这条约束已写进 `docs/MUTATION-TESTING.md` §3.1。
+
+**基线刷新**：格式化移动了行号，基线身份键 `{file, mutatorName, line, column, replacement}` 随之失效。全量重跑后 `npm run mutation:baseline` 重生成 `mutation-baseline.jsonl`：条目仍为 34 条，`git diff` 只有 29 处 `line`/`column` 位移，无任何 `file`/`mutatorName`/`replacement` 增删（脚本比对：added=0 / removed=0）。
 
 `engines` 生效证据：临时工程写 `engines.node: "^99.0.0"` + `.npmrc engine-strict=true`，`npm install --dry-run` 退出 1 并打印 `Required: {"node":"^99.0.0"} / Actual: v24.16.0`；本仓 `npm install`（Node 24.16.0 / npm 11.13.0）退出 0。
 
-干净克隆端到端（`git clone` 到 `/tmp`，HEAD `fbb45e5`）：克隆后 `core.hooksPath` 为空 → `npm install` 退出 0（Node 24.16.0 / npm 11.13.0，`engine-strict` 通过），`prepare` 把 `core.hooksPath` 设为 `.githooks`；`scripts/run-tests.mjs` 不存在；`npm run fmt:check` 退出 0（91 文件）、`npm run lint` 退出 0、`npm run typecheck` 退出 0、`npm test` 39 文件 / 728 用例全绿。
+干净克隆端到端（`git clone` 到 `/tmp`，在票的收尾提交上）：克隆后 `core.hooksPath` 为空 → `npm install` 退出 0（Node 24.16.0 / npm 11.13.0，`engine-strict` 通过），`prepare` 把 `core.hooksPath` 设为 `.githooks`；`scripts/run-tests.mjs` 不存在；`npm run fmt:check` 退出 0（91 文件）、`npm run lint` 退出 0、`npm run typecheck` 退出 0、`npm test` 39 文件 / 728 用例全绿。

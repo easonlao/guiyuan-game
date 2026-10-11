@@ -20,7 +20,7 @@
 - [10: `.scratch/archive` 按 feature 目录归位](issues/10-archive-normalization.md)：7 个根下散文件收进 `headless-strategy-evaluation/`、`balance-diagnostics/`、`core-engine/wayfinder/`；archive 根下不再有游离文件。
 - [11: 删除 `legacy/`](issues/11-legacy-removal.md)：反转 spec 的 Out of Scope（原写「删不得」）。旧 Web JS 资产无代码引用、联机届时重做，故整体删除并修掉 18 处文档引用；ADR 0003 文末追加勘误。
 - [02: 提交纪律](issues/02-commit-discipline.md)：`.githooks/commit-msg` 拦 `Co-Authored-By`，默认剥离放行、`COMMIT_MSG_MODE=fail` 判红；`prepare` 与 `npm run setup:hooks` 两道安装。
-- [03: 环境固化](issues/03-environment-pinning.md)：`engines` + `packageManager` + `.npmrc(engine-strict)` 声明并强制 Node/npm；装 oxfmt 并全仓格式化，`npm run fmt:check` 当门禁；删 `scripts/run-tests.mjs`（`/tmp` 符号链接机制随之删除），`npm test` = `vitest run` 直读 `vitest.config.ts`。
+- [03: 环境固化](issues/03-environment-pinning.md)：`engines` + `packageManager` 声明 Node/npm 版本（`.npmrc(engine-strict)` 强制 Node，npm 版本仅声明）；装 oxfmt 并全仓格式化，`npm run fmt:check` 当门禁（格式化会把 Stryker `next-line` 目标行拆行，11 处用 `// oxfmt-ignore` 钉住，并刷新 `mutation-baseline.jsonl` 行号）；删 `scripts/run-tests.mjs`（`/tmp` 符号链接机制随之删除），`npm test` = `vitest run` 直读 `vitest.config.ts`。
 
 ## Tickets & Frontier
 
