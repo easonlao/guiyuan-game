@@ -248,3 +248,20 @@ npm run lint
 - 计分字段清单有**完整性断言**兜底：`tests/core/dead-knob-census.test.ts` 的「完整性：PointsConfig 的每个声明字段都出现在 SCORING_KNOBS 清单中」把 `PointsConfig` 的声明字段全集（含可选字段，由 `Record<keyof PointsConfig, true>` 在 `npm run typecheck` 下强制与接口同步）与 `SCORING_KNOBS` 的顶层键做差集，差集非空即红并报出缺失键名。
 - 若把某个死参数接线（新机制），必须把它从「死参数」移到「活参数」，并让对应断言从「相等」翻转为「不等」——测试会强制这一变更被显式做出。
 - 本表只描述**读取关系**，不评价数值好坏；具体候选数值属于诊断票（08/09/10）。
+
+---
+
+## 8. 勘误（后补）：`GameManager` 已退场，游戏内入口改为 `GameScene`
+
+本节是后补勘误，**不改写**上文的历史结论（§2.1 / §2.4 / §4 的原文保持原样，读到时按本节口径理解）。
+
+- 上文提到的 `GameManager` / `src/minigame/game-manager.ts` 已随 `minigame-view-upgrade` 删除；
+  游戏内表现层的唯一入口改为 `GameScene`（`src/minigame/game-scene.ts`），它同样把 `rules`
+  交给 `createStrategy(BALANCED_WEIGHTS, { rules })`（`game-scene.ts` 构造函数）。
+- 因此 **§2.1 的「活路径」结论不变**：`RuleSwitches.isBoardOnly` 经策略构造器到达 `ActionEvaluator`
+  这条路仍然成立，只是走它的人从 `GameManager` 换成了 `GameScene`。
+- **§2.4 的 `GameManagerOptions` 表对应 `GameSceneOptions`**：`seed` / `initialState` / `prng` /
+  `rules` 四个参数同名保留（`GameSceneOptions` 另有一组纯表现层参数：视口、安全区与各段动效时长，
+  它们不参与 AI 估值与终局判定，不在本普查的判定口径内）。该表「结论」列逐条不变。
+- **§4 活参数清单**里那一行 `GameManagerOptions.{seed,initialState,prng,rules}` 现读作
+  `GameSceneOptions.{seed,initialState,prng,rules}`。

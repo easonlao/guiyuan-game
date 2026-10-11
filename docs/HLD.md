@@ -44,7 +44,7 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 #### 🟢 Layer 3: 视图与小游戏交付层 (View Layer)
 纯代码 Canvas 2D 微信小游戏环境（`src/minigame/` -> `minigame/`，对齐 ADR-0004 与 ADR-0005）。
 
-> **实现状态**：当前 `src/minigame/` 是单体命令式实现（`game-manager.ts` + `pixel-art.ts` + 手写触摸命中判定）。下文描述的轻量场景树/组件化架构是**目标架构（未实现）**，依据 ADR 0005 与在办 spec `.scratch/minigame-view-upgrade`（`status: ready-for-agent`）。
+> **实现状态**：轻量场景树/组件化架构**已落地**（对齐 ADR 0005）：`src/minigame/` 现由 `GameScene` 控制器与 `BoardView` / `ActionBarView` / `CharacterView` / `RuneFlightView` 四个视图组成，触控命中、按压反馈与补间动画分别由 `InputManager` / `Button` / `Tween` 承担；旧的单体命令式实现（`game-manager.ts` 与手写触摸命中判定）已删除，`pixel-art.ts` 只保留仍在用的绘制例程。
 *   **轻量场景树与组件化**：基于轻量纯 TS 场景树架构（`Node`、`Container`、`Button`、`Tween`、`InputManager`），摆脱逐像素点阵硬编码，实现自动化触控命中检测、按压微动与声明式补间动画。
 *   **模块化业务视图**：拆分为 `BoardView`（五行阵盘与生克连线）、`ActionBarView`（可选动作按钮面板）、`CharacterView`（角色化身与表情）以及 `RuneFlightView`（天干轨迹动效），由 `GameScene` 控制器对齐 `TurnManager` 状态进行纯数据驱动投影。
 *   **极速构建管线**：通过 Vite 构建单文件 `minigame/game.js`，Windows 微信开发者工具直连开发与实时仿真调试。
@@ -85,7 +85,7 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 交付时点、范围与验收标准归 `docs/SRS.md` §5，本节不复制。此处只记录**工程侧完成度**：
 
 *   **阶段一（已完成）**：纯 TS 核心计算逻辑、无头推演闭环、Vitest 全量覆盖。
-*   **阶段二（进行中）**：独立 `minigame/` 构建管线与刘海屏安全区适配；表现层重构见 §2 Layer 3 与 `.scratch/minigame-view-upgrade`。
+*   **阶段二（进行中）**：独立 `minigame/` 构建管线与刘海屏安全区适配；表现层场景树重构已落地（见 §2 Layer 3）。
 *   **阶段三**：音效与微粒子动画调优、微信开放平台测试号真机扫码与体验版发布。
 
 ---
