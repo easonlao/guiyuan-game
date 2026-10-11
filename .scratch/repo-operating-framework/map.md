@@ -20,14 +20,15 @@
 - [10: `.scratch/archive` 按 feature 目录归位](issues/10-archive-normalization.md)：7 个根下散文件收进 `headless-strategy-evaluation/`、`balance-diagnostics/`、`core-engine/wayfinder/`；archive 根下不再有游离文件。
 - [11: 删除 `legacy/`](issues/11-legacy-removal.md)：反转 spec 的 Out of Scope（原写「删不得」）。旧 Web JS 资产无代码引用、联机届时重做，故整体删除并修掉 18 处文档引用；ADR 0003 文末追加勘误。
 - [02: 提交纪律](issues/02-commit-discipline.md)：`.githooks/commit-msg` 拦 `Co-Authored-By`，默认剥离放行、`COMMIT_MSG_MODE=fail` 判红；`prepare` 与 `npm run setup:hooks` 两道安装。
+- [03: 环境固化](issues/03-environment-pinning.md)：`engines` + `packageManager` + `.npmrc(engine-strict)` 声明并强制 Node/npm；装 oxfmt 并全仓格式化，`npm run fmt:check` 当门禁；删 `scripts/run-tests.mjs`（`/tmp` 符号链接机制随之删除），`npm test` = `vitest run` 直读 `vitest.config.ts`。
 
 ## Tickets & Frontier
 
 - [x] [Spec](spec.md): 定下六层骨架、9 条票的切法与 8 条决定。
 - [x] [01: 版本库边界与任务层规格](issues/01-version-control-boundary.md)
 - [x] [02: 提交纪律](issues/02-commit-discipline.md)
-- [ ] [03: 环境固化](issues/03-environment-pinning.md) `[FRONTIER]`
-- [ ] [04: 验收命令分档](issues/04-verify-command-tiers.md) (Blocked by: 03)
+- [x] [03: 环境固化](issues/03-environment-pinning.md)
+- [ ] [04: 验收命令分档](issues/04-verify-command-tiers.md) `[FRONTIER]`
 - [ ] [05: CI 快链与手动里程碑](issues/05-ci-pipelines.md) (Blocked by: 04)
 - [ ] [06: 分区——无头推演搬出核心](issues/06-partition-core-vs-tools.md) (Blocked by: 04)
 - [ ] [07: 包边界——没声明就不能用](issues/07-package-boundary.md) (Blocked by: 06)
