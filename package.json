@@ -11,13 +11,13 @@
     "postinstall": "patch-package",
     "setup:hooks": "git config core.hooksPath .githooks",
     "prepare": "npm run --silent setup:hooks || true",
+    "check:quick": "npm run fmt:check && npm run lint && npm run check:deps",
+    "verify": "npm run check:quick && npm run typecheck && npm run test",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint src/core src/adapters tests/core",
+    "lint": "oxlint src/core src/adapters src/minigame tests/core scripts",
     "fmt": "oxfmt --write \"**/*.{ts,mts,cts,js,mjs,cjs}\"",
     "fmt:check": "oxfmt --check \"**/*.{ts,mts,cts,js,mjs,cjs}\"",
-    "check:lint": "oxlint src/core src/adapters tests/core",
-    "oxlint": "oxlint src/core src/adapters tests/core",
     "check:deps": "depcruise --config .dependency-cruiser.js src",
     "benchmark:headless": "npx tsx src/core/headless/HeadlessBenchmark.ts",
     "benchmark:experiment": "npx tsx src/core/headless/ExperimentRunner.ts",
@@ -33,8 +33,7 @@
     "mutation": "stryker run",
     "mutation:changed": "node scripts/mutation-changed.mjs",
     "mutation:baseline": "node scripts/mutation-baseline.mjs",
-    "mutation:check": "node scripts/mutation-check.mjs",
-    "stryker": "stryker run"
+    "mutation:check": "node scripts/mutation-check.mjs"
   },
   "devDependencies": {
     "@stryker-mutator/core": "^10.0.0",

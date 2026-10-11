@@ -34,6 +34,10 @@
 
 提交信息门禁见 `CONTRIBUTING.md` §3。
 
+## 验收命令
+
+内循环与收尾各一条命名脚本（`check:quick` / `verify`）；构成以 `package.json` 为真源，分档意图见 `docs/HLD.md` §4.4，工作流步骤见 `CONTRIBUTING.md` §5。
+
 ## Agent skills
 
 ### Issue tracker
