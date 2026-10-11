@@ -577,7 +577,7 @@ describe('GameScene：连线高亮 = 当前动作会走的路径（票 02）', (
   /** 当前点亮的连线，读作 `类型:起点->终点`。 */
   function activeLines(scene: GameScene): string[] {
     return scene.board.connections
-      .filter((line) => line.active)
+      .filter((line) => line.isActive)
       .map((line) => `${line.kind}:${line.from}->${line.to}`);
   }
 
@@ -981,6 +981,60 @@ describe('GameScene：归一庆祝由 node:stateChanged 触发', () => {
     });
     // 行动本身的表情（吸纳 -> 施法）照常，但不得升级成归一庆祝。
     expect(scene.characters.getExpression('P1')).not.toBe('celebrate');
+  });
+
+  it('已归一的节点再抬升一侧（1 -> 2）不重复庆祝', () => {
+    // 甲木（木·阳）与相生火都已归一 (1,1)：唯一候选【强化】——消耗木阴、把火阴侧 1 -> 2。
+    // 火节点早已归一，这一手不是「新达成归一」，不该再播庆祝。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: {
+          [WuXing.WOOD]: { yin: 1, yang: 1 },
+          [WuXing.FIRE]: { yin: 1, yang: 1 },
+        },
+        P2: { [WuXing.EARTH]: { yin: -1, yang: -1 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    scene.start();
+    const before = scene.turnManager.getState();
+    advanceUntil(scene, () => scene.turnManager.getState() !== before);
+
+    // 强化：木阴被消耗 (1 -> 0)，相生火阴侧 1 -> 2（火两侧仍均 ≥ 1，但没有「新归一」）。
+    const board = scene.turnManager.getState().players.P1.board;
+    expect(board[WuXing.WOOD]).toEqual({ yin: 0, yang: 1 });
+    expect(board[WuXing.FIRE]).toEqual({ yin: 2, yang: 1 });
+    expect(scene.characters.getExpression('P1')).toBe('cast');
+    expect(scene.characters.getExpression('P1')).not.toBe('celebrate');
+  });
+
+  it('等级下降（1 -> 0）不庆祝：这不是达成归一的时刻', () => {
+    // 甲木归一、P2 土阴侧点亮 (1,-1)：点【破】把土阴侧打回 0。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 1, yang: -1 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    const input = new InputManager(scene);
+    scene.start();
+    advance(scene, 0.15);
+
+    const atk = scene.actionBar.getButtons().find((button) => button.label === '【破】');
+    expect(atk).toBeDefined();
+    tapButton(input, atk as Button);
+    advanceUntil(
+      scene,
+      () => scene.turnManager.getState().players.P2.board[WuXing.EARTH].yin === 0,
+    );
+
+    expect(scene.turnManager.getState().players.P2.board[WuXing.EARTH].yin).toBe(0);
+    // 天道只播受击，不播庆祝。
+    expect(scene.characters.getExpression('P2')).toBe('hurt');
+    expect(scene.characters.getExpression('P2')).not.toBe('celebrate');
   });
 });
 

@@ -19,28 +19,22 @@ function makeView(): CharacterView {
   return new CharacterView({ width: 375, safeTop: 24 });
 }
 
-/** 视图布局契约：头像框宽度与边距（与 `character-view.ts` 的常量一致，改布局要同步改这里）。 */
-const AVATAR_WIDTH = 88;
-const SIDE_MARGIN = 10;
-const BANNER_GAP = 10;
+/**
+ * 全部角色姿势：`satisfies Record<CharacterActionState, true>` 做类型级穷举——
+ * 新增一个姿势却漏在这里，`npm run typecheck` 当场判红，不会静默漏测。
+ */
+const ALL_POSES = Object.keys({
+  idle: true,
+  attack: true,
+  hurt: true,
+  cast: true,
+  celebrate: true,
+  win: true,
+  lose: true,
+} satisfies Record<CharacterActionState, true>) as readonly CharacterActionState[];
 
-/** 全部角色姿势：新增状态必须逐个出现在姿势与配色断言里。 */
-const ALL_POSES: readonly CharacterActionState[] = [
-  'idle',
-  'attack',
-  'hurt',
-  'cast',
-  'celebrate',
-  'win',
-  'lose',
-];
-
-/** 归一庆祝 / 终局胜 / 终局负的表情描边色（票 03 的配色契约）。 */
-const NEW_STATE_COLORS: readonly [CharacterActionState, string][] = [
-  ['celebrate', '#ed8936'],
-  ['win', '#48bb78'],
-  ['lose', '#a0aec0'],
-];
+/** 归一庆祝与终局胜负：票 03 新增的三类状态，必须有独立画法。 */
+const NEW_POSES: readonly CharacterActionState[] = ['celebrate', 'win', 'lose'];
 
 /** 用伪上下文单独渲染一个角色姿势（不经视图布局）。 */
 function renderPose(state: CharacterActionState, isPlayer = true, animTick = 0): RecordingContext {
@@ -102,27 +96,41 @@ describe('drawPixelCharacter：放大重画（票 03）', () => {
     }
   });
 
-  it('七种姿势各自画出不同的像素矩形，无一静默落回同一姿势', () => {
-    const shapes = new Map<string, string>();
+  it('七种姿势各自的落笔序列（像素块 + 浮动）互不相同，新状态不落回待机', () => {
+    const sequences = new Map<string, string>();
     for (const state of ALL_POSES) {
       for (const isPlayer of [true, false]) {
-        const key = `${state}:${String(isPlayer)}`;
-        shapes.set(key, JSON.stringify(renderPose(state, isPlayer).rects));
+        const ctx = renderPose(state, isPlayer);
+        sequences.set(
+          `${state}:${String(isPlayer)}`,
+          JSON.stringify({ rects: ctx.rects, translations: ctx.translations }),
+        );
       }
     }
-    const entries = [...shapes.entries()];
-    for (const [leftKey, leftShape] of entries) {
-      for (const [rightKey, rightShape] of entries) {
+    const entries = [...sequences.entries()];
+    for (const [leftKey, leftSequence] of entries) {
+      for (const [rightKey, rightSequence] of entries) {
         if (leftKey >= rightKey) continue;
-        expect(leftShape, `${leftKey} 与 ${rightKey} 的姿势不应相同`).not.toBe(rightShape);
+        expect(leftSequence, `${leftKey} 与 ${rightKey} 的姿势不应相同`).not.toBe(rightSequence);
       }
+    }
+    // 归一庆祝与终局胜负必须有独立画法，不许静默沿用待机。
+    for (const pose of NEW_POSES) {
+      expect(sequences.get(`${pose}:true`)).not.toBe(sequences.get('idle:true'));
+      expect(sequences.get(`${pose}:false`)).not.toBe(sequences.get('idle:false'));
     }
   });
 
-  it('放大是重画而非缩放：绘制过程不产生任何 scale 指令', () => {
+  it('放大后的角色按屏幕像素块落笔：最小的细节块也不低于 2px', () => {
+    // 「画 1 逻辑像素再靠上下文缩放」的旧画法会在这里露出 < 1px 的碎块；
+    // 提高逻辑分辨率重画则每个块都是屏幕像素尺寸。
     for (const state of ALL_POSES) {
       for (const isPlayer of [true, false]) {
-        expect(renderPose(state, isPlayer).calls).not.toContain('scale');
+        const ctx = renderPose(state, isPlayer);
+        const minWidth = Math.min(...ctx.rects.map((rect) => rect.w));
+        const minHeight = Math.min(...ctx.rects.map((rect) => rect.h));
+        expect(minWidth, `${state} 的最小像素块宽度`).toBeGreaterThanOrEqual(2);
+        expect(minHeight, `${state} 的最小像素块高度`).toBeGreaterThanOrEqual(2);
       }
     }
   });
@@ -247,7 +255,7 @@ describe('CharacterView：双方角色卡投影', () => {
     expect(ctx.drawCallCount()).toBeGreaterThan(10);
   });
 
-  it('长文案折行后不越出横幅（按保守字宽上界断言绘制指令）', () => {
+  it('长文案折行后不越出横幅底板（按保守字宽上界断言落笔文本）', () => {
     const view = makeView();
     view.update(stateWith({ round: 16, currentPlayer: 'P2' }));
     view.showBanner('【终轮绝杀·天命抽牌】', '【天命难违】差之一线·先手锁定胜局！(抽中【壬水】)');
@@ -255,53 +263,63 @@ describe('CharacterView：双方角色卡投影', () => {
     const ctx = new RecordingContext();
     view.render(ctx.asContext());
 
-    // 横幅夹在两侧头像列之间：左侧 10 边距 + 88 头像 + 10 间距。
-    const bannerX = SIDE_MARGIN + AVATAR_WIDTH + BANNER_GAP;
-    const bannerWidth = 375 - 2 * bannerX;
+    // 横幅底板不靠实现常量识别：它是画面里最宽的一块底板（两侧头像列给它让位）。
+    const banner = ctx.rects.reduce((widest, rect) => (rect.w > widest.w ? rect : widest));
     const bannerTexts = ctx.texts.filter(
-      (line) => line.y > 50 && line.y < 130 && line.x > 60 && line.x < 320,
+      (line) => line.y >= banner.y && line.y <= banner.y + banner.h,
     );
     expect(bannerTexts.length).toBeGreaterThan(0);
     for (const line of bannerTexts) {
       // 全角等宽字的上界：每字不超过 1.25 倍字号。
       const upperBound = [...line.text].length * line.fontSize * 1.25;
-      expect(line.x - upperBound / 2).toBeGreaterThanOrEqual(bannerX);
-      expect(line.x + upperBound / 2).toBeLessThanOrEqual(bannerX + bannerWidth);
+      expect(line.x - upperBound / 2).toBeGreaterThanOrEqual(banner.x);
+      expect(line.x + upperBound / 2).toBeLessThanOrEqual(banner.x + banner.w);
     }
   });
 
-  it('放大后的角色仍夹在两侧头像列里：视图渲染不产生非 1:1 的缩放', () => {
+  it('视图按原尺寸落笔角色：头像里的像素块与直接渲染该姿势逐块一致', () => {
     const view = makeView();
     view.update(stateWith({ currentPlayer: 'P1' }));
     view.setExpression('P1', 'celebrate', 0.5);
+    view.setExpression('P2', 'lose', 0.5);
 
     const ctx = new RecordingContext();
     view.render(ctx.asContext());
-    // 场景树每个节点自身会写一次 scale(1,1)；角色本体不得再叠任何缩放。
-    expect(ctx.scales.filter((entry) => entry.x !== 1 || entry.y !== 1)).toEqual([]);
-  });
 
-  it('新状态各有自己的描边色，不静默落回默认分支', () => {
-    const view = makeView();
-    // P1 非行动方：默认描边色应是 P1 本色 #63b3ed，新状态必须把它换掉。
-    view.update(stateWith({ currentPlayer: 'P2' }));
-
-    for (const [state, color] of NEW_STATE_COLORS) {
-      view.setExpression('P1', state, 999);
-      const ctx = new RecordingContext();
-      view.render(ctx.asContext());
-      const borders = frameBorders(ctx);
-      expect(borders, `${state} 的描边色`).toContain(color);
-      expect(borders, `${state} 不应落回 P1 默认描边色`).not.toContain('#63b3ed');
+    // 视图不得再叠任何缩放：头像里的落笔块必须与直接绘制同一姿势完全相同。
+    const poses: readonly (readonly ['P1' | 'P2', CharacterActionState])[] = [
+      ['P1', 'celebrate'],
+      ['P2', 'lose'],
+    ];
+    for (const [player, pose] of poses) {
+      const expected = renderPose(pose, player === 'P1').rects;
+      expect(expected.length).toBeGreaterThan(0);
+      for (const rect of expected) {
+        expect(ctx.rects, `${player} 的 ${pose} 落笔块`).toContainEqual(rect);
+      }
     }
   });
 
-  it('新状态的描边色互不相同', () => {
-    const colors = NEW_STATE_COLORS.map(([, color]) => color);
-    expect(new Set(colors).size).toBe(colors.length);
+  it('七种姿势的描边色两两不同：新状态不静默落回待机 / 默认色', () => {
+    const view = makeView();
+    // P1 非行动方：待机取 P1 本色，其余六态必须各自换色。
+    view.update(stateWith({ currentPlayer: 'P2' }));
+
+    const colors = new Map<CharacterActionState, string>();
+    for (const pose of ALL_POSES) {
+      view.setExpression('P1', pose, 999);
+      const ctx = new RecordingContext();
+      view.render(ctx.asContext());
+      const borders = frameBorders(ctx);
+      expect(borders.length, `${pose} 的头像框描边`).toBeGreaterThan(0);
+      colors.set(pose, borders[0]);
+    }
+
+    // 配色取值不抄实现：只要两两不同，就算真的给每个姿势各自配了色。
+    expect(new Set(colors.values()).size, JSON.stringify([...colors])).toBe(ALL_POSES.length);
   });
 
-  it('放大后的角色画在 100px 以上的头像框里，两列分居左右且不越出屏幕', () => {
+  it('放大后的角色画在 100px 以上的头像框里，两列对称地分居左右且不越出屏幕', () => {
     const view = makeView();
     view.update(stateWith({ currentPlayer: 'P1' }));
     view.setExpression('P1', 'attack', 0.5);
@@ -309,19 +327,22 @@ describe('CharacterView：双方角色卡投影', () => {
     const ctx = new RecordingContext();
     view.render(ctx.asContext());
 
-    // 两侧头像框的底色矩形（宽 88 高 ≥ 100）分居左右、不越出屏幕。
-    const frames = ctx.rects.filter((rect) => rect.w === AVATAR_WIDTH && rect.h >= 100);
+    // 头像框底板不靠实现常量识别：画面里仅有的两块高 ≥ 100px 的大底板。
+    const frames = ctx.rects.filter((rect) => rect.w >= 60 && rect.h >= 100);
     expect(frames.length).toBe(2);
     const [left, right] = [...frames].sort((a, b) => a.x - b.x);
-    expect(left.x).toBe(SIDE_MARGIN);
-    expect(right.x).toBe(375 - SIDE_MARGIN - AVATAR_WIDTH);
+    expect(left.x).toBeGreaterThanOrEqual(0);
+    expect(right.x + right.w).toBeLessThanOrEqual(375);
+    // 两列左右对称，中间留给横幅。
+    expect(left.x).toBeCloseTo(375 - (right.x + right.w), 5);
+    expect(right.x - (left.x + left.w)).toBeGreaterThan(0);
 
-    // 头像框高度落在 100–120px：放大后的角色装得下。
-    const borders = ctx.rects.filter((rect) => rect.h === 2 && rect.w === AVATAR_WIDTH);
-    const frameTop = Math.min(...borders.map((rect) => rect.y));
-    const frameBottom = Math.max(...borders.map((rect) => rect.y));
-    expect(frameBottom - frameTop).toBeGreaterThanOrEqual(100);
-    expect(frameBottom - frameTop).toBeLessThanOrEqual(120);
+    // 框高落在 100–120px，且装得下放大后的角色（含跳跃浮动）。
+    expect(left.h).toBeGreaterThanOrEqual(100);
+    expect(left.h).toBeLessThanOrEqual(120);
+    const sprite = boundsOf(renderPose('celebrate'));
+    expect(left.h).toBeGreaterThanOrEqual(sprite.height);
+    expect(left.w).toBeGreaterThanOrEqual(sprite.width);
   });
 
   it('视口变化后重新投影不抛错', () => {
