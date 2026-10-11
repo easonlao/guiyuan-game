@@ -13,6 +13,7 @@
 
 import { RuleSwitches } from '../core/logic/ActionCandidates.js';
 import { TurnManager } from '../core/logic/TurnManager.js';
+import { isNodeGuiYi } from '../core/logic/State.js';
 import { BALANCED_WEIGHTS, createStrategy } from '../core/ai/Strategy.js';
 import { DecisionStrategy } from '../core/ai/types.js';
 import { createPRNG, PRNG } from '../core/utils/prng.js';
@@ -27,6 +28,7 @@ import {
   WuXing,
 } from '../core/types/domain.js';
 import { formatActionButton, getActionTargetElement } from './action-button-formatter.js';
+import { isAttackAction } from './action-semantics.js';
 import { drawPixelRect, WUXING_PALETTE } from './pixel-art.js';
 import { Container } from './scene/container.js';
 import { EASINGS, Tween } from './scene/tween.js';
@@ -452,8 +454,7 @@ export class GameScene extends Container {
     const state = this._turnManager.getState();
     const actor = event.player;
     const target = resolveActionTarget(action, event.actionType, actor, this._turnManager);
-    const isAttack =
-      event.actionType === ActionType.ATK || event.actionType === ActionType.BURST_ATK;
+    const isAttack = isAttackAction(event.actionType);
 
     this.hideActionBar();
     this.characters.update(state, { isExtraTurn: this._turnManager.isExtraTurnActive() });
@@ -475,7 +476,7 @@ export class GameScene extends Container {
   }
 
   /**
-   * `node:stateChanged`：某侧由 <1 变 ≥1 且同一节点对侧已 ≥1 时该节点达成归一——
+   * `node:stateChanged`：某侧由 <1 变 ≥1 且该节点达成归一（核心真源 `isNodeGuiYi`）——
    * 按归属方在对应角色上播庆祝（票 03）。事件派发时 `turnManager.getState()` 已是新状态。
    */
   private handleNodeStateChanged(event: {
@@ -489,8 +490,7 @@ export class GameScene extends Container {
       return;
     }
     const node = this._turnManager.getState().players[event.player].board[event.element];
-    const otherSide = event.polarity === Polarity.YIN ? node.yang : node.yin;
-    if (otherSide >= 1) {
+    if (isNodeGuiYi(node)) {
       this.characters.setExpression(event.player, 'celebrate', this.celebrateHold);
     }
   }
@@ -728,6 +728,6 @@ function resolveActionTarget(
       ? (tianGan?.element ?? WuXing.WOOD)
       : getActionTargetElement(action, tianGan?.element);
   const polarity = action?.polarity ?? tianGan?.polarity ?? Polarity.YANG;
-  const isAttack = actionType === ActionType.ATK || actionType === ActionType.BURST_ATK;
+  const isAttack = isAttackAction(actionType);
   return { player: isAttack ? opponentOf(actor) : actor, element, polarity };
 }
