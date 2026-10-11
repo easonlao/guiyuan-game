@@ -1,10 +1,12 @@
 # 06: 分区——无头推演搬出核心
 
+**Type:** task
+
 **What to build:** 无头推演与命令行入口不再和游戏核心住一起；手机包不可能再被拖进 Node 内建模块。
 
 **Blocked by:** 04（需要一份绿的验收来定义「改之前是绿的」）
 
-**Status:** done
+**Status:** resolved
 
 - [x] 无头推演与 CLI 入口移出核心目录，成为独立的一块
 - [x] 核心的公开出口不再导出无头推演
@@ -22,7 +24,7 @@
 - ADR 的判据要写清：**独立消费者 / 独立运行时**。`logic`/`ai`/`types`/`utils`/`adapters` 最后都打成一个产物，它们之间加边界只买到命名空间。
 - 参考仓库自己撞过「手写规则巡航不到」的坑（它的 `packages/tools` 在 `dist` 里没有 `.js`，depcruise 看不见），后来补了第二道门禁——这是本仓库为什么要往声明式走（见 07）的论据，写进 ADR。
 
-**验证记录：**
+## Answer
 
 - **改之前是绿的**（`9dd7982`）：`npm run verify` 通过，39 文件 / 728 用例；`check:deps` 46 modules / 130 dependencies。
 - **搬运**：`git mv src/core/headless tools`；`src/core/index.ts` 删掉 `export * from './headless/index.js'`。`tools/*.ts` 对核心的相对引用由 `../types|logic|ai|utils/` 改为 `../src/core/...`（`tools/` 与 `src/` 同级）。

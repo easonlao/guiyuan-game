@@ -4,7 +4,7 @@
 
 **Blocked by:** 无
 
-**Status:** closed
+**Status:** resolved
 
 **背景证据：** 子代理复跑 small-run 批量（种子 202603/202604）：输方恒为 500；胜方 baseline 2353/2196/672，no-rarity 1210/1100/600，combined 950/860/600。计分路径：`BatchComparison.js:71 → HeadlessMatch.js:311,329 → ScoreCalculator.js:30,79,136`、`StateScoreRecorder.js:13`。
 

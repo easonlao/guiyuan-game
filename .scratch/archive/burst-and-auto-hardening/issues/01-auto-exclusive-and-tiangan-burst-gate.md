@@ -8,7 +8,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** completed
+**Status:** resolved
 
 - [x] 当天干对应侧为虚空 (0) 或道损 (-1) 时，`getAvailableActions` 返回且仅返回一个 `AUTO` 动作，排斥所有其他选项。
 - [x] 仅当当前抽取天干对应五行节点满足 `isNodeGuiYi(node)` 时，才允许生成该节点的 `BURST` 与 `BURST_ATK`。

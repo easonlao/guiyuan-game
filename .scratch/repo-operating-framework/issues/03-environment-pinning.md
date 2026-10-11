@@ -1,10 +1,12 @@
 # 03: 环境固化
 
+**Type:** task
+
 **What to build:** 一台新机器按文档装出来的环境与现在一致；代码有统一的格式化，diff 里不混进风格噪声。
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 - [x] `package.json` 声明 Node 版本要求与包管理器版本（现在两者都没有，`.nvmrc` 写了一个没人强制）
 - [x] 装上 formatter，并有一条**命名脚本**可检查（不只是「能跑」，是能当门禁用）
@@ -20,7 +22,7 @@
 - 合并时以 `run-tests.mjs` 里那份的实际行为为准（它带 `include: ['tests/core/**/*.test.ts']`、`environment: 'node'`、`globals: true`），别只看根目录那份就以为等价。
 - `/tmp` 符号链接机制是为了在只读沙箱环境下给 Vitest 准备可写临时目录。删之前先确认当前环境还需不需要。
 
-**验证记录：**
+## Answer
 
 实现：
 

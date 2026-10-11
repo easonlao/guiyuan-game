@@ -15,7 +15,7 @@
 
 **Blocked by:** 03 动作价值普查
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 每个候选都跑完四条验收标准，一次跑完并同时报告。证据：`src/core/headless/CandidateValidation.ts`（`cd78f01`）+ 报告 `docs/headless/candidate-search.md`；`npm run benchmark:candidate-validation`。
 - [x] 候选让压制的相对回报随盘面翻转（说明它凭什么做到），而不是一律调低。证据：候选 A 攻击状态分 × `0.3 + 0.9 × (对手归一节点数/5)`（`665d9ab`）；盘面依赖项有清晰过零，非全局降分。

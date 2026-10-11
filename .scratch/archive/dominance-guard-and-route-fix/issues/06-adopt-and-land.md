@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 候选规则的有界搜索
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 生产计分与终局结算口径按候选改动更新。证据：`POINTS_CONFIG.ATTACK_PROGRESS_SCALE = { floor: 0.3, span: 0.9 }`（`62bad65`）；终局结算口径未变（候选 A 不涉及）。
 - [x] 复跑并**重设**护栏带——现有带描述的是改动前的现状，不是新游戏的目标值。证据：`tests/core/ai-evaluator-benchmark-guardrails.test.ts`（`b8e6cb1`）——归元率新锚点 90.40%，带 `[0.75,0.95]→[0.86,0.95]`；先手带 `[0.45,0.55]→[0.47,0.54]`。

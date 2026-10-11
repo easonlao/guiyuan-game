@@ -1,5 +1,7 @@
 # 03: 五行法盘视图与十阴阳节点状态渲染 (Pentagram BoardView & Yin-Yang Node Rendering)
 
+**Type:** task
+
 **What to build:** 实现五行法盘组件 `BoardView`。基于极坐标自适应排布金木水火土 5 个五行主印及外围 10 个阴阳槽位，实时响应 `TurnManager.getState()` 只读数据，呈现 -1（道损）、0（虚空）、1（点亮）、2（加持）以及“归一/亢极”高亮视觉效果，并绘制相生相克路径动态连线。
 
 **Blocked by:** 01: 极简场景树基座与触控调度 (Scene Graph Core & Input Dispatcher)

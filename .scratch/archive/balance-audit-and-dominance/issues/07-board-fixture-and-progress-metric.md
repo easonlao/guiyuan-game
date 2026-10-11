@@ -8,7 +8,7 @@
 
 **Blocked by:** 02 指标口径表与陷阱回归测试
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 盘面 fixture 构造器：以节点与阴阳等级为输入，返回完整游戏总状态。证据：`src/core/headless/BoardFixture.ts`（`b2a670a`，并入 `eb8c976`）。
 - [x] 盘面进度指标：给出「还差几次行动到五行归元」，口径写进指标口径表。证据：`countActionsToGuiYuan`；`docs/headless/metric-definitions.md`。

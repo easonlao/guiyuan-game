@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** done
+**Status:** resolved
 
 - [x] 活代码上的存活突变体清零或降到个位数（主要集中在中位态/攻击态的等级跃迁计分：`calculateTransitionPoints` 一带）
 - [x] 补的断言是"断言真实行为"，不是"为杀而杀"——若某个存活只能靠扭曲的断言杀死，说明它模拟的 bug 不值得抓，就地 disable 并写理由

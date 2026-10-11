@@ -10,7 +10,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 守卫从矩阵重算，校验结论声称的每一对占优都确实成立
 - [x] 结论与矩阵矛盾时拒绝输出，错误信息指出是哪一对、矩阵里的实际值是多少

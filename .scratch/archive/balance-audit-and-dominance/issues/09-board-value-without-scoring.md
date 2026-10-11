@@ -6,7 +6,7 @@
 
 **Blocked by:** 02 指标口径表与陷阱回归测试、06 策略族、实验运行器与对拼矩阵
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 用同一套策略族，在「计分轴关闭、只按盘面判优」的条件下重跑完整对拼矩阵（含座次平衡）。证据：`docs/headless/board-value-without-scoring.md`（`da3b4ba`，并入 `5f0ae6b`）；`benchmark:board-only`。
 - [x] 与现状对拼矩阵**逐格对照**，指出哪些格子的强弱关系发生翻转。证据：`docs/headless/board-value-without-scoring.md` 逐格对照表。

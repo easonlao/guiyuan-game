@@ -5,7 +5,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 核心计分配置中声明 `GUI_YI_MILESTONE: 60` 及终局道损扣分配置（-50 分/残留道损）。
 - [x] 动作解析器 (`ActionResolver`) 在执行任意合法动作后，检测己方归一节点增量，每新增 1 个归一节点即赋予 +60 分并累加到 `scoreDelta` 及玩家总分中。

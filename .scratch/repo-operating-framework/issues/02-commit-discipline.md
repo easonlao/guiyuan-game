@@ -1,10 +1,12 @@
 # 02: 提交纪律
 
+**Type:** task
+
 **What to build:** 提交信息里不再混进 `Co-Authored-By` 一类的 trailer；新克隆自动装上这道门禁，不靠人记得。
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 有一道提交信息门禁，拦 `Co-Authored-By` trailer。证据：`.githooks/commit-msg`（可执行）。
 - [x] 默认行为是**剥离并警告后放行**；有环境变量可切成**判红中止**（两种模式都要能验）。证据：`COMMIT_MSG_MODE` 默认 `strip`、取 `fail` 判红；四种组合见验证记录。
@@ -20,7 +22,7 @@
 - 绕过方式（`--no-verify`）不要写进文档的显眼位置。
 - **历史改写不在本票范围内**（`git filter-repo` 是破坏性操作，见 spec 的 Out of Scope）。
 
-**验证记录：**
+## Answer
 
 实现：`.githooks/commit-msg`（`COMMIT_MSG_MODE` 默认 `strip`）；`package.json` 加 `setup:hooks`（显式）与 `prepare`（装依赖时自动）；规则与安装写在 `CONTRIBUTING.md` §3，`AGENTS.md` 只留指针。
 

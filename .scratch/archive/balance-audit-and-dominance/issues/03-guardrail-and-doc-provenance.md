@@ -10,7 +10,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 逐条列出护栏与关键规格，每项给出出处、量测口径（回合单位、AI 类型、种子数、样本量）、是否仍然有效。证据：`docs/headless/guardrail-provenance.md`（`d0d875e`，并入 `5acc57a`）。
 - [x] 标出互相冲突或**无法比较**的条目——「无法比较」本身必须写出来，否则读者会以为它们可比。证据：`docs/headless/guardrail-provenance.md` C1–C3。

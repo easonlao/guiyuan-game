@@ -11,7 +11,7 @@
 
 **Blocked by:** 04 注入链路验证
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 列出计分与规则中的全部可调参数。证据：`docs/headless/knob-census.md`（`78f86b6`，并入 `daf1c7c`）。
 - [x] 每个参数标注三项：AI 估值是否读取 / 终局判定是否读取 / 扰动后输出是否变化。证据：`docs/headless/knob-census.md`。

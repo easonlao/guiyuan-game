@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — 评估参数化
 
-**Status:** closed
+**Status:** resolved
 
 **背景证据：**
 - 正文第 1–4 节为静态字符串（`StrategyEvaluation.js:278-336`），锦标赛与次序诊断结果（L488-511）未被读取。实测 switchingAnalysis 三策略 meanOutcomeValue 均为 0.5。

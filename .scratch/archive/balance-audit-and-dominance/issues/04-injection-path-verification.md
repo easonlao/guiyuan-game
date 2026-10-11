@@ -6,7 +6,7 @@
 
 **Blocked by:** 01 无头推演可注入计分配置与规则开关
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 列出全部可注入点（计分配置、策略权重、规则开关、大回合上限、随机种子等）。证据：`64186d6`（并入 `1bd128a`）。
 - [x] 对每个注入点写一条断言：把该值改成一个刻意不同的值，必须能观察到至少一项输出指标变化。证据：`tests/core/injection-path-verification.test.ts`。

@@ -6,7 +6,9 @@
 
 **Status:** resolved
 
-**Resolution:** Added an immutable fixed-position extraction/diagnostic seam, runner-backed first-action enumeration, and complete paired seeded continuations with explicit scoring snapshots, terminal-value statistics, uncertainty, failure/budget accounting, and replay records. Frozen baseline fixtures cover tied, trailing-needs-disruption, near-limit, and extra-opportunity states. API contract: `docs/fixed-position-continuations.md`; focused tests: `tests/fixed-position-continuations.test.js`.
+## Answer
+
+Added an immutable fixed-position extraction/diagnostic seam, runner-backed first-action enumeration, and complete paired seeded continuations with explicit scoring snapshots, terminal-value statistics, uncertainty, failure/budget accounting, and replay records. Frozen baseline fixtures cover tied, trailing-needs-disruption, near-limit, and extra-opportunity states. API contract: `docs/fixed-position-continuations.md`; focused tests: `tests/fixed-position-continuations.test.js`.
 
 - [x] 从基线完整对局记录抽取并冻结可达局面，覆盖均势、一方领先另一方需干扰、临近回合上限三类；手工局面单独标为诊断样本。
 - [x] 保存局面身份、完整状态、当前玩家与天干、额外行动语义及可达性来源。

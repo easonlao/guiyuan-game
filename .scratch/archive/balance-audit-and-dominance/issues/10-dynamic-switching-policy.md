@@ -8,7 +8,7 @@
 
 **Blocked by:** 08 【破】的边际收益曲线、09 剥离计分后的盘面价值
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 动态策略的切换依据来自 08／09 的实测变量，并说明为什么选它。证据：`docs/headless/dynamic-switching-policy.md`（`8b7265b`，并入 `6689529`）。
 - [x] 与六个静态预设做完整对拼（含座次平衡），给出胜率矩阵。证据：`docs/headless/dynamic-switching-policy.md`；`benchmark:dynamic-switching`。

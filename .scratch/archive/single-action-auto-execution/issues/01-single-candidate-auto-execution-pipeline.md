@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 升级 `GameManager` 中的单动作判定：将原先限定于 AUTO/DISSIPATE/PASS 的 `isSingleAuto` 泛化为当 `actions.length === 1` 时全局激活倒计时调度。
 - [x] 升级 `formatActionButton` 与 Banner 播报：针对常规动作（ATK/TRANS/CONVERT/BURST/BURST_ATK）在自动流转期间展示匹配的倒计时按钮文案（如【自动击破】、【自动化气】、【自动调息】）与战报 SubText（如“唯一机缘·破”、“势在必行”）。

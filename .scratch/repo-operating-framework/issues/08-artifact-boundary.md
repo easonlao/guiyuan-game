@@ -1,10 +1,12 @@
 # 08: 产物边界
 
+**Type:** task
+
 **What to build:** 发出去的包和源码对得上，不会悄悄分叉。
 
 **Blocked by:** 05（对账检查要挂在流水线里才有意义）
 
-**Status:** closed
+**Status:** resolved
 
 - [x] `minigame/game.js` 的入库决定写成 ADR，**理由写真实的那条**
 - [x] 加一条对账检查：重新构建后与入库产物逐字节比对，不一致即红
@@ -19,7 +21,7 @@
 - **`dist/` 陷阱**：`.gitignore` 里那条是无锚点的 `dist/`，产物落进**任何层级**的 `dist/` 都会静默消失。参考仓库的 ADR-0007 专门记过这个坑。落点判定要写死，不能只靠 `.gitignore`。
 - `scripts/build-minigame.mjs` 现在是 `outDir: 'minigame'`，构建产物可直接 diff（未压缩），这是对账可行的前提，别顺手打开压缩。
 
-**验证记录：**
+## Answer
 
 实现：
 

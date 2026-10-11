@@ -10,7 +10,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 列出测量台输出的全部指标，逐个给出定义、算法与失效局面。证据：`src/core/headless/Metrics.ts`（`5676065`，并入 `b64b2f1`）。
 - [x] 三个已确认陷阱各写成一条回归测试，并**先证明它能抓到对应的旧错误**——用未修复的输入必须让它失败。证据：`tests/core/metric-definitions.test.ts`（3 traps）。

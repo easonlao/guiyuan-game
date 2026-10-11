@@ -4,7 +4,7 @@
 
 **Blocked by:** 无（建议在 01 之后执行）
 
-**Status:** closed
+**Status:** resolved
 
 **背景证据：** 评估默认 `maxTurns=12`（`scripts/headless-strategy-evaluation.js:19`、`StrategyEvaluation.js:396`），正式游戏 60（`src/js/state/StateManager.js:63`）；固定局面 `maxTurns=20`（`tests/fixtures/fixed-position-continuations/reachable-positions.js:38`）。只用种子 202603/202604（`StrategyEvaluation.js:119-131`）。锦标赛 `createInitialHeadlessState({maxTurns})` 未交换先手（`StrategyTournament.js:94`）。
 

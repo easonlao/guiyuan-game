@@ -13,7 +13,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 - [x] `isBoardTingPai` 判定收紧为盘面未点亮侧数严格等于 1。
 - [x] 当 P1 达成五行归元且 P2 差一侧听牌时，触发终轮天命揭牌决算，直接依据揭晓天干能否达成归元判定胜负，不进入 P2 常规操作回合。

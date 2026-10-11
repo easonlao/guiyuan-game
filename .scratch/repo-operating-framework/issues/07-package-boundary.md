@@ -1,10 +1,12 @@
 # 07: 包边界——没声明就不能用
 
+**Type:** task
+
 **What to build:** 跨区引用由模块解析器拦住，不靠手写规则。没声明就不能用。
 
 **Blocked by:** 06（得先有物理上分开的两块，才能给它们各发一张身份证）
 
-**Status:** done
+**Status:** resolved
 
 - [x] 两块区各有自己的包声明，用 workspaces 连起来
 - [x] 故意写一句**未声明**的跨区 import → 构建或类型检查失败
@@ -19,7 +21,7 @@
 - 包名与目录名要让不懂开发的人看懂；两块分别是「游戏核心（进手机包）」和「开发工具（只在你电脑上跑）」。
 - 边界规则与 06 加的那条是两回事，**都要留**：06 那条管路径，本票这条管声明。
 
-**验证记录：**
+## Answer
 
 - **包声明与拓扑**：`src/package.json` = `@guiyuan/game`（`exports: { "./*.js": "./*.ts" }`，把 `.js` 说明符映射到 `.ts` 源文件）；`tools/package.json` = `@guiyuan/devtools`（`dependencies: { "@guiyuan/game": "*" }`）；根 `package.json` 加 `"workspaces": ["src", "tools"]`。两块的定义与 `description` 见 `docs/HLD.md` §2「包边界」。
 - **解析形态**：`tsconfig.json` 的 `module` / `moduleResolution` 从 `ESNext` / `node` 改为 `nodenext`。`node16` / `nodenext` 与 `bundler` 都读包的 `exports` 字段；只有 `node16` / `nodenext` 强制相对导入写扩展名——正是「`src/minigame` 混写」会炸的那条，所以选 `nodenext`。

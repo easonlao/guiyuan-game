@@ -10,7 +10,7 @@
 
 **Blocked by:** 01 占优回归护栏、02 让占优守卫真的检测占优
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 追加勘误节，不改决策正文。证据：`docs/adr/0011-balance-route-fix-rules.md`「勘误与补充」（`46ff3fb`）。
 - [x] 记入口径依赖（道损口径下压制仍占优），并指明结论在哪个口径下成立。证据：同上 §1「口径依赖」。

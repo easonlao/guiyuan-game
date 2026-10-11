@@ -5,7 +5,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 核心状态层 (`State.ts`) 新增纯函数 `countLightedSides(board)` 计算盘面已点亮（≥1）侧数。
 - [x] 核心状态层新增纯函数 `isBoardTingPai(board)` 准确判定盘面是否处于听牌临界态（剩余未点亮侧数 ≤ 2）。

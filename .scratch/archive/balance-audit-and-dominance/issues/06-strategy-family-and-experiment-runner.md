@@ -12,7 +12,7 @@
 
 **Blocked by:** 01 无头推演可注入计分配置与规则开关、02 指标口径表与陷阱回归测试
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 声明式矩阵输入（策略 × 计分配置 × 规则模式），一条命令跑完。证据：`src/core/headless/ExperimentRunner.ts`（`b46bc1b`，并入 `dbe5449`）；`package.json` `benchmark:experiment`。
 - [x] 策略族含既有四预设、纯推进、纯压制、剥离计分策略。证据：`b46bc1b`；共 7 个策略。

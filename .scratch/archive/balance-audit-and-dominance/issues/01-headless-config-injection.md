@@ -6,7 +6,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 无头推演的单局入口与批量入口都能接受计分配置与规则开关。证据：`0e18bd9`（并入 `db44553`）。
 - [x] 默认值等于生产现状；不传时现有全部测试零改动通过。证据：`tests/core/headless-config-injection.test.ts`。

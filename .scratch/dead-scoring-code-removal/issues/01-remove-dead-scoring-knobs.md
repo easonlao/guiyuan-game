@@ -4,7 +4,7 @@
 
 **Blocked by:** None
 
-**Status:** done
+**Status:** resolved
 
 ## 背景
 

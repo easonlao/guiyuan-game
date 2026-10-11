@@ -36,7 +36,7 @@
 
 **Blocked by:** 02（工单 02 定下带值后才好对齐；实际实现应在 02 合入集成分支之后开始）
 
-**Status:** closed
+**Status:** resolved
 
 - [x] 护栏带只剩一个定义，live 测试改为引用它，不再硬编码字面量。证据：`e44a882` 新建 `src/core/headless/GuardrailBand.ts` 作为唯一定义，`CandidateValidation.ts` 与 live 测试改为 import；`433caf6` 让 live 测试与 CLI 都用共享常量。**评审后进一步收紧：`864cadf` 让 `GuardrailBand.ts` 导出共享谓词 `checkGuardrailBand(metrics)`，两个消费方都改为调用它，因此消费方里已经不存在任何与数字的比较**——漂移在结构上不再可能，而不只是被断言盯住。
 - [x] `GUARDRAIL_*` 对齐到 `[0.89, 0.95]` / `[0.47, 0.51]`，注释写清锚点、余量与要拦住的回退值。证据：`e44a882`，`GuardrailBand.ts` 逐界注释给出锚点（90.40% / 50.40%）、余量（−1.4pp / +4.6pp / −3.4pp / +0.6pp）与要拦住的回退（88.40% / 51.20%）；文件头说明「历史上两份副本值不同」的缺陷与唯一口径。`GUARDRAIL_HEAP_MAX_MB` 一并纳入（live 测试原本也硬编码了 15）。
