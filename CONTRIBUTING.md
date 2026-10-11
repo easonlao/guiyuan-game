@@ -29,6 +29,7 @@
 
 ### 2.2 工具链与静态检查 (Toolchain)
 * **oxlint / oxc**：我们使用 `oxlint` 进行极速的代码静态检查。代码在提交前必须无 Error。禁止滥用 `// @ts-ignore`。
+* **oxfmt**：统一格式化，消除 diff 里的风格噪声。`npm run fmt` 就地修复，`npm run fmt:check` 作门禁；配置见根目录 `.oxfmtrc.json`。
 * **TypeScript 严格模式**：必须保持 `"strict": true`，禁止隐式的 `any` 类型。
 
 ---
@@ -69,6 +70,6 @@
 
 1. **领取任务**：阅读对应的 Issue 或 `.scratch/` 里的 Markdown 规范。
 2. **脱水开发**：在纯 TS 环境下实现功能并跑通 `npm test`（内部调用 Vitest）。
-3. **静态体检**：运行 `npm run lint`（oxlint）与 `npm run check:deps`（dependency-cruiser）。
+3. **静态体检**：运行 `npm run lint`（oxlint）、`npm run fmt:check`（oxfmt）与 `npm run check:deps`（dependency-cruiser）。
 4. **提交代码**：按照上述 Git 规范 `git commit`。
 5. **表现层打包**：`npm run build:minigame`（`scripts/build-minigame.mjs`）把 `src/minigame/` 打成 IIFE 产物 `minigame/game.js`；在微信开发者工具中导入 `minigame/` 目录做真机预览。

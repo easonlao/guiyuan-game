@@ -75,9 +75,9 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 为了保证项目在 AI 与人类协作下的长效维护，并严格防范重构期间的回归风险，系统引入了以下三大基建工具作为开发基石：
 
 ### 4.1 代码标准化与极速静态检查 (oxc)
-*   **工具集**：[oxlint / oxc](https://oxc.rs/)
-*   **用途**：作为下一代的 Rust-based 前端工具链，承担极速的静态代码分析与标准化格式化。
-*   **流程定位**：在代码提交与反馈循环中，AI 使用 `oxlint` 执行毫秒级的静态检查，将无用变量、隐式声明等潜在腐化问题扼杀在摇篮里，确保 TypeScript 逻辑库始终保持工业级整洁。
+*   **工具集**：[oxlint](https://oxc.rs/)（静态检查）与 [oxfmt](https://oxc.rs/docs/guide/usage/formatter)（格式化）；格式化配置见根目录 `.oxfmtrc.json`。
+*   **用途**：Rust-based 工具链，承担极速的静态代码分析与统一格式化，把风格漂移挡在 diff 之外。
+*   **流程定位**：`npm run lint`（oxlint）与 `npm run fmt:check`（oxfmt）是命名门禁脚本，AI 在提交前跑这两条，把无用变量、隐式声明与未格式化的代码挡在门外；`npm run fmt` 就地修复。
 
 ### 4.2 架构可视化与依赖防腐 (dependency-cruiser)
 *   **工具集**：[dependency-cruiser](https://github.com/sverweij/dependency-cruiser)
