@@ -6,12 +6,14 @@
 import { IStorageManager } from './IStorageManager.js';
 
 // 微信小游戏全局类型声明
-declare const wx: {
-  getStorageSync?: (key: string) => any;
-  setStorageSync?: (key: string, data: any) => void;
-  removeStorageSync?: (key: string) => void;
-  clearStorageSync?: () => void;
-} | undefined;
+declare const wx:
+  | {
+      getStorageSync?: (key: string) => any;
+      setStorageSync?: (key: string, data: any) => void;
+      removeStorageSync?: (key: string) => void;
+      clearStorageSync?: () => void;
+    }
+  | undefined;
 
 export class WechatStorageAdapter implements IStorageManager {
   getItem<T = unknown>(key: string): T | null {
@@ -20,7 +22,7 @@ export class WechatStorageAdapter implements IStorageManager {
     }
     try {
       const data = wx.getStorageSync(key);
-      return (data !== '' && data !== undefined) ? (data as T) : null;
+      return data !== '' && data !== undefined ? (data as T) : null;
     } catch {
       return null;
     }

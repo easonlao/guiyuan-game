@@ -14,6 +14,6 @@ export default defineConfig({
     exclude: [...configDefaults.exclude, 'tests/core/candidate-validation.test.ts'],
     environment: 'node',
     globals: true,
-    hookTimeout: 60000
-  }
+    hookTimeout: 60000,
+  },
 });

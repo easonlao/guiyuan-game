@@ -15,7 +15,7 @@ import {
   countBoardDamage,
   countBoardGuiYi,
   countUnlightedSides,
-  isBoardTingPai
+  isBoardTingPai,
 } from '../logic/State.js';
 import type { ClosureType, MatchResult } from './HeadlessMatch.js';
 
@@ -59,10 +59,7 @@ export function countActionsToGuiYuan(board: BoardState): number {
  * 分数、权重、稀有度或计分配置。`ActionResolver.resolve` 对【破】只改动对手一侧等级，
  * 因此该差值恰好等于这一次盘面扰动的节奏价值；计分轴的作用由 ticket 09 单独测量。
  */
-export function atkTempoGain(
-  opponentBefore: BoardState,
-  opponentAfter: BoardState
-): number {
+export function atkTempoGain(opponentBefore: BoardState, opponentAfter: BoardState): number {
   return countActionsToGuiYuan(opponentAfter) - countActionsToGuiYuan(opponentBefore);
 }
 
@@ -124,7 +121,7 @@ export function deriveMatchMetrics(result: MatchResult): MatchMetrics {
       guiYiNodes: countBoardGuiYi(board),
       isTingPai: isBoardTingPai(board),
       residualDamage: countBoardDamage(board),
-      actionsToGuiYuan: countActionsToGuiYuan(board)
+      actionsToGuiYuan: countActionsToGuiYuan(board),
     };
   };
 
@@ -145,7 +142,7 @@ export function deriveMatchMetrics(result: MatchResult): MatchMetrics {
       : null,
     constructionLevels: stats
       ? { P1: stats.P1.constructionLevels, P2: stats.P2.constructionLevels }
-      : null
+      : null,
   };
 }
 
@@ -233,15 +230,12 @@ export function createGameMetricsAccumulator(): GameMetricsAccumulator {
     suppressionLevelsTotal: 0,
     suppressionMatchCount: 0,
     constructionLevelsTotal: 0,
-    constructionMatchCount: 0
+    constructionMatchCount: 0,
   };
 }
 
 /** 将一局的单局指标并入聚合累加器 */
-export function accumulateMatchMetrics(
-  acc: GameMetricsAccumulator,
-  match: MatchMetrics
-): void {
+export function accumulateMatchMetrics(acc: GameMetricsAccumulator, match: MatchMetrics): void {
   acc.totalMatches++;
 
   if (match.winner === 'P1') acc.p1Wins++;
@@ -276,17 +270,14 @@ export function accumulateMatchMetrics(
     else acc.showdownFailCount++;
   }
 
-  acc.residualDamageTotal +=
-    (match.board.P1.residualDamage + match.board.P2.residualDamage) / 2;
+  acc.residualDamageTotal += (match.board.P1.residualDamage + match.board.P2.residualDamage) / 2;
 
   if (match.suppressionLevels) {
-    acc.suppressionLevelsTotal +=
-      (match.suppressionLevels.P1 + match.suppressionLevels.P2) / 2;
+    acc.suppressionLevelsTotal += (match.suppressionLevels.P1 + match.suppressionLevels.P2) / 2;
     acc.suppressionMatchCount++;
   }
   if (match.constructionLevels) {
-    acc.constructionLevelsTotal +=
-      (match.constructionLevels.P1 + match.constructionLevels.P2) / 2;
+    acc.constructionLevelsTotal += (match.constructionLevels.P1 + match.constructionLevels.P2) / 2;
     acc.constructionMatchCount++;
   }
 }
@@ -294,8 +285,7 @@ export function accumulateMatchMetrics(
 /** 由累加器结算聚合指标 */
 export function finalizeGameMetrics(acc: GameMetricsAccumulator): GameMetrics {
   const safe = (value: number): number => (acc.totalMatches > 0 ? value / acc.totalMatches : 0);
-  const meanOfCollected = (total: number, count: number): number =>
-    count > 0 ? total / count : 0;
+  const meanOfCollected = (total: number, count: number): number => (count > 0 ? total / count : 0);
 
   return {
     totalMatches: acc.totalMatches,
@@ -326,7 +316,7 @@ export function finalizeGameMetrics(acc: GameMetricsAccumulator): GameMetrics {
     showdownFailRate: safe(acc.showdownFailCount),
     opponentResidualDamage: safe(acc.residualDamageTotal),
     suppressionLevels: meanOfCollected(acc.suppressionLevelsTotal, acc.suppressionMatchCount),
-    constructionLevels: meanOfCollected(acc.constructionLevelsTotal, acc.constructionMatchCount)
+    constructionLevels: meanOfCollected(acc.constructionLevelsTotal, acc.constructionMatchCount),
   };
 }
 
@@ -386,12 +376,12 @@ export const DOMINANCE_SIGNIFICANCE_Z = 1.96;
 function findHeadToHeadCell(
   matrix: HeadToHeadMatrix,
   strategy: string,
-  opponent: string
+  opponent: string,
 ): HeadToHeadCell | undefined {
   return matrix.cells.find(
-    cell =>
+    (cell) =>
       (cell.p1Strategy === strategy && cell.p2Strategy === opponent) ||
-      (cell.p1Strategy === opponent && cell.p2Strategy === strategy)
+      (cell.p1Strategy === opponent && cell.p2Strategy === strategy),
   );
 }
 
@@ -446,7 +436,7 @@ export type DominanceEvidence =
 export function evaluateDominanceEvidence(
   matrix: HeadToHeadMatrix,
   strategy: string,
-  opponent: string
+  opponent: string,
 ): DominanceEvidence {
   const cell = findHeadToHeadCell(matrix, strategy, opponent);
   if (!cell) return { kind: 'missing' };
@@ -473,7 +463,7 @@ export function evaluateDominanceEvidence(
 export function isDominanceSupportedByMatrix(
   matrix: HeadToHeadMatrix,
   strategy: string,
-  opponent: string
+  opponent: string,
 ): boolean {
   return evaluateDominanceEvidence(matrix, strategy, opponent).kind === 'supported';
 }
@@ -532,7 +522,7 @@ export function analyzeDominanceMatrix(matrix: HeadToHeadMatrix): DominanceAnaly
             opponent,
             reason: 'insufficient',
             rate: evidence.rate,
-            matches: evidence.matches
+            matches: evidence.matches,
           });
           break;
         case 'undecidable':
@@ -542,7 +532,7 @@ export function analyzeDominanceMatrix(matrix: HeadToHeadMatrix): DominanceAnaly
             reason: 'within-noise',
             rate: evidence.rate,
             matches: evidence.matches,
-            threshold: evidence.threshold
+            threshold: evidence.threshold,
           });
           break;
         case 'contradicted':
@@ -567,7 +557,7 @@ export function analyzeDominanceMatrix(matrix: HeadToHeadMatrix): DominanceAnaly
  */
 export function assertDominanceVerdictHasMatrix(
   verdict: DominanceVerdict,
-  matrix?: HeadToHeadMatrix
+  matrix?: HeadToHeadMatrix,
 ): void {
   if (!matrix || matrix.cells.length === 0) {
     throw new Error('占优结论必须附带跨策略对拼矩阵：缺少矩阵数据');
@@ -582,15 +572,15 @@ export function assertDominanceVerdictHasMatrix(
         throw new Error(`占优结论缺少对拼数据：${verdict.strategy} vs ${opponent}`);
       case 'insufficient':
         throw new Error(
-          `占优结论样本不足：${verdict.strategy} vs ${opponent} 仅 ${evidence.matches} 局（需 ≥ ${MIN_DOMINANCE_MATCHES}）`
+          `占优结论样本不足：${verdict.strategy} vs ${opponent} 仅 ${evidence.matches} 局（需 ≥ ${MIN_DOMINANCE_MATCHES}）`,
         );
       case 'contradicted':
         throw new Error(
-          `占优结论与矩阵矛盾：${verdict.strategy} vs ${opponent} 实测座次平衡胜率 ${(evidence.rate * 100).toFixed(2)}%，并未高于 50%`
+          `占优结论与矩阵矛盾：${verdict.strategy} vs ${opponent} 实测座次平衡胜率 ${(evidence.rate * 100).toFixed(2)}%，并未高于 50%`,
         );
       case 'undecidable':
         throw new Error(
-          `占优结论无法判定：${verdict.strategy} vs ${opponent} 实测座次平衡胜率 ${(evidence.rate * 100).toFixed(2)}%，与 50% 无法区分（需高出 ≥ ${(evidence.threshold * 100).toFixed(2)} 个百分点）`
+          `占优结论无法判定：${verdict.strategy} vs ${opponent} 实测座次平衡胜率 ${(evidence.rate * 100).toFixed(2)}%，与 50% 无法区分（需高出 ≥ ${(evidence.threshold * 100).toFixed(2)} 个百分点）`,
         );
     }
   }
@@ -599,7 +589,7 @@ export function assertDominanceVerdictHasMatrix(
 /** 格式化占优结论；缺少对拼矩阵时抛错（守卫的前置条件） */
 export function formatDominanceVerdict(
   verdict: DominanceVerdict,
-  matrix?: HeadToHeadMatrix
+  matrix?: HeadToHeadMatrix,
 ): string {
   assertDominanceVerdictHasMatrix(verdict, matrix);
   const list = verdict.dominates.join('、');

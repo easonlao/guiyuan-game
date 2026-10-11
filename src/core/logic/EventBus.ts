@@ -3,7 +3,16 @@
  * 用于 Layer 1 逻辑层与 Layer 3 Cocos 表现层解耦
  */
 
-import { ActionPayload, ActionType, GameState, NodeLevel, PlayerId, Polarity, TianGanInfo, WuXing } from '../types/domain.js';
+import {
+  ActionPayload,
+  ActionType,
+  GameState,
+  NodeLevel,
+  PlayerId,
+  Polarity,
+  TianGanInfo,
+  WuXing,
+} from '../types/domain.js';
 
 export interface GameEvents {
   'node:stateChanged': {
@@ -75,7 +84,7 @@ export class EventBus {
   emit<K extends EventKey>(event: K, data: GameEvents[K]): void {
     const handlers = this.listeners.get(event);
     if (handlers) {
-      handlers.forEach(h => {
+      handlers.forEach((h) => {
         try {
           h(data);
         } catch (e) /* Stryker disable next-line BlockStatement: catch 仅做日志输出，handler 抛错不改变状态（不可观测） */ {
@@ -105,7 +114,7 @@ export class EventBus {
             element: el,
             polarity: Polarity.YIN,
             prevLevel: prevBoard[el].yin,
-            newLevel: nextBoard[el].yin
+            newLevel: nextBoard[el].yin,
           });
         }
         if (prevBoard[el].yang !== nextBoard[el].yang) {
@@ -114,7 +123,7 @@ export class EventBus {
             element: el,
             polarity: Polarity.YANG,
             prevLevel: prevBoard[el].yang,
-            newLevel: nextBoard[el].yang
+            newLevel: nextBoard[el].yang,
           });
         }
       }
@@ -124,7 +133,7 @@ export class EventBus {
     if (!prevState.isGameOver && nextState.isGameOver) {
       this.emit('game:over', {
         winner: nextState.winner,
-        endReason: nextState.endReason
+        endReason: nextState.endReason,
       });
     }
   }

@@ -82,5 +82,5 @@ export interface ActionScore {
 export type DecisionStrategy = (
   state: GameState,
   tianGan: TianGanInfo,
-  availableActions?: ActionPayload[]
+  availableActions?: ActionPayload[],
 ) => ActionPayload;

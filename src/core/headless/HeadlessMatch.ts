@@ -13,7 +13,7 @@ import {
   measureBoardDiff,
   countBoardDamage,
   countBoardGuiYi,
-  countUnlightedSides
+  countUnlightedSides,
 } from '../logic/State.js';
 import { ActionResolver } from '../logic/ActionResolver.js';
 import { ScoreCalculator, PointsConfig, POINTS_CONFIG } from '../logic/ScoreCalculator.js';
@@ -39,7 +39,7 @@ export type StrategySpec = DecisionStrategy | StrategyWeights;
 export function resolveStrategy(
   spec: StrategySpec,
   config: PointsConfig,
-  rules: RuleSwitches
+  rules: RuleSwitches,
 ): DecisionStrategy {
   return typeof spec === 'function' ? spec : createScoreBoundStrategy(spec, config, rules);
 }
@@ -159,8 +159,8 @@ function createEmptyMatchStatsAccumulator(): MutableMatchStatsAccumulator {
   return {
     players: {
       P1: { constructionLevels: 0, suppressionLevels: 0 },
-      P2: { constructionLevels: 0, suppressionLevels: 0 }
-    }
+      P2: { constructionLevels: 0, suppressionLevels: 0 },
+    },
   };
 }
 
@@ -179,7 +179,7 @@ export const defaultBaselineStrategy: DecisionStrategy = (state, tianGan) => {
     actionType: ActionType.AUTO,
     player: state.currentPlayer,
     element: tianGan.element,
-    polarity: tianGan.polarity
+    polarity: tianGan.polarity,
   };
 };
 
@@ -204,7 +204,7 @@ export class HeadlessMatch {
   run(
     strategyP1: StrategySpec = defaultBaselineStrategy,
     strategyP2: StrategySpec = defaultBaselineStrategy,
-    optionsOrMaxRounds: number | MatchOptions = 30
+    optionsOrMaxRounds: number | MatchOptions = 30,
   ): MatchResult {
     const options: MatchOptions =
       typeof optionsOrMaxRounds === 'number'
@@ -245,7 +245,7 @@ export class HeadlessMatch {
         let nextP2Board = p2Board;
         let nextLockedGuiYuan = {
           P1: true,
-          P2: false
+          P2: false,
         };
         let winner: PlayerId = 'P1';
 
@@ -253,7 +253,7 @@ export class HeadlessMatch {
           winner = 'P2';
           nextLockedGuiYuan = {
             P1: true,
-            P2: true
+            P2: true,
           };
           const unlighted = getUnlightedSide(p2Board);
           if (unlighted) {
@@ -261,8 +261,10 @@ export class HeadlessMatch {
               ...p2Board,
               [unlighted.element]: {
                 ...p2Board[unlighted.element],
-                [unlighted.polarity]: clampNodeLevel(p2Board[unlighted.element][unlighted.polarity] + 1)
-              }
+                [unlighted.polarity]: clampNodeLevel(
+                  p2Board[unlighted.element][unlighted.polarity] + 1,
+                ),
+              },
             };
           }
         } else {
@@ -271,7 +273,10 @@ export class HeadlessMatch {
 
         // 天命揭牌使 P2 盘面点亮一侧属建设行为，纳入统计
         if (statsAcc) {
-          statsAcc.players.P2.constructionLevels += measureBoardDiff(p2Board, nextP2Board).constructionLevels;
+          statsAcc.players.P2.constructionLevels += measureBoardDiff(
+            p2Board,
+            nextP2Board,
+          ).constructionLevels;
         }
 
         state = {
@@ -285,9 +290,9 @@ export class HeadlessMatch {
             ...state.players,
             P2: {
               ...state.players.P2,
-              board: nextP2Board
-            }
-          }
+              board: nextP2Board,
+            },
+          },
         };
 
         isShowdown = true;
@@ -309,7 +314,7 @@ export class HeadlessMatch {
           actionType: ActionType.AUTO,
           player: state.currentPlayer,
           element: tianGan.element,
-          polarity: tianGan.polarity
+          polarity: tianGan.polarity,
         };
       }
 
@@ -317,25 +322,22 @@ export class HeadlessMatch {
         actionRecords.push({
           round: state.round,
           player: state.currentPlayer,
-          action
+          action,
         });
       }
 
-      const result = resolver.resolve(
-        { ...state, currentTianGan: tianGan },
-        action
-      );
+      const result = resolver.resolve({ ...state, currentTianGan: tianGan }, action);
 
       if (statsAcc) {
         const activeId = state.currentPlayer;
         const opponentId: PlayerId = activeId === 'P1' ? 'P2' : 'P1';
         const ownDiff = measureBoardDiff(
           state.players[activeId].board,
-          result.nextState.players[activeId].board
+          result.nextState.players[activeId].board,
         );
         const opponentDiff = measureBoardDiff(
           state.players[opponentId].board,
-          result.nextState.players[opponentId].board
+          result.nextState.players[opponentId].board,
         );
         statsAcc.players[activeId].constructionLevels += ownDiff.constructionLevels;
         statsAcc.players[activeId].suppressionLevels += opponentDiff.suppressionLevels;
@@ -373,7 +375,7 @@ export class HeadlessMatch {
     const record: GameRecord = {
       seed,
       maxRounds,
-      actions: actionRecords
+      actions: actionRecords,
     };
 
     let stats: MatchStats | undefined;
@@ -381,16 +383,16 @@ export class HeadlessMatch {
       stats = {
         P1: {
           constructionLevels: statsAcc.players.P1.constructionLevels,
-          suppressionLevels: statsAcc.players.P1.suppressionLevels
+          suppressionLevels: statsAcc.players.P1.suppressionLevels,
         },
         P2: {
           constructionLevels: statsAcc.players.P2.constructionLevels,
-          suppressionLevels: statsAcc.players.P2.suppressionLevels
+          suppressionLevels: statsAcc.players.P2.suppressionLevels,
         },
         residualDamage: {
           P1: countBoardDamage(state.players.P1.board),
-          P2: countBoardDamage(state.players.P2.board)
-        }
+          P2: countBoardDamage(state.players.P2.board),
+        },
       };
     }
 
@@ -405,7 +407,7 @@ export class HeadlessMatch {
       finalP2Score: state.players.P2.score,
       finalState: state,
       record,
-      ...(stats ? { stats } : {})
+      ...(stats ? { stats } : {}),
     };
   }
 }

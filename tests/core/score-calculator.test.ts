@@ -3,7 +3,7 @@ import {
   ScoreCalculator,
   POINTS_CONFIG,
   DAMAGE_PENALTY,
-  type PointsConfig
+  type PointsConfig,
 } from '../../src/core/logic/ScoreCalculator.js';
 import { ActionType, Polarity } from '../../src/core/types/index.js';
 
@@ -12,7 +12,9 @@ describe('ScoreCalculator', () => {
 
   it('should award points for repair, light up and bless transitions', () => {
     // Repair: -1 -> 0
-    expect(calculator.calculateTransitionPoints(-1, 0)).toBe(POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG.yang);
+    expect(calculator.calculateTransitionPoints(-1, 0)).toBe(
+      POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG.yang,
+    );
     // Light up: 0 -> 1
     expect(calculator.calculateTransitionPoints(0, 1)).toBe(POINTS_CONFIG.STATE_CHANGE.LIGHT_UP);
     // Bless: 1 -> 2
@@ -30,24 +32,24 @@ describe('ScoreCalculator', () => {
   it('should score every suppression pattern on both polarities', () => {
     // 致道损: 0 -> -1（阳/阴两套分值）
     expect(calculator.calculateTransitionPoints(0, -1, Polarity.YANG, true)).toBe(
-      POINTS_CONFIG.STATE_CHANGE.CAUSE_DMG.yang
+      POINTS_CONFIG.STATE_CHANGE.CAUSE_DMG.yang,
     );
     expect(calculator.calculateTransitionPoints(0, -1, Polarity.YIN, true)).toBe(
-      POINTS_CONFIG.STATE_CHANGE.CAUSE_DMG.yin
+      POINTS_CONFIG.STATE_CHANGE.CAUSE_DMG.yin,
     );
     // 破点亮: 1 -> 0
     expect(calculator.calculateTransitionPoints(1, 0, Polarity.YANG, true)).toBe(
-      POINTS_CONFIG.STATE_CHANGE.BREAK_LIGHT.yang
+      POINTS_CONFIG.STATE_CHANGE.BREAK_LIGHT.yang,
     );
     expect(calculator.calculateTransitionPoints(1, 0, Polarity.YIN, true)).toBe(
-      POINTS_CONFIG.STATE_CHANGE.BREAK_LIGHT.yin
+      POINTS_CONFIG.STATE_CHANGE.BREAK_LIGHT.yin,
     );
     // 削弱加持: 2 -> 1（阴阳同分）
     expect(calculator.calculateTransitionPoints(2, 1, Polarity.YANG, true)).toBe(
-      POINTS_CONFIG.STATE_CHANGE.WEAKEN
+      POINTS_CONFIG.STATE_CHANGE.WEAKEN,
     );
     expect(calculator.calculateTransitionPoints(2, 1, Polarity.YIN, true)).toBe(
-      POINTS_CONFIG.STATE_CHANGE.WEAKEN
+      POINTS_CONFIG.STATE_CHANGE.WEAKEN,
     );
   });
 
@@ -70,7 +72,7 @@ describe('ScoreCalculator', () => {
   it('should fall back to the built-in damage penalty when config omits DAMAGE_PENALTY', () => {
     const configWithoutPenalty: PointsConfig = {
       ACTION: POINTS_CONFIG.ACTION,
-      STATE_CHANGE: POINTS_CONFIG.STATE_CHANGE
+      STATE_CHANGE: POINTS_CONFIG.STATE_CHANGE,
     };
 
     const withFallback = new ScoreCalculator(configWithoutPenalty);

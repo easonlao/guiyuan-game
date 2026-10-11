@@ -9,13 +9,13 @@ export enum WuXing {
   FIRE = 'FIRE',
   EARTH = 'EARTH',
   METAL = 'METAL',
-  WATER = 'WATER'
+  WATER = 'WATER',
 }
 
 /** 阴阳极性 */
 export enum Polarity {
   YIN = 'yin',
-  YANG = 'yang'
+  YANG = 'yang',
 }
 
 /** 获取相反极性 */
@@ -36,7 +36,7 @@ export const NodeLevelEnum = {
   DAMAGE: -1 as NodeLevel,
   VOID: 0 as NodeLevel,
   LIT: 1 as NodeLevel,
-  BLESSED: 2 as NodeLevel
+  BLESSED: 2 as NodeLevel,
 } as const;
 
 /** 单个五行节点状态 (不可变数据) */
@@ -50,14 +50,14 @@ export type BoardState = Readonly<Record<WuXing, NodeData>>;
 
 /** 动作类型 */
 export enum ActionType {
-  AUTO = 'AUTO',             // 吸纳
-  CONVERT = 'CONVERT',       // 调息
-  TRANS = 'TRANS',           // 化 (相生)
-  ATK = 'ATK',               // 破 (相克)
-  BURST = 'BURST',           // 强化 (归一消耗相生)
-  BURST_ATK = 'BURST_ATK',   // 强破 (归一消耗相克)
-  DISSIPATE = 'DISSIPATE',   // 亢极散气 (满溢回落)
-  PASS = 'PASS'              // 消散过牌 (无合法动作时流转)
+  AUTO = 'AUTO', // 吸纳
+  CONVERT = 'CONVERT', // 调息
+  TRANS = 'TRANS', // 化 (相生)
+  ATK = 'ATK', // 破 (相克)
+  BURST = 'BURST', // 强化 (归一消耗相生)
+  BURST_ATK = 'BURST_ATK', // 强破 (归一消耗相克)
+  DISSIPATE = 'DISSIPATE', // 亢极散气 (满溢回落)
+  PASS = 'PASS', // 消散过牌 (无合法动作时流转)
 }
 
 /** 玩家代号 */
@@ -87,7 +87,7 @@ export const TIAN_GAN_LIST: readonly TianGanInfo[] = [
   { name: '庚', element: WuXing.METAL, polarity: Polarity.YANG },
   { name: '辛', element: WuXing.METAL, polarity: Polarity.YIN },
   { name: '壬', element: WuXing.WATER, polarity: Polarity.YANG },
-  { name: '癸', element: WuXing.WATER, polarity: Polarity.YIN }
+  { name: '癸', element: WuXing.WATER, polarity: Polarity.YIN },
 ] as const;
 
 /** 五行相生关系: 木生火，火生土，土生金，金生水，水生木 */
@@ -96,7 +96,7 @@ export const GENERATION_CYCLE: Readonly<Record<WuXing, WuXing>> = {
   [WuXing.FIRE]: WuXing.EARTH,
   [WuXing.EARTH]: WuXing.METAL,
   [WuXing.METAL]: WuXing.WATER,
-  [WuXing.WATER]: WuXing.WOOD
+  [WuXing.WATER]: WuXing.WOOD,
 };
 
 /** 五行相克关系: 木克土，土克水，水克火，火克金，金克木 */
@@ -105,7 +105,7 @@ export const OVERCOMING_CYCLE: Readonly<Record<WuXing, WuXing>> = {
   [WuXing.EARTH]: WuXing.WATER,
   [WuXing.WATER]: WuXing.FIRE,
   [WuXing.FIRE]: WuXing.METAL,
-  [WuXing.METAL]: WuXing.WOOD
+  [WuXing.METAL]: WuXing.WOOD,
 };
 
 /** 全局只读游戏状态 */

@@ -4,7 +4,7 @@ import {
   findSeatBalancedWinRate,
   analyzeDominance,
   DEFAULT_STRATEGY_VARIANTS,
-  DEFAULT_SCORE_CONFIG_VARIANTS
+  DEFAULT_SCORE_CONFIG_VARIANTS,
 } from '../../src/core/headless/ExperimentRunner.js';
 import type { HeadToHeadReport } from '../../src/core/headless/ExperimentRunner.js';
 
@@ -69,14 +69,14 @@ const PINNED_CELLS: readonly {
     strategyA: '平衡',
     strategyB: '激进压制',
     expected: 0.528,
-    note: '工单 06 核心翻转：激进压制不再占优平衡（旧现状 57.80% 反转为平衡领先）'
+    note: '工单 06 核心翻转：激进压制不再占优平衡（旧现状 57.80% 反转为平衡领先）',
   },
   {
     strategyA: '剥离计分',
     strategyB: '平衡',
     expected: 0.525,
-    note: '相对价值翻转旁证：压制计分被关掉的策略在采纳后能赢平衡（旧现状 46.52%）'
-  }
+    note: '相对价值翻转旁证：压制计分被关掉的策略在采纳后能赢平衡（旧现状 46.52%）',
+  },
 ];
 
 function formatPercent(value: number): string {
@@ -93,7 +93,7 @@ describe('占优回归护栏：采纳进度定价后不存在严格占优（绊�
       scoreConfig: DEFAULT_SCORE_CONFIG_VARIANTS[0],
       matches: MATCHES_PER_SEAT,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
   });
 
@@ -101,28 +101,28 @@ describe('占优回归护栏：采纳进度定价后不存在严格占优（绊�
     expect(report.mode).toBe('scoring');
     expect(report.scoreConfigName).toBe('default');
     expect(report.matchesPerSeat).toBe(MATCHES_PER_SEAT);
-    expect(report.strategies).toEqual(DEFAULT_STRATEGY_VARIANTS.map(variant => variant.name));
+    expect(report.strategies).toEqual(DEFAULT_STRATEGY_VARIANTS.map((variant) => variant.name));
     // 工单 06 采纳：生产默认配置确实带着进度定价，本绊线钉的是采纳后的现状。
     expect(DEFAULT_SCORE_CONFIG_VARIANTS[0].config.ATTACK_PROGRESS_SCALE).toEqual({
       floor: 0.3,
-      span: 0.9
+      span: 0.9,
     });
   });
 
   it('不存在对全部其它策略严格占优的策略（显著性证据，不是裸 >50%）', () => {
     const analysis = analyzeDominance(report);
     const strictDominators = analysis.verdicts
-      .filter(verdict => verdict.dominates.length === STRATEGY_COUNT - 1)
-      .map(verdict => verdict.strategy);
+      .filter((verdict) => verdict.dominates.length === STRATEGY_COUNT - 1)
+      .map((verdict) => verdict.strategy);
 
     expect(
       strictDominators,
       `严格占优者：${strictDominators.join('、') || '（无）'}。` +
-        `若计分改动重新造出严格占优者，请先确认旧占优是否消失、是否换来新占优，再更新基线。`
+        `若计分改动重新造出严格占优者，请先确认旧占优是否消失、是否换来新占优，再更新基线。`,
     ).toEqual([]);
 
     // 核心翻转：激进压制不再占优平衡（旧现状是它 6/6 占优）。
-    const aggressive = analysis.verdicts.find(verdict => verdict.strategy === '激进压制');
+    const aggressive = analysis.verdicts.find((verdict) => verdict.strategy === '激进压制');
     expect(aggressive?.dominates ?? []).not.toContain('平衡');
   });
 
@@ -136,7 +136,7 @@ describe('占优回归护栏：采纳进度定价后不存在严格占优（绊�
         `格「${strategyA} 对 ${strategyB}」期望 ${formatPercent(expected)}，` +
           `实际 ${formatPercent(actual!)}，偏差 ${formatPercent(delta)}` +
           `（容差 ${formatPercent(TOLERANCE)}，样本 ${MATCHES_PER_SEAT} 局/座次，种子 ${BASE_SEED}）。` +
-          `用途：${note}。`
+          `用途：${note}。`,
       ).toBeLessThanOrEqual(TOLERANCE);
     }
   });

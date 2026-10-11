@@ -1,15 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import {
-  ActionType,
-  WuXing,
-  Polarity,
-  TIAN_GAN_LIST
-} from '../../src/core/types/domain.js';
+import { ActionType, WuXing, Polarity, TIAN_GAN_LIST } from '../../src/core/types/domain.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
 import {
   getAvailableActions,
   getPlusTargetPolarity,
-  getMinusTargetPolarity
+  getMinusTargetPolarity,
 } from '../../src/core/logic/ActionCandidates.js';
 
 describe('ActionCandidates (Legal Action Generator)', () => {
@@ -23,7 +18,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
       actionType: ActionType.AUTO,
       player: 'P1',
       element: WuXing.WOOD,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
   });
 
@@ -37,10 +32,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
           ...state.players.P1,
           board: {
             ...state.players.P1.board,
-            [WuXing.WOOD]: { yin: 0, yang: -1 }
-          }
-        }
-      }
+            [WuXing.WOOD]: { yin: 0, yang: -1 },
+          },
+        },
+      },
     };
 
     const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
@@ -50,7 +45,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
       actionType: ActionType.AUTO,
       player: 'P1',
       element: WuXing.WOOD,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
   });
 
@@ -64,10 +59,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
           ...state.players.P1,
           board: {
             ...state.players.P1.board,
-            [WuXing.WOOD]: { yin: 0, yang: 1 }
-          }
-        }
-      }
+            [WuXing.WOOD]: { yin: 0, yang: 1 },
+          },
+        },
+      },
     };
 
     const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
@@ -78,7 +73,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
       actionType: ActionType.CONVERT,
       player: 'P1',
       element: WuXing.WOOD,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
 
     // Should include ATK against P2 EARTH (yin preferred first when yin > -1)
@@ -86,7 +81,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
       actionType: ActionType.ATK,
       player: 'P1',
       sourceElement: WuXing.WOOD,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
   });
 
@@ -100,10 +95,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
           ...state.players.P1,
           board: {
             ...state.players.P1.board,
-            [WuXing.WOOD]: { yin: 1, yang: 0 }
-          }
-        }
-      }
+            [WuXing.WOOD]: { yin: 1, yang: 0 },
+          },
+        },
+      },
     };
 
     const yiWood = TIAN_GAN_LIST.find((tg) => tg.name === '乙')!; // WOOD, YIN
@@ -114,7 +109,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
       actionType: ActionType.CONVERT,
       player: 'P1',
       element: WuXing.WOOD,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
 
     // Should include TRANS to FIRE (yin preferred when yin < 2)
@@ -122,7 +117,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
       actionType: ActionType.TRANS,
       player: 'P1',
       sourceElement: WuXing.WOOD,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
   });
 
@@ -136,10 +131,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
           ...state.players.P1,
           board: {
             ...state.players.P1.board,
-            [WuXing.METAL]: { yin: 1, yang: 1 }
-          }
-        }
-      }
+            [WuXing.METAL]: { yin: 1, yang: 1 },
+          },
+        },
+      },
     };
 
     // Draw Geng Metal (庚 METAL YANG, level 1, node is GuiYi)
@@ -152,7 +147,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
       actionType: ActionType.ATK,
       player: 'P1',
       sourceElement: WuXing.METAL,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
 
     // Burst action: METAL GuiYi -> BURST (METAL生WATER) consuming YIN
@@ -161,7 +156,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
       player: 'P1',
       sourceElement: WuXing.METAL,
       consumePolarity: Polarity.YIN,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
 
     // Burst action: METAL GuiYi -> BURST_ATK (METAL克WOOD) consuming YANG
@@ -170,7 +165,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
       player: 'P1',
       sourceElement: WuXing.METAL,
       consumePolarity: Polarity.YANG,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
   });
 
@@ -196,20 +191,14 @@ describe('ActionCandidates (Legal Action Generator)', () => {
   });
 
   describe('8. Comprehensive 5-Element Coverage: Void (0) and Damage (-1) AUTO Exclusivity', () => {
-    const ALL_ELEMENTS = [
-      WuXing.WOOD,
-      WuXing.FIRE,
-      WuXing.EARTH,
-      WuXing.METAL,
-      WuXing.WATER
-    ];
+    const ALL_ELEMENTS = [WuXing.WOOD, WuXing.FIRE, WuXing.EARTH, WuXing.METAL, WuXing.WATER];
 
     for (const element of ALL_ELEMENTS) {
       const yangStem = TIAN_GAN_LIST.find(
-        (tg) => tg.element === element && tg.polarity === Polarity.YANG
+        (tg) => tg.element === element && tg.polarity === Polarity.YANG,
       )!;
       const yinStem = TIAN_GAN_LIST.find(
-        (tg) => tg.element === element && tg.polarity === Polarity.YIN
+        (tg) => tg.element === element && tg.polarity === Polarity.YIN,
       )!;
 
       it(`returns EXACTLY 1 action (AUTO) when ${element} YANG stem is VOID (0)`, () => {
@@ -220,7 +209,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
           actionType: ActionType.AUTO,
           player: 'P1',
           element,
-          polarity: Polarity.YANG
+          polarity: Polarity.YANG,
         });
       });
 
@@ -232,7 +221,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
           actionType: ActionType.AUTO,
           player: 'P1',
           element,
-          polarity: Polarity.YIN
+          polarity: Polarity.YIN,
         });
       });
 
@@ -246,10 +235,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
               ...state.players.P1,
               board: {
                 ...state.players.P1.board,
-                [element]: { yin: 0, yang: -1 }
-              }
-            }
-          }
+                [element]: { yin: 0, yang: -1 },
+              },
+            },
+          },
         };
         const actions = getAvailableActions(state, yangStem);
         expect(actions).toHaveLength(1);
@@ -257,7 +246,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
           actionType: ActionType.AUTO,
           player: 'P1',
           element,
-          polarity: Polarity.YANG
+          polarity: Polarity.YANG,
         });
       });
 
@@ -271,10 +260,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
               ...state.players.P1,
               board: {
                 ...state.players.P1.board,
-                [element]: { yin: -1, yang: 0 }
-              }
-            }
-          }
+                [element]: { yin: -1, yang: 0 },
+              },
+            },
+          },
         };
         const actions = getAvailableActions(state, yinStem);
         expect(actions).toHaveLength(1);
@@ -282,7 +271,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
           actionType: ActionType.AUTO,
           player: 'P1',
           element,
-          polarity: Polarity.YIN
+          polarity: Polarity.YIN,
         });
       });
 
@@ -300,9 +289,9 @@ describe('ActionCandidates (Legal Action Generator)', () => {
             ...state.players,
             P1: {
               ...state.players.P1,
-              board: boardWithOtherGuiYi
-            }
-          }
+              board: boardWithOtherGuiYi,
+            },
+          },
         };
 
         const actions = getAvailableActions(state, yangStem);
@@ -311,7 +300,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
           actionType: ActionType.AUTO,
           player: 'P1',
           element,
-          polarity: Polarity.YANG
+          polarity: Polarity.YANG,
         });
       });
 
@@ -330,9 +319,9 @@ describe('ActionCandidates (Legal Action Generator)', () => {
             ...state.players,
             P1: {
               ...state.players.P1,
-              board: boardWithOtherGuiYi
-            }
-          }
+              board: boardWithOtherGuiYi,
+            },
+          },
         };
 
         const actions = getAvailableActions(state, yangStem);
@@ -341,27 +330,21 @@ describe('ActionCandidates (Legal Action Generator)', () => {
           actionType: ActionType.AUTO,
           player: 'P1',
           element,
-          polarity: Polarity.YANG
+          polarity: Polarity.YANG,
         });
       });
     }
   });
 
   describe('9. Comprehensive 5-Element Coverage: Current Drawn TianGan GuiYi Burst Gate (Rule A)', () => {
-    const ALL_ELEMENTS = [
-      WuXing.WOOD,
-      WuXing.FIRE,
-      WuXing.EARTH,
-      WuXing.METAL,
-      WuXing.WATER
-    ];
+    const ALL_ELEMENTS = [WuXing.WOOD, WuXing.FIRE, WuXing.EARTH, WuXing.METAL, WuXing.WATER];
 
     for (const element of ALL_ELEMENTS) {
       const yangStem = TIAN_GAN_LIST.find(
-        (tg) => tg.element === element && tg.polarity === Polarity.YANG
+        (tg) => tg.element === element && tg.polarity === Polarity.YANG,
       )!;
       const yinStem = TIAN_GAN_LIST.find(
-        (tg) => tg.element === element && tg.polarity === Polarity.YIN
+        (tg) => tg.element === element && tg.polarity === Polarity.YIN,
       )!;
 
       it(`generates BURST & BURST_ATK for ${element} when drawn YANG stem (${yangStem.name}) node is GuiYi (1, 1)`, () => {
@@ -374,10 +357,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
               ...state.players.P1,
               board: {
                 ...state.players.P1.board,
-                [element]: { yin: 1, yang: 1 }
-              }
-            }
-          }
+                [element]: { yin: 1, yang: 1 },
+              },
+            },
+          },
         };
 
         const actions = getAvailableActions(state, yangStem);
@@ -411,10 +394,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
               ...state.players.P1,
               board: {
                 ...state.players.P1.board,
-                [element]: { yin: 1, yang: 1 }
-              }
-            }
-          }
+                [element]: { yin: 1, yang: 1 },
+              },
+            },
+          },
         };
 
         const actions = getAvailableActions(state, yinStem);
@@ -441,20 +424,14 @@ describe('ActionCandidates (Legal Action Generator)', () => {
   });
 
   describe('10. Comprehensive 5-Element Coverage: Single-Lit Non-GuiYi Strictly Excludes Burst Even When Other Elements Are GuiYi', () => {
-    const ALL_ELEMENTS = [
-      WuXing.WOOD,
-      WuXing.FIRE,
-      WuXing.EARTH,
-      WuXing.METAL,
-      WuXing.WATER
-    ];
+    const ALL_ELEMENTS = [WuXing.WOOD, WuXing.FIRE, WuXing.EARTH, WuXing.METAL, WuXing.WATER];
 
     for (const element of ALL_ELEMENTS) {
       const yangStem = TIAN_GAN_LIST.find(
-        (tg) => tg.element === element && tg.polarity === Polarity.YANG
+        (tg) => tg.element === element && tg.polarity === Polarity.YANG,
       )!;
       const yinStem = TIAN_GAN_LIST.find(
-        (tg) => tg.element === element && tg.polarity === Polarity.YIN
+        (tg) => tg.element === element && tg.polarity === Polarity.YIN,
       )!;
 
       it(`strictly excludes BURST and BURST_ATK when drawn YANG stem (${yangStem.name}) is single-lit (yang:1, yin:0) and all other 4 elements are GuiYi`, () => {
@@ -469,16 +446,16 @@ describe('ActionCandidates (Legal Action Generator)', () => {
             ...state.players,
             P1: {
               ...state.players.P1,
-              board
-            }
-          }
+              board,
+            },
+          },
         };
 
         const actions = getAvailableActions(state, yangStem);
 
         // Under Rule A, only current stem's element can burst, and it's not GuiYi!
         const burstActions = actions.filter(
-          (a) => a.actionType === ActionType.BURST || a.actionType === ActionType.BURST_ATK
+          (a) => a.actionType === ActionType.BURST || a.actionType === ActionType.BURST_ATK,
         );
         expect(burstActions).toHaveLength(0);
 
@@ -499,16 +476,16 @@ describe('ActionCandidates (Legal Action Generator)', () => {
             ...state.players,
             P1: {
               ...state.players.P1,
-              board
-            }
-          }
+              board,
+            },
+          },
         };
 
         const actions = getAvailableActions(state, yinStem);
 
         // Under Rule A, only current stem's element can burst, and it's not GuiYi!
         const burstActions = actions.filter(
-          (a) => a.actionType === ActionType.BURST || a.actionType === ActionType.BURST_ATK
+          (a) => a.actionType === ActionType.BURST || a.actionType === ActionType.BURST_ATK,
         );
         expect(burstActions).toHaveLength(0);
 
@@ -530,10 +507,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
             ...state.players.P1,
             board: {
               ...state.players.P1.board,
-              [WuXing.WOOD]: { yin: 2, yang: 2 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 2, yang: 2 },
+            },
+          },
+        },
       };
 
       const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
@@ -544,7 +521,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
         actionType: ActionType.DISSIPATE,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
     });
 
@@ -558,10 +535,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
             ...state.players.P1,
             board: {
               ...state.players.P1.board,
-              [WuXing.FIRE]: { yin: 2, yang: 2 }
-            }
-          }
-        }
+              [WuXing.FIRE]: { yin: 2, yang: 2 },
+            },
+          },
+        },
       };
 
       const dingFire = TIAN_GAN_LIST.find((tg) => tg.name === '丁')!; // FIRE, YIN
@@ -572,7 +549,7 @@ describe('ActionCandidates (Legal Action Generator)', () => {
         actionType: ActionType.DISSIPATE,
         player: 'P1',
         element: WuXing.FIRE,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       });
     });
 
@@ -586,10 +563,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
             ...state.players.P1,
             board: {
               ...state.players.P1.board,
-              [WuXing.WOOD]: { yin: 1, yang: 2 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1, yang: 2 },
+            },
+          },
+        },
       };
 
       const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
@@ -612,10 +589,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
             ...state.players.P1,
             board: {
               ...state.players.P1.board,
-              [WuXing.WOOD]: { yin: 0, yang: 2 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 0, yang: 2 },
+            },
+          },
+        },
       };
 
       const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
@@ -640,10 +617,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
             ...state.players.P1,
             board: {
               ...state.players.P1.board,
-              [WuXing.WOOD]: { yin: 1, yang: 1 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1, yang: 1 },
+            },
+          },
+        },
       };
 
       const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
@@ -661,10 +638,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
             ...state.players.P1,
             board: {
               ...state.players.P1.board,
-              [WuXing.WOOD]: { yin: 2, yang: 1 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 2, yang: 1 },
+            },
+          },
+        },
       };
 
       const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
@@ -682,10 +659,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
             ...state.players.P1,
             board: {
               ...state.players.P1.board,
-              [WuXing.WOOD]: { yin: 0, yang: 1 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 0, yang: 1 },
+            },
+          },
+        },
       };
 
       const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
@@ -703,10 +680,10 @@ describe('ActionCandidates (Legal Action Generator)', () => {
             ...state.players.P1,
             board: {
               ...state.players.P1.board,
-              [WuXing.WOOD]: { yin: -1, yang: 1 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: -1, yang: 1 },
+            },
+          },
+        },
       };
 
       const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
@@ -725,17 +702,17 @@ describe('ActionCandidates (Legal Action Generator)', () => {
             ...state.players.P1,
             board: {
               ...state.players.P1.board,
-              [WuXing.WOOD]: { yin: 1, yang: 1 }
-            }
+              [WuXing.WOOD]: { yin: 1, yang: 1 },
+            },
           },
           P2: {
             ...state.players.P2,
             board: {
               ...state.players.P2.board,
-              [WuXing.EARTH]: { yin: -1, yang: -1 }
-            }
-          }
-        }
+              [WuXing.EARTH]: { yin: -1, yang: -1 },
+            },
+          },
+        },
       };
 
       const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
@@ -751,9 +728,8 @@ describe('ActionCandidates (Legal Action Generator)', () => {
         actionType: ActionType.PASS,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
     });
   });
 });
-

@@ -10,13 +10,13 @@ import {
   ActionType,
   GameState,
   PlayerId,
-  TianGanInfo
+  TianGanInfo,
 } from '../types/domain.js';
 import {
   createInitialGameState,
   canTianGanLightUnlightedSide,
   getUnlightedSide,
-  clampNodeLevel
+  clampNodeLevel,
 } from './State.js';
 import { ActionResolver } from './ActionResolver.js';
 import { EventBus } from './EventBus.js';
@@ -31,7 +31,7 @@ export enum TurnPhase {
   EXECUTE_ACTION = 'EXECUTE_ACTION',
   RESOLVE_BURST = 'RESOLVE_BURST',
   END_TURN = 'END_TURN',
-  GAME_OVER = 'GAME_OVER'
+  GAME_OVER = 'GAME_OVER',
 }
 
 /**
@@ -50,7 +50,7 @@ export interface TurnManagerOptions {
 export type TurnStrategy = (
   state: GameState,
   tianGan: TianGanInfo,
-  actions: ActionPayload[]
+  actions: ActionPayload[],
 ) => ActionPayload;
 
 export class TurnManager {
@@ -140,7 +140,7 @@ export class TurnManager {
       this.eventBus.emit('turn:start', {
         round: this.state.round,
         player: 'P2',
-        isExtraTurn: false
+        isExtraTurn: false,
       });
 
       // 确定性抽取天干
@@ -148,10 +148,10 @@ export class TurnManager {
       this.currentTianGan = tianGan;
       this.state = {
         ...this.state,
-        currentTianGan: tianGan
+        currentTianGan: tianGan,
       };
       this.eventBus.emit('tiangan:draw', {
-        tianGan
+        tianGan,
       });
 
       const p2Board = this.state.players.P2.board;
@@ -160,7 +160,7 @@ export class TurnManager {
       let nextP2Board = p2Board;
       let nextLockedGuiYuan = {
         P1: true,
-        P2: false
+        P2: false,
       };
       // Stryker disable next-line StringLiteral: 初值必被下方 if/else 两分支覆盖，初值不可观测（等价）
       let winner: PlayerId = 'P1';
@@ -169,7 +169,7 @@ export class TurnManager {
         winner = 'P2';
         nextLockedGuiYuan = {
           P1: true,
-          P2: true
+          P2: true,
         };
         // 成功时将最后一侧点亮
         const unlighted = getUnlightedSide(p2Board);
@@ -178,8 +178,10 @@ export class TurnManager {
             ...p2Board,
             [unlighted.element]: {
               ...p2Board[unlighted.element],
-              [unlighted.polarity]: clampNodeLevel(p2Board[unlighted.element][unlighted.polarity] + 1)
-            }
+              [unlighted.polarity]: clampNodeLevel(
+                p2Board[unlighted.element][unlighted.polarity] + 1,
+              ),
+            },
           };
         }
       } else /* Stryker disable next-line BlockStatement: winner 初值已是 'P1'，else 置同值被吸收（等价） */ {
@@ -192,7 +194,7 @@ export class TurnManager {
         player: 'P2',
         tianGan,
         success,
-        winner
+        winner,
       });
 
       const prevState = this.state;
@@ -206,9 +208,9 @@ export class TurnManager {
           ...this.state.players,
           P2: {
             ...this.state.players.P2,
-            board: nextP2Board
-          }
-        }
+            board: nextP2Board,
+          },
+        },
       };
 
       this.phase = TurnPhase.GAME_OVER;
@@ -218,7 +220,7 @@ export class TurnManager {
       this.eventBus.diffAndEmit(prevState, this.state);
       this.eventBus.emit('turn:end', {
         round: prevState.round,
-        player: 'P2'
+        player: 'P2',
       });
 
       return [];
@@ -228,23 +230,23 @@ export class TurnManager {
     this.eventBus.emit('turn:start', {
       round: this.state.round,
       player: this.state.currentPlayer,
-      isExtraTurn: this.isExtraTurn
+      isExtraTurn: this.isExtraTurn,
     });
 
     // 确定性抽取天干并注入游戏状态
     this.currentTianGan = drawTianGan(this.prng);
     this.state = {
       ...this.state,
-      currentTianGan: this.currentTianGan
+      currentTianGan: this.currentTianGan,
     };
 
     this.eventBus.emit('tiangan:draw', {
-      tianGan: this.currentTianGan
+      tianGan: this.currentTianGan,
     });
 
     // 生成合法候选列表，若为连动额外行动则严格过滤爆发动作
     this.candidateActions = getAvailableActions(this.state, this.currentTianGan, {
-      isExtraTurn: this.isExtraTurn
+      isExtraTurn: this.isExtraTurn,
     });
 
     this.phase = TurnPhase.EXECUTE_ACTION;
@@ -263,7 +265,7 @@ export class TurnManager {
         success: false,
         scoreDelta: 0,
         extraTurn: false,
-        message: '对局已结束'
+        message: '对局已结束',
       };
     }
 
@@ -273,7 +275,7 @@ export class TurnManager {
         success: false,
         scoreDelta: 0,
         extraTurn: false,
-        message: '当前不在动作执行阶段，请先调用 startTurn()'
+        message: '当前不在动作执行阶段，请先调用 startTurn()',
       };
     }
 
@@ -284,7 +286,7 @@ export class TurnManager {
         success: false,
         scoreDelta: 0,
         extraTurn: false,
-        message: `当前不是玩家 ${action.player} 的行动回合`
+        message: `当前不是玩家 ${action.player} 的行动回合`,
       };
     }
 
@@ -298,7 +300,7 @@ export class TurnManager {
         success: false,
         scoreDelta: 0,
         extraTurn: false,
-        message: '连动行动中禁止再次使用爆发动作'
+        message: '连动行动中禁止再次使用爆发动作',
       };
     }
 
@@ -310,14 +312,14 @@ export class TurnManager {
         success: false,
         scoreDelta: 0,
         extraTurn: false,
-        message: '非法动作：不在当前合法候选列表中'
+        message: '非法动作：不在当前合法候选列表中',
       };
     }
 
     const fullAction: ActionPayload = {
       ...matchedCandidate,
       ...action,
-      player: this.state.currentPlayer
+      player: this.state.currentPlayer,
     };
 
     this.eventBus.emit('action:execute', { action: fullAction });
@@ -349,14 +351,14 @@ export class TurnManager {
       player: fullAction.player,
       actionType: fullAction.actionType,
       scoreDelta: result.scoreDelta,
-      extraTurn: result.extraTurn
+      extraTurn: result.extraTurn,
     });
 
     this.eventBus.diffAndEmit(prevState, this.state);
 
     this.eventBus.emit('turn:end', {
       round: prevState.round,
-      player: prevState.currentPlayer
+      player: prevState.currentPlayer,
     });
 
     if (this.state.isGameOver) {
@@ -393,7 +395,7 @@ export class TurnManager {
         scoreDelta: 0,
         extraTurn: false,
         // Stryker disable next-line StringLiteral: 终局提示文案不参与断言（不可观测）
-        message: '对局已结束'
+        message: '对局已结束',
       };
     }
 
@@ -407,7 +409,7 @@ export class TurnManager {
         success: true,
         scoreDelta: 0,
         extraTurn: false,
-        message: '终轮天命揭牌决胜已完成'
+        message: '终轮天命揭牌决胜已完成',
       };
     }
 
@@ -423,7 +425,7 @@ export class TurnManager {
         // Stryker disable next-line BooleanLiteral: 不可达的兜底返回
         extraTurn: false,
         // Stryker disable next-line StringLiteral: 不可达的兜底返回
-        message: '无可用动作'
+        message: '无可用动作',
       };
     }
 
@@ -442,7 +444,7 @@ export class TurnManager {
         scoreDelta: 0,
         extraTurn: false,
         // Stryker disable next-line StringLiteral: 终局提示文案不参与断言（不可观测）
-        message: '对局已结束'
+        message: '对局已结束',
       };
     }
 
@@ -457,7 +459,7 @@ export class TurnManager {
         scoreDelta: 0,
         extraTurn: false,
         // Stryker disable next-line StringLiteral: 终局提示文案不参与断言（不可观测）
-        message: '终轮天命揭牌决胜已完成'
+        message: '终轮天命揭牌决胜已完成',
       };
     }
 
@@ -493,12 +495,16 @@ export class TurnManager {
     if (action.polarity !== undefined && candidate.polarity !== action.polarity) {
       return false;
     }
-    if (action.consumePolarity !== undefined && candidate.consumePolarity !== action.consumePolarity) {
+    if (
+      action.consumePolarity !== undefined &&
+      candidate.consumePolarity !== action.consumePolarity
+    ) {
       return false;
     }
 
     if (
-      (candidate.actionType === ActionType.BURST || candidate.actionType === ActionType.BURST_ATK) &&
+      (candidate.actionType === ActionType.BURST ||
+        candidate.actionType === ActionType.BURST_ATK) &&
       action.sourceElement === undefined
     ) {
       return false;

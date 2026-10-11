@@ -1,13 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import {
-  WuXing,
-  Polarity,
-  ActionType
-} from '../../src/core/types/domain.js';
+import { WuXing, Polarity, ActionType } from '../../src/core/types/domain.js';
 import {
   countLightedSides,
   countUnlightedSides,
-  isBoardTingPai
+  isBoardTingPai,
 } from '../../src/core/logic/State.js';
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
 import { TurnManager } from '../../src/core/logic/TurnManager.js';
@@ -46,7 +42,7 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
         [WuXing.FIRE]: { yin: 1, yang: 1 },
         [WuXing.EARTH]: { yin: 1, yang: 1 },
         [WuXing.METAL]: { yin: 1, yang: 0 },
-        [WuXing.WATER]: { yin: 0, yang: 0 }
+        [WuXing.WATER]: { yin: 0, yang: 0 },
       });
       expect(countLightedSides(board7)).toBe(7);
       expect(countUnlightedSides(board7)).toBe(3);
@@ -55,7 +51,7 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
       // 8 sides lighted (2 unlighted sides) -> NOT TingPai (ADR 0007: 差2侧单抽无法归元，未听牌)
       const board8 = boardWith({
         ...board7,
-        [WuXing.METAL]: { yin: 1, yang: 1 } // unlighted: WATER yin (0), WATER yang (0)
+        [WuXing.METAL]: { yin: 1, yang: 1 }, // unlighted: WATER yin (0), WATER yang (0)
       });
       expect(countLightedSides(board8)).toBe(8);
       expect(countUnlightedSides(board8)).toBe(2);
@@ -64,7 +60,7 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
       // 9 sides lighted (1 unlighted side) -> TingPai临界态 (ADR 0007: 严格差1侧)
       const board9 = boardWith({
         ...board8,
-        [WuXing.WATER]: { yin: 1, yang: 0 } // unlighted: WATER yang (0)
+        [WuXing.WATER]: { yin: 1, yang: 0 }, // unlighted: WATER yang (0)
       });
       expect(countLightedSides(board9)).toBe(9);
       expect(countUnlightedSides(board9)).toBe(1);
@@ -73,7 +69,7 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
       // 10 sides lighted (0 unlighted side) -> NOT TingPai (GuiYuan 已全点亮归元，非听牌)
       const board10 = boardWith({
         ...board9,
-        [WuXing.WATER]: { yin: 1, yang: 1 }
+        [WuXing.WATER]: { yin: 1, yang: 1 },
       });
       expect(countLightedSides(board10)).toBe(10);
       expect(countUnlightedSides(board10)).toBe(0);
@@ -87,7 +83,7 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
         [WuXing.FIRE]: { yin: 1, yang: 1 },
         [WuXing.EARTH]: { yin: 1, yang: 1 },
         [WuXing.METAL]: { yin: 1, yang: 1 },
-        [WuXing.WATER]: { yin: -1, yang: 0 }
+        [WuXing.WATER]: { yin: -1, yang: 0 },
       });
       expect(countLightedSides(boardWith2DamageOrVoid)).toBe(8);
       expect(countUnlightedSides(boardWith2DamageOrVoid)).toBe(2);
@@ -96,7 +92,7 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
       // 9 sides lighted, 1 damaged (-1) -> unlighted = 1 side -> TingPai!
       const boardWith1Damage = boardWith({
         ...boardWith2DamageOrVoid,
-        [WuXing.WATER]: { yin: -1, yang: 1 }
+        [WuXing.WATER]: { yin: -1, yang: 1 },
       });
       expect(countLightedSides(boardWith1Damage)).toBe(9);
       expect(countUnlightedSides(boardWith1Damage)).toBe(1);
@@ -108,7 +104,7 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
         [WuXing.FIRE]: { yin: 1, yang: 1 },
         [WuXing.EARTH]: { yin: 1, yang: 1 },
         [WuXing.METAL]: { yin: 1, yang: 0 },
-        [WuXing.WATER]: { yin: -1, yang: 0 }
+        [WuXing.WATER]: { yin: -1, yang: 0 },
       });
       expect(countLightedSides(boardNotTing)).toBe(7);
       expect(countUnlightedSides(boardNotTing)).toBe(3);
@@ -132,7 +128,7 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(res.success).toBe(true);
@@ -147,14 +143,14 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       const res2 = resolver.resolve(res1.nextState, {
         actionType: ActionType.AUTO,
         player: 'P2',
         element: WuXing.FIRE,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(res2.success).toBe(true);
@@ -167,7 +163,7 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
       // P1 BURST
       const state = gameStateWith({
         maxRounds: 30,
-        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } }
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
       });
 
       const resP1Burst = resolver.resolve(state, {
@@ -175,7 +171,7 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(resP1Burst.success).toBe(true);
@@ -188,7 +184,7 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
         round: 5,
         currentPlayer: 'P2',
         P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
-        P2: { [WuXing.FIRE]: { yin: 1, yang: 1 } }
+        P2: { [WuXing.FIRE]: { yin: 1, yang: 1 } },
       });
 
       const resP2Burst = resolver.resolve(stateP2, {
@@ -196,7 +192,7 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
         player: 'P2',
         sourceElement: WuXing.FIRE,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(resP2Burst.success).toBe(true);
@@ -212,7 +208,7 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(resP1.success).toBe(true);
@@ -226,14 +222,14 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
         maxRounds: 30,
         round: 30,
         currentPlayer: 'P2',
-        score: { P1: 200, P2: 100 }
+        score: { P1: 200, P2: 100 },
       });
 
       const resP2 = resolver.resolve(state, {
         actionType: ActionType.AUTO,
         player: 'P2',
         element: WuXing.EARTH,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(resP2.success).toBe(true);
@@ -246,7 +242,7 @@ describe('TingPai Detection & 30-Round Advancement Model', () => {
       const bus = new EventBus();
       const manager = new TurnManager({
         initialState: gameStateWith({ maxRounds: 2 }),
-        eventBus: bus
+        eventBus: bus,
       });
 
       // Step 1: P1 acts in Round 1

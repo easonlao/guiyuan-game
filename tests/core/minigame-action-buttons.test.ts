@@ -5,11 +5,11 @@ import {
   GENERATION_CYCLE,
   OVERCOMING_CYCLE,
   Polarity,
-  WuXing
+  WuXing,
 } from '../../src/core/types/domain.js';
 import {
   formatActionButton,
-  getActionTargetElement
+  getActionTargetElement,
 } from '../../src/minigame/action-button-formatter.js';
 import { WUXING_PALETTE } from '../../src/minigame/pixel-art.js';
 
@@ -20,7 +20,7 @@ describe('Minigame Action Button Presentation Logic', () => {
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
       const formatted = formatActionButton(act);
       expect(formatted.label).toBe('【吸纳】');
@@ -35,7 +35,7 @@ describe('Minigame Action Button Presentation Logic', () => {
       WuXing.FIRE,
       WuXing.EARTH,
       WuXing.METAL,
-      WuXing.WATER
+      WuXing.WATER,
     ];
 
     allElements.forEach((src) => {
@@ -49,7 +49,7 @@ describe('Minigame Action Button Presentation Logic', () => {
           player: 'P1',
           sourceElement: src,
           consumePolarity: Polarity.YIN,
-          polarity: Polarity.YANG
+          polarity: Polarity.YANG,
         };
 
         const formatted = formatActionButton(act);
@@ -66,7 +66,7 @@ describe('Minigame Action Button Presentation Logic', () => {
       WuXing.FIRE,
       WuXing.EARTH,
       WuXing.METAL,
-      WuXing.WATER
+      WuXing.WATER,
     ];
 
     allElements.forEach((src) => {
@@ -80,7 +80,7 @@ describe('Minigame Action Button Presentation Logic', () => {
           player: 'P1',
           sourceElement: src,
           consumePolarity: Polarity.YANG,
-          polarity: Polarity.YIN
+          polarity: Polarity.YIN,
         };
 
         const formatted = formatActionButton(act);
@@ -97,7 +97,7 @@ describe('Minigame Action Button Presentation Logic', () => {
         actionType: ActionType.TRANS,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
       // WOOD generates FIRE
       const formatted = formatActionButton(act);
@@ -111,7 +111,7 @@ describe('Minigame Action Button Presentation Logic', () => {
         actionType: ActionType.ATK,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
       // WOOD overcomes EARTH
       const formatted = formatActionButton(act);
@@ -125,7 +125,7 @@ describe('Minigame Action Button Presentation Logic', () => {
         actionType: ActionType.CONVERT,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
       const formatted = formatActionButton(act);
       expect(formatted.label).toBe('【调息】');
@@ -139,14 +139,14 @@ describe('Minigame Action Button Presentation Logic', () => {
       const transAct: ActionPayload = {
         actionType: ActionType.TRANS,
         player: 'P1',
-        sourceElement: WuXing.WOOD
+        sourceElement: WuXing.WOOD,
       };
       expect(getActionTargetElement(transAct)).toBe(WuXing.FIRE);
 
       const burstAct: ActionPayload = {
         actionType: ActionType.BURST,
         player: 'P1',
-        sourceElement: WuXing.WATER
+        sourceElement: WuXing.WATER,
       };
       expect(getActionTargetElement(burstAct)).toBe(WuXing.WOOD);
     });
@@ -155,14 +155,14 @@ describe('Minigame Action Button Presentation Logic', () => {
       const atkAct: ActionPayload = {
         actionType: ActionType.ATK,
         player: 'P1',
-        sourceElement: WuXing.WOOD
+        sourceElement: WuXing.WOOD,
       };
       expect(getActionTargetElement(atkAct)).toBe(WuXing.EARTH);
 
       const burstAtkAct: ActionPayload = {
         actionType: ActionType.BURST_ATK,
         player: 'P1',
-        sourceElement: WuXing.FIRE
+        sourceElement: WuXing.FIRE,
       };
       expect(getActionTargetElement(burstAtkAct)).toBe(WuXing.METAL);
     });
@@ -171,14 +171,14 @@ describe('Minigame Action Button Presentation Logic', () => {
       const autoAct: ActionPayload = {
         actionType: ActionType.AUTO,
         player: 'P1',
-        element: WuXing.EARTH
+        element: WuXing.EARTH,
       };
       expect(getActionTargetElement(autoAct)).toBe(WuXing.EARTH);
 
       const convertAct: ActionPayload = {
         actionType: ActionType.CONVERT,
         player: 'P1',
-        element: WuXing.METAL
+        element: WuXing.METAL,
       };
       expect(getActionTargetElement(convertAct)).toBe(WuXing.METAL);
     });
@@ -188,7 +188,7 @@ describe('Minigame Action Button Presentation Logic', () => {
         actionType: ActionType.TRANS,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        targetElement: WuXing.METAL
+        targetElement: WuXing.METAL,
       };
       expect(getActionTargetElement(explicitAct)).toBe(WuXing.METAL);
     });
@@ -198,7 +198,7 @@ describe('Minigame Action Button Presentation Logic', () => {
         actionType: ActionType.PASS,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
       const formatted = formatActionButton(passAct);
       expect(formatted.label).toBe('【消散】');
@@ -213,7 +213,7 @@ describe('Minigame Action Button Presentation Logic', () => {
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
       const formatted = formatActionButton(act, true);
       expect(formatted.label).toBe('【自动吸纳】');
@@ -227,20 +227,20 @@ describe('Minigame Action Button Presentation Logic', () => {
         actionType: ActionType.CONVERT,
         player: 'P1',
         element: WuXing.FIRE,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
       expect(formatActionButton(actYang, true)).toEqual({
         label: '【自动调息】',
         subLabel: '转同属阳（点击立即调息）',
         color: '#63b3ed',
-        isBurst: false
+        isBurst: false,
       });
 
       const actYin: ActionPayload = {
         actionType: ActionType.CONVERT,
         player: 'P1',
         element: WuXing.FIRE,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
       expect(formatActionButton(actYin, true).subLabel).toBe('转同属阴（点击立即调息）');
     });
@@ -250,7 +250,7 @@ describe('Minigame Action Button Presentation Logic', () => {
         actionType: ActionType.TRANS,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
       const formatted = formatActionButton(act, true);
       expect(formatted.label).toBe('【自动化气】');
@@ -264,7 +264,7 @@ describe('Minigame Action Button Presentation Logic', () => {
         actionType: ActionType.ATK,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
       const formatted = formatActionButton(act, true);
       expect(formatted.label).toBe('【自动击破】');
@@ -278,7 +278,7 @@ describe('Minigame Action Button Presentation Logic', () => {
         actionType: ActionType.BURST,
         player: 'P1',
         sourceElement: WuXing.WATER,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
       const formatted = formatActionButton(act, true);
       expect(formatted.label).toBe('【自动强化】');
@@ -292,7 +292,7 @@ describe('Minigame Action Button Presentation Logic', () => {
         actionType: ActionType.BURST_ATK,
         player: 'P1',
         sourceElement: WuXing.METAL,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
       const formatted = formatActionButton(act, true);
       expect(formatted.label).toBe('【自动强破】');
@@ -306,7 +306,7 @@ describe('Minigame Action Button Presentation Logic', () => {
         actionType: ActionType.DISSIPATE,
         player: 'P1',
         element: WuXing.EARTH,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
       const formatted = formatActionButton(act, true);
       expect(formatted.label).toBe('【亢极散气】');
@@ -320,7 +320,7 @@ describe('Minigame Action Button Presentation Logic', () => {
         actionType: ActionType.PASS,
         player: 'P1',
         element: WuXing.EARTH,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
       const formattedAuto = formatActionButton(act, true);
       expect(formattedAuto.label).toBe('【消散】');

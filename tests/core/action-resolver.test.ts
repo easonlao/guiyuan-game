@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  ActionType,
-  WuXing,
-  Polarity
-} from '../../src/core/types/index.js';
+import { ActionType, WuXing, Polarity } from '../../src/core/types/index.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
 
@@ -16,7 +12,7 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
       actionType: ActionType.AUTO,
       player: 'P1',
       element: WuXing.WOOD,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
 
     expect(result.success).toBe(true);
@@ -27,10 +23,11 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
     // Verify immutability of previous state
     expect(initialState.players.P1.board[WuXing.WOOD].yang).toBe(0);
     // Verify structural sharing: unmodified nodes share reference
-    expect(result.nextState.players.P1.board[WuXing.FIRE]).toBe(initialState.players.P1.board[WuXing.FIRE]);
+    expect(result.nextState.players.P1.board[WuXing.FIRE]).toBe(
+      initialState.players.P1.board[WuXing.FIRE],
+    );
     expect(result.nextState.players.P2.board).toBe(initialState.players.P2.board);
   });
-
 
   it('CONVERT (调息): should transfer energy to opposite polarity', () => {
     const initialState = createInitialGameState();
@@ -38,7 +35,7 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
       actionType: ActionType.CONVERT,
       player: 'P1',
       element: WuXing.WOOD,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
 
     expect(result.success).toBe(true);
@@ -52,7 +49,7 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
       actionType: ActionType.TRANS,
       player: 'P1',
       sourceElement: WuXing.WOOD,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
 
     expect(result.success).toBe(true);
@@ -65,7 +62,7 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
       actionType: ActionType.ATK,
       player: 'P1',
       sourceElement: WuXing.WOOD,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
 
     expect(result.success).toBe(true);
@@ -80,7 +77,7 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
       actionType: ActionType.AUTO,
       player: 'P1',
       element: WuXing.WOOD,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
     const stateWithYin = {
       ...prepResult.nextState,
@@ -91,10 +88,10 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
           ...prepResult.nextState.players.P1,
           board: {
             ...prepResult.nextState.players.P1.board,
-            [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const }
-          }
-        }
-      }
+            [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const },
+          },
+        },
+      },
     };
 
     const burstResult = resolver.resolve(stateWithYin, {
@@ -102,7 +99,7 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
       player: 'P1',
       sourceElement: WuXing.WOOD,
       consumePolarity: Polarity.YIN,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
 
     expect(burstResult.success).toBe(true);
@@ -123,22 +120,22 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
       [WuXing.FIRE]: { yin: 1, yang: 1 },
       [WuXing.EARTH]: { yin: 1, yang: 1 },
       [WuXing.METAL]: { yin: 1, yang: 1 },
-      [WuXing.WATER]: { yin: 1, yang: 0 }
+      [WuXing.WATER]: { yin: 1, yang: 0 },
     } as const;
 
     state = {
       ...state,
       players: {
         ...state.players,
-        P1: { ...state.players.P1, board: almostWinBoard }
-      }
+        P1: { ...state.players.P1, board: almostWinBoard },
+      },
     };
 
     const finalResult = resolver.resolve(state, {
       actionType: ActionType.AUTO,
       player: 'P1',
       element: WuXing.WATER,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
 
     expect(finalResult.success).toBe(true);
@@ -155,7 +152,7 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
       [WuXing.FIRE]: { yin: 1, yang: 1 },
       [WuXing.EARTH]: { yin: 1, yang: 1 },
       [WuXing.METAL]: { yin: 1, yang: 1 },
-      [WuXing.WATER]: { yin: 1, yang: 0 }
+      [WuXing.WATER]: { yin: 1, yang: 0 },
     } as const;
 
     const state = {
@@ -163,15 +160,15 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
       currentPlayer: 'P2' as const,
       players: {
         ...base.players,
-        P2: { ...base.players.P2, board: almostWinBoard }
-      }
+        P2: { ...base.players.P2, board: almostWinBoard },
+      },
     };
 
     const result = resolver.resolve(state, {
       actionType: ActionType.AUTO,
       player: 'P2',
       element: WuXing.WATER,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
 
     expect(result.success).toBe(true);
@@ -193,17 +190,17 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
           score: 500,
           board: {
             ...state.players.P1.board,
-            [WuXing.WOOD]: { yin: 2, yang: 2 }
-          }
-        }
-      }
+            [WuXing.WOOD]: { yin: 2, yang: 2 },
+          },
+        },
+      },
     };
 
     const result = resolver.resolve(state, {
       actionType: ActionType.DISSIPATE,
       player: 'P1',
       element: WuXing.WOOD,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
 
     expect(result.success).toBe(true);
@@ -227,17 +224,17 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
             ...state.players.P1,
             board: {
               ...state.players.P1.board,
-              [WuXing.WOOD]: { yin: 1, yang: 1 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1, yang: 1 },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
         actionType: ActionType.CONVERT,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       });
 
       expect(result.success).toBe(false);
@@ -256,17 +253,17 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
             ...state.players.P1,
             board: {
               ...state.players.P1.board,
-              [WuXing.WOOD]: { yin: 2, yang: 1 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 2, yang: 1 },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
         actionType: ActionType.CONVERT,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       });
 
       expect(result.success).toBe(false);
@@ -286,17 +283,17 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
             score: 120,
             board: {
               ...state.players.P1.board,
-              [WuXing.WOOD]: { yin: 1, yang: 1 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1, yang: 1 },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
         actionType: ActionType.PASS,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(true);
@@ -315,14 +312,14 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
         ...createInitialGameState(),
         isGameOver: true,
         winner: 'P1' as const,
-        endReason: 'GUI_YUAN' as const
+        endReason: 'GUI_YUAN' as const,
       };
 
       const result = resolver.resolve(gameOverState, {
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(false);
@@ -341,17 +338,17 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
             ...base.players.P1,
             board: {
               ...base.players.P1.board,
-              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
         actionType: ActionType.CONVERT,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       });
 
       expect(result.success).toBe(false);
@@ -369,17 +366,17 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
             ...base.players.P1,
             board: {
               ...base.players.P1.board,
-              [WuXing.WOOD]: { yin: 0 as const, yang: 2 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 0 as const, yang: 2 as const },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(true);
@@ -396,10 +393,10 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
             ...base.players.P1,
             board: {
               ...base.players.P1.board,
-              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
@@ -407,7 +404,7 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YANG,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(true);
@@ -425,10 +422,10 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
             ...base.players.P1,
             board: {
               ...base.players.P1.board,
-              [WuXing.WOOD]: { yin: 1 as const, yang: 0 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1 as const, yang: 0 as const },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
@@ -436,7 +433,7 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(false);
@@ -454,10 +451,10 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
             ...base.players.P1,
             board: {
               ...base.players.P1.board,
-              [WuXing.WOOD]: { yin: 1 as const, yang: 0 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1 as const, yang: 0 as const },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
@@ -465,7 +462,7 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YANG,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(false);
@@ -483,10 +480,10 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
             ...base.players.P1,
             board: {
               ...base.players.P1.board,
-              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
@@ -494,7 +491,7 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(true);
@@ -515,15 +512,15 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
             score: 500,
             board: {
               ...base.players.P2.board,
-              [WuXing.WOOD]: { yin: -1 as const, yang: 0 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: -1 as const, yang: 0 as const },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
         actionType: ActionType.PASS,
-        player: 'P2'
+        player: 'P2',
       });
 
       expect(result.success).toBe(true);
@@ -536,4 +533,3 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
     });
   });
 });
-

@@ -29,20 +29,13 @@ import {
   GameState,
   TianGanInfo,
   TIAN_GAN_LIST,
-  WuXing
+  WuXing,
 } from '../types/domain.js';
 import { ActionResolver } from '../logic/ActionResolver.js';
 import { getAvailableActions, type RuleSwitches } from '../logic/ActionCandidates.js';
 import { measureBoardDiff } from '../logic/State.js';
-import {
-  POINTS_CONFIG,
-  ScoreCalculator,
-  type PointsConfig
-} from '../logic/ScoreCalculator.js';
-import {
-  ActionEvaluator,
-  DEFAULT_STRATEGY_WEIGHTS
-} from '../ai/ActionEvaluator.js';
+import { POINTS_CONFIG, ScoreCalculator, type PointsConfig } from '../logic/ScoreCalculator.js';
+import { ActionEvaluator, DEFAULT_STRATEGY_WEIGHTS } from '../ai/ActionEvaluator.js';
 import type { StrategyWeights } from '../ai/types.js';
 import { ATK_PHASES } from './AtkMarginalReturn.js';
 import { gameStateWith, type BoardOverrides } from './BoardFixture.js';
@@ -109,13 +102,13 @@ function buildValueFunction(options: ActionValueCensusOptions): ValueFunction {
         'ActionPayload（由 getAvailableActions 枚举）',
         'StrategyWeights',
         'PointsConfig',
-        'RuleSwitches'
+        'RuleSwitches',
       ],
       pointsConfigName:
         pointsConfig === POINTS_CONFIG ? 'POINTS_CONFIG（生产默认）' : '自定义 PointsConfig',
       isBoardOnly: options.rules?.isBoardOnly ?? false,
-      epsilon
-    }
+      epsilon,
+    },
   };
 }
 
@@ -217,7 +210,7 @@ const ALL_BLESSED: BoardOverrides = {
   [WuXing.FIRE]: { yin: 2, yang: 2 },
   [WuXing.EARTH]: { yin: 2, yang: 2 },
   [WuXing.METAL]: { yin: 2, yang: 2 },
-  [WuXing.WATER]: { yin: 2, yang: 2 }
+  [WuXing.WATER]: { yin: 2, yang: 2 },
 };
 
 const ALL_DAMAGED: BoardOverrides = {
@@ -225,7 +218,7 @@ const ALL_DAMAGED: BoardOverrides = {
   [WuXing.FIRE]: { yin: -1, yang: -1 },
   [WuXing.EARTH]: { yin: -1, yang: -1 },
   [WuXing.METAL]: { yin: -1, yang: -1 },
-  [WuXing.WATER]: { yin: -1, yang: -1 }
+  [WuXing.WATER]: { yin: -1, yang: -1 },
 };
 
 /**
@@ -238,23 +231,23 @@ const KANGJI_OVERRIDES: BoardOverrides = {
   [WuXing.FIRE]: { yin: 1, yang: 1 },
   [WuXing.EARTH]: { yin: 1, yang: 1 },
   [WuXing.METAL]: { yin: 1, yang: 1 },
-  [WuXing.WATER]: { yin: 1, yang: 1 }
+  [WuXing.WATER]: { yin: 1, yang: 1 },
 };
 
 /** 被测阶段：三个既有阶段（低位态期 / 中盘 / 残局）+ 亢极态（覆盖 DISSIPATE）。 */
 export const CENSUS_PHASES: readonly CensusPhase[] = [
-  ...ATK_PHASES.map(phase => ({
+  ...ATK_PHASES.map((phase) => ({
     key: phase.key,
     phase: phase.phase,
     description: phase.description,
-    own: phase.overrides
+    own: phase.overrides,
   })),
   {
     key: 'kangji',
     phase: '亢极态',
     description: '己方木节点亢极 (2,2)，其余节点归一 (1,1)（覆盖【亢极散气】）',
-    own: KANGJI_OVERRIDES
-  }
+    own: KANGJI_OVERRIDES,
+  },
 ];
 
 /** 两个阶跃条件 + plain 镜像对照。 */
@@ -262,18 +255,18 @@ export const CENSUS_STEP_CONDITIONS: readonly CensusStepCondition[] = [
   {
     key: 'plain',
     condition: '无附加条件',
-    description: '对手盘面与行动方盘面相同（阶段原样镜像）'
+    description: '对手盘面与行动方盘面相同（阶段原样镜像）',
   },
   {
     key: 'target-blessed',
     condition: '目标侧为加持',
-    description: '对手 10 侧全部加持 (2)，任何【破】的目标侧都是加持'
+    description: '对手 10 侧全部加持 (2)，任何【破】的目标侧都是加持',
   },
   {
     key: 'opponent-all-damaged',
     condition: '对手全道损',
-    description: '对手 10 侧全部道损 (-1)，【破】/【强破】已无合法目标'
-  }
+    description: '对手 10 侧全部道损 (-1)，【破】/【强破】已无合法目标',
+  },
 ];
 
 function opponentOverridesFor(phase: CensusPhase, stepConditionKey: string): BoardOverrides {
@@ -290,7 +283,7 @@ export function buildCensusBoards(): CensusBoard[] {
       const state = gameStateWith({
         P1: phase.own,
         P2: opponentOverridesFor(phase, step.key),
-        currentPlayer: 'P1'
+        currentPlayer: 'P1',
       });
       boards.push({
         key: `${phase.key}/${step.key}`,
@@ -300,7 +293,7 @@ export function buildCensusBoards(): CensusBoard[] {
         stepCondition: step.condition,
         description: `${phase.phase} × ${step.condition}`,
         ownBoard: state.players.P1.board,
-        opponentBoard: state.players.P2.board
+        opponentBoard: state.players.P2.board,
       });
     }
   }
@@ -314,30 +307,30 @@ export function buildCensusBoards(): CensusBoard[] {
 function evaluateWith(
   valueFunction: ValueFunction,
   state: GameState,
-  tianGan: TianGanInfo
+  tianGan: TianGanInfo,
 ): ActionValue[] {
   const { evaluator, resolver, weights, rules, epsilon } = valueFunction;
   const actions = getAvailableActions(state, tianGan);
   const simulatedState: GameState = { ...state, currentTianGan: tianGan };
 
-  const scored = actions.map(action => {
+  const scored = actions.map((action) => {
     const score = evaluator.evaluate(simulatedState, tianGan, action, weights, rules);
     const result = resolver.resolve(simulatedState, action);
     const opponentId = action.player === 'P1' ? 'P2' : 'P1';
     const ownDiff = measureBoardDiff(
       state.players[action.player].board,
-      result.nextState.players[action.player].board
+      result.nextState.players[action.player].board,
     );
     const opponentDiff = measureBoardDiff(
       state.players[opponentId].board,
-      result.nextState.players[opponentId].board
+      result.nextState.players[opponentId].board,
     );
     return { action, score, ownDiff, opponentDiff };
   });
 
   const maxValue = scored.reduce(
     (max, item) => Math.max(max, item.score.score),
-    Number.NEGATIVE_INFINITY
+    Number.NEGATIVE_INFINITY,
   );
 
   return scored.map(({ action, score, ownDiff, opponentDiff }) => {
@@ -357,7 +350,7 @@ function evaluateWith(
       suppressionLevels: opponentDiff.suppressionLevels,
       constructionLevels: ownDiff.constructionLevels,
       isOptimal: !isDominated,
-      isDominated
+      isDominated,
     };
   });
 }
@@ -369,7 +362,7 @@ function evaluateWith(
 export function evaluateActionValues(
   state: GameState,
   tianGan: TianGanInfo,
-  options: ActionValueCensusOptions = {}
+  options: ActionValueCensusOptions = {},
 ): ActionValue[] {
   return evaluateWith(buildValueFunction(options), state, tianGan);
 }
@@ -379,25 +372,25 @@ function unique(values: readonly string[]): string[] {
 }
 
 function aggregateActionCensus(
-  observations: readonly ActionValueObservation[]
+  observations: readonly ActionValueObservation[],
 ): ActionTypeCensus[] {
-  return Object.values(ActionType).map(actionType => {
-    const own = observations.filter(observation => observation.actionType === actionType);
+  return Object.values(ActionType).map((actionType) => {
+    const own = observations.filter((observation) => observation.actionType === actionType);
     const available = own.length > 0;
-    const optimal = own.filter(observation => observation.isOptimal);
-    const dominated = own.filter(observation => observation.isDominated);
+    const optimal = own.filter((observation) => observation.isOptimal);
+    const dominated = own.filter((observation) => observation.isDominated);
 
     return {
       actionType,
       available,
       observationCount: own.length,
-      optimalBoardKeys: unique(optimal.map(observation => observation.boardKey)),
-      optimalObservations: optimal.map(observation => ({
+      optimalBoardKeys: unique(optimal.map((observation) => observation.boardKey)),
+      optimalObservations: optimal.map((observation) => ({
         boardKey: observation.boardKey,
-        tianGan: observation.tianGan
+        tianGan: observation.tianGan,
       })),
-      dominatedBoardKeys: unique(dominated.map(observation => observation.boardKey)),
-      globallyDominated: available && own.every(observation => observation.isDominated)
+      dominatedBoardKeys: unique(dominated.map((observation) => observation.boardKey)),
+      globallyDominated: available && own.every((observation) => observation.isDominated),
     };
   });
 }
@@ -407,7 +400,7 @@ function aggregateActionCensus(
  * 同一选项下确定性输出（无随机、无时间、无环境依赖）。
  */
 export function runActionValueCensus(
-  options: ActionValueCensusOptions = {}
+  options: ActionValueCensusOptions = {},
 ): ActionValueCensusReport {
   const valueFunction = buildValueFunction(options);
   const boards = buildCensusBoards();
@@ -417,7 +410,7 @@ export function runActionValueCensus(
     const state = gameStateWith({
       P1: board.ownBoard,
       P2: board.opponentBoard,
-      currentPlayer: 'P1'
+      currentPlayer: 'P1',
     });
     for (const tianGan of TIAN_GAN_LIST) {
       const values = evaluateWith(valueFunction, state, tianGan);
@@ -427,7 +420,7 @@ export function runActionValueCensus(
           boardKey: board.key,
           phaseKey: board.phaseKey,
           stepConditionKey: board.stepConditionKey,
-          tianGan: tianGan.name
+          tianGan: tianGan.name,
         });
       }
     }
@@ -441,8 +434,8 @@ export function runActionValueCensus(
     observations,
     actions,
     globallyDominated: actions
-      .filter(action => action.globallyDominated)
-      .map(action => action.actionType)
+      .filter((action) => action.globallyDominated)
+      .map((action) => action.actionType),
   };
 }
 
@@ -452,5 +445,5 @@ export function runActionValueCensus(
 
 export {
   formatActionSummaryTable,
-  formatActionValueCensusReport
+  formatActionValueCensusReport,
 } from './ActionValueCensusReport.js';

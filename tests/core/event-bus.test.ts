@@ -14,7 +14,7 @@ describe('EventBus (Layer 1 to Layer 3 UI Decoupling)', () => {
       element: WuXing.WOOD,
       polarity: Polarity.YANG,
       prevLevel: 0,
-      newLevel: 1
+      newLevel: 1,
     });
 
     expect(handler).toHaveBeenCalledWith({
@@ -22,7 +22,7 @@ describe('EventBus (Layer 1 to Layer 3 UI Decoupling)', () => {
       element: WuXing.WOOD,
       polarity: Polarity.YANG,
       prevLevel: 0,
-      newLevel: 1
+      newLevel: 1,
     });
 
     unsubscribe();
@@ -31,7 +31,7 @@ describe('EventBus (Layer 1 to Layer 3 UI Decoupling)', () => {
       element: WuXing.WOOD,
       polarity: Polarity.YANG,
       prevLevel: 1,
-      newLevel: 2
+      newLevel: 2,
     });
     expect(handler).toHaveBeenCalledTimes(1);
   });
@@ -66,11 +66,11 @@ describe('EventBus (Layer 1 to Layer 3 UI Decoupling)', () => {
             ...prevState.players.P1.board,
             [WuXing.FIRE]: {
               ...prevState.players.P1.board[WuXing.FIRE],
-              yang: 1 as const
-            }
-          }
-        }
-      }
+              yang: 1 as const,
+            },
+          },
+        },
+      },
     };
 
     bus.diffAndEmit(prevState, nextState);
@@ -79,7 +79,7 @@ describe('EventBus (Layer 1 to Layer 3 UI Decoupling)', () => {
       element: WuXing.FIRE,
       polarity: Polarity.YANG,
       prevLevel: 0,
-      newLevel: 1
+      newLevel: 1,
     });
   });
 
@@ -97,10 +97,10 @@ describe('EventBus (Layer 1 to Layer 3 UI Decoupling)', () => {
           ...prevState.players.P1,
           board: {
             ...prevState.players.P1.board,
-            [WuXing.WATER]: { yin: 1 as const, yang: 0 as const }
-          }
-        }
-      }
+            [WuXing.WATER]: { yin: 1 as const, yang: 0 as const },
+          },
+        },
+      },
     };
 
     bus.diffAndEmit(prevState, nextState);
@@ -110,7 +110,7 @@ describe('EventBus (Layer 1 to Layer 3 UI Decoupling)', () => {
       element: WuXing.WATER,
       polarity: Polarity.YIN,
       prevLevel: 0,
-      newLevel: 1
+      newLevel: 1,
     });
   });
 
@@ -138,7 +138,7 @@ describe('EventBus (Layer 1 to Layer 3 UI Decoupling)', () => {
       ...prevState,
       isGameOver: true,
       winner: 'P1' as const,
-      endReason: 'GUI_YUAN' as const
+      endReason: 'GUI_YUAN' as const,
     };
 
     bus.diffAndEmit(prevState, nextState);

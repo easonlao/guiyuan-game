@@ -5,7 +5,7 @@ import {
   GUARDRAIL_GUIYUAN_MAX,
   GUARDRAIL_P1_WIN_MIN,
   GUARDRAIL_P1_WIN_MAX,
-  type GuardrailMetrics
+  type GuardrailMetrics,
 } from '../../src/core/headless/GuardrailBand.js';
 
 /**
@@ -38,13 +38,13 @@ const IN_BAND_HEAP_MB = 1;
 const ANCHOR_METRICS: GuardrailMetrics = {
   guiYuanRate: ANCHOR_GUIYUAN_RATE,
   p1WinRate: ANCHOR_P1_WIN_RATE,
-  heapUsedDeltaMB: IN_BAND_HEAP_MB
+  heapUsedDeltaMB: IN_BAND_HEAP_MB,
 };
 
 const ROLLBACK_METRICS: GuardrailMetrics = {
   guiYuanRate: NO_PROGRESS_PRICING_GUIYUAN_RATE,
   p1WinRate: NO_PROGRESS_PRICING_P1_WIN_RATE,
-  heapUsedDeltaMB: IN_BAND_HEAP_MB
+  heapUsedDeltaMB: IN_BAND_HEAP_MB,
 };
 
 describe('护栏带唯一定义与防漂移守卫', () => {
@@ -70,20 +70,20 @@ describe('护栏带唯一定义与防漂移守卫', () => {
     const violations = checkGuardrailBand(ROLLBACK_METRICS);
 
     // 违规集合精确等于这两条：把任一下界/上界改松，这里都会变红。
-    expect(violations.map(v => v.bound)).toEqual(['guiYuanRate.min', 'p1WinRate.max']);
+    expect(violations.map((v) => v.bound)).toEqual(['guiYuanRate.min', 'p1WinRate.max']);
 
     // 每条违规自述指标、界值与实际值，使失败信息（含 `toEqual([])` 的 diff）能命名越界项。
     expect(violations[0]).toMatchObject({
       metric: 'guiYuanRate',
       bound: 'guiYuanRate.min',
       boundValue: GUARDRAIL_GUIYUAN_MIN,
-      actual: NO_PROGRESS_PRICING_GUIYUAN_RATE
+      actual: NO_PROGRESS_PRICING_GUIYUAN_RATE,
     });
     expect(violations[1]).toMatchObject({
       metric: 'p1WinRate',
       bound: 'p1WinRate.max',
       boundValue: GUARDRAIL_P1_WIN_MAX,
-      actual: NO_PROGRESS_PRICING_P1_WIN_RATE
+      actual: NO_PROGRESS_PRICING_P1_WIN_RATE,
     });
   });
 });

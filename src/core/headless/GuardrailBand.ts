@@ -79,7 +79,7 @@ export function checkGuardrailBand(metrics: GuardrailMetrics): GuardrailViolatio
       bound: 'guiYuanRate.min',
       boundValue: GUARDRAIL_GUIYUAN_MIN,
       actual: metrics.guiYuanRate,
-      message: `归元率 ${metrics.guiYuanRate} 低于下界 ${GUARDRAIL_GUIYUAN_MIN}`
+      message: `归元率 ${metrics.guiYuanRate} 低于下界 ${GUARDRAIL_GUIYUAN_MIN}`,
     });
   }
   if (metrics.guiYuanRate > GUARDRAIL_GUIYUAN_MAX) {
@@ -88,7 +88,7 @@ export function checkGuardrailBand(metrics: GuardrailMetrics): GuardrailViolatio
       bound: 'guiYuanRate.max',
       boundValue: GUARDRAIL_GUIYUAN_MAX,
       actual: metrics.guiYuanRate,
-      message: `归元率 ${metrics.guiYuanRate} 高于上界 ${GUARDRAIL_GUIYUAN_MAX}`
+      message: `归元率 ${metrics.guiYuanRate} 高于上界 ${GUARDRAIL_GUIYUAN_MAX}`,
     });
   }
   if (metrics.p1WinRate < GUARDRAIL_P1_WIN_MIN) {
@@ -97,7 +97,7 @@ export function checkGuardrailBand(metrics: GuardrailMetrics): GuardrailViolatio
       bound: 'p1WinRate.min',
       boundValue: GUARDRAIL_P1_WIN_MIN,
       actual: metrics.p1WinRate,
-      message: `先手胜率 ${metrics.p1WinRate} 低于下界 ${GUARDRAIL_P1_WIN_MIN}`
+      message: `先手胜率 ${metrics.p1WinRate} 低于下界 ${GUARDRAIL_P1_WIN_MIN}`,
     });
   }
   if (metrics.p1WinRate > GUARDRAIL_P1_WIN_MAX) {
@@ -106,7 +106,7 @@ export function checkGuardrailBand(metrics: GuardrailMetrics): GuardrailViolatio
       bound: 'p1WinRate.max',
       boundValue: GUARDRAIL_P1_WIN_MAX,
       actual: metrics.p1WinRate,
-      message: `先手胜率 ${metrics.p1WinRate} 高于上界 ${GUARDRAIL_P1_WIN_MAX}`
+      message: `先手胜率 ${metrics.p1WinRate} 高于上界 ${GUARDRAIL_P1_WIN_MAX}`,
     });
   }
   if (metrics.heapUsedDeltaMB >= GUARDRAIL_HEAP_MAX_MB) {
@@ -115,7 +115,7 @@ export function checkGuardrailBand(metrics: GuardrailMetrics): GuardrailViolatio
       bound: 'heapUsedDeltaMB.max',
       boundValue: GUARDRAIL_HEAP_MAX_MB,
       actual: metrics.heapUsedDeltaMB,
-      message: `堆内存增量 ${metrics.heapUsedDeltaMB}MB 不低于上界 ${GUARDRAIL_HEAP_MAX_MB}MB`
+      message: `堆内存增量 ${metrics.heapUsedDeltaMB}MB 不低于上界 ${GUARDRAIL_HEAP_MAX_MB}MB`,
     });
   }
 

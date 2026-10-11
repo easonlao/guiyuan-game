@@ -6,7 +6,7 @@ import {
   OVERCOMING_CYCLE,
   TIAN_GAN_LIST,
   NodeLevelEnum,
-  getOppositePolarity
+  getOppositePolarity,
 } from '../../src/core/types/index.js';
 
 describe('Domain Model Contracts (GLOSSARY.md)', () => {
@@ -28,9 +28,9 @@ describe('Domain Model Contracts (GLOSSARY.md)', () => {
 
   it('should define ten TianGan with proper element and polarity', () => {
     expect(TIAN_GAN_LIST).toHaveLength(10);
-    const jia = TIAN_GAN_LIST.find(t => t.name === '甲');
+    const jia = TIAN_GAN_LIST.find((t) => t.name === '甲');
     expect(jia).toEqual({ name: '甲', element: WuXing.WOOD, polarity: Polarity.YANG });
-    const yi = TIAN_GAN_LIST.find(t => t.name === '乙');
+    const yi = TIAN_GAN_LIST.find((t) => t.name === '乙');
     expect(yi).toEqual({ name: '乙', element: WuXing.WOOD, polarity: Polarity.YIN });
   });
 

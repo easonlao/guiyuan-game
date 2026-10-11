@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { WuXing } from '../../src/core/types/domain.js';
-import {
-  boardWith,
-  gameStateWith
-} from '../../src/core/headless/BoardFixture.js';
+import { boardWith, gameStateWith } from '../../src/core/headless/BoardFixture.js';
 import { createEmptyBoard, createInitialGameState } from '../../src/core/logic/State.js';
 
 describe('盘面 fixture 构造器 (Board Fixture)', () => {
@@ -19,7 +16,7 @@ describe('盘面 fixture 构造器 (Board Fixture)', () => {
     it('可同时覆盖阴阳两侧与多个节点', () => {
       const board = boardWith({
         [WuXing.WOOD]: { yin: 1, yang: 1 },
-        [WuXing.WATER]: { yin: 0, yang: -1 }
+        [WuXing.WATER]: { yin: 0, yang: -1 },
       });
 
       expect(board[WuXing.WOOD]).toEqual({ yin: 1, yang: 1 });
@@ -55,7 +52,7 @@ describe('盘面 fixture 构造器 (Board Fixture)', () => {
         lockedGuiYuan: { P1: true, P2: false },
         isGameOver: true,
         winner: 'P1',
-        endReason: 'GUI_YUAN'
+        endReason: 'GUI_YUAN',
       });
 
       expect(state.players.P1.board[WuXing.WOOD]).toEqual({ yin: 1, yang: 1 });

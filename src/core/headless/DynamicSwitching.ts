@@ -43,7 +43,7 @@ import {
   type RuleMode,
   type RunConfig,
   type ScoreConfigVariant,
-  type StrategyVariant
+  type StrategyVariant,
 } from './ExperimentRunner.js';
 
 // ---------------------------------------------------------------------------
@@ -90,10 +90,7 @@ export interface SwitchDecision {
  *
  * 这里只做盘面查表，不模拟动作、不读取分数，与 `Metrics.atkTempoGain` 的口径一致。
  */
-export function bestAvailableAtkTempoGain(
-  state: GameState,
-  tianGan: TianGanInfo
-): number | null {
+export function bestAvailableAtkTempoGain(state: GameState, tianGan: TianGanInfo): number | null {
   if (tianGan.polarity !== Polarity.YANG) {
     return null;
   }
@@ -139,7 +136,7 @@ export interface DynamicSwitchPolicy {
 export function decideSwitchMode(
   state: GameState,
   tianGan: TianGanInfo,
-  policy: DynamicSwitchPolicy
+  policy: DynamicSwitchPolicy,
 ): SwitchDecision {
   const me = state.currentPlayer;
   const opponentId: PlayerId = me === 'P1' ? 'P2' : 'P1';
@@ -150,13 +147,10 @@ export function decideSwitchMode(
     selfActionsToGuiYuan,
     opponentActionsToGuiYuan,
     lead: opponentActionsToGuiYuan - selfActionsToGuiYuan,
-    bestAtkTempoGain
+    bestAtkTempoGain,
   };
 
-  if (
-    selfActionsToGuiYuan <= policy.advanceSelfMax &&
-    criterion.lead >= policy.minLeadForAdvance
-  ) {
+  if (selfActionsToGuiYuan <= policy.advanceSelfMax && criterion.lead >= policy.minLeadForAdvance) {
     return { mode: 'advance', reason: 'close-to-guiyuan', criterion };
   }
   if (criterion.opponentActionsToGuiYuan >= policy.advanceWhenOpponentActionsAtLeast) {
@@ -243,7 +237,8 @@ export class DynamicSwitchStats {
     bump(this.lead, criterion.lead);
     bump(this.selfActions, criterion.selfActionsToGuiYuan);
     bump(this.opponentActions, criterion.opponentActionsToGuiYuan);
-    const atkKey = criterion.bestAtkTempoGain === null ? 'none' : String(criterion.bestAtkTempoGain);
+    const atkKey =
+      criterion.bestAtkTempoGain === null ? 'none' : String(criterion.bestAtkTempoGain);
     this.atkTempo.set(atkKey, (this.atkTempo.get(atkKey) ?? 0) + 1);
     this.reasons.set(record.reason, (this.reasons.get(record.reason) ?? 0) + 1);
   }
@@ -261,7 +256,7 @@ export class DynamicSwitchStats {
       selfActionsHistogram: sortedEntries(this.selfActions),
       opponentActionsHistogram: sortedEntries(this.opponentActions),
       atkTempoHistogram: [...this.atkTempo.entries()].sort((a, b) => a[0].localeCompare(b[0])),
-      reasonCounts: [...this.reasons.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+      reasonCounts: [...this.reasons.entries()].sort((a, b) => a[0].localeCompare(b[0])),
     };
   }
 }
@@ -283,17 +278,17 @@ export function createDynamicSwitchingStrategy(
   policy: DynamicSwitchPolicy,
   config: PointsConfig = POINTS_CONFIG,
   rules: RuleSwitches = {},
-  stats?: DynamicSwitchStats
+  stats?: DynamicSwitchStats,
 ): DecisionStrategy {
   const advanceStrategy = buildVariantStrategy(
     { name: policy.name, weights: policy.advanceWeights },
     config,
-    rules
+    rules,
   );
   const suppressStrategy = buildVariantStrategy(
     { name: policy.name, weights: policy.suppressWeights },
     config,
-    rules
+    rules,
   );
 
   return (state, tianGan, availableActions) => {
@@ -309,13 +304,13 @@ export function createDynamicSwitchingStrategy(
 /** 把动态策略包装成 `StrategyVariant`，供 ticket 06 的对拼矩阵消费。 */
 export function dynamicStrategyVariant(
   policy: DynamicSwitchPolicy,
-  stats?: DynamicSwitchStats
+  stats?: DynamicSwitchStats,
 ): StrategyVariant {
   return {
     name: policy.name,
     // 名义权重仅为满足 `StrategyVariant` 形状；实际由 `create` 覆盖。
     weights: policy.suppressWeights,
-    create: (config, rules) => createDynamicSwitchingStrategy(policy, config, rules, stats)
+    create: (config, rules) => createDynamicSwitchingStrategy(policy, config, rules, stats),
   };
 }
 
@@ -336,7 +331,7 @@ export const DEFAULT_DYNAMIC_POLICY: DynamicSwitchPolicy = {
   shouldAdvanceWhenNoAtkTempo: false,
   shouldAdvanceWhenAtkTempoZero: true,
   advanceWeights: RUSH_GUIYUAN_WEIGHTS,
-  suppressWeights: AGGRESSIVE_WEIGHTS
+  suppressWeights: AGGRESSIVE_WEIGHTS,
 };
 
 /**
@@ -360,9 +355,9 @@ export const TUNED_DYNAMIC_POLICY: DynamicSwitchPolicy = {
     repairDamage: 100,
     lightVoid: 100,
     reachGuiYi: 100,
-    guiyuanProgress: 80
+    guiyuanProgress: 80,
   },
-  suppressWeights: AGGRESSIVE_WEIGHTS
+  suppressWeights: AGGRESSIVE_WEIGHTS,
 };
 
 /** 对照策略 A：只看赛跑（己方快归一且领先才推进），忽略【破】节奏。 */
@@ -375,7 +370,7 @@ export const RACE_ONLY_POLICY: DynamicSwitchPolicy = {
   shouldAdvanceWhenNoAtkTempo: false,
   shouldAdvanceWhenAtkTempoZero: false,
   advanceWeights: RUSH_GUIYUAN_WEIGHTS,
-  suppressWeights: AGGRESSIVE_WEIGHTS
+  suppressWeights: AGGRESSIVE_WEIGHTS,
 };
 
 /** 对照策略 B：只看【破】节奏（只能打加持侧才推进），忽略赛跑领先。 */
@@ -388,7 +383,7 @@ export const TEMPO_ONLY_POLICY: DynamicSwitchPolicy = {
   shouldAdvanceWhenNoAtkTempo: false,
   shouldAdvanceWhenAtkTempoZero: true,
   advanceWeights: RUSH_GUIYUAN_WEIGHTS,
-  suppressWeights: AGGRESSIVE_WEIGHTS
+  suppressWeights: AGGRESSIVE_WEIGHTS,
 };
 
 /** 对照策略 C：两个子策略都换成极端纯推进/纯压制（关闭计分轴），检验是否切换本身不足。 */
@@ -412,7 +407,7 @@ export const PURE_EXTREMES_POLICY: DynamicSwitchPolicy = {
     suppressNode: 0,
     scoreDeltaWeight: 0,
     winReward: 10000,
-    baseActionBias: {}
+    baseActionBias: {},
   },
   suppressWeights: {
     repairDamage: 0,
@@ -426,8 +421,8 @@ export const PURE_EXTREMES_POLICY: DynamicSwitchPolicy = {
     suppressNode: 100,
     scoreDeltaWeight: 0,
     winReward: 0,
-    baseActionBias: {}
-  }
+    baseActionBias: {},
+  },
 };
 
 /**
@@ -443,7 +438,7 @@ export const OPPONENT_UNDEVELOPED_POLICY: DynamicSwitchPolicy = {
   shouldAdvanceWhenNoAtkTempo: false,
   shouldAdvanceWhenAtkTempoZero: false,
   advanceWeights: RUSH_GUIYUAN_WEIGHTS,
-  suppressWeights: AGGRESSIVE_WEIGHTS
+  suppressWeights: AGGRESSIVE_WEIGHTS,
 };
 
 /**
@@ -459,7 +454,7 @@ export const NEVER_SWITCH_POLICY: DynamicSwitchPolicy = {
   shouldAdvanceWhenNoAtkTempo: false,
   shouldAdvanceWhenAtkTempoZero: false,
   advanceWeights: RUSH_GUIYUAN_WEIGHTS,
-  suppressWeights: AGGRESSIVE_WEIGHTS
+  suppressWeights: AGGRESSIVE_WEIGHTS,
 };
 
 export const ALL_DYNAMIC_POLICIES: readonly DynamicSwitchPolicy[] = [
@@ -468,7 +463,7 @@ export const ALL_DYNAMIC_POLICIES: readonly DynamicSwitchPolicy[] = [
   TEMPO_ONLY_POLICY,
   PURE_EXTREMES_POLICY,
   OPPONENT_UNDEVELOPED_POLICY,
-  NEVER_SWITCH_POLICY
+  NEVER_SWITCH_POLICY,
 ];
 
 // ---------------------------------------------------------------------------
@@ -533,7 +528,7 @@ export function collectDynamicSwitchStats(
   matches: number,
   baseSeed: number,
   maxRounds: number,
-  overrides: { readonly rules?: RuleSwitches; readonly isBoardSettlement?: boolean } = {}
+  overrides: { readonly rules?: RuleSwitches; readonly isBoardSettlement?: boolean } = {},
 ): DynamicSwitchStatsSnapshot {
   const stats = new DynamicSwitchStats();
   const rules = overrides.rules ?? ruleSwitchesFor(mode);
@@ -560,7 +555,7 @@ export function collectDynamicSwitchStats(
  * 每个动态策略 × 每个静态预设调用一次 ticket 06 的 `runHeadToHeadMatrix`（两个座次）。
  */
 export function runDynamicSwitchingExperiment(
-  options: DynamicSwitchingExperimentOptions = {}
+  options: DynamicSwitchingExperimentOptions = {},
 ): DynamicSwitchingReport {
   const policies = options.policies ?? [DEFAULT_DYNAMIC_POLICY];
   const statics = options.statics ?? DEFAULT_STRATEGY_VARIANTS;
@@ -573,9 +568,9 @@ export function runDynamicSwitchingExperiment(
   const rules = options.rules ?? ruleSwitchesFor(mode);
   const isBoardSettlement = options.isBoardSettlement ?? isBoardSettlementFor(mode);
 
-  const policyReports: DynamicPolicyReport[] = policies.map(policy => {
+  const policyReports: DynamicPolicyReport[] = policies.map((policy) => {
     const dynamicVariant = dynamicStrategyVariant(policy);
-    const matchups: DynamicMatchup[] = statics.map(staticVariant => {
+    const matchups: DynamicMatchup[] = statics.map((staticVariant) => {
       const report = runHeadToHeadMatrix({
         strategies: [dynamicVariant, staticVariant],
         mode,
@@ -584,10 +579,10 @@ export function runDynamicSwitchingExperiment(
         isBoardSettlement,
         matches,
         baseSeed,
-        maxRounds
+        maxRounds,
       });
       const matchup = report.matchups.find(
-        entry => entry.strategyA === policy.name && entry.strategyB === staticVariant.name
+        (entry) => entry.strategyA === policy.name && entry.strategyB === staticVariant.name,
       );
       if (!matchup) {
         throw new Error(`对拼矩阵缺少 ${policy.name} vs ${staticVariant.name} 的数据`);
@@ -602,7 +597,7 @@ export function runDynamicSwitchingExperiment(
         p2WinRate: matchup.p2WinRate,
         guiYuanRate: matchup.guiYuanRate,
         avgRounds: matchup.avgRounds,
-        opponentResidualDamage: matchup.opponentResidualDamage
+        opponentResidualDamage: matchup.opponentResidualDamage,
       };
     });
 
@@ -615,15 +610,15 @@ export function runDynamicSwitchingExperiment(
           matches,
           baseSeed,
           maxRounds,
-          { rules, isBoardSettlement }
+          { rules, isBoardSettlement },
         )
       : emptyDynamicSwitchStats();
 
     return {
       policy,
       matchups,
-      dynamicDominatesAll: matchups.every(entry => entry.dynamicWinRate > 0.5),
-      stats
+      dynamicDominatesAll: matchups.every((entry) => entry.dynamicWinRate > 0.5),
+      stats,
     };
   });
 
@@ -633,8 +628,8 @@ export function runDynamicSwitchingExperiment(
     matchesPerSeat: matches,
     baseSeed,
     maxRounds,
-    statics: statics.map(variant => variant.name),
-    policies: policyReports
+    statics: statics.map((variant) => variant.name),
+    policies: policyReports,
   };
 }
 
@@ -654,20 +649,17 @@ export function formatDynamicMatrix(report: DynamicSwitchingReport): string {
   lines.push(`| 动态策略 \\ 静态预设 | ${report.statics.join(' | ')} | 全胜? |`);
   lines.push(`| --- | ${report.statics.map(() => '---:').join(' | ')} | --- |`);
   for (const policyReport of report.policies) {
-    const cells = policyReport.matchups.map(matchup => percent(matchup.dynamicWinRate));
+    const cells = policyReport.matchups.map((matchup) => percent(matchup.dynamicWinRate));
     lines.push(
       `| ${policyReport.policy.name} | ${cells.join(' | ')} | ${
         policyReport.dynamicDominatesAll ? '是' : '否'
-      } |`
+      } |`,
     );
   }
   return lines.join('\n');
 }
 
-function formatHistogram(
-  entries: ReadonlyArray<readonly [number, number]>,
-  total: number
-): string {
+function formatHistogram(entries: ReadonlyArray<readonly [number, number]>, total: number): string {
   return entries
     .map(([value, count]) => `${value}: ${count} (${percent(count / total)})`)
     .join(' / ');
@@ -685,11 +677,9 @@ export function formatSwitchStats(policyReport: DynamicPolicyReport): string {
   lines.push(
     `- 推进决策: ${stats.advanceDecisions} (${percent(stats.advanceRate)}) / 压制决策: ${
       stats.suppressDecisions
-    } (${percent(1 - stats.advanceRate)})`
+    } (${percent(1 - stats.advanceRate)})`,
   );
-  lines.push(
-    `- 模式切换次数: ${stats.switches}，平均每局 ${stats.switchesPerMatch.toFixed(2)} 次`
-  );
+  lines.push(`- 模式切换次数: ${stats.switches}，平均每局 ${stats.switchesPerMatch.toFixed(2)} 次`);
   lines.push('');
   if (stats.decisions === 0) {
     lines.push('（未采集到决策）');
@@ -698,24 +688,24 @@ export function formatSwitchStats(policyReport: DynamicPolicyReport): string {
   lines.push(
     `- 切换依据（reason）: ${stats.reasonCounts
       .map(([reason, count]) => `${reason}=${count} (${percent(count / stats.decisions)})`)
-      .join(' / ')}`
+      .join(' / ')}`,
   );
   lines.push(
     `- 最佳【破】盘面收益分布: ${stats.atkTempoHistogram
       .map(([value, count]) => `${value}=${count} (${percent(count / stats.decisions)})`)
-      .join(' / ')}`
+      .join(' / ')}`,
   );
   lines.push(
     `- 己方还差行动分布 (actionsToGuiYuan): ${formatHistogram(
       stats.selfActionsHistogram,
-      stats.decisions
-    )}`
+      stats.decisions,
+    )}`,
   );
   lines.push(
-    `- 对手还差行动分布: ${formatHistogram(stats.opponentActionsHistogram, stats.decisions)}`
+    `- 对手还差行动分布: ${formatHistogram(stats.opponentActionsHistogram, stats.decisions)}`,
   );
   lines.push(
-    `- 赛跑领先量分布 (对手 - 己方): ${formatHistogram(stats.leadHistogram, stats.decisions)}`
+    `- 赛跑领先量分布 (对手 - 己方): ${formatHistogram(stats.leadHistogram, stats.decisions)}`,
   );
   return lines.join('\n');
 }
@@ -726,19 +716,19 @@ export function formatDynamicMatchupDetail(policyReport: DynamicPolicyReport): s
   lines.push('### 逐对明细（动态 vs 静态）');
   lines.push('');
   lines.push(
-    '| 静态预设 | 动态胜率 | 静态胜率 | 样本 | 归元率 | 平均大回合 | 对手残留道损 | 流局率 / 先后手胜率 |'
+    '| 静态预设 | 动态胜率 | 静态胜率 | 样本 | 归元率 | 平均大回合 | 对手残留道损 | 流局率 / 先后手胜率 |',
   );
   lines.push('| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |');
   for (const matchup of policyReport.matchups) {
     const drawPaired = `流局率 ${percent(matchup.drawRate)} / 先手胜率 ${percent(
-      matchup.p1WinRate
+      matchup.p1WinRate,
     )} / 后手胜率 ${percent(matchup.p2WinRate)}`;
     lines.push(
       `| ${matchup.staticStrategy} | ${percent(matchup.dynamicWinRate)} | ${percent(
-        matchup.staticWinRate
+        matchup.staticWinRate,
       )} | ${matchup.matches} | ${percent(matchup.guiYuanRate)} | ${matchup.avgRounds.toFixed(
-        2
-      )} | ${matchup.opponentResidualDamage.toFixed(2)} | ${drawPaired} |`
+        2,
+      )} | ${matchup.opponentResidualDamage.toFixed(2)} | ${drawPaired} |`,
     );
   }
   return lines.join('\n');
@@ -771,13 +761,13 @@ export function formatDynamicSwitchingReport(report: DynamicSwitchingReport): st
     lines.push('| 动态策略 | 对全部静态是否全胜 | 最低胜率 | 最高胜率 | 推进决策占比 |');
     lines.push('| --- | --- | ---: | ---: | ---: |');
     for (const policyReport of report.policies) {
-      const rates = policyReport.matchups.map(entry => entry.dynamicWinRate);
+      const rates = policyReport.matchups.map((entry) => entry.dynamicWinRate);
       const min = Math.min(...rates);
       const max = Math.max(...rates);
       lines.push(
         `| ${policyReport.policy.name} | ${
           policyReport.dynamicDominatesAll ? '是' : '否'
-        } | ${percent(min)} | ${percent(max)} | ${percent(policyReport.stats.advanceRate)} |`
+        } | ${percent(min)} | ${percent(max)} | ${percent(policyReport.stats.advanceRate)} |`,
       );
     }
   }
@@ -836,7 +826,8 @@ export function parseDynamicArgs(argv: readonly string[]): ParsedDynamicArgs {
     }
     if (arg === '--matches') {
       const value = Number(argv[++i]);
-      if (!Number.isFinite(value) || value < 0) throw new Error(`--matches 需要非负数字: ${argv[i]}`);
+      if (!Number.isFinite(value) || value < 0)
+        throw new Error(`--matches 需要非负数字: ${argv[i]}`);
       matches = Math.floor(value);
       continue;
     }
@@ -848,7 +839,8 @@ export function parseDynamicArgs(argv: readonly string[]): ParsedDynamicArgs {
     }
     if (arg === '--max-rounds') {
       const value = Number(argv[++i]);
-      if (!Number.isFinite(value) || value < 1) throw new Error(`--max-rounds 需要正数: ${argv[i]}`);
+      if (!Number.isFinite(value) || value < 1)
+        throw new Error(`--max-rounds 需要正数: ${argv[i]}`);
       maxRounds = Math.floor(value);
       continue;
     }
@@ -872,10 +864,10 @@ export function parseDynamicArgs(argv: readonly string[]): ParsedDynamicArgs {
 
 function selectPolicies(parsed: ParsedDynamicArgs): readonly DynamicSwitchPolicy[] {
   if (parsed.policy) {
-    const found = ALL_DYNAMIC_POLICIES.find(candidate => candidate.name === parsed.policy);
+    const found = ALL_DYNAMIC_POLICIES.find((candidate) => candidate.name === parsed.policy);
     if (!found) {
       throw new Error(
-        `未知动态策略: ${parsed.policy}（可选: ${ALL_DYNAMIC_POLICIES.map(p => p.name).join(' / ')}）`
+        `未知动态策略: ${parsed.policy}（可选: ${ALL_DYNAMIC_POLICIES.map((p) => p.name).join(' / ')}）`,
       );
     }
     return [found];
@@ -894,14 +886,14 @@ runCliIfDirect(import.meta.url, () => {
     const maxRounds = parsed.maxRounds ?? DEFAULT_MAX_ROUNDS;
     const policies = selectPolicies(parsed);
     console.log(
-      `🚀 运行动态切换策略实验: ${matches} 局/座次, 种子基数 ${baseSeed}, 回合上限 ${maxRounds}, 模式 ${parsed.mode}, ${policies.length} 个动态策略...`
+      `🚀 运行动态切换策略实验: ${matches} 局/座次, 种子基数 ${baseSeed}, 回合上限 ${maxRounds}, 模式 ${parsed.mode}, ${policies.length} 个动态策略...`,
     );
     const report = runDynamicSwitchingExperiment({
       policies,
       mode: parsed.mode,
       matches,
       baseSeed,
-      maxRounds
+      maxRounds,
     });
     console.log(formatDynamicSwitchingReport(report));
   }

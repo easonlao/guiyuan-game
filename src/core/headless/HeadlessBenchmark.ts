@@ -14,7 +14,7 @@ import {
   createGameMetricsAccumulator,
   deriveMatchMetrics,
   finalizeGameMetrics,
-  type GameMetrics
+  type GameMetrics,
 } from './Metrics.js';
 import { BALANCED_WEIGHTS } from '../ai/Strategy.js';
 import { POINTS_CONFIG, PointsConfig } from '../logic/ScoreCalculator.js';
@@ -71,19 +71,20 @@ export class HeadlessBenchmark {
     const strategyP1 = resolveStrategy(
       options?.strategyP1 ?? BALANCED_WEIGHTS,
       scoreConfig ?? POINTS_CONFIG,
-      rules ?? {}
+      rules ?? {},
     );
     const strategyP2 = resolveStrategy(
       options?.strategyP2 ?? BALANCED_WEIGHTS,
       scoreConfig ?? POINTS_CONFIG,
-      rules ?? {}
+      rules ?? {},
     );
 
     // 内存检测前置准备（若处于 expose-gc 环境则尽可能触发全量 GC 获得干净初始基线）
     if (typeof globalThis.gc === 'function') {
       globalThis.gc();
     }
-    const memStart = typeof process !== 'undefined' && process.memoryUsage ? process.memoryUsage().heapUsed : 0;
+    const memStart =
+      typeof process !== 'undefined' && process.memoryUsage ? process.memoryUsage().heapUsed : 0;
     const startMs = performance.now();
 
     // 单局统计始终采集：压制/建设度量是测量台输出的一部分
@@ -99,7 +100,7 @@ export class HeadlessBenchmark {
         rules,
         shouldCollectStats: true,
         isBoardSettlement,
-        recordActions: false
+        recordActions: false,
       });
 
       totalP1Score += matchResult.finalP1Score;
@@ -108,7 +109,8 @@ export class HeadlessBenchmark {
     }
 
     const endMs = performance.now();
-    const memEnd = typeof process !== 'undefined' && process.memoryUsage ? process.memoryUsage().heapUsed : 0;
+    const memEnd =
+      typeof process !== 'undefined' && process.memoryUsage ? process.memoryUsage().heapUsed : 0;
 
     const totalDurationMs = Math.max(0, endMs - startMs);
     const avgDurationMs = totalMatches > 0 ? totalDurationMs / totalMatches : 0;
@@ -132,14 +134,15 @@ export class HeadlessBenchmark {
       avgP2Score,
       heapUsedDeltaMB,
       heapUsedStartMB,
-      heapUsedEndMB
+      heapUsedEndMB,
     };
   }
 
   formatReport(metrics: BenchmarkMetrics): string {
     const p1Pct = (metrics.p1WinRate * 100).toFixed(2);
     const p2Pct = (metrics.p2WinRate * 100).toFixed(2);
-    const drawPct = metrics.totalMatches > 0 ? ((metrics.draws / metrics.totalMatches) * 100).toFixed(2) : '0.00';
+    const drawPct =
+      metrics.totalMatches > 0 ? ((metrics.draws / metrics.totalMatches) * 100).toFixed(2) : '0.00';
     const gyPct = (metrics.guiYuanRate * 100).toFixed(2);
     const mrPct = (metrics.maxRoundsRate * 100).toFixed(2);
     const tps = Math.round(metrics.tps);
@@ -183,7 +186,7 @@ export class HeadlessBenchmark {
       ` 起始堆内存 (Heap Start) : ${metrics.heapUsedStartMB.toFixed(2)} MB`,
       ` 结束堆内存 (Heap End)   : ${metrics.heapUsedEndMB.toFixed(2)} MB`,
       ` 堆内存增量 (Heap Delta) : ${deltaMB} MB`,
-      '================================================================='
+      '=================================================================',
     ].join('\n');
   }
 }

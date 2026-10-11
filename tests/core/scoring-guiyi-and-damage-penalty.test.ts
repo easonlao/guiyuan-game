@@ -1,20 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import {
-  ActionType,
-  WuXing,
-  Polarity
-} from '../../src/core/types/index.js';
+import { ActionType, WuXing, Polarity } from '../../src/core/types/index.js';
 import {
   createInitialGameState,
   createEmptyBoard,
   countBoardDamage,
-  countBoardGuiYi
+  countBoardGuiYi,
 } from '../../src/core/logic/State.js';
 import {
   ScoreCalculator,
   POINTS_CONFIG,
   GUI_YI_MILESTONE,
-  DAMAGE_PENALTY
+  DAMAGE_PENALTY,
 } from '../../src/core/logic/ScoreCalculator.js';
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
 
@@ -53,17 +49,17 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
             score: 0,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 1 as const, yang: 0 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1 as const, yang: 0 as const },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(true);
@@ -86,17 +82,17 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
             score: 0,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 0 as const, yang: 1 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 0 as const, yang: 1 as const },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
         actionType: ActionType.CONVERT,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       });
 
       expect(result.success).toBe(true);
@@ -117,17 +113,17 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
             score: 0,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.FIRE]: { yin: 1 as const, yang: 0 as const }
-            }
-          }
-        }
+              [WuXing.FIRE]: { yin: 1 as const, yang: 0 as const },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
         actionType: ActionType.TRANS,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(true);
@@ -151,10 +147,10 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
             board: {
               ...baseState.players.P1.board,
               [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const },
-              [WuXing.FIRE]: { yin: 1 as const, yang: 0 as const }
-            }
-          }
-        }
+              [WuXing.FIRE]: { yin: 1 as const, yang: 0 as const },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
@@ -162,7 +158,7 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(true);
@@ -181,7 +177,7 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(true);
@@ -200,17 +196,17 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
             score: 160,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(true);
@@ -230,17 +226,17 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
             score: 500,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 2 as const, yang: 2 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 2 as const, yang: 2 as const },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
         actionType: ActionType.DISSIPATE,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(true);
@@ -260,10 +256,10 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
             board: {
               ...baseState.players.P1.board,
               [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const },
-              [WuXing.FIRE]: { yin: 0 as const, yang: 0 as const }
-            }
-          }
-        }
+              [WuXing.FIRE]: { yin: 0 as const, yang: 0 as const },
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
@@ -271,7 +267,7 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(true);
@@ -294,17 +290,17 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
             score: 300,
             board: {
               ...createEmptyBoard(),
-              [WuXing.WOOD]: { yin: -1 as const, yang: 0 as const } // 1 damage => -50 => 250
-            }
+              [WuXing.WOOD]: { yin: -1 as const, yang: 0 as const }, // 1 damage => -50 => 250
+            },
           },
           P2: {
             score: 200,
             board: {
               ...createEmptyBoard(),
-              [WuXing.FIRE]: { yin: 0 as const, yang: 0 as const } // 0 damage
-            }
-          }
-        }
+              [WuXing.FIRE]: { yin: 0 as const, yang: 0 as const }, // 0 damage
+            },
+          },
+        },
       };
 
       // P2 performs AUTO on FIRE yang (+100 light_up) -> P2 raw score: 300
@@ -312,7 +308,7 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
         actionType: ActionType.AUTO,
         player: 'P2',
         element: WuXing.FIRE,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(true);
@@ -340,14 +336,14 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
             score: 200,
             board: {
               ...createEmptyBoard(),
-              [WuXing.WOOD]: { yin: -1 as const, yang: -1 as const } // 2 damages => -100 => 100
-            }
+              [WuXing.WOOD]: { yin: -1 as const, yang: -1 as const }, // 2 damages => -100 => 100
+            },
           },
           P2: {
             score: 20,
-            board: createEmptyBoard() // 0 damage
-          }
-        }
+            board: createEmptyBoard(), // 0 damage
+          },
+        },
       };
 
       // P2 does AUTO on FIRE yang, score delta = 100
@@ -358,7 +354,7 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
         actionType: ActionType.AUTO,
         player: 'P2',
         element: WuXing.FIRE,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.nextState.players.P1.score).toBe(100);
@@ -380,21 +376,21 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
             score: 200,
             board: {
               ...createEmptyBoard(),
-              [WuXing.EARTH]: { yin: -1 as const, yang: 0 as const } // 1 damage => -50 => 150
-            }
+              [WuXing.EARTH]: { yin: -1 as const, yang: 0 as const }, // 1 damage => -50 => 150
+            },
           },
           P2: {
             score: 50, // will get +100 from AUTO => 150
-            board: createEmptyBoard() // 0 damage => 150
-          }
-        }
+            board: createEmptyBoard(), // 0 damage => 150
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
         actionType: ActionType.AUTO,
         player: 'P2',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.nextState.isGameOver).toBe(true);
@@ -415,7 +411,7 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
         [WuXing.FIRE]: { yin: 1 as const, yang: 1 as const },
         [WuXing.EARTH]: { yin: 1 as const, yang: 1 as const },
         [WuXing.METAL]: { yin: 1 as const, yang: 1 as const },
-        [WuXing.WATER]: { yin: 1 as const, yang: 0 as const }
+        [WuXing.WATER]: { yin: 1 as const, yang: 0 as const },
       };
 
       state = {
@@ -423,23 +419,23 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
         players: {
           P1: {
             score: 500,
-            board: almostWinBoard
+            board: almostWinBoard,
           },
           P2: {
             score: 400,
             board: {
               ...createEmptyBoard(),
-              [WuXing.WOOD]: { yin: -1 as const, yang: -1 as const } // P2 has 2 damages
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: -1 as const, yang: -1 as const }, // P2 has 2 damages
+            },
+          },
+        },
       };
 
       const result = resolver.resolve(state, {
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WATER,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.nextState.isGameOver).toBe(true);
@@ -455,7 +451,7 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
       const board = {
         ...createEmptyBoard(),
         [WuXing.WOOD]: { yin: -1 as const, yang: 1 as const },
-        [WuXing.FIRE]: { yin: -1 as const, yang: -1 as const }
+        [WuXing.FIRE]: { yin: -1 as const, yang: -1 as const },
       };
       expect(countBoardDamage(board)).toBe(3);
     });
@@ -465,7 +461,7 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
         ...createEmptyBoard(),
         [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const },
         [WuXing.FIRE]: { yin: 2 as const, yang: 1 as const },
-        [WuXing.EARTH]: { yin: 0 as const, yang: 1 as const }
+        [WuXing.EARTH]: { yin: 0 as const, yang: 1 as const },
       };
       expect(countBoardGuiYi(board)).toBe(2);
     });

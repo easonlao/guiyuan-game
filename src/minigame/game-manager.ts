@@ -1,10 +1,24 @@
 import { TurnManager } from '../core/logic/TurnManager';
 import { RuleSwitches } from '../core/logic/ActionCandidates';
 import { createPRNG, PRNG } from '../core/utils/prng';
-import { ActionPayload, ActionType, GameState, PlayerId, Polarity, TianGanInfo, WuXing } from '../core/types/domain';
+import {
+  ActionPayload,
+  ActionType,
+  GameState,
+  PlayerId,
+  Polarity,
+  TianGanInfo,
+  WuXing,
+} from '../core/types/domain';
 import { BALANCED_WEIGHTS, createStrategy } from '../core/ai/Strategy';
 import { DecisionStrategy } from '../core/ai/types';
-import { AnimationMode, CharacterActionState, FlyingProjectile, ImpactEffect, TouchButton } from './types';
+import {
+  AnimationMode,
+  CharacterActionState,
+  FlyingProjectile,
+  ImpactEffect,
+  TouchButton,
+} from './types';
 import { formatActionButton, getActionTargetElement } from './action-button-formatter';
 import {
   drawCenterTianGanRune,
@@ -16,7 +30,7 @@ import {
   drawPixelRect,
   drawTouchButton,
   drawWuXingSeal,
-  WUXING_PALETTE
+  WUXING_PALETTE,
 } from './pixel-art';
 
 const ELEMENTS_ORDER: WuXing[] = [
@@ -24,7 +38,7 @@ const ELEMENTS_ORDER: WuXing[] = [
   WuXing.FIRE,
   WuXing.EARTH,
   WuXing.METAL,
-  WuXing.WATER
+  WuXing.WATER,
 ];
 
 export interface GameManagerOptions {
@@ -110,7 +124,7 @@ export class GameManager {
     height: number,
     pixelRatio: number,
     safeTop: number = 44,
-    safeBottom: number = 16
+    safeBottom: number = 16,
   ): void {
     this.width = width;
     this.height = height;
@@ -151,7 +165,7 @@ export class GameManager {
             alpha: 1,
             life: 24,
             maxLife: 24,
-            mode: this.animMode
+            mode: this.animMode,
           });
           this.screenShake = 6;
         } else {
@@ -167,11 +181,12 @@ export class GameManager {
             alpha: 0.8,
             life: 18,
             maxLife: 18,
-            mode: this.animMode
+            mode: this.animMode,
           });
         }
       } else {
-        this.bannerText = state.winner === 'P1' ? '★ 五行归元 ★ 玩家大胜！' : '天道通玄 · 遗憾惜败！';
+        this.bannerText =
+          state.winner === 'P1' ? '★ 五行归元 ★ 玩家大胜！' : '天道通玄 · 遗憾惜败！';
         this.bannerSubText = state.endReason ?? '对局结束';
       }
       return;
@@ -185,7 +200,9 @@ export class GameManager {
       const actions = this.turnManager.getAvailableActions();
       if (actions.length === 1) {
         this.p1AutoAbsorbTimer = 45; // 约 0.75 秒倒计时
-        this.bannerText = isExtra ? '【连动回合】玩家额外行动！' : `玩家回合 · 天干【${tg?.name ?? ''}】降临`;
+        this.bannerText = isExtra
+          ? '【连动回合】玩家额外行动！'
+          : `玩家回合 · 天干【${tg?.name ?? ''}】降临`;
         const actType = actions[0].actionType;
         switch (actType) {
           case ActionType.AUTO:
@@ -215,13 +232,17 @@ export class GameManager {
         }
       } else {
         this.p1AutoAbsorbTimer = 0;
-        this.bannerText = isExtra ? '【连动回合】玩家额外行动！' : `玩家回合 · 天干【${tg?.name ?? ''}】降临`;
+        this.bannerText = isExtra
+          ? '【连动回合】玩家额外行动！'
+          : `玩家回合 · 天干【${tg?.name ?? ''}】降临`;
         this.bannerSubText = `属性: ${tg?.element ?? ''} (${tg?.polarity === Polarity.YANG ? '阳' : '阴'})`;
       }
       this.updateButtons();
     } else {
       this.p1AutoAbsorbTimer = 0;
-      this.bannerText = isExtra ? '【连动回合】天道施展额外行动！' : `天道回合 · 天干【${tg?.name ?? ''}】降临`;
+      this.bannerText = isExtra
+        ? '【连动回合】天道施展额外行动！'
+        : `天道回合 · 天干【${tg?.name ?? ''}】降临`;
       this.bannerSubText = '天道推演生克中...';
       this.availableButtons = [];
       this.aiThinkingTimer = 55; // 约 0.9 秒思考
@@ -289,7 +310,7 @@ export class GameManager {
         width: btnW,
         height: btnH,
         color: formatted.color,
-        isBurst: formatted.isBurst
+        isBurst: formatted.isBurst,
       });
     });
 
@@ -314,9 +335,9 @@ export class GameManager {
     const arcOffsets = [
       { dy: -56, dx: 0 },
       { dy: -28, dx: isP1 ? 16 : -16 },
-      { dy: 0,   dx: isP1 ? 24 : -24 },
-      { dy: 28,  dx: isP1 ? 16 : -16 },
-      { dy: 56,  dx: 0 }
+      { dy: 0, dx: isP1 ? 24 : -24 },
+      { dy: 28, dx: isP1 ? 16 : -16 },
+      { dy: 56, dx: 0 },
     ];
     const idx = ELEMENTS_ORDER.indexOf(elem);
     const pos = idx >= 0 ? arcOffsets[idx] : { dx: 0, dy: 0 };
@@ -362,10 +383,10 @@ export class GameManager {
           alpha: 1,
           life: 16,
           maxLife: 16,
-          mode: this.animMode
+          mode: this.animMode,
         });
         this.isAnimating = false;
-      }
+      },
     });
   }
 
@@ -465,7 +486,7 @@ export class GameManager {
         x: p.currentX,
         y: p.currentY,
         alpha: 0.9,
-        size: p.mode === 'pixel' ? (Math.random() > 0.5 ? 4 : 2) : 6
+        size: p.mode === 'pixel' ? (Math.random() > 0.5 ? 4 : 2) : 6,
       });
       if (p.trail.length > 8) p.trail.pop();
       p.trail.forEach((tr) => (tr.alpha *= 0.8));
@@ -524,7 +545,8 @@ export class GameManager {
   private dispatchAction(action: ActionPayload, isP1: boolean): void {
     const targetElem = getActionTargetElement(action, this.currentTianGan?.element);
     const elemCfg = WUXING_PALETTE[targetElem] ?? WUXING_PALETTE[WuXing.WOOD];
-    const isAttack = action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK;
+    const isAttack =
+      action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK;
 
     if (isP1) {
       this.p1State = isAttack ? 'attack' : 'cast';
@@ -577,12 +599,12 @@ export class GameManager {
           alpha: 1,
           life: 16,
           maxLife: 16,
-          mode: this.animMode
+          mode: this.animMode,
         });
         this.turnManager.executeAction(action);
         this.isAnimating = false;
         this.startNewTurn();
-      }
+      },
     });
   }
 
@@ -619,14 +641,7 @@ export class GameManager {
     ctx.fillText(`天道(P2): ${state.players.P2.score}分`, this.width - 28, effectiveTop + 24);
 
     // 2.5 动效方案切换栏 (供 A/B 对比)
-    drawModeToggleBar(
-      ctx,
-      16,
-      effectiveTop + topBarH + 6,
-      this.width - 32,
-      26,
-      this.animMode
-    );
+    drawModeToggleBar(ctx, 16, effectiveTop + topBarH + 6, this.width - 32, 26, this.animMode);
 
     // 3. 左右角色站位
     const arenaY = effectiveTop + topBarH + Math.floor((playableHeight - topBarH) * 0.26);
@@ -658,7 +673,7 @@ export class GameManager {
         arenaY,
         this.currentTianGan,
         this.animMode,
-        this.animTick
+        this.animTick,
       );
     }
 
@@ -716,10 +731,14 @@ export class GameManager {
             ? '★【天命逆转】五行归元·后发制人！★'
             : '★【天命难违】差之一线·先手锁定胜局！★',
           this.width / 2,
-          consoleY + 68
+          consoleY + 68,
         );
       } else {
-        ctx.fillText(state.winner === 'P1' ? '★ 恭喜！五行圆满大获全胜 ★' : '天道终局 · 比分结算完毕', this.width / 2, consoleY + 68);
+        ctx.fillText(
+          state.winner === 'P1' ? '★ 恭喜！五行圆满大获全胜 ★' : '天道终局 · 比分结算完毕',
+          this.width / 2,
+          consoleY + 68,
+        );
       }
       ctx.fillStyle = '#63b3ed';
       ctx.font = '12px monospace';
@@ -730,20 +749,14 @@ export class GameManager {
   }
 
   /** 绘制一侧角色的五行护体灵核 */
-  private renderSeals(
-    ctx: any,
-    baseX: number,
-    baseY: number,
-    isLeft: boolean,
-    board: any
-  ): void {
+  private renderSeals(ctx: any, baseX: number, baseY: number, isLeft: boolean, board: any): void {
     const radius = 15;
     const arcOffsets = [
       { dy: -56, dx: 0 },
       { dy: -28, dx: isLeft ? 16 : -16 },
-      { dy: 0,   dx: isLeft ? 24 : -24 },
-      { dy: 28,  dx: isLeft ? 16 : -16 },
-      { dy: 56,  dx: 0 }
+      { dy: 0, dx: isLeft ? 24 : -24 },
+      { dy: 28, dx: isLeft ? 16 : -16 },
+      { dy: 56, dx: 0 },
     ];
 
     ELEMENTS_ORDER.forEach((elem, idx) => {
@@ -753,17 +766,7 @@ export class GameManager {
       const y = baseY + pos.dy;
       const isGuiYi = node.yin >= 1 && node.yang >= 1;
 
-      drawWuXingSeal(
-        ctx,
-        x,
-        y,
-        radius,
-        elem,
-        node.yin,
-        node.yang,
-        isGuiYi,
-        this.animTick
-      );
+      drawWuXingSeal(ctx, x, y, radius, elem, node.yin, node.yang, isGuiYi, this.animTick);
     });
   }
 
@@ -809,4 +812,3 @@ export class GameManager {
     return this.lastShowdownInfo;
   }
 }
-

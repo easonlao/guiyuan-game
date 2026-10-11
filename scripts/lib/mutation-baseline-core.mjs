@@ -35,7 +35,7 @@ export function entryFromMutant(file, mutant) {
     column: mutant.location.start.column,
     mutatorName: mutant.mutatorName,
     replacement: mutant.replacement,
-    status: mutant.status
+    status: mutant.status,
   };
 }
 
@@ -44,7 +44,9 @@ export function entryFromMutant(file, mutant) {
  * 用 `\u0000` 连接，避免字段内容里出现分隔符导致歧义。
  */
 export function entryKey(entry) {
-  return [entry.file, entry.mutatorName, entry.line, entry.column, entry.replacement].join('\u0000');
+  return [entry.file, entry.mutatorName, entry.line, entry.column, entry.replacement].join(
+    '\u0000',
+  );
 }
 
 /**
@@ -139,7 +141,7 @@ export function assertReportIsFullRun(reportPath, configMutate) {
     reportSet.length === configSet.length && reportSet.every((item, i) => item === configSet[i]);
   if (!same) {
     throw new TypeError(
-      `报告的 config.mutate=${JSON.stringify(reportMutate)} 与配置的 mutate=${JSON.stringify(configMutate)} 不一致`
+      `报告的 config.mutate=${JSON.stringify(reportMutate)} 与配置的 mutate=${JSON.stringify(configMutate)} 不一致`,
     );
   }
 }
@@ -164,7 +166,7 @@ export function sortEntries(entries) {
       a.line - b.line ||
       a.column - b.column ||
       compare(a.mutatorName, b.mutatorName) ||
-      compare(a.replacement, b.replacement)
+      compare(a.replacement, b.replacement),
   );
 }
 
@@ -175,7 +177,7 @@ export function serializeEntry(entry) {
     line: entry.line,
     column: entry.column,
     mutatorName: entry.mutatorName,
-    replacement: entry.replacement
+    replacement: entry.replacement,
   });
 }
 

@@ -41,7 +41,7 @@ export function createPRNG(initialSeed: number = Date.now()): PRNG {
 
     getState(): number {
       return state;
-    }
+    },
   };
 }
 

@@ -62,20 +62,20 @@ export const POINTS_CONFIG: PointsConfig = {
     TRANS: 30,
     ATK: 40,
     BURST: 100,
-    BURST_ATK: 80
+    BURST_ATK: 80,
   },
 
   // 【状态分】节点状态变化的分数（已硬编码 2.5 倍攻击压制得分）
   STATE_CHANGE: {
     // 己方建设提升
     REPAIR_DMG: { yang: 200, yin: 200 }, // -1 -> 0 修复道损
-    LIGHT_UP: 100,                        // 0 -> 1 点亮虚空
-    BLESSING: 200,                        // 1 -> 2 加持（归一）
+    LIGHT_UP: 100, // 0 -> 1 点亮虚空
+    BLESSING: 200, // 1 -> 2 加持（归一）
 
     // 敌方状态破坏（2.5倍强化）
-    CAUSE_DMG: { yang: 300, yin: 250 },  // 0 -> -1 致道损
-    BREAK_LIGHT: { yang: 200, yin: 150 },// 1 -> 0 破点亮
-    WEAKEN: 200                           // 2 -> 1 削弱加持
+    CAUSE_DMG: { yang: 300, yin: 250 }, // 0 -> -1 致道损
+    BREAK_LIGHT: { yang: 200, yin: 150 }, // 1 -> 0 破点亮
+    WEAKEN: 200, // 2 -> 1 削弱加持
   },
 
   // 节点归一里程碑奖励分
@@ -88,7 +88,7 @@ export const POINTS_CONFIG: PointsConfig = {
   // 攻击状态分乘以 floor + span × (行动前对手归一节点数 / 5)，
   // 让压制的相对回报随对手归一进度上升、在对手尚未归一时下降。
   // 采纳记录与四标准证据见 docs/adr/0011-balance-route-fix-rules.md 追加节。
-  ATTACK_PROGRESS_SCALE: { floor: 0.3, span: 0.9 }
+  ATTACK_PROGRESS_SCALE: { floor: 0.3, span: 0.9 },
 };
 
 export class ScoreCalculator {
@@ -156,7 +156,7 @@ export class ScoreCalculator {
     prevLevel: NodeLevel,
     newLevel: NodeLevel,
     polarity: Polarity = Polarity.YANG,
-    isAttack: boolean = false
+    isAttack: boolean = false,
   ): number {
     // Stryker disable next-line BlockStatement: prevLevel===newLevel 时后续各分支均不命中、末尾同样返回 0，提前返回被完全吸收（等价）
     if (prevLevel === newLevel) {

@@ -28,7 +28,7 @@ export function initMiniGame(): void {
 
   const sysInfo = wx.getSystemInfoSync();
   const { windowWidth, windowHeight, pixelRatio } = sysInfo;
-  const safeTop = sysInfo.safeArea ? sysInfo.safeArea.top : (sysInfo.statusBarHeight || 20);
+  const safeTop = sysInfo.safeArea ? sysInfo.safeArea.top : sysInfo.statusBarHeight || 20;
   const safeBottom = sysInfo.safeArea ? Math.max(0, windowHeight - sysInfo.safeArea.bottom) : 10;
 
   const canvas = wx.createCanvas();

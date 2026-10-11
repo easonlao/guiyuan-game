@@ -4,9 +4,13 @@ import { HeadlessBenchmark } from '../../src/core/headless/HeadlessBenchmark.js'
 import {
   createScoreBoundStrategy,
   balancedStrategy,
-  BALANCED_WEIGHTS
+  BALANCED_WEIGHTS,
 } from '../../src/core/ai/Strategy.js';
-import { PointsConfig, POINTS_CONFIG, ScoreCalculator } from '../../src/core/logic/ScoreCalculator.js';
+import {
+  PointsConfig,
+  POINTS_CONFIG,
+  ScoreCalculator,
+} from '../../src/core/logic/ScoreCalculator.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
 import { PRNG } from '../../src/core/utils/prng.js';
 import { GameManager } from '../../src/minigame/game-manager.js';
@@ -25,8 +29,8 @@ const ATTACK_HEAVY_POINTS_CONFIG: PointsConfig = {
     ...POINTS_CONFIG.STATE_CHANGE,
     CAUSE_DMG: { yang: 3000, yin: 2500 },
     BREAK_LIGHT: { yang: 2000, yin: 1500 },
-    WEAKEN: 2000
-  }
+    WEAKEN: 2000,
+  },
 };
 
 /** 全部计分来源归零：既改变终局分数，也等价于对 AI 关闭计分轴。 */
@@ -38,7 +42,7 @@ const ZERO_POINTS_CONFIG: PointsConfig = {
     TRANS: 0,
     ATK: 0,
     BURST: 0,
-    BURST_ATK: 0
+    BURST_ATK: 0,
   },
   STATE_CHANGE: {
     REPAIR_DMG: { yang: 0, yin: 0 },
@@ -46,10 +50,10 @@ const ZERO_POINTS_CONFIG: PointsConfig = {
     BLESSING: 0,
     CAUSE_DMG: { yang: 0, yin: 0 },
     BREAK_LIGHT: { yang: 0, yin: 0 },
-    WEAKEN: 0
+    WEAKEN: 0,
   },
   GUI_YI_MILESTONE: 0,
-  DAMAGE_PENALTY: 0
+  DAMAGE_PENALTY: 0,
 };
 
 describe('Ticket 01 - headless scoring-config injection', () => {
@@ -57,11 +61,11 @@ describe('Ticket 01 - headless scoring-config injection', () => {
     it('constructor default injection reproduces the plain run exactly', () => {
       const plain = new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
         seed: SEED,
-        maxRounds: MAX_ROUNDS
+        maxRounds: MAX_ROUNDS,
       });
       const injected = new HeadlessMatch({
         scoreCalculator: new ScoreCalculator(POINTS_CONFIG),
-        rules: {}
+        rules: {},
       }).run(balancedStrategy, balancedStrategy, { seed: SEED, maxRounds: MAX_ROUNDS });
 
       expect(injected.record).toEqual(plain.record);
@@ -73,12 +77,15 @@ describe('Ticket 01 - headless scoring-config injection', () => {
 
     it('per-run default scoreConfig reproduces the plain run exactly', () => {
       const match = new HeadlessMatch();
-      const plain = match.run(balancedStrategy, balancedStrategy, { seed: SEED, maxRounds: MAX_ROUNDS });
+      const plain = match.run(balancedStrategy, balancedStrategy, {
+        seed: SEED,
+        maxRounds: MAX_ROUNDS,
+      });
       const injected = match.run(balancedStrategy, balancedStrategy, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
         scoreConfig: POINTS_CONFIG,
-        rules: { isBoardOnly: false }
+        rules: { isBoardOnly: false },
       });
 
       expect(injected.record).toEqual(plain.record);
@@ -95,17 +102,17 @@ describe('Ticket 01 - headless scoring-config injection', () => {
       const baseline = match.run(BALANCED_WEIGHTS, BALANCED_WEIGHTS, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
-        scoreConfig: POINTS_CONFIG
+        scoreConfig: POINTS_CONFIG,
       });
       const heavy = match.run(BALANCED_WEIGHTS, BALANCED_WEIGHTS, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
-        scoreConfig: ATTACK_HEAVY_POINTS_CONFIG
+        scoreConfig: ATTACK_HEAVY_POINTS_CONFIG,
       });
 
       expect(
         heavy.finalP1Score !== baseline.finalP1Score ||
-          heavy.finalP2Score !== baseline.finalP2Score
+          heavy.finalP2Score !== baseline.finalP2Score,
       ).toBe(true);
       expect(heavy.record).not.toEqual(baseline.record);
     });
@@ -119,7 +126,7 @@ describe('Ticket 01 - headless scoring-config injection', () => {
       expect([heavy.guiYuanCount, heavy.p1Wins, heavy.avgRounds]).not.toEqual([
         baseline.guiYuanCount,
         baseline.p1Wins,
-        baseline.avgRounds
+        baseline.avgRounds,
       ]);
     });
 
@@ -130,17 +137,17 @@ describe('Ticket 01 - headless scoring-config injection', () => {
       const baseline = match.run(balancedStrategy, balancedStrategy, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
-        scoreConfig: POINTS_CONFIG
+        scoreConfig: POINTS_CONFIG,
       });
       const resolverOnly = match.run(balancedStrategy, balancedStrategy, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
-        scoreConfig: ATTACK_HEAVY_POINTS_CONFIG
+        scoreConfig: ATTACK_HEAVY_POINTS_CONFIG,
       });
 
       expect(
         resolverOnly.finalP1Score !== baseline.finalP1Score ||
-          resolverOnly.finalP2Score !== baseline.finalP2Score
+          resolverOnly.finalP2Score !== baseline.finalP2Score,
       ).toBe(true);
       expect(resolverOnly.record).toEqual(baseline.record);
     });
@@ -151,17 +158,17 @@ describe('Ticket 01 - headless scoring-config injection', () => {
       const match = new HeadlessMatch();
       const defaultStrategy = createScoreBoundStrategy(BALANCED_WEIGHTS, POINTS_CONFIG);
       const boardOnlyStrategy = createScoreBoundStrategy(BALANCED_WEIGHTS, POINTS_CONFIG, {
-        isBoardOnly: true
+        isBoardOnly: true,
       });
 
       const defaultResult = match.run(defaultStrategy, defaultStrategy, {
         seed: SEED,
-        maxRounds: MAX_ROUNDS
+        maxRounds: MAX_ROUNDS,
       });
       const boardOnlyResult = match.run(boardOnlyStrategy, boardOnlyStrategy, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
-        rules: { isBoardOnly: true }
+        rules: { isBoardOnly: true },
       });
 
       expect(boardOnlyResult.record).not.toEqual(defaultResult.record);
@@ -169,11 +176,14 @@ describe('Ticket 01 - headless scoring-config injection', () => {
 
     it('omitted rules and explicitly-false rules are byte-identical', () => {
       const match = new HeadlessMatch();
-      const omitted = match.run(balancedStrategy, balancedStrategy, { seed: SEED, maxRounds: MAX_ROUNDS });
+      const omitted = match.run(balancedStrategy, balancedStrategy, {
+        seed: SEED,
+        maxRounds: MAX_ROUNDS,
+      });
       const explicitFalse = match.run(balancedStrategy, balancedStrategy, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
-        rules: { isBoardOnly: false }
+        rules: { isBoardOnly: false },
       });
 
       expect(explicitFalse.record).toEqual(omitted.record);
@@ -189,7 +199,7 @@ describe('Ticket 01 - headless scoring-config injection', () => {
         baseSeed: 10000,
         maxRounds: MAX_ROUNDS,
         strategyP1: balancedStrategy,
-        strategyP2: balancedStrategy
+        strategyP2: balancedStrategy,
       };
       const defaultMetrics = benchmark.run(base);
       const zeroMetrics = benchmark.run({ ...base, scoreConfig: ZERO_POINTS_CONFIG });
@@ -206,7 +216,7 @@ describe('Ticket 01 - headless scoring-config injection', () => {
         baseSeed: 10000,
         maxRounds: MAX_ROUNDS,
         strategyP1: balancedStrategy,
-        strategyP2: balancedStrategy
+        strategyP2: balancedStrategy,
       };
       const defaultMetrics = benchmark.run(base);
       const withEmptyRules = benchmark.run({ ...base, rules: {} });
@@ -218,19 +228,19 @@ describe('Ticket 01 - headless scoring-config injection', () => {
     it('board-only strategies change batch metrics', () => {
       const benchmark = new HeadlessBenchmark();
       const boardOnlyStrategy = createScoreBoundStrategy(BALANCED_WEIGHTS, POINTS_CONFIG, {
-        isBoardOnly: true
+        isBoardOnly: true,
       });
       const base = { matches: 30, baseSeed: 10000, maxRounds: MAX_ROUNDS };
       const defaultMetrics = benchmark.run({
         ...base,
         strategyP1: balancedStrategy,
-        strategyP2: balancedStrategy
+        strategyP2: balancedStrategy,
       });
       const boardOnlyMetrics = benchmark.run({
         ...base,
         strategyP1: boardOnlyStrategy,
         strategyP2: boardOnlyStrategy,
-        rules: { isBoardOnly: true }
+        rules: { isBoardOnly: true },
       });
 
       expect(boardOnlyMetrics.guiYuanCount).not.toBe(defaultMetrics.guiYuanCount);
@@ -246,7 +256,7 @@ describe('Ticket 01 - headless scoring-config injection', () => {
       const fixedPrng: PRNG = {
         next: () => 0,
         nextInt: (min) => min,
-        getState: () => 0
+        getState: () => 0,
       };
 
       const controlledState = (): GameState => {
@@ -261,17 +271,17 @@ describe('Ticket 01 - headless scoring-config injection', () => {
               board: {
                 ...base.players.P2.board,
                 [WuXing.WOOD]: { yin: 1, yang: 1 },
-                [WuXing.FIRE]: { yin: 0, yang: -1 }
-              }
+                [WuXing.FIRE]: { yin: 0, yang: -1 },
+              },
             },
             P1: {
               ...base.players.P1,
               board: {
                 ...base.players.P1.board,
-                [WuXing.EARTH]: { yin: -1, yang: 0 }
-              }
-            }
-          }
+                [WuXing.EARTH]: { yin: -1, yang: 0 },
+              },
+            },
+          },
         };
       };
 

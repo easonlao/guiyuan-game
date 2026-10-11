@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  ActionType,
-  WuXing,
-  Polarity,
-  TIAN_GAN_LIST
-} from '../../src/core/types/domain.js';
+import { ActionType, WuXing, Polarity, TIAN_GAN_LIST } from '../../src/core/types/domain.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
 import { gameStateWith } from '../../src/core/headless/BoardFixture.js';
 import { ActionEvaluator } from '../../src/core/ai/ActionEvaluator.js';
@@ -12,12 +7,10 @@ import {
   balancedStrategy,
   rushGuiyuanStrategy,
   aggressiveStrategy,
-  defensiveStrategy
+  defensiveStrategy,
 } from '../../src/core/ai/Strategy.js';
 import { HeadlessBenchmark } from '../../src/core/headless/HeadlessBenchmark.js';
-import {
-  checkGuardrailBand
-} from '../../src/core/headless/GuardrailBand.js';
+import { checkGuardrailBand } from '../../src/core/headless/GuardrailBand.js';
 
 describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', () => {
   const evaluator = new ActionEvaluator();
@@ -31,7 +24,7 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
         actionType: ActionType.AUTO,
         player: 'P1' as const,
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
 
       const score = evaluator.evaluate(state, jiaWoodYang, autoAction);
@@ -42,7 +35,7 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
         actionType: ActionType.CONVERT,
         player: 'P1' as const,
         element: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
       const convertScore = evaluator.evaluate(state, jiaWoodYang, convertAction);
       expect(convertScore.breakdown.scoreDeltaPoints).toBe(150);
@@ -57,7 +50,7 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
         actionType: ActionType.ATK,
         player: 'P1' as const,
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
 
       const score = evaluator.evaluate(state, jiaWoodYang, atkAction);
@@ -73,16 +66,16 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
       const dilemmaState = gameStateWith({
         P1: {
           [WuXing.WOOD]: { yin: 1, yang: 1 },
-          [WuXing.FIRE]: { yin: -1, yang: 0 }
+          [WuXing.FIRE]: { yin: -1, yang: 0 },
         },
-        P2: { [WuXing.EARTH]: { yin: 1, yang: 1 } }
+        P2: { [WuXing.EARTH]: { yin: 1, yang: 1 } },
       });
 
       const repairOption = {
         actionType: ActionType.AUTO,
         player: 'P1' as const,
         element: WuXing.FIRE,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const attackOption = {
@@ -90,7 +83,7 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
         player: 'P1' as const,
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YANG,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const choice = defensiveStrategy(dilemmaState, dingFireYin, [repairOption, attackOption]);
@@ -103,16 +96,16 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
       const dilemmaState = gameStateWith({
         P1: {
           [WuXing.WOOD]: { yin: 1, yang: 1 },
-          [WuXing.FIRE]: { yin: -1, yang: 0 }
+          [WuXing.FIRE]: { yin: -1, yang: 0 },
         },
-        P2: { [WuXing.EARTH]: { yin: 1, yang: 1 } }
+        P2: { [WuXing.EARTH]: { yin: 1, yang: 1 } },
       });
 
       const repairOption = {
         actionType: ActionType.AUTO,
         player: 'P1' as const,
         element: WuXing.FIRE,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const attackOption = {
@@ -120,7 +113,7 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
         player: 'P1' as const,
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YANG,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const choice = aggressiveStrategy(dilemmaState, dingFireYin, [repairOption, attackOption]);
@@ -130,21 +123,21 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
     it('rushGuiyuan strategy prioritizes unity completion over suppression', () => {
       const testState = gameStateWith({
         P1: { [WuXing.WOOD]: { yin: 0, yang: 1 } },
-        P2: { [WuXing.EARTH]: { yin: 1, yang: 1 } }
+        P2: { [WuXing.EARTH]: { yin: 1, yang: 1 } },
       });
 
       const convertAction = {
         actionType: ActionType.CONVERT,
         player: 'P1' as const,
         element: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const atkAction = {
         actionType: ActionType.ATK,
         player: 'P1' as const,
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const choice = rushGuiyuanStrategy(testState, jiaWoodYang, [convertAction, atkAction]);
@@ -159,7 +152,7 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
       const metrics = benchmark.run({
         matches: 500,
         strategyP1: balancedStrategy,
-        strategyP2: balancedStrategy
+        strategyP2: balancedStrategy,
       });
 
       // 护栏 1/3/内存：与带比较的唯一实现是 `checkGuardrailBand`
@@ -173,8 +166,8 @@ describe('Ticket 03: 策略 AI 价值评估器对接与平衡性基线验收', (
         checkGuardrailBand({
           guiYuanRate: metrics.guiYuanRate,
           p1WinRate: metrics.p1WinRate,
-          heapUsedDeltaMB: metrics.heapUsedDeltaMB
-        })
+          heapUsedDeltaMB: metrics.heapUsedDeltaMB,
+        }),
       ).toEqual([]);
     });
   });

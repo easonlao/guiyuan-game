@@ -9,13 +9,13 @@ import {
   PRODUCTION_CANDIDATE,
   TICKET_05_CANDIDATE,
   resolveCandidate,
-  validateCandidate
+  validateCandidate,
 } from '../../src/core/headless/CandidateValidation.js';
 import { parseCandidateArgs } from '../../src/core/headless/CandidateValidationCli.js';
 import {
   DEFAULT_DYNAMIC_POLICY,
   TUNED_DYNAMIC_POLICY,
-  createDynamicSwitchingStrategy
+  createDynamicSwitchingStrategy,
 } from '../../src/core/headless/DynamicSwitching.js';
 import { AGGRESSIVE_WEIGHTS } from '../../src/core/ai/Strategy.js';
 
@@ -41,7 +41,7 @@ describe('Ticket 05 - 调优动态策略 (dyn-v3-self7)', () => {
       repairDamage: 100,
       lightVoid: 100,
       reachGuiYi: 100,
-      guiyuanProgress: 80
+      guiyuanProgress: 80,
     });
     expect(TUNED_DYNAMIC_POLICY.suppressWeights).toBe(AGGRESSIVE_WEIGHTS);
   });
@@ -62,7 +62,7 @@ describe('Ticket 05 - 候选 A 注册与 CLI 选择', () => {
   it('候选 A 是进度定价的 CandidateSpec，且与生产 POINTS_CONFIG 一致（ticket 06 已采纳）', () => {
     expect(TICKET_05_CANDIDATE.pointsConfig?.ATTACK_PROGRESS_SCALE).toEqual({
       floor: 0.3,
-      span: 0.9
+      span: 0.9,
     });
     // 工单 06 采纳后，生产表已含同一进度定价。
     expect(POINTS_CONFIG.ATTACK_PROGRESS_SCALE).toEqual({ floor: 0.3, span: 0.9 });
@@ -72,20 +72,20 @@ describe('Ticket 05 - 候选 A 注册与 CLI 选择', () => {
 
   it('注册表同时登记生产与候选 A，且候选 A 默认使用调优动态策略', () => {
     expect(Object.keys(CANDIDATE_REGISTRY)).toEqual(
-      expect.arrayContaining([PRODUCTION_CANDIDATE.name, TICKET_05_CANDIDATE.name])
+      expect.arrayContaining([PRODUCTION_CANDIDATE.name, TICKET_05_CANDIDATE.name]),
     );
     expect(CANDIDATE_REGISTRY[PRODUCTION_CANDIDATE.name].dynamicPolicies).toEqual([
-      DEFAULT_DYNAMIC_POLICY
+      DEFAULT_DYNAMIC_POLICY,
     ]);
     expect(CANDIDATE_REGISTRY[TICKET_05_CANDIDATE.name].dynamicPolicies).toEqual([
-      TUNED_DYNAMIC_POLICY
+      TUNED_DYNAMIC_POLICY,
     ]);
   });
 
   it('CLI 默认生产，--candidate 可选中候选 A，未知候选抛错', () => {
     expect(parseCandidateArgs([]).candidate).toBe(PRODUCTION_CANDIDATE.name);
     expect(parseCandidateArgs(['--candidate', 'progress-pricing']).candidate).toBe(
-      'progress-pricing'
+      'progress-pricing',
     );
     expect(() => parseCandidateArgs(['--candidate', 'nope'])).toThrow(/未知候选/);
   });
@@ -97,11 +97,11 @@ describe('Ticket 05 - 候选 A 注册与 CLI 选择', () => {
       maxRounds: 30,
       guardrailMatches: 40,
       guardrailSeed: 10000,
-      dynamicPolicies: [TUNED_DYNAMIC_POLICY]
+      dynamicPolicies: [TUNED_DYNAMIC_POLICY],
     });
     expect(report.candidate.pointsConfig.ATTACK_PROGRESS_SCALE).toEqual({
       floor: 0.3,
-      span: 0.9
+      span: 0.9,
     });
     expect(report.dynamicBeatsStatics.policies).toEqual([TUNED_DYNAMIC_POLICY.name]);
     expect(report.dynamicBeatsStatics.evidence).toHaveLength(7);
@@ -119,7 +119,7 @@ describe('Ticket 05 - 候选 A/B/D/E 的机制与注册', () => {
       expect(resolved.rules).toBeDefined();
     }
     // 生产基线不在四个候选内，但注册表包含它。
-    expect(candidates.map(spec => spec.name)).not.toContain(PRODUCTION_CANDIDATE.name);
+    expect(candidates.map((spec) => spec.name)).not.toContain(PRODUCTION_CANDIDATE.name);
     expect(CANDIDATE_REGISTRY[PRODUCTION_CANDIDATE.name]).toBeDefined();
   });
 

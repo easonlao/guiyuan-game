@@ -4,21 +4,16 @@ import {
   GameState,
   Polarity,
   TIAN_GAN_LIST,
-  WuXing
+  WuXing,
 } from '../../src/core/types/domain.js';
-import {
-  createInitialGameState
-} from '../../src/core/logic/State.js';
-import {
-  ActionEvaluator,
-  DEFAULT_STRATEGY_WEIGHTS
-} from '../../src/core/ai/ActionEvaluator.js';
+import { createInitialGameState } from '../../src/core/logic/State.js';
+import { ActionEvaluator, DEFAULT_STRATEGY_WEIGHTS } from '../../src/core/ai/ActionEvaluator.js';
 import {
   createStrategy,
   balancedStrategy,
   rushGuiyuanStrategy,
   aggressiveStrategy,
-  defensiveStrategy
+  defensiveStrategy,
 } from '../../src/core/ai/Strategy.js';
 import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
 import { TurnManager } from '../../src/core/logic/TurnManager.js';
@@ -26,7 +21,7 @@ import { TurnManager } from '../../src/core/logic/TurnManager.js';
 describe('AI Strategy Engine (src/core/ai)', () => {
   const evaluator = new ActionEvaluator();
   const jiaWoodYang = TIAN_GAN_LIST[0]; // 甲木 (阳)
-  const yiWoodYin = TIAN_GAN_LIST[1];   // 乙木 (阴)
+  const yiWoodYin = TIAN_GAN_LIST[1]; // 乙木 (阴)
 
   describe('1. ActionEvaluator Heuristic Scoring', () => {
     it('rewards repairing player damage (-1 -> 0/1)', () => {
@@ -40,17 +35,17 @@ describe('AI Strategy Engine (src/core/ai)', () => {
             ...baseState.players.P1,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: -1, yang: 0 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: -1, yang: 0 },
+            },
+          },
+        },
       };
 
       const repairAction = {
         actionType: ActionType.AUTO,
         player: 'P1' as const,
         element: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const score = evaluator.evaluate(damagedState, yiWoodYin, repairAction);
@@ -69,22 +64,22 @@ describe('AI Strategy Engine (src/core/ai)', () => {
             ...baseState.players.P1,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 0, yang: 1 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 0, yang: 1 },
+            },
+          },
+        },
       };
 
       const convertAction = {
         actionType: ActionType.CONVERT,
         player: 'P1' as const,
         element: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const score = evaluator.evaluate(stateWithYangLit, jiaWoodYang, convertAction);
       expect(score.breakdown.unityScore).toBeGreaterThanOrEqual(
-        DEFAULT_STRATEGY_WEIGHTS.reachGuiYi + DEFAULT_STRATEGY_WEIGHTS.lightVoid
+        DEFAULT_STRATEGY_WEIGHTS.reachGuiYi + DEFAULT_STRATEGY_WEIGHTS.lightVoid,
       );
     });
 
@@ -100,10 +95,10 @@ describe('AI Strategy Engine (src/core/ai)', () => {
             board: {
               ...baseState.players.P1.board,
               [WuXing.WOOD]: { yin: 1, yang: 1 },
-              [WuXing.WATER]: { yin: 1, yang: 0 }
-            }
-          }
-        }
+              [WuXing.WATER]: { yin: 1, yang: 0 },
+            },
+          },
+        },
       };
 
       // 水生木 (TRANS)，强化木阳侧使其成为加持 2
@@ -111,7 +106,7 @@ describe('AI Strategy Engine (src/core/ai)', () => {
         actionType: ActionType.TRANS,
         player: 'P1' as const,
         sourceElement: WuXing.WATER,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
 
       const guiWaterYin = TIAN_GAN_LIST.find((tg) => tg.name === '癸')!;
@@ -131,29 +126,29 @@ describe('AI Strategy Engine (src/core/ai)', () => {
             ...baseState.players.P1,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 0, yang: 1 }
-            }
+              [WuXing.WOOD]: { yin: 0, yang: 1 },
+            },
           },
           P2: {
             ...baseState.players.P2,
             board: {
               ...baseState.players.P2.board,
-              [WuXing.EARTH]: { yin: 1, yang: 1 }
-            }
-          }
-        }
+              [WuXing.EARTH]: { yin: 1, yang: 1 },
+            },
+          },
+        },
       };
 
       const atkAction = {
         actionType: ActionType.ATK,
         player: 'P1' as const,
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YIN // 压制 P2 土阴 (1 -> 0)，破其归一！
+        polarity: Polarity.YIN, // 压制 P2 土阴 (1 -> 0)，破其归一！
       };
 
       const score = evaluator.evaluate(stateWithOpponentGuiYi, jiaWoodYang, atkAction);
       expect(score.breakdown.suppressionScore).toBeGreaterThanOrEqual(
-        DEFAULT_STRATEGY_WEIGHTS.breakOpponentGuiYi
+        DEFAULT_STRATEGY_WEIGHTS.breakOpponentGuiYi,
       );
     });
 
@@ -168,10 +163,10 @@ describe('AI Strategy Engine (src/core/ai)', () => {
             ...baseState.players.P1,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 1, yang: 1 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1, yang: 1 },
+            },
+          },
+        },
       };
 
       const burstAction = {
@@ -179,7 +174,7 @@ describe('AI Strategy Engine (src/core/ai)', () => {
         player: 'P1' as const,
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const score = evaluator.evaluate(stateWithGuiYi, jiaWoodYang, burstAction);
@@ -194,7 +189,7 @@ describe('AI Strategy Engine (src/core/ai)', () => {
         player: 'P1' as const,
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const score = evaluator.evaluate(baseState, jiaWoodYang, invalidAction);
@@ -227,24 +222,24 @@ describe('AI Strategy Engine (src/core/ai)', () => {
             board: {
               ...baseState.players.P1.board,
               [WuXing.WOOD]: { yin: 1, yang: 1 },
-              [WuXing.FIRE]: { yin: -1, yang: 0 }
-            }
+              [WuXing.FIRE]: { yin: -1, yang: 0 },
+            },
           },
           P2: {
             ...baseState.players.P2,
             board: {
               ...baseState.players.P2.board,
-              [WuXing.EARTH]: { yin: 1, yang: 1 }
-            }
-          }
-        }
+              [WuXing.EARTH]: { yin: 1, yang: 1 },
+            },
+          },
+        },
       };
 
       const repairOption = {
         actionType: ActionType.AUTO,
         player: 'P1' as const,
         element: WuXing.FIRE,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const attackOption = {
@@ -252,7 +247,7 @@ describe('AI Strategy Engine (src/core/ai)', () => {
         player: 'P1' as const,
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YANG,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const availableActions = [repairOption, attackOption];
@@ -281,31 +276,31 @@ describe('AI Strategy Engine (src/core/ai)', () => {
             ...baseState.players.P1,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 0, yang: 1 }
-            }
+              [WuXing.WOOD]: { yin: 0, yang: 1 },
+            },
           },
           P2: {
             ...baseState.players.P2,
             board: {
               ...baseState.players.P2.board,
-              [WuXing.EARTH]: { yin: 1, yang: 1 }
-            }
-          }
-        }
+              [WuXing.EARTH]: { yin: 1, yang: 1 },
+            },
+          },
+        },
       };
 
       const convertAction = {
         actionType: ActionType.CONVERT,
         player: 'P1' as const,
         element: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const atkAction = {
         actionType: ActionType.ATK,
         player: 'P1' as const,
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const candidates = [convertAction, atkAction];
@@ -331,24 +326,24 @@ describe('AI Strategy Engine (src/core/ai)', () => {
             board: {
               ...baseState.players.P1.board,
               [WuXing.WATER]: { yin: -1, yang: 0 },
-              [WuXing.WOOD]: { yin: 0, yang: 0 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 0, yang: 0 },
+            },
+          },
+        },
       };
 
       const repairAction = {
         actionType: ActionType.AUTO,
         player: 'P1' as const,
         element: WuXing.WATER,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const lightAction = {
         actionType: ActionType.AUTO,
         player: 'P1' as const,
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
 
       const choice = balancedStrategy(testState, TIAN_GAN_LIST[9], [lightAction, repairAction]);
@@ -360,7 +355,7 @@ describe('AI Strategy Engine (src/core/ai)', () => {
     it('allows custom weights injection', () => {
       // 自定义极端策略：唯独极度偏好 TRANS
       const customStrategy = createStrategy({
-        baseActionBias: { [ActionType.TRANS]: 9999 }
+        baseActionBias: { [ActionType.TRANS]: 9999 },
       });
 
       const baseState = createInitialGameState();
@@ -368,13 +363,13 @@ describe('AI Strategy Engine (src/core/ai)', () => {
         actionType: ActionType.AUTO,
         player: 'P1' as const,
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
       const dummyAction2 = {
         actionType: ActionType.TRANS,
         player: 'P1' as const,
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       // 赋予合法环境
@@ -386,10 +381,10 @@ describe('AI Strategy Engine (src/core/ai)', () => {
             ...baseState.players.P1,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 1, yang: 0 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1, yang: 0 },
+            },
+          },
+        },
       };
 
       const decision = customStrategy(validState, yiWoodYin, [dummyAction1, dummyAction2]);
@@ -406,13 +401,13 @@ describe('AI Strategy Engine (src/core/ai)', () => {
         actionType: ActionType.AUTO,
         player: 'P1' as const,
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
       const action2 = {
         actionType: ActionType.AUTO,
         player: 'P1' as const,
         element: WuXing.FIRE,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
 
       const decision = strategyWithTieBreaker(state, jiaWoodYang, [action1, action2]);
@@ -435,7 +430,7 @@ describe('AI Strategy Engine (src/core/ai)', () => {
       const match = new HeadlessMatch();
       const result = match.run(balancedStrategy, rushGuiyuanStrategy, {
         seed: 12345,
-        maxRounds: 40
+        maxRounds: 40,
       });
 
       expect(result.roundsPlayed).toBeGreaterThanOrEqual(1);
