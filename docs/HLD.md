@@ -132,3 +132,14 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 *   **里程碑（手动）**——`.github/workflows/mutation-milestone.yml`：`workflow_dispatch` 触发，跑 `npm run mutation:milestone`（全量变异 + 棘轮对比），结果同样落盘可下载。
 
 **不挂 `on: schedule`**：门禁是差分棘轮（`docs/MUTATION-TESTING.md` §3.1），没有 diff 的定时跑在定义上产不出新发现——这是结构性理由，不是成本理由。全量那条的触发者因此只能是 agent，责任写进 `AGENTS.md`。决策与理由见 ADR 0012。
+
+### 4.6 小游戏真机验收 (QA Runbook)
+
+底层逻辑验证通过后，表现层集成按下面步骤验收（验收口径归 `docs/SRS.md` §5）：
+
+1.  `minigame/game.js` 已入库，通常可直接进第 2 步；改过 `src/minigame/` 或 `src/core/` 后先执行 `npm run build:minigame` 重建（或 `npm run dev:minigame` 启动监听）。忘了重建会被 `npm run check:artifact` 拦下（理由见 ADR 0014）。
+2.  打开 Windows 微信开发者工具，导入 `minigame/` 目录（WSL 路径形如 `\\wsl.localhost\<发行版>\<仓库路径>\minigame`）。
+3.  **模拟器验收**：切换不同机型验证顶部比分栏避让刘海屏 / 灵动岛；验证底部动作按钮布局与触控命中；验证 P1 操作与 P2（天道）AI 出招的节奏。
+4.  **真机 Profiling**：用微信开发者工具「预览」扫码真机试玩，监控触控延迟、帧率与 GC 表现。
+
+构建管线、模块职责与分层架构见 §2 Layer 3；表现层重构见 `.scratch/minigame-view-upgrade`。
