@@ -69,6 +69,7 @@
 
 ## 5. 开发流程闭环
 
+0. **环境**：Node 用 `.nvmrc` 的版本（`nvm use`），npm 版本见 `package.json#packageManager`。`npm install` 在 Node 版本不符时判红（`engines` + `.npmrc` 的 `engine-strict`）。
 1. **领取任务**：阅读对应的 Issue 或 `.scratch/` 里的 Markdown 规范。
 2. **脱水开发**：在纯 TS 环境下实现功能并跑通 `npm test`（内部调用 Vitest）。
 3. **静态体检**：运行 `npm run lint`（oxlint）、`npm run fmt:check`（oxfmt）与 `npm run check:deps`（dependency-cruiser）。
