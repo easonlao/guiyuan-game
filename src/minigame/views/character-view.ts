@@ -11,6 +11,7 @@ import { GameState, PlayerId } from '../../core/types/domain.js';
 import { CharacterActionState } from '../types.js';
 import { drawPixelBox, drawPixelCharacter, drawPixelRect } from '../pixel-art.js';
 import { Container } from '../scene/container.js';
+import { estimateTextWidth } from '../text-metrics.js';
 
 export interface CharacterViewOptions {
   /** 视口宽度（父坐标系）。 */
@@ -324,15 +325,6 @@ export class CharacterView extends Container {
 
 const PLAYER_IDS: readonly PlayerId[] = ['P1', 'P2'];
 
-/** 文本宽度估算：全角按 1.2 倍字号、半角按 0.6 倍。等宽字体下 CJK 实际约 1em，留出余量宁可早折行也不溢出。 */
-function estimateTextWidth(text: string, fontSize: number): number {
-  let width = 0;
-  for (const char of text) {
-    width += isFullWidth(char) ? fontSize * 1.2 : fontSize * 0.6;
-  }
-  return width;
-}
-
 /** 按可用宽度折行：最多 `maxLines` 行；放不下的部分在末行以省略号收尾。 */
 function wrapText(text: string, maxWidth: number, fontSize: number, maxLines: number): string[] {
   if (text === '') {
@@ -372,9 +364,4 @@ function truncateToWidth(text: string, maxWidth: number, fontSize: number): stri
     chars.pop();
   }
   return `${chars.join('')}…`;
-}
-
-/** 粗略判定全角字符：码点 ≥ U+2E80 的按全角计（与 `Button` 的文本宽度估算同一口径）。 */
-function isFullWidth(char: string): boolean {
-  return (char.codePointAt(0) ?? 0) >= 0x2e80;
 }
