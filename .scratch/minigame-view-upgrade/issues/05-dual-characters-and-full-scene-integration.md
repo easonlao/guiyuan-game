@@ -10,6 +10,7 @@
 
 - [ ] `CharacterView` 呈现双方角色头像框架、当前行动回合标识、连动回合标记与比分展示。
 - [ ] `GameScene` 总协调器完成完整对战生命周期循环：抽天干 -> 符文降临 -> 玩家操作/AI 决策 -> 飞行动画 -> 棋盘变更 -> 连动/终局判定。
+- [ ] 保留 ADR 0006 / ADR 0008 交互契约：低位态 `AUTO` 与极位态 `DISSIPATE` 直接动画流转，仅中位态多重抉择时才渲染交互按钮。
 - [ ] 彻底清理或废止旧版硬算代码，确保表现层完全迁移至场景树体系。
 - [ ] 编写端到端场景集成测试，验证对局从第 1 回合平滑推进至终局结算。
-- [ ] 执行 `npm run build:minigame` 成功生成单文件 `minigame/game.js`，无报错无类型警告。
+- [ ] `npm run verify` 通过（含 typecheck / test / `check:artifact` 逐字节对账入库的 `minigame/game.js`）。
