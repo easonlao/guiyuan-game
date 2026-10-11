@@ -63,6 +63,8 @@
 - **覆盖粒度是 per-test（非配置决定）**：`coverageAnalysis: "off"` 字段不生效，runner 总是回传 per-test 覆盖（见 §2.1）。所以 `NoCoverage` 是真实存在的状态、不是结构性恒 0，纳入棘轮有意义。
 - 棘轮只收 `Survived + NoCoverage`。`Timeout` 既不入基线、又被 Stryker 计入「已探测」，所以 Killed↔Timeout 的抖动对门禁与分数**都无影响**（见 §3.4）。
 - 身份键是 `{file, mutatorName, line, column, replacement}`，**不是** Stryker 的 `mutants[].id`（那个只在单次报告内唯一）。
+- **身份键含行号，所以格式化会移动基线**：任何改变 `src/core/logic/**` 行号的改动（含 `npm run fmt`）都会让基线条目的 `line`/`column` 失效，下一次 `mutation:check` 把它们报成「疑似只是移位」的新增。改完按 §3.2 重跑全量并刷基线，diff 应只体现行列位移、不增删条目。
+- **`next-line` 依赖目标行不换行**：`// Stryker disable next-line` 禁用的是注释后那个 AST 节点所在的行；若格式化把该行拆成多行，禁用会落到错误的行上，目标突变体变成未禁用（`Survived`/`NoCoverage`）。这类目标行要用 `// oxfmt-ignore` 钉住不换行（例见 `src/core/logic/ActionResolver.ts` 的不可达 `return` 守卫）。
 
 棘轮的对象是 `Survived` **和** `NoCoverage` 两者：「故意加一段没被测到的行为」产出的是 `NoCoverage`，只盯 `Survived` 会漏。
 
