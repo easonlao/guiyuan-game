@@ -3,13 +3,19 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "npm@11.13.0",
+  "engines": {
+    "node": "^24.16.0"
+  },
   "scripts": {
     "postinstall": "patch-package",
     "setup:hooks": "git config core.hooksPath .githooks",
     "prepare": "npm run --silent setup:hooks || true",
-    "test": "node scripts/run-tests.mjs",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src/core src/adapters tests/core",
+    "fmt": "oxfmt --write src tests scripts vitest.config.ts vitest.stryker.config.ts .dependency-cruiser.js",
+    "fmt:check": "oxfmt --check src tests scripts vitest.config.ts vitest.stryker.config.ts .dependency-cruiser.js",
     "check:lint": "oxlint src/core src/adapters tests/core",
     "oxlint": "oxlint src/core src/adapters tests/core",
     "check:deps": "depcruise --config .dependency-cruiser.js src",
@@ -36,6 +42,7 @@
     "@types/node": "^26.6.4",
     "agent-browser": "^0.38.2",
     "dependency-cruiser": "^18.5.0",
+    "oxfmt": "^0.72.0",
     "oxlint": "^1.87.0",
     "patch-package": "^8.0.1",
     "terser": "^5.46.0",
