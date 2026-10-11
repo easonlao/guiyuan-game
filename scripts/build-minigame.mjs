@@ -1,23 +1,12 @@
-import { build } from 'vite';
-import { resolve } from 'node:path';
+// 小游戏打包入口：`build:minigame`（单次构建）与 `dev:minigame`（监听）。
+//
+// 构建面在 `scripts/lib/minigame-build.mjs`，与对账门禁共用同一次构建调用（见 ADR 0014）。
 
-const isWatch = process.argv.includes('--watch');
+import { ARTIFACT_PATH, watchMiniGame, writeMiniGameArtifact } from './lib/minigame-build.mjs';
 
-await build({
-  configFile: false,
-  publicDir: false,
-  build: {
-    target: 'es2020',
-    outDir: 'minigame',
-    emptyOutDir: false,
-    lib: {
-      entry: resolve(process.cwd(), 'src/minigame/main.ts'),
-      name: 'GuiyuanMiniGame',
-      fileName: () => 'game.js',
-      formats: ['iife'],
-    },
-    minify: false,
-    sourcemap: false,
-    watch: isWatch ? {} : null,
-  },
-});
+if (process.argv.includes('--watch')) {
+  await watchMiniGame();
+} else {
+  const size = await writeMiniGameArtifact();
+  process.stdout.write(`build:minigame 写入 ${ARTIFACT_PATH}（${String(size)} 字节）。\n`);
+}

@@ -39,7 +39,7 @@
 
 底层逻辑验证通过后，表现层集成按下面步骤验收：
 
-1. 在 WSL 执行 `npm run build:minigame` 构建单文件 `minigame/game.js`（或 `npm run dev:minigame` 启动监听）。
+1. `minigame/game.js` 已入库，通常可直接进第 2 步；改过 `src/minigame/` 或 `src/core/` 后先执行 `npm run build:minigame` 重建（或 `npm run dev:minigame` 启动监听）。忘了重建会被 `npm run check:artifact` 拦下（理由见 ADR 0014）。
 2. 打开 Windows 微信开发者工具，导入 `minigame/` 目录（WSL 路径形如 `\\wsl.localhost\<发行版>\<仓库路径>\minigame`）。
 3. **模拟器验收**：切换不同机型验证顶部比分栏避让刘海屏 / 灵动岛；验证底部动作按钮布局与触控命中；验证 P1 操作与 P2（天道）AI 出招的节奏。
 4. **真机 Profiling**：用微信开发者工具「预览」扫码真机试玩，监控触控延迟、帧率与 GC 表现。

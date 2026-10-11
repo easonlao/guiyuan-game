@@ -4,12 +4,12 @@
 
 **Blocked by:** 05（对账检查要挂在流水线里才有意义）
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] `minigame/game.js` 的入库决定写成 ADR，**理由写真实的那条**
-- [ ] 加一条对账检查：重新构建后与入库产物逐字节比对，不一致即红
-- [ ] 对账检查接进验收命令或流水线
-- [ ] 落点判定写死「**不得落在任何 `dist/` 下**」
+- [x] `minigame/game.js` 的入库决定写成 ADR，**理由写真实的那条**
+- [x] 加一条对账检查：重新构建后与入库产物逐字节比对，不一致即红
+- [x] 对账检查接进验收命令或流水线
+- [x] 落点判定写死「**不得落在任何 `dist/` 下**」
 
 **实现要点：**
 
@@ -19,4 +19,32 @@
 - **`dist/` 陷阱**：`.gitignore:5` 是无锚点的 `dist/`，产物落进**任何层级**的 `dist/` 都会静默消失。参考仓库的 ADR-0007 专门记过这个坑。落点判定要写死，不能只靠 `.gitignore`。
 - `scripts/build-minigame.mjs` 现在是 `outDir: 'minigame'`，构建产物可直接 diff（未压缩），这是对账可行的前提，别顺手打开压缩。
 
-**验证记录：**（待填）
+**验证记录：**
+
+实现：
+
+- **ADR**：新增 `docs/adr/0014-minigame-artifact-is-committed.md`。理由只写真实的那条（`docs/DEVELOPMENT.md` 让人直接导入 `minigame/` 目录，省一次构建命令），并在「被否决的方案」里**明确拒绝**借参考仓库的第三方契约类比——它的 `runtime.iife.js` 是 sha256 写进回放 meta 的对外契约（model-war ADR-0007），`game.js` 没有任何第三方依赖它的确切字节。另记 `dist/` 陷阱与「产物与源码可以分叉，因此必须有一道门禁盯着」。
+- **构建面收拢到一处**：新增 `scripts/lib/minigame-build.mjs`，把 vite 配置与构建调用抽出来，`build:minigame`（写回）与 `check:artifact`（对账）**共用同一次 `buildMiniGameCode()`**。写回侧与核查侧各写一份配置就可能悄悄用上两条不同的构建命令，那正是分叉的入口。`scripts/build-minigame.mjs` 改为薄 CLI，`dev:minigame`（`--watch`）仍由 vite 自己写盘。
+- **对账门禁**：新增 `scripts/check-minigame-artifact.mjs`（`npm run check:artifact`）。两段判定：① 落点——`ARTIFACT_PATH.split('/').includes('dist')` 即红，写死在脚本里，不靠 `.gitignore`；② 逐字节——`buildMiniGameCode()` 现打一份与入库产物比对，不一致即红并报出**首个差异的字节位置**。比对走 `write: false`（产物只在内存里），门禁不改工作区。
+- **接进验收**：`package.json` 的 `verify` 追加为第四段（`check:quick` → `typecheck` → `test` → `check:artifact`）；`check:artifact` 单列为命名脚本。CI 快链跑 `npm run verify`，因此自动覆盖。
+- **产物不压缩**：构建配置保持 `minify: false`，入库的那份在 diff 里可读（ADR 0014 记为「入库这个决定能被人复核」的前提）。
+- **重建入库产物**：`minigame/game.js` 此前停在**旧源码**（07 票留的账，见 07 验证记录末条）。本次重建并入库，入库字节 = 现打字节。
+
+红/绿实证：
+
+| 场景 | 改动 | 命令 | 结果 |
+|---|---|---|---|
+| 基线 | 无 | `npm run check:artifact` | 退出 `0` |
+| **源码改了没重建** | 改 `src/minigame/action-button-formatter.ts` 的 `'【吸纳】'` 字面量，不重建 | `npm run check:artifact` | 退出 `1`，报「入库 94210 字节 / 重构建 94211 字节，首个差异在第 66077 字节」 |
+| 还原 | 还原源码 | `npm run check:artifact` | 退出 `0` |
+| **产物被改** | 往 `minigame/game.js` 追加一个换行 | `npm run check:artifact` | 退出 `1`，报首个差异在第 94210 字节 |
+| **落点落进 `dist/`** | 临时把 `ARTIFACT_PATH` 改为 `dist/minigame/game.js` | `npm run check:artifact` | 退出 `1`，报「落在 dist/ 下……进不了版本库」 |
+| 还原 | 还原 `ARTIFACT_PATH` | `npm run check:artifact` | 退出 `0` |
+
+- **产物确定性**：连续两次 `npm run build:minigame`，`sha256(minigame/game.js)` 均为 `81f2eee1b088d6f0f130aae9420f12a2291f0abdebb7a4538386eb91e5841b5d`（94210 字节）——逐字节对账的前提。
+- **验收**：`npm run verify` 全绿——`fmt:check` 95 文件、`lint` 干净、`check:boundary` 退 0、`check:deps` 46 modules / 129 dependencies / 0 violation、`typecheck` 干净、`npm test` 39 文件 / 728 用例全绿、`check:artifact` 逐字节一致且落点不在任何 `dist/` 下。
+
+未做（有意）：
+
+- **未加「产物不含模块语法」判定**：那是参考仓库 QuickJS 载入期的约束（它的 ADR-0007）；`game.js` 是 IIFE、由微信小游戏环境载入，本票没点这条，不扩范围。
+- **未改 `.oxfmtrc.json`**：`minigame/game.js` 早已在 `ignorePatterns` 里，formatter 不会动入库产物（否则对账必红）。

@@ -147,9 +147,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       [WuXing.WATER]: { yin: 0, yang: 0 }
     };
   }
-  function createInitialPlayer(id) {
+  function createInitialPlayer() {
     return {
-      id,
       score: 0,
       board: createEmptyBoard()
     };
@@ -160,8 +159,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       maxRounds,
       currentPlayer: "P1",
       players: {
-        P1: createInitialPlayer("P1"),
-        P2: createInitialPlayer("P2")
+        P1: createInitialPlayer(),
+        P2: createInitialPlayer()
       },
       currentTianGan: null,
       isGameOver: false,
@@ -225,7 +224,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     if (tianGan.element === targetElement && tianGan.polarity === targetPolarity) {
       return true;
     }
-    if (tianGan.element === targetElement && tianGan.polarity !== targetPolarity && board[targetElement][tianGan.polarity] >= 1) {
+    if (tianGan.element === targetElement && // Stryker disable next-line ConditionalExpression: AUTO 未命中时五行相等即蕴含极性相反，第二个操作数恒真（等价）
+    tianGan.polarity !== targetPolarity && // Stryker disable next-line ConditionalExpression: 唯一未点亮侧的对侧必定 >= 1，否则未点亮侧数会是 2（等价）
+    board[targetElement][tianGan.polarity] >= 1) {
       return true;
     }
     if (tianGan.polarity === Polarity.YIN && GENERATION_CYCLE[tianGan.element] === targetElement) {
@@ -251,6 +252,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     return count;
   }
+  function countBoardGuiYi(board) {
+    let count = 0;
+    for (const element of Object.values(WuXing)) {
+      if (isNodeGuiYi(board[element])) count++;
+    }
+    return count;
+  }
   const GUI_YI_MILESTONE = 60;
   const DAMAGE_PENALTY = 50;
   const POINTS_CONFIG = {
@@ -261,9 +269,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       TRANS: 30,
       ATK: 40,
       BURST: 100,
-      BURST_ATK: 80,
-      DISSIPATE: 0,
-      PASS: 0
+      BURST_ATK: 80
     },
     // 【状态分】节点状态变化的分数（已硬编码 2.5 倍攻击压制得分）
     STATE_CHANGE: {
@@ -282,24 +288,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       WEAKEN: 200
       // 2 -> 1 削弱加持
     },
-    // 稀有度乘数
-    RARITY_MULTIPLIER: 1.5,
-    // 稀有度黑名单（严禁享受稀有度加成的动作类型）
-    NO_RARITY_ACTIONS: [ActionType.BURST, ActionType.BURST_ATK, ActionType.DISSIPATE, ActionType.PASS],
     // 节点归一里程碑奖励分
     GUI_YI_MILESTONE: 60,
     // 终局残留道损扣分
-    DAMAGE_PENALTY: 50
-  };
-  const ACTION_PROBABILITY = {
-    [ActionType.AUTO]: 1,
-    [ActionType.ATK]: 0.518,
-    [ActionType.TRANS]: 0.243,
-    [ActionType.CONVERT]: 0.167,
-    [ActionType.BURST]: 0.035,
-    [ActionType.BURST_ATK]: 0.036,
-    [ActionType.DISSIPATE]: 0.02,
-    [ActionType.PASS]: 0
+    DAMAGE_PENALTY: 50,
+    // 攻击进度定价（ticket 06 采纳 ticket 05 候选 A）：
+    // 攻击状态分乘以 floor + span × (行动前对手归一节点数 / 5)，
+    // 让压制的相对回报随对手归一进度上升、在对手尚未归一时下降。
+    // 采纳记录与四标准证据见 docs/adr/0011-balance-route-fix-rules.md 追加节。
+    ATTACK_PROGRESS_SCALE: { floor: 0.3, span: 0.9 }
   };
   class ScoreCalculator {
     constructor(config = POINTS_CONFIG) {
@@ -319,9 +316,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     calculateGuiYiMilestonePoints(count) {
       return count * this.guiYiMilestone;
     }
-    calculateGuiYiMilestone(count) {
-      return this.calculateGuiYiMilestonePoints(count);
-    }
     /**
      * 计算终局道损扣分
      * @param damageCount 残留道损总数量（每个阴或阳为 -1 记 1 个道损）
@@ -329,14 +323,25 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     calculateDamagePenalty(damageCount) {
       return damageCount * this.damagePenalty;
     }
-    calculateEndgameDamagePenalty(damageCount) {
-      return this.calculateDamagePenalty(damageCount);
-    }
     /**
      * 计算指定动作的行为基础分
      */
     calculateActionPoints(actionType) {
-      return this.config.ACTION[actionType] ?? 0;
+      const actionPoints = this.config.ACTION;
+      return actionPoints[actionType] ?? 0;
+    }
+    /**
+     * 攻击进度定价系数（ticket 05 候选 A）。
+     *
+     * 以行动前对手盘面已归一节点数（0–5）线性插值：`floor + span × (count / 5)`。
+     * 未配置 `ATTACK_PROGRESS_SCALE` 时返回恒等 1。调用方负责四舍五入与只作用于攻击状态分。
+     */
+    attackProgressScale(opponentGuiYiCount) {
+      const scale = this.config.ATTACK_PROGRESS_SCALE;
+      if (!scale) {
+        return 1;
+      }
+      return scale.floor + scale.span * (opponentGuiYiCount / 5);
     }
     /**
      * 根据节点等级跃迁与极性计算状态变化分
@@ -372,24 +377,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       return 0;
     }
-    /**
-     * 判断动作是否命中稀有度黑名单
-     */
-    isNoRarityAction(actionType) {
-      return this.config.NO_RARITY_ACTIONS.includes(actionType);
-    }
-    /**
-     * 应用稀有度加成：命中黑名单动作直接返回原分值
-     */
-    applyRarityBonus(score, actionType, multiplier = this.config.RARITY_MULTIPLIER) {
-      if (score === 0) return 0;
-      if (this.isNoRarityAction(actionType)) {
-        return score;
-      }
-      const probability = ACTION_PROBABILITY[actionType] ?? 0.5;
-      const rarityBonus = score * (1 - probability) * multiplier;
-      return Math.round(score + rarityBonus);
-    }
   }
   __publicField(ScoreCalculator, "GUI_YI_MILESTONE", 60);
   __publicField(ScoreCalculator, "DAMAGE_PENALTY", 50);
@@ -397,6 +384,24 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     constructor(scoreCalculator = new ScoreCalculator()) {
       __publicField(this, "scoreCalculator");
       this.scoreCalculator = scoreCalculator;
+    }
+    /**
+     * 攻击状态分按行动前对手盘面归一进度定价（ticket 05 候选 A）。
+     *
+     * 只缩放攻击状态分（CAUSE_DMG / BREAK_LIGHT / WEAKEN）；行为分、里程碑与
+     * 己方建设分不受影响。`ATTACK_PROGRESS_SCALE` 未配置时恒等。
+     */
+    scaledAttackTransitionPoints(prevLevel, newLevel, polarity, opponentBoardBeforeAction) {
+      const points = this.scoreCalculator.calculateTransitionPoints(
+        prevLevel,
+        newLevel,
+        polarity,
+        true
+      );
+      const scale = this.scoreCalculator.attackProgressScale(
+        countBoardGuiYi(opponentBoardBeforeAction)
+      );
+      return Math.round(points * scale);
     }
     /**
      * 解析动作执行
@@ -408,6 +413,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           success: false,
           scoreDelta: 0,
           extraTurn: false,
+          // Stryker disable next-line StringLiteral: 终局提示文案不参与断言（不可观测）
           message: "对局已结束"
         };
       }
@@ -457,7 +463,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           } else {
             const newLevel = clampNodeLevel(prevLevel + 1);
             patchActiveNode(element, { [polarity]: newLevel });
-            scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, polarity, false);
+            scoreDelta += this.scoreCalculator.calculateTransitionPoints(
+              prevLevel,
+              newLevel,
+              polarity,
+              false
+            );
             success = true;
           }
           break;
@@ -471,12 +482,23 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           const node = nextActiveBoard[element];
           const prevLevel = node[targetPolarity];
           if (prevLevel >= 1) {
-            return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: "目标极性已处于点亮或加持状态，严禁调息" };
+            return {
+              nextState: state,
+              success: false,
+              scoreDelta: 0,
+              extraTurn: false,
+              message: "目标极性已处于点亮或加持状态，严禁调息"
+            };
           }
           scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.CONVERT);
           const newLevel = clampNodeLevel(prevLevel + 1);
           patchActiveNode(element, { [targetPolarity]: newLevel });
-          scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, targetPolarity, false);
+          scoreDelta += this.scoreCalculator.calculateTransitionPoints(
+            prevLevel,
+            newLevel,
+            targetPolarity,
+            false
+          );
           success = true;
           break;
         }
@@ -493,7 +515,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           if (prevLevel < 2) {
             const newLevel = clampNodeLevel(prevLevel + 1);
             patchActiveNode(targetElement, { [polarity]: newLevel });
-            scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, polarity, false);
+            scoreDelta += this.scoreCalculator.calculateTransitionPoints(
+              prevLevel,
+              newLevel,
+              polarity,
+              false
+            );
           }
           success = true;
           break;
@@ -510,7 +537,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           const prevLevel = targetNode[polarity];
           const newLevel = clampNodeLevel(prevLevel - 1);
           patchOpponentNode(targetElement, { [polarity]: newLevel });
-          scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, polarity, true);
+          scoreDelta += this.scaledAttackTransitionPoints(
+            prevLevel,
+            newLevel,
+            polarity,
+            opponentPlayer.board
+          );
           success = true;
           break;
         }
@@ -536,7 +568,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           patchActiveNode(targetElement, {
             [targetPolarity]: newLevel
           });
-          scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, targetPolarity, false);
+          scoreDelta += this.scoreCalculator.calculateTransitionPoints(
+            prevLevel,
+            newLevel,
+            targetPolarity,
+            false
+          );
           extraTurn = true;
           success = true;
           break;
@@ -563,7 +600,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           patchOpponentNode(targetElement, {
             [targetPolarity]: newLevel
           });
-          scoreDelta += this.scoreCalculator.calculateTransitionPoints(prevLevel, newLevel, targetPolarity, true);
+          scoreDelta += this.scaledAttackTransitionPoints(
+            prevLevel,
+            newLevel,
+            targetPolarity,
+            opponentPlayer.board
+          );
           extraTurn = true;
           success = true;
           break;
@@ -607,7 +649,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const nextScore = activePlayer.score + scoreDelta;
       const hasGuiYuan = isBoardGuiYuan(nextActiveBoard);
       const prevLockedGuiYuan = state.lockedGuiYuan ?? {
+        // Stryker disable next-line BooleanLiteral: 同上，不可达兜底
         P1: false,
+        // Stryker disable next-line BooleanLiteral: 同上，不可达兜底
         P2: false
       };
       const nextLockedGuiYuan = {
@@ -1026,7 +1070,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
               ...p2Board,
               [unlighted.element]: {
                 ...p2Board[unlighted.element],
-                [unlighted.polarity]: clampNodeLevel(p2Board[unlighted.element][unlighted.polarity] + 1)
+                [unlighted.polarity]: clampNodeLevel(
+                  p2Board[unlighted.element][unlighted.polarity] + 1
+                )
               }
             };
           }
@@ -1198,6 +1244,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           success: false,
           scoreDelta: 0,
           extraTurn: false,
+          // Stryker disable next-line StringLiteral: 终局提示文案不参与断言（不可观测）
           message: "对局已结束"
         };
       }
@@ -1217,9 +1264,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       if (!actionToExecute) {
         return {
           nextState: this.state,
+          // Stryker disable next-line BooleanLiteral: 不可达的兜底返回
           success: false,
           scoreDelta: 0,
+          // Stryker disable next-line BooleanLiteral: 不可达的兜底返回
           extraTurn: false,
+          // Stryker disable next-line StringLiteral: 不可达的兜底返回
           message: "无可用动作"
         };
       }
@@ -1236,6 +1286,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           success: false,
           scoreDelta: 0,
           extraTurn: false,
+          // Stryker disable next-line StringLiteral: 终局提示文案不参与断言（不可观测）
           message: "对局已结束"
         };
       }
@@ -1248,6 +1299,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           success: true,
           scoreDelta: 0,
           extraTurn: false,
+          // Stryker disable next-line StringLiteral: 终局提示文案不参与断言（不可观测）
           message: "终轮天命揭牌决胜已完成"
         };
       }
@@ -1275,9 +1327,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         return false;
       }
       if (action.sourceElement !== void 0 && candidate.sourceElement !== action.sourceElement) {
-        return false;
-      }
-      if (action.targetElement !== void 0 && candidate.targetElement !== action.targetElement) {
         return false;
       }
       if (action.polarity !== void 0 && candidate.polarity !== action.polarity) {
@@ -1314,7 +1363,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /**
      * 评估单个动作的综合价值
      */
-    evaluate(state, tianGan, action, weights = DEFAULT_STRATEGY_WEIGHTS) {
+    evaluate(state, tianGan, action, weights = DEFAULT_STRATEGY_WEIGHTS, rules) {
       const simulatedState = {
         ...state,
         currentTianGan: tianGan
@@ -1417,7 +1466,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         burstScore += weights.burstExtraTurn;
       }
       const scoreWeight = weights.scoreDeltaWeight ?? 1;
-      const scoreDeltaPoints = result.scoreDelta * scoreWeight;
+      const scoreDeltaPoints = rules?.isBoardOnly ? 0 : result.scoreDelta * scoreWeight;
       const biasScore = weights.baseActionBias?.[action.actionType] ?? 0;
       const totalScore = repairScore + unityScore + suppressionScore + burstScore + scoreDeltaPoints + biasScore;
       return {
@@ -1437,8 +1486,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /**
      * 评估一组候选动作并返回打分列表
      */
-    evaluateAll(state, tianGan, actions, weights = DEFAULT_STRATEGY_WEIGHTS) {
-      return actions.map((action) => this.evaluate(state, tianGan, action, weights));
+    evaluateAll(state, tianGan, actions, weights = DEFAULT_STRATEGY_WEIGHTS, rules) {
+      return actions.map((action) => this.evaluate(state, tianGan, action, weights, rules));
     }
   }
   const BALANCED_WEIGHTS = {
@@ -1497,6 +1546,38 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     winReward: 1e4,
     baseActionBias: {}
   };
+  const PURE_RUSH_WEIGHTS = {
+    repairDamage: 120,
+    reachGuiYi: 300,
+    lightVoid: 120,
+    reachKangJi: 60,
+    guiyuanProgress: 200,
+    burstExtraTurn: 120,
+    breakOpponentGuiYi: 0,
+    causeDamage: 0,
+    suppressNode: 0,
+    scoreDeltaWeight: 0,
+    winReward: 1e4,
+    baseActionBias: {}
+  };
+  const PURE_SUPPRESS_WEIGHTS = {
+    repairDamage: 0,
+    reachGuiYi: 0,
+    lightVoid: 0,
+    reachKangJi: 0,
+    guiyuanProgress: 0,
+    burstExtraTurn: 0,
+    breakOpponentGuiYi: 300,
+    causeDamage: 200,
+    suppressNode: 100,
+    scoreDeltaWeight: 0,
+    winReward: 0,
+    baseActionBias: {}
+  };
+  const SCORE_STRIPPED_WEIGHTS = {
+    ...BALANCED_WEIGHTS,
+    scoreDeltaWeight: 0
+  };
   function createStrategy(weights, options = {}) {
     const mergedWeights = {
       ...DEFAULT_STRATEGY_WEIGHTS,
@@ -1516,7 +1597,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       if (actions.length === 1) {
         return actions[0];
       }
-      const scored = evaluator.evaluateAll(state, tianGan, actions, mergedWeights);
+      const scored = evaluator.evaluateAll(state, tianGan, actions, mergedWeights, options.rules);
       scored.sort((a, b) => b.score - a.score);
       if (options.tieBreaker) {
         const bestScore = scored[0].score;
@@ -1528,10 +1609,28 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       return scored[0].action;
     };
   }
+  function createScoreBoundStrategy(weights, config, rules) {
+    return createStrategy(weights, {
+      evaluator: new ActionEvaluator(new ActionResolver(new ScoreCalculator(config))),
+      rules
+    });
+  }
   createStrategy(BALANCED_WEIGHTS);
   createStrategy(RUSH_GUIYUAN_WEIGHTS);
   createStrategy(AGGRESSIVE_WEIGHTS);
   createStrategy(DEFENSIVE_WEIGHTS);
+  createScoreBoundStrategy(
+    PURE_RUSH_WEIGHTS,
+    POINTS_CONFIG
+  );
+  createScoreBoundStrategy(
+    PURE_SUPPRESS_WEIGHTS,
+    POINTS_CONFIG
+  );
+  createScoreBoundStrategy(
+    SCORE_STRIPPED_WEIGHTS,
+    POINTS_CONFIG
+  );
   const WUXING_PALETTE = {
     [WuXing.WOOD]: { name: "木", main: "#38a169", light: "#68d391", dark: "#22543d" },
     [WuXing.FIRE]: { name: "火", main: "#e53e3e", light: "#fc8181", dark: "#742a2a" },
@@ -1682,8 +1781,24 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         drawPixelRect(ctx, px - 2, py - 2, 4, 4, elemCfg.light);
       }
       const boxSize = 50;
-      drawPixelBox(ctx, centerX - boxSize / 2, boxY - boxSize / 2, boxSize, boxSize, "#171e2e", elemCfg.main, 2);
-      drawPixelRect(ctx, centerX - boxSize / 2 + 4, boxY - boxSize / 2 + 4, boxSize - 8, 2, elemCfg.light);
+      drawPixelBox(
+        ctx,
+        centerX - boxSize / 2,
+        boxY - boxSize / 2,
+        boxSize,
+        boxSize,
+        "#171e2e",
+        elemCfg.main,
+        2
+      );
+      drawPixelRect(
+        ctx,
+        centerX - boxSize / 2 + 4,
+        boxY - boxSize / 2 + 4,
+        boxSize - 8,
+        2,
+        elemCfg.light
+      );
       ctx.fillStyle = "#0a0d14";
       ctx.font = "bold 24px monospace";
       ctx.textAlign = "center";
@@ -1950,7 +2065,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   class GameManager {
     constructor(seedOrOptions = Date.now()) {
       __publicField(this, "turnManager");
-      __publicField(this, "aiStrategy", createStrategy(BALANCED_WEIGHTS));
+      __publicField(this, "rules");
+      __publicField(this, "aiStrategy");
       __publicField(this, "currentTianGan", null);
       __publicField(this, "availableButtons", []);
       // 动效与方案对比
@@ -1983,10 +2099,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       let initialState;
       if (typeof seedOrOptions === "number") {
         prng = createPRNG(seedOrOptions);
+        this.rules = {};
       } else {
         prng = seedOrOptions.prng ?? createPRNG(seedOrOptions.seed ?? Date.now());
         initialState = seedOrOptions.initialState;
+        this.rules = seedOrOptions.rules ?? {};
       }
+      this.aiStrategy = createStrategy(BALANCED_WEIGHTS, { rules: this.rules });
       this.initTurnManager(prng, initialState);
       this.startNewTurn();
     }
@@ -2434,14 +2553,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.fillStyle = "#b794f4";
       ctx.textAlign = "right";
       ctx.fillText(`天道(P2): ${state.players.P2.score}分`, this.width - 28, effectiveTop + 24);
-      drawModeToggleBar(
-        ctx,
-        16,
-        effectiveTop + topBarH + 6,
-        this.width - 32,
-        26,
-        this.animMode
-      );
+      drawModeToggleBar(ctx, 16, effectiveTop + topBarH + 6, this.width - 32, 26, this.animMode);
       const arenaY = effectiveTop + topBarH + Math.floor((playableHeight - topBarH) * 0.26);
       const p1X = 55;
       const p2X = this.width - 55;
@@ -2512,7 +2624,11 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
             consoleY + 68
           );
         } else {
-          ctx.fillText(state.winner === "P1" ? "★ 恭喜！五行圆满大获全胜 ★" : "天道终局 · 比分结算完毕", this.width / 2, consoleY + 68);
+          ctx.fillText(
+            state.winner === "P1" ? "★ 恭喜！五行圆满大获全胜 ★" : "天道终局 · 比分结算完毕",
+            this.width / 2,
+            consoleY + 68
+          );
         }
         ctx.fillStyle = "#63b3ed";
         ctx.font = "12px monospace";
@@ -2536,17 +2652,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         const x = baseX + pos.dx;
         const y = baseY + pos.dy;
         const isGuiYi = node.yin >= 1 && node.yang >= 1;
-        drawWuXingSeal(
-          ctx,
-          x,
-          y,
-          radius,
-          elem,
-          node.yin,
-          node.yang,
-          isGuiYi,
-          this.animTick
-        );
+        drawWuXingSeal(ctx, x, y, radius, elem, node.yin, node.yang, isGuiYi, this.animTick);
       });
     }
     // --- 测试与状态观察助手方法 ---

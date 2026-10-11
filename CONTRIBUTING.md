@@ -76,4 +76,4 @@
 3. **内循环检查**：`npm run check:quick`——改一处跑一次，秒级返回，不含测试与构建。
 4. **收尾验收**：`npm run verify`——收尾时跑这一条，绿了才算做完。
 5. **提交代码**：按照上述 Git 规范 `git commit`。
-6. **表现层打包**：`npm run build:minigame`（`scripts/build-minigame.mjs`）把 `src/minigame/` 打成 IIFE 产物 `minigame/game.js`；在微信开发者工具中导入 `minigame/` 目录做真机预览。
+6. **表现层打包**：`npm run build:minigame`（`scripts/build-minigame.mjs`）把 `src/minigame/` 打成 IIFE 产物 `minigame/game.js`；在微信开发者工具中导入 `minigame/` 目录做真机预览。产物**入库**：改了 `src/` 后要重跑并把新产物一并提交，`npm run verify` 的产物对账会拦住忘记重建（见 ADR 0014）。
