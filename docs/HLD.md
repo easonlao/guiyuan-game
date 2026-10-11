@@ -46,7 +46,8 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 
 > **实现状态**：轻量场景树/组件化架构**已落地**（对齐 ADR 0005）：`src/minigame/` 现由 `GameScene` 控制器与 `BoardView` / `ActionBarView` / `CharacterView` / `RuneFlightView` 四个视图组成，触控命中、按压反馈与补间动画分别由 `InputManager` / `Button` / `Tween` 承担；旧的单体命令式实现（`game-manager.ts` 与手写触摸命中判定）已删除，`pixel-art.ts` 只保留仍在用的绘制例程。
 *   **轻量场景树与组件化**：基于轻量纯 TS 场景树架构（`Node`、`Container`、`Button`、`Tween`、`InputManager`），摆脱逐像素点阵硬编码，实现自动化触控命中检测、按压微动与声明式补间动画。
-*   **模块化业务视图**：拆分为 `BoardView`（五行阵盘与生克连线）、`ActionBarView`（可选动作按钮面板）、`CharacterView`（角色化身与表情）以及 `RuneFlightView`（天干轨迹动效），由 `GameScene` 控制器对齐 `TurnManager` 状态进行纯数据驱动投影。
+*   **模块化业务视图**：拆分为 `BoardView`（法盘）、`ActionBarView`（可选动作按钮面板）、`CharacterView`（角色化身与表情）以及 `RuneFlightView`（天干轨迹动效），由 `GameScene` 控制器对齐 `TurnManager` 状态进行纯数据驱动投影。
+*   **法盘双环（规划中，ADR 0015）**：`BoardView` 将从「单一棋盘按行动方投影」升级为**同心双环**——内环恒为己方盘、外环恒为对方盘、外环逆时针偏移 2 格；`getSlot` 加 `player` 参数、`update` 吃双盘快照（接口契约见 `docs/LLD.md` §4.1）。
 *   **极速构建管线**：通过 Vite 构建单文件 `minigame/game.js`，Windows 微信开发者工具直连开发与实时仿真调试。
 *   **轻量低消耗**：零重型引擎包袱，首包体积 < 1MB（远低于 4MB 上限），启动秒开。
 
