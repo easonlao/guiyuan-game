@@ -4,7 +4,7 @@
 
 ## 一局游戏的主要流程 (Layer 1: 核心计算与状态层 `src/core/`)
 
-- [`TurnManager`](../src/core/logic/TurnManager.ts)：回合生命周期驱动器，调度天干生成、合法动作过滤、动作执行、连动判定与 30 大回合（60 次行动机会）终局判定。
+- [`TurnManager`](../src/core/logic/TurnManager.ts)：回合生命周期驱动器。
 - [`ActionCandidates`](../src/core/logic/ActionCandidates.ts)：纯函数合法动作候选生成器，对齐吸纳/调息/化/破/强化/强破规则。
 - [`ActionResolver`](../src/core/logic/ActionResolver.ts)：纯函数动作解析器，基于轻量增量 Patch 与结构共享演进 `GameState`。
 - [`State`](../src/core/logic/State.ts)：创建初始棋盘状态（包含五行节点阴阳两仪）与状态校验。
@@ -34,3 +34,14 @@
 - `views/`：数据驱动业务组件（`BoardView` 五行阵盘、`ActionBarView` 动作面板、`CharacterView` 角色化身、`RuneFlightView` 天干流星动效）。
 - `GameScene.ts`：场景总控制器，连接 `TurnManager` 快照并调度交互与动画。
 - `main.ts`：微信小游戏入口（`wx.createCanvas` 初始化与事件挂载）。
+
+### 小游戏真机验收 (QA Runbook)
+
+底层逻辑验证通过后，表现层集成按下面步骤验收：
+
+1. 在 WSL 执行 `npm run build:minigame` 构建单文件 `minigame/game.js`（或 `npm run dev:minigame` 启动监听）。
+2. 打开 Windows 微信开发者工具，导入 `minigame/` 目录（WSL 路径形如 `\\wsl.localhost\<发行版>\<仓库路径>\minigame`）。
+3. **模拟器验收**：切换不同机型验证顶部比分栏避让刘海屏 / 灵动岛；验证底部动作按钮布局与触控命中；验证 P1 操作与 P2（天道）AI 出招的节奏。
+4. **真机 Profiling**：用微信开发者工具「预览」扫码真机试玩，监控触控延迟、帧率与 GC 表现。
+
+验收口径归 `docs/SRS.md` §5，测试与质量保障手段归 `docs/HLD.md` §4，本文不复述。

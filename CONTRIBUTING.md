@@ -57,7 +57,7 @@
 ## 4. 给 AI Agent 的特别指引 (AI Agent Guidelines)
 
 当 AI 代理（如 Executor, Reviewer）在执行任务时，必须：
-1. **先看契约，再写代码**：在编写 `src/core/` 下的代码前，先读取 `docs/LLD.md` 中的数据结构定义。
+1. **先看契约，再写代码**：在编写 `src/core/` 下的代码前，先读取 `src/core/types/domain.ts`（类型定义真源）与 `docs/LLD.md`（字段语义与契约约定）。
 2. **纯数据优先**：不要使用 ES6 Class 实例去封装 `State` 属性，`State` 只能是 `readonly` 的 Interface 对象。
 3. **Test-Driven (TDD)**：每实现一个功能或修复，必须同步在 `*.test.ts` 中补充覆盖该分支的用例，并通过红绿循环验证。
 
