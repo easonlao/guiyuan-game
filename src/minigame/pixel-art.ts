@@ -1,11 +1,11 @@
-import { NodeLevel, Polarity, TianGanInfo, WuXing } from '../core/types/domain';
+import { NodeLevel, Polarity, TianGanInfo, WuXing } from '../core/types/domain.js';
 import {
   AnimationMode,
   CharacterActionState,
   FlyingProjectile,
   ImpactEffect,
   TouchButton,
-} from './types';
+} from './types.js';
 
 export const WUXING_PALETTE: Record<
   WuXing,

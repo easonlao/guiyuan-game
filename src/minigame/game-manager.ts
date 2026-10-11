@@ -1,6 +1,6 @@
-import { TurnManager } from '../core/logic/TurnManager';
-import { RuleSwitches } from '../core/logic/ActionCandidates';
-import { createPRNG, PRNG } from '../core/utils/prng';
+import { TurnManager } from '../core/logic/TurnManager.js';
+import { RuleSwitches } from '../core/logic/ActionCandidates.js';
+import { createPRNG, PRNG } from '../core/utils/prng.js';
 import {
   ActionPayload,
   ActionType,
@@ -9,17 +9,17 @@ import {
   Polarity,
   TianGanInfo,
   WuXing,
-} from '../core/types/domain';
-import { BALANCED_WEIGHTS, createStrategy } from '../core/ai/Strategy';
-import { DecisionStrategy } from '../core/ai/types';
+} from '../core/types/domain.js';
+import { BALANCED_WEIGHTS, createStrategy } from '../core/ai/Strategy.js';
+import { DecisionStrategy } from '../core/ai/types.js';
 import {
   AnimationMode,
   CharacterActionState,
   FlyingProjectile,
   ImpactEffect,
   TouchButton,
-} from './types';
-import { formatActionButton, getActionTargetElement } from './action-button-formatter';
+} from './types.js';
+import { formatActionButton, getActionTargetElement } from './action-button-formatter.js';
 import {
   drawCenterTianGanRune,
   drawFlyingEnergy,
@@ -31,7 +31,7 @@ import {
   drawTouchButton,
   drawWuXingSeal,
   WUXING_PALETTE,
-} from './pixel-art';
+} from './pixel-art.js';
 
 const ELEMENTS_ORDER: WuXing[] = [
   WuXing.WOOD,

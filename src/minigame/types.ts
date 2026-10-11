@@ -1,4 +1,4 @@
-import { ActionPayload, WuXing } from '../core/types/domain';
+import { ActionPayload, WuXing } from '../core/types/domain.js';
 
 export type CharacterActionState = 'idle' | 'attack' | 'hurt' | 'cast';
 export type AnimationMode = 'pixel' | 'flow';

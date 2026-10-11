@@ -57,6 +57,19 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 *   `TerminalBoardViewer`：纯文本控制台 ASCII 棋盘检视器。
 *   `cli.ts`：各实验入口共享的直接执行守卫与错误处理。
 
+#### 📦 包边界（声明式）— 没声明就解析不到
+
+`src/` 与 `tools/` 各是一块**独立的包**，由根 `package.json` 的 `workspaces` 连起来：
+
+| 包名 | 目录 | 是什么 |
+|---|---|---|
+| `@guiyuan/game` | `src/` | 游戏核心，会打进 `minigame/game.js`、跑在微信小游戏环境里（没有 Node 内建模块） |
+| `@guiyuan/devtools` | `tools/` | 开发工具，只在你电脑上用 Node.js 跑，不进 `game.js` |
+
+*   唯一允许的跨区边是 `@guiyuan/devtools` → `@guiyuan/game`（写在 `tools/package.json` 的 `dependencies` 里）。`src/` 没有声明 `@guiyuan/devtools`，所以从游戏侧写 `import '@guiyuan/devtools'` 在**类型检查期**就解析不到（`tsc` 退非零）。
+*   `tests/` 不属于两块中的任何一块（它在根包里），用相对路径引用两边；包边界只约束两块之间。
+*   这是与 §4.2 的 depcruise 规则**互补**的第二道门；机制、安装布局前提与工具链适配见 §4.2。
+
 ---
 
 ## 3. 反馈循环与实施里程碑 (Feedback Loop & Milestones)
@@ -90,6 +103,10 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 *   **工具集**：[dependency-cruiser](https://github.com/sverweij/dependency-cruiser)
 *   **用途**：扫描工程依赖，绘制可视化的关系网络（如 Mermaid 图表），并可通过规则验证依赖的合法性。
 *   **流程定位**：用于架构巡检。当前生效的规则以根目录 `.dependency-cruiser.js` 为真源，其中与分区直接相关的两条是：`game-side-not-to-local-outside-src`（小游戏侧 `src/` 不得依赖 `src/` 之外的任何本地模块，无头推演只是其中最典型的一块）与 `game-side-not-to-node-builtins`（`src/` 不得 import 任何 Node 内建模块）。注意 depcruise 会剥掉 `node:` 前缀（`node:fs` 记为 `fs`），所以第二条按 `dependencyTypes: ['core']` 匹配而非按路径。规则为什么是枚举式的、为什么它不够、以及已知的 npm 依赖覆盖缺口，见 ADR 0013。
+
+**声明式包边界（与上面的规则互补）**：`src/` 与 `tools/` 各自是 npm 包（`@guiyuan/game` / `@guiyuan/devtools`，拓扑见 §2），由根 `package.json#workspaces` 连起来；两块之间的引用只能走包名，且必须在 `dependencies` 里声明。`tsconfig.json` 用 `moduleResolution: "nodenext"`，让 TypeScript 真正读取各包的 `exports` 字段并强制相对导入写扩展名。
+
+这套机制依赖 `.npmrc` 的 `install-strategy=linked`：npm 默认的 hoisted 布局会把所有 workspace 包平铺到根 `node_modules`，于是「没声明也能 import」——声明式边界形同虚设；`linked`（pnpm 式）只在每个包自己的 `node_modules` 里放它声明过的依赖，没声明就解析不到。`npm run check:boundary`（在 `check:quick` 内）就是钉住这条机制的自检：它断言「从 `src/` 解析不到 `@guiyuan/devtools`」，布局一变就判红。`linked` 布局带来的工具链适配（Stryker 插件加载、Stryker 沙箱内的模块身份）见 `docs/MUTATION-TESTING.md` §9。
 
 ### 4.3 突变测试与健壮性体检 (Stryker.js)
 *   **工具集**：[Stryker.js](https://stryker-mutator.io/)

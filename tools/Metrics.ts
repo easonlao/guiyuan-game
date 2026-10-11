@@ -10,13 +10,13 @@
  * 口径陷阱见 docs/headless/metric-definitions.md 与 tests/core/metric-definitions.test.ts。
  */
 
-import { BoardState, PlayerId } from '../src/core/types/domain.js';
+import { BoardState, PlayerId } from '@guiyuan/game/core/types/domain.js';
 import {
   countBoardDamage,
   countBoardGuiYi,
   countUnlightedSides,
   isBoardTingPai,
-} from '../src/core/logic/State.js';
+} from '@guiyuan/game/core/logic/State.js';
 import type { ClosureType, MatchResult } from './HeadlessMatch.js';
 
 // ---------------------------------------------------------------------------

@@ -16,9 +16,9 @@ import {
   finalizeGameMetrics,
   type GameMetrics,
 } from './Metrics.js';
-import { BALANCED_WEIGHTS } from '../src/core/ai/Strategy.js';
-import { POINTS_CONFIG, PointsConfig } from '../src/core/logic/ScoreCalculator.js';
-import { RuleSwitches } from '../src/core/logic/ActionCandidates.js';
+import { BALANCED_WEIGHTS } from '@guiyuan/game/core/ai/Strategy.js';
+import { POINTS_CONFIG, PointsConfig } from '@guiyuan/game/core/logic/ScoreCalculator.js';
+import { RuleSwitches } from '@guiyuan/game/core/logic/ActionCandidates.js';
 
 export interface BenchmarkOptions {
   matches: number;

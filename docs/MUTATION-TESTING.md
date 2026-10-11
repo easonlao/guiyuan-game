@@ -198,7 +198,18 @@ if (score >= 0) { /* ... */ }
 
 ---
 
-## 9. 命令与产物参考
+## 9. `linked` 安装布局（声明式包边界的安装前提）
+
+`.npmrc` 的 `install-strategy=linked`（见 `docs/HLD.md` §4.2）把依赖放进 `node_modules/.store` 下的 per-package `node_modules`，而不是平铺到根。它动了三处与变异测试/包边界相关的解析与加载，**改动 `.npmrc` 时必须复核**：
+
+- **插件加载**：Stryker 默认按 `@stryker-mutator/*` 从 **core 自己所在目录**枚举插件；`linked` 下那里只有 core 自己的依赖，找不到作为根 devDependency 的 vitest-runner。`stryker.config.json` 用 `appendPlugins: ["./scripts/stryker-vitest-plugin.mjs"]` 补一条稳定路径；该 wrapper 从仓库根解析裸包名再把插件的导出原样再导出，不写死 vitest-runner 内部的 `dist/src/index.js`。
+- **沙箱内的模块身份**：Stryker 沙箱把 `node_modules` 目录**符号链接**回真实仓库，于是 `tools/` 里的 `@guiyuan/game/…` 会解析到**真实仓库的 `src/`**，而测试用相对路径 `../../src/…` 解析到**沙箱自己的 `src/`**——同一份源码出现两个模块实例。后果不只是 `toBe` 身份断言假红（曾见于 `tests/core/candidate-search.test.ts`），更严重的是被 mutate 的沙箱源码与 tools 实际加载的源码不是同一份，变异信号失真。`vitest.stryker.config.ts` 用 `resolve.alias` 把 `@guiyuan/game` 钉回**运行目录**（沙箱根）的 `src/`。
+- **包边界自检**：`npm run check:boundary`（已进 `check:quick`）断言「从 `src/` 解析不到 `@guiyuan/devtools`」这条机制仍成立。`linked` 一旦失效（npm 默认布局变回 hoisted、或有人手写 `--install-strategy=hoisted`），它会立刻判红，不会静默。
+- 前两处都只影响 Stryker 路径；`npm test` 仍走真实的 `node_modules` 解析（`vitest.config.ts` 不加别名），这样包边界在常规测试里也真的被走一遍。
+
+---
+
+## 10. 命令与产物参考
 
 | 命令 | 作用 | 退出码 |
 | --- | --- | --- |
@@ -214,4 +225,4 @@ if (score >= 0) { /* ... */ }
 - `mutation-baseline.jsonl` —— 基线（**入库**）。
 - 控制台 `clear-text` —— 存活明细（文件 / 行号 / 变异类型 / diff）。
 
-配置：`stryker.config.json`（`mutate`、`reporters`、`timeoutMS`；`coverageAnalysis: "off"` 字段名不副实、实际不生效，见 §2.1）、`vitest.stryker.config.ts`（Stryker 专用 Vitest 配置）。
+配置：`stryker.config.json`（`mutate`、`reporters`、`timeoutMS`、`appendPlugins`；`coverageAnalysis: "off"` 字段名不副实、实际不生效，见 §2.1）、`vitest.stryker.config.ts`（Stryker 专用 Vitest 配置，含 `resolve.alias`，见 §9）。

@@ -30,17 +30,23 @@ import {
   TianGanInfo,
   TIAN_GAN_LIST,
   WuXing,
-} from '../src/core/types/domain.js';
-import { ActionResolver } from '../src/core/logic/ActionResolver.js';
-import { getAvailableActions, type RuleSwitches } from '../src/core/logic/ActionCandidates.js';
-import { measureBoardDiff } from '../src/core/logic/State.js';
+} from '@guiyuan/game/core/types/domain.js';
+import { ActionResolver } from '@guiyuan/game/core/logic/ActionResolver.js';
+import {
+  getAvailableActions,
+  type RuleSwitches,
+} from '@guiyuan/game/core/logic/ActionCandidates.js';
+import { measureBoardDiff } from '@guiyuan/game/core/logic/State.js';
 import {
   POINTS_CONFIG,
   ScoreCalculator,
   type PointsConfig,
-} from '../src/core/logic/ScoreCalculator.js';
-import { ActionEvaluator, DEFAULT_STRATEGY_WEIGHTS } from '../src/core/ai/ActionEvaluator.js';
-import type { StrategyWeights } from '../src/core/ai/types.js';
+} from '@guiyuan/game/core/logic/ScoreCalculator.js';
+import {
+  ActionEvaluator,
+  DEFAULT_STRATEGY_WEIGHTS,
+} from '@guiyuan/game/core/ai/ActionEvaluator.js';
+import type { StrategyWeights } from '@guiyuan/game/core/ai/types.js';
 import { ATK_PHASES } from './AtkMarginalReturn.js';
 import { gameStateWith, type BoardOverrides } from './BoardFixture.js';
 

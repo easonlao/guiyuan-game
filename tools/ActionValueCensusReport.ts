@@ -9,9 +9,9 @@
  * 保证两处「逐动作类型结论表」逐字节一致（消除重复表格渲染）。
  */
 
-import { WuXing } from '../src/core/types/domain.js';
-import type { BoardState } from '../src/core/types/domain.js';
-import { TIAN_GAN_LIST } from '../src/core/types/domain.js';
+import { WuXing } from '@guiyuan/game/core/types/domain.js';
+import type { BoardState } from '@guiyuan/game/core/types/domain.js';
+import { TIAN_GAN_LIST } from '@guiyuan/game/core/types/domain.js';
 import type { ActionTypeCensus, ActionValueCensusReport } from './ActionValueCensus.js';
 
 function unique(values: readonly string[]): string[] {

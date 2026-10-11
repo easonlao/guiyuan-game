@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { GameManager } from '../../src/minigame/game-manager';
-import { TurnManager } from '../../src/core/logic/TurnManager';
-import { ActionType, WuXing, Polarity } from '../../src/core/types/domain';
+import { GameManager } from '../../src/minigame/game-manager.js';
+import { TurnManager } from '../../src/core/logic/TurnManager.js';
+import { ActionType, WuXing, Polarity } from '../../src/core/types/domain.js';
 
 describe('GameManager - P1 First-Turn & Single AUTO Auto-Absorption Scheduler', () => {
   it('activates p1AutoAbsorbTimer when P1 starts turn with single AUTO action', () => {

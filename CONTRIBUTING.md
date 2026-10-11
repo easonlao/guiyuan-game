@@ -12,6 +12,7 @@
 **核心纪律：**
 * **Layer 1 (核心逻辑层 `src/core/*`) 绝对禁止** 引入任何引擎相关的库（如 `cc`, `window`, `document`）。
 * **Layer 1 必须保持纯粹（Pure）**：所有动作解析 (`ActionResolver`) 必须是**纯函数**。任何依赖随机数的地方（如天干生成），必须通过传入 Seed 或 RandomGenerator 的方式注入，确保 100% 可重现。
+* **跨区引用走包名，且先声明**：`src/`（包 `@guiyuan/game`）与 `tools/`（包 `@guiyuan/devtools`）是两块独立的包。`tools/` 只能用 `@guiyuan/game/…` 引用核心，并在 `tools/package.json` 里声明；`src/` 不得引用 `@guiyuan/devtools`——没声明，类型检查期就解析不到。机制与安装布局前提见 `docs/HLD.md` §4.2。
 
 若依赖探测工具（如 `dependency-cruiser`）在检查中检测到越界引用，提交将被拒绝。
 

@@ -11,8 +11,14 @@
  * 既可从测试使用，也可从测量台/实验代码（`tools/`）使用。
  */
 
-import { BoardState, GameState, NodeLevel, PlayerId, WuXing } from '../src/core/types/domain.js';
-import { createInitialGameState } from '../src/core/logic/State.js';
+import {
+  BoardState,
+  GameState,
+  NodeLevel,
+  PlayerId,
+  WuXing,
+} from '@guiyuan/game/core/types/domain.js';
+import { createInitialGameState } from '@guiyuan/game/core/logic/State.js';
 
 /** 单节点覆盖：只覆盖列出的侧，未列出的侧保持虚空 (0) */
 export interface NodeLevelOverride {

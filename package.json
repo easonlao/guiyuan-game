@@ -4,6 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "packageManager": "npm@11.13.0",
+  "workspaces": [
+    "src",
+    "tools"
+  ],
   "engines": {
     "node": "^24.16.0"
   },
@@ -11,7 +15,7 @@
     "postinstall": "patch-package",
     "setup:hooks": "git config core.hooksPath .githooks",
     "prepare": "npm run --silent setup:hooks || true",
-    "check:quick": "npm run fmt:check && npm run lint && npm run check:deps",
+    "check:quick": "npm run fmt:check && npm run lint && npm run check:boundary && npm run check:deps",
     "verify": "npm run check:quick && npm run typecheck && npm run test",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
@@ -19,6 +23,7 @@
     "fmt": "oxfmt --write \"**/*.{ts,mts,cts,js,mjs,cjs}\"",
     "fmt:check": "oxfmt --check \"**/*.{ts,mts,cts,js,mjs,cjs}\"",
     "check:deps": "depcruise --config .dependency-cruiser.js src tools",
+    "check:boundary": "node scripts/check-package-boundary.mjs",
     "benchmark:headless": "npx tsx tools/HeadlessBenchmark.ts",
     "benchmark:experiment": "npx tsx tools/ExperimentRunner.ts",
     "benchmark:head-to-head": "npx tsx tools/ExperimentRunner.ts --scan head-to-head",

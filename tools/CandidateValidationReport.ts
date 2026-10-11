@@ -9,7 +9,7 @@
  * 保证与动作价值普查报告逐字节一致。
  */
 
-import { POINTS_CONFIG } from '../src/core/logic/ScoreCalculator.js';
+import { POINTS_CONFIG } from '@guiyuan/game/core/logic/ScoreCalculator.js';
 import {
   DOMINANCE_SIGNIFICANCE_Z,
   MIN_DOMINANCE_MATCHES,
