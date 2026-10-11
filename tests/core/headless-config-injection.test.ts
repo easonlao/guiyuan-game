@@ -13,7 +13,7 @@ import {
 } from '../../src/core/logic/ScoreCalculator.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
 import { PRNG } from '../../src/core/utils/prng.js';
-import { GameManager } from '../../src/minigame/game-manager.js';
+import { GameScene } from '../../src/minigame/game-scene.js';
 import { WuXing, type GameState } from '../../src/core/types/domain.js';
 
 const SEED = 4242;
@@ -247,8 +247,8 @@ describe('Ticket 01 - headless scoring-config injection', () => {
     });
   });
 
-  describe('in-game entry (TurnManager / GameManager)', () => {
-    it('GameManager binds the rule switch to its AI valuation path', () => {
+  describe('in-game entry (TurnManager / GameScene)', () => {
+    it('GameScene binds the rule switch to its AI valuation path', () => {
       // 受控盘面：P2 木归一 (1,1)，火阳道损；P1 土 (-1,0)。
       // 固定抽 甲木（阳）：候选为 ATK / BURST / BURST_ATK。
       // 工单 06 采纳进度定价后，默认计分下 AI 改选 BURST（消耗木阴 1->0）；
@@ -286,11 +286,20 @@ describe('Ticket 01 - headless scoring-config injection', () => {
       };
 
       const driveAiOnce = (rules?: { isBoardOnly?: boolean }): GameState => {
-        const gm = new GameManager({ prng: fixedPrng, initialState: controlledState(), rules });
+        const scene = new GameScene({
+          width: 375,
+          height: 667,
+          safeTop: 24,
+          safeBottom: 10,
+          prng: fixedPrng,
+          initialState: controlledState(),
+          rules,
+        });
+        scene.start();
         for (let i = 0; i < 90; i++) {
-          gm.update();
+          scene.update(1 / 60);
         }
-        return gm.getState();
+        return scene.turnManager.getState();
       };
 
       const defaultState = driveAiOnce();

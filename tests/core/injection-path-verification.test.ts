@@ -46,7 +46,7 @@ import {
 import { createInitialGameState } from '../../src/core/logic/State.js';
 import { getAvailableActions } from '../../src/core/logic/ActionCandidates.js';
 import { TurnManager } from '../../src/core/logic/TurnManager.js';
-import { GameManager } from '../../src/minigame/game-manager.js';
+import { GameScene } from '../../src/minigame/game-scene.js';
 import { createPRNG, type PRNG } from '../../src/core/utils/prng.js';
 import {
   ActionType,
@@ -526,7 +526,7 @@ describe('注入同时覆盖游戏内回合管理与无头推演两个入口', (
     expect(zeroResult.nextState.players.P1.score).toBe(0);
   });
 
-  it('游戏内入口 GameManager：rules 绑定到 AI 估值器（受控盘面）', () => {
+  it('游戏内入口 GameScene：rules 绑定到 AI 估值器（受控盘面）', () => {
     // 受控盘面：P2 木归一 (1,1)，火阳道损；P1 土 (-1,0)。固定抽 甲木（阳）。
     // 工单 06 采纳进度定价后，默认计分下 AI 改选 BURST（消耗木阴 1->0）；
     // 关闭计分轴后仍选 ATK（保留木阴）。与 headless-config-injection.test.ts 的用例同源。
@@ -563,11 +563,20 @@ describe('注入同时覆盖游戏内回合管理与无头推演两个入口', (
     };
 
     const driveAiOnce = (rules?: { isBoardOnly?: boolean }): GameState => {
-      const gm = new GameManager({ prng: fixedPrng, initialState: controlledState(), rules });
+      const scene = new GameScene({
+        width: 375,
+        height: 667,
+        safeTop: 24,
+        safeBottom: 10,
+        prng: fixedPrng,
+        initialState: controlledState(),
+        rules,
+      });
+      scene.start();
       for (let i = 0; i < 90; i++) {
-        gm.update();
+        scene.update(1 / 60);
       }
-      return gm.getState();
+      return scene.turnManager.getState();
     };
 
     expect(driveAiOnce().players.P2.board[WuXing.WOOD].yin).toBe(0);
