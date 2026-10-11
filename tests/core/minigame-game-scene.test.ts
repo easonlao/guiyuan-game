@@ -137,6 +137,22 @@ function advance(scene: GameScene, seconds: number, dt = 1 / 60): void {
   }
 }
 
+/** 逐步推进模拟时钟，直到 `predicate` 成立（超过 `maxSeconds` 仍未成立则停手，交给调用方断言）。 */
+function advanceUntil(
+  scene: GameScene,
+  predicate: () => boolean,
+  maxSeconds = 5,
+  dt = 1 / 60,
+): void {
+  const steps = Math.ceil(maxSeconds / dt);
+  for (let index = 0; index < steps; index += 1) {
+    if (predicate()) {
+      return;
+    }
+    scene.update(dt);
+  }
+}
+
 /** 场景里按钮的屏幕坐标（场景层级无缩放，逐级累加偏移即可）。 */
 function buttonScreenPosition(button: Button): { x: number; y: number } {
   let x = 0;
@@ -166,6 +182,189 @@ describe('GameScene：ADR 0008 唯一候选自动流转的播报文案', () => {
     expect(describeAutoFlow(ActionType.CONVERT)).toBe('势在必行·调息');
     expect(describeAutoFlow(ActionType.BURST)).toBe('势在必行·强化');
     expect(describeAutoFlow(ActionType.BURST_ATK)).toBe('势在必行·强破');
+  });
+});
+
+/**
+ * 唯一候选自动流转的场景级逐类覆盖（GDD §2.4 / ADR 0008）。
+ *
+ * 上一条用例只钉住纯文案映射；这里把五种「非低位 / 非极位」的唯一候选真的推过 `GameScene`：
+ * 无按钮、无输入，缓冲结束后动作真的落到盘面上。
+ */
+describe('GameScene：唯一候选自动流转（场景级逐类覆盖）', () => {
+  /** 推进到唯一候选的缓冲期，断言此刻只有这一个候选且不渲染任何按钮。 */
+  function expectSingleAutoFlow(
+    scene: GameScene,
+    expected: ActionType,
+    expectedSubText: string,
+  ): GameState {
+    advanceUntil(scene, () => scene.phase === 'auto-pending');
+    expect(scene.turnManager.getAvailableActions().map((action) => action.actionType)).toEqual([
+      expected,
+    ]);
+    expect(scene.phase).toBe('auto-pending');
+    // ADR 0008：唯一候选不渲染交互按钮——面板整体隐藏且不可交互。
+    // （连动回合的面板里可能还留着上一回合的按钮，它们已随 `action:executed` 置灰。）
+    expect(scene.actionBar.visible).toBe(false);
+    expect(scene.actionBar.interactive).toBe(false);
+    expect(scene.actionBar.getButtons().every((button) => button.disabled)).toBe(true);
+    expect(scene.characters.bannerSubText).toBe(expectedSubText);
+    return scene.turnManager.getState();
+  }
+
+  /** 缓冲结束后动作真的被提交：状态换新并进入符文飞行动效。 */
+  function expectAutoExecuted(scene: GameScene, before: GameState): void {
+    advanceUntil(scene, () => scene.turnManager.getState() !== before);
+    expect(scene.turnManager.getState()).not.toBe(before);
+    expect(scene.phase).toBe('flying');
+  }
+
+  it('仅剩唯一【调息】：无按钮自动流转，对侧从虚空抬到点亮', () => {
+    // 甲木（木·阳）已点亮、对侧虚空 -> 可调息；P2 土双道损 -> 【破】被封死。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 0, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: -1, yang: -1 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    scene.start();
+
+    const before = expectSingleAutoFlow(scene, ActionType.CONVERT, '势在必行·调息');
+    expectAutoExecuted(scene, before);
+
+    // 调息把木阴侧从虚空抬到点亮 (0 -> 1)。
+    expect(scene.turnManager.getState().players.P1.board[WuXing.WOOD]).toEqual({
+      yin: 1,
+      yang: 1,
+    });
+  });
+
+  it('仅剩唯一【强化】：无按钮自动流转，消耗阴侧并抬升相生节点', () => {
+    // 甲木归一 (1,1)；P2 土双道损 -> 【破】【强破】双双封死；对侧已点亮 -> 禁调息。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: -1, yang: -1 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    scene.start();
+
+    const before = expectSingleAutoFlow(scene, ActionType.BURST, '势在必行·强化');
+    expectAutoExecuted(scene, before);
+
+    // 强化：消耗木阴侧 (1 -> 0)，相生火阴侧 +1。
+    const board = scene.turnManager.getState().players.P1.board;
+    expect(board[WuXing.WOOD]).toEqual({ yin: 0, yang: 1 });
+    expect(board[WuXing.FIRE]).toEqual({ yin: 1, yang: 0 });
+  });
+
+  it('仅剩唯一【强破】：无按钮自动流转，消耗阳侧并击损相克节点', () => {
+    // 乙木（木·阴）归一 (1,1)；相生火双加持 (2,2) -> 【化】【强化】封死；P2 土可破。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: {
+          [WuXing.WOOD]: { yin: 1, yang: 1 },
+          [WuXing.FIRE]: { yin: 2, yang: 2 },
+        },
+        P2: { [WuXing.EARTH]: { yin: 0, yang: 0 } },
+      }),
+      prng: scriptedPrng([1]),
+    });
+    scene.start();
+
+    const before = expectSingleAutoFlow(scene, ActionType.BURST_ATK, '势在必行·强破');
+    expectAutoExecuted(scene, before);
+
+    // 强破：消耗木阳侧 (1 -> 0)，P2 土阴侧 0 -> -1。
+    const state = scene.turnManager.getState();
+    expect(state.players.P1.board[WuXing.WOOD]).toEqual({ yin: 1, yang: 0 });
+    expect(state.players.P2.board[WuXing.EARTH].yin).toBe(-1);
+  });
+
+  it('仅剩唯一【消散】：无按钮自动流转，盘面不变但行动权交接', () => {
+    // 甲木归一 (1,1)；相生火双加持、P2 土双道损 -> 调息/破/化/强化/强破全部封死。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: {
+          [WuXing.WOOD]: { yin: 1, yang: 1 },
+          [WuXing.FIRE]: { yin: 2, yang: 2 },
+        },
+        P2: { [WuXing.EARTH]: { yin: -1, yang: -1 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    scene.start();
+
+    const before = expectSingleAutoFlow(scene, ActionType.PASS, '道法受阻·消散过牌中');
+    expectAutoExecuted(scene, before);
+
+    // 消散过牌不改盘面，只把行动权交给天道。
+    const state = scene.turnManager.getState();
+    expect(state.players.P1.board[WuXing.WOOD]).toEqual({ yin: 1, yang: 1 });
+    expect(state.currentPlayer).toBe('P2');
+  });
+
+  it('连动回合仅剩唯一【化】：无按钮自动流转，相生节点 +1', () => {
+    // 首回合：甲木归一 (1,2) + P2 土可破 -> 【破】【强化】【强破】三选一，点【强破】换取连动。
+    // 连动抽中乙木（木·阴）：对侧已点亮禁调息、连动禁二次爆发 -> 只剩唯一【化】。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 2 } },
+        P2: { [WuXing.EARTH]: { yin: 0, yang: 0 } },
+      }),
+      prng: scriptedPrng([0, 1]),
+    });
+    const input = new InputManager(scene);
+    scene.start();
+    advance(scene, 0.15);
+
+    const burstAtk = scene.actionBar.getButtons().find((button) => button.label === '【强破】');
+    expect(burstAtk).toBeDefined();
+    tapButton(input, burstAtk as Button);
+    expect(scene.turnManager.isExtraTurnActive()).toBe(true);
+
+    const before = expectSingleAutoFlow(scene, ActionType.TRANS, '唯一机缘·化');
+    expectAutoExecuted(scene, before);
+
+    // 化气：相生火阴侧从虚空抬到点亮。
+    expect(scene.turnManager.getState().players.P1.board[WuXing.FIRE]).toEqual({
+      yin: 1,
+      yang: 0,
+    });
+  });
+
+  it('唯一候选的缓冲倒计时是 GDD §2.4 的约 0.75 秒：不抢跑也不拖沓', () => {
+    // 这里刻意不覆盖任何时长选项，钉住 `DEFAULT_AUTO_EXECUTE_DELAY` 本身。
+    const scene = new GameScene({
+      width: 375,
+      height: 667,
+      safeTop: 24,
+      safeBottom: 10,
+      initialState: createInitialGameState(),
+      prng: scriptedPrng([0]),
+    });
+    scene.start();
+    advanceUntil(scene, () => scene.phase === 'auto-pending');
+    expect(scene.phase).toBe('auto-pending');
+    const before = scene.turnManager.getState();
+
+    // 缓冲期内不抢跑：推进 0.70 秒（< 0.75）仍停在唯一候选的缓冲态。
+    advance(scene, 0.7);
+    expect(scene.phase).toBe('auto-pending');
+    expect(scene.turnManager.getState()).toBe(before);
+
+    // 再推进 0.10 秒（累计约 0.8 秒 > 0.75）后自动执行。
+    advance(scene, 0.1);
+    expect(scene.phase).toBe('flying');
+    expect(scene.turnManager.getState()).not.toBe(before);
+    expect(scene.turnManager.getState().players.P1.board[WuXing.WOOD].yang).toBe(1);
   });
 });
 
@@ -450,6 +649,44 @@ describe('GameScene：终轮天命揭牌与终局', () => {
     expect(restarted.currentPlayer).toBe('P1');
     expect(scene.phase).toBe('entrance');
     expect(scene.characters.bannerText).toContain('天干');
+  });
+
+  it('重开新局不继承上一局的揭牌定格：新一局的终局横幅由本局结局决定', () => {
+    // 第一局：终轮天命揭牌命中 -> 横幅定格在揭牌播报。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: showdownState(),
+      prng: scriptedPrng([8]),
+    });
+    scene.start();
+    expect(scene.characters.bannerText).toBe('【终轮绝杀·天命抽牌】');
+
+    // 重开：横幅立刻换成本回合播报，上一局的揭牌定格不再挂着。
+    scene.restart(1);
+    expect(scene.characters.bannerText).not.toBe('【终轮绝杀·天命抽牌】');
+    expect(scene.characters.bannerSubText).not.toContain('天命');
+
+    // 把新一局打完：终局横幅只能来自本局结局，不能残留上一局的揭牌数据。
+    const input = new InputManager(scene);
+    const dt = 1 / 60;
+    let frames = 0;
+    while (!scene.turnManager.getState().isGameOver && frames < 60 * 60 * 30) {
+      if (scene.phase === 'awaiting-player') {
+        tapButton(input, scene.actionBar.getButtons()[0]);
+      }
+      scene.update(dt);
+      frames += 1;
+    }
+    // 终局后可能仍有飞行动效在跑，等它落点再读横幅。
+    advance(scene, 1);
+
+    const state = scene.turnManager.getState();
+    expect(state.isGameOver).toBe(true);
+    expect(scene.phase).toBe('game-over');
+    // 种子 1 的新局以常规「归元结算」收场：横幅与副文案都不是揭牌定格。
+    expect(state.endReason).toBe('GUI_YUAN');
+    expect(scene.characters.bannerText).toBe('天道通玄 · 遗憾惜败！');
+    expect(scene.characters.bannerSubText).toBe('五行归元');
   });
 
   it('非揭牌的常规终局使用胜负横幅', () => {
