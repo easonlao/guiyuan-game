@@ -16,7 +16,7 @@
 
 ### 真源类与报告类
 
-表外还有两类文档：
+表外还有三类文档：
 
 - **真源类**（进采信链）——`GLOSSARY.md` 管「叫什么」：术语 + 一两句「它是什么」+ `_Avoid_` 禁用别名，格式见 `.pi/skills/domain-modeling/GLOSSARY-FORMAT.md`；术语冲突以它为准，**禁止往里写规则正文、实现细节或决策记录**。`docs/adr/` 管「为什么这么定」，决策冲突以最新 ADR 为准。
 - **报告类**（只做证据与导航，不定义规则）——`docs/headless/`、`docs/archive/`、`docs/DEVELOPMENT.md`。引用它们时必须写明「这是证据，不是定义」。
@@ -76,7 +76,7 @@ Single-context. See `docs/agents/domain.md`.
 
 门禁与做法见 `docs/MUTATION-TESTING.md`。
 
-全量变异 + 棘轮对比（`npm run mutation:milestone`）不挂 CI 定时、需求方不会去按按钮，**由 agent 在每个 spec 收尾时跑**（也用于发版 / 提审前）。改动处变异（`npm run mutation:changed`）由 CI 快链自动跑，只是观察项、不做门禁。
+全量变异 + 棘轮对比（`npm run mutation:milestone`）不挂 CI 定时、需求方不会去按按钮，**实际触发者只能是 agent**；何时跑、门禁口径见 `docs/MUTATION-TESTING.md`。
 
 ### Subagents
 

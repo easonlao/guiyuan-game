@@ -30,7 +30,7 @@
 
 ## Tickets & Frontier
 
-- [x] [Spec](spec.md): 定下六层骨架、9 条票的切法与 8 条决定。
+- [x] [Spec](spec.md): 定下六层骨架、11 条票的切法与 8 条决定。
 - [x] [01: 版本库边界与任务层规格](issues/01-version-control-boundary.md)
 - [x] [02: 提交纪律](issues/02-commit-discipline.md)
 - [x] [03: 环境固化](issues/03-environment-pinning.md)

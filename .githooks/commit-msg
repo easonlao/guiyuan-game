@@ -4,7 +4,7 @@
 # 为什么：GitHub 把 trailer 里的邮箱算作 contributor，历史提交里已因此多出并非本项目
 # 作者的贡献者。本仓库的主要提交者是 agent，而 trailer 正是 agent 手写的典型产物，
 # 所以这道门禁是防复发。历史里已有的那些**不改写**（破坏性操作，见 spec 的 Out of
-# Scope），本钩子只管从现在起不再新增。背景数字见 spec 的 02 号票。
+# Scope），本钩子只管从现在起不再新增。背景见 `CONTRIBUTING.md` §3。
 #
 # 行为：两种模式，默认剥离后放行并把改写结果打到 stderr。
 #   COMMIT_MSG_MODE=strip（默认）  剥离并警告，提交继续

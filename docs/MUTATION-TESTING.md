@@ -2,7 +2,7 @@
 
 **一句话**：Stryker 往 `src/core/logic/**` 里注入小 bug（突变体），跑一遍 Vitest，看测试抓不抓得住。抓不住的是「存活突变体」，指向测试缺口。本仓库的门禁是**基线棘轮**——只对基线里没有的存活/无覆盖报警，**不设全局固定分数阈值**。
 
-这份文档是变异测试的唯一规则来源。它被 gitignore 之外的路径引用（`AGENTS.md` 一行指针），改动会被提交，活得过工具更新。
+这份文档是变异测试的唯一规则来源。它被 gitignore 之外的路径引用（`AGENTS.md` 的 Mutation testing 小节），改动会被提交，活得过工具更新。
 
 ---
 
@@ -56,7 +56,7 @@ CI 只把 `mutation:changed` 当**观察项**（红了不阻断、只落盘）�
 ### 3.1 机制
 
 - 仓库里存一份基线 `mutation-baseline.jsonl`，记录**当前全部**「未被测试抓住」的突变体（`status ∈ {Survived, NoCoverage}`）。
-- 每行一条 JSON：`{file, line, column, mutatorName, replacement}`，按 `file → line → column → mutatorName → replacement` 稳定排序。
+- 每行一条 JSON（`#` 开头为注释行，读取时跳过）：`{file, line, column, mutatorName, replacement}`，按 `file → line → column → mutatorName → replacement` 稳定排序。
 - 跑完变异后，`npm run mutation:check` 拿报告和基线对比，**只报告基线里没有的**存活/无覆盖。
 - 有新增 → 退出 `1`；无新增 → 退出 `0`；缺报告、缺基线、或报告来自**子集跑** → 退出 `2`。
 - **子集报告防护**：`mutation:check` 读 `stryker.config.json` 的 `mutate`，并比对报告 `config.mutate`（Stryker 回填的是 CLI 覆盖后的**最终**值）。两者不一致、或报告缺 `config.mutate`，即判定为子集跑，退出 `2` 并提示「棘轮只对全量跑有效，请先跑 `npm run mutation`」。`mutation:baseline` 同样只接受全量报告（§3.2），否则会把基线缩到子集、与门禁口径不一致。
@@ -79,7 +79,7 @@ CI 只把 `mutation:changed` 当**观察项**（红了不阻断、只落盘）�
 ### 3.3 现状快照（截至 2026-10-11）
 
 - 基线规模：**34 条**（Survived 34 + NoCoverage 0）。全部是「同一行同一 mutator 上还有可杀兄弟、无法单独 disable」的等价 / 不可观测突变体（逐条理由见 `mutation-baseline.jsonl` 与阶段 4a commit `57e8029`）。
-- 全量变异分 **96.58%**：共 **1073** 个突变体，其中 **993** 个计分（Killed 957 / Timeout 2 / Survived 34 / NoCoverage 0）；另有 **80 个**被**就地 disable**、Stryker 记为 `Ignored`（来自 **54 行** `// Stryker disable next-line` 注释，一行可覆盖多个 mutator）。
+- 全量变异分 **96.58%**：共 **1073** 个突变体，其中 **993** 个计分（Killed + Timeout 959 / Survived 34 / NoCoverage 0）；另有 **80 个**被**就地 disable**、Stryker 记为 `Ignored`（来自 **54 行** `// Stryker disable next-line` 注释，一行可覆盖多个 mutator）。
 - **这个分数不是门禁，也不值得追高**：它只是当前状态快照，会随代码变化浮动。门禁只盯「有没有新增存活 / 无覆盖」（§3.1）。
 - **诚实说明（阶段 3a → 4a 的纠正）**：阶段 3a 一度把 disable 加到 **71 行**，对外呈现基线 **0 条** / 分数 **100.00%**。但 Stryker 的 disable 是「行 + mutator」粒度：一行 disable 会把该行该 mutator 的**全部取值**一起禁掉，其中 **35 个本可被现有测试杀死**。阶段 4a（`57e8029`）机械重做——只保留「该行该 mutator 全部取值都未被测试抓住」的 disable（54 行 / 80 个 `Ignored`），其余等价项落回基线（34 条）。所以「0 条 / 100%」是**过度 disable 造成的假象**，**34 条 / 96.58%** 才是准确口径。
 
@@ -156,8 +156,8 @@ if (score >= 0) { /* ... */ }
 
 ## 7. 规则为什么不放在 `.pi/skills/`
 
-- `.pi/skills/` 被 **gitignore**（见仓库根 `.gitignore` 的 `.pi/`），而且按 `AGENTS.md` 的说明，该目录**会被更新覆盖**——写进去的规则活不过一次工具更新。
-- 所以规则写在这份 **committed** 的 `docs/MUTATION-TESTING.md`，由 `AGENTS.md` 放一行指针导航。改动进版本库，可 diff、可 review、可追溯。
+- `.pi/skills/` 被 **gitignore**（见仓库根 `.gitignore` 的 `.pi/skills/`），而且按 `AGENTS.md` 的说明，该目录**会被更新覆盖**——写进去的规则活不过一次工具更新。
+- 所以规则写在这份 **committed** 的 `docs/MUTATION-TESTING.md`，由 `AGENTS.md` 的 Mutation testing 小节导航。改动进版本库，可 diff、可 review、可追溯。
 
 ### 7.1 为什么不立 ADR（决策 7）
 
