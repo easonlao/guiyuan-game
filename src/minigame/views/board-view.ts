@@ -1,4 +1,5 @@
 import {
+  ActionType,
   BoardState,
   NodeLevel,
   PlayerId,
@@ -93,6 +94,15 @@ const VOID_LEVEL: NodeLevel = 0;
 /** 连线类型：内环相生边（表「化 / 强化」）与跨环径向线（表「破 / 强破」）。 */
 export type BoardConnectionKind = 'generation' | 'attack';
 
+/**
+ * 一条被点亮的连线路径：由「当前动作会走哪条线」决定（票 02）。
+ * `(kind, from)` 唯一确定一条连线（相生边与径向线的终点各自由生 / 克环推导）。
+ */
+export interface BoardActivePath {
+  readonly kind: BoardConnectionKind;
+  readonly from: WuXing;
+}
+
 /* 法盘配色（仅本视图使用，不进共享主题模块）。 */
 const BOARD_BG_COLOR = '#111827';
 const VOID_COLOR = '#374151';
@@ -110,7 +120,8 @@ const OWN_BADGE_ANGLE = Math.PI * 0.9;
 const OPPONENT_BADGE_ANGLE = Math.PI * 0.1;
 const CONNECTION_IDLE: Record<BoardConnectionKind, string> = {
   generation: '#2f4f3f',
-  attack: '#4a2a2a',
+  // 径向线常驻但极淡：不误导，只在当前动作指向它时转亮。
+  attack: 'rgba(229, 62, 62, 0.22)',
 };
 const CONNECTION_ACTIVE: Record<BoardConnectionKind, string> = {
   generation: '#48bb78',
@@ -126,7 +137,7 @@ export interface BoardConnectionView {
   readonly y1: number;
   readonly x2: number;
   readonly y2: number;
-  /** 表现态：源主印（恒在内环）任一侧已点亮（≥1）时，该路径视为有能量流动。 */
+  /** 表现态：是否属于当前动作会走的路径（由 `setActivePaths` 驱动，与盘面等级无关）。 */
   readonly active: boolean;
 }
 
@@ -141,6 +152,8 @@ export class BoardView extends Container {
   private readonly _slots: BoardSlotView[] = [];
   private readonly _connections: BoardConnectionView[] = [];
   private readonly _boards: Record<PlayerId, BoardState | null> = { P1: null, P2: null };
+  /** 当前动作会走的连线（键为 `kind:from`）；高亮与盘面等级无关（票 02）。 */
+  private _activePaths = new Set<string>();
 
   public constructor(layout: Partial<BoardViewLayout> = {}) {
     super();
@@ -192,6 +205,15 @@ export class BoardView extends Container {
       throw new Error(`法盘上不存在 ${player} 的五行 ${element} 的 ${polarity} 槽位。`);
     }
     return slot;
+  }
+
+  /**
+   * 点亮「当前动作会走」的连线路径（其余连线静默）；传空数组清空高亮。
+   * 高亮只由这个入口驱动，不再从盘面等级推导（票 02）。
+   */
+  public setActivePaths(paths: readonly BoardActivePath[]): void {
+    this._activePaths = new Set(paths.map((path) => connectionKey(path.kind, path.from)));
+    this._rebuild();
   }
 
   /** 一次投影双方只读棋盘快照；只读不写回（LLD §4.1）。 */
@@ -279,7 +301,6 @@ export class BoardView extends Container {
   ): BoardConnectionView {
     const source = this._elementView(fromPlayer, from);
     const target = this._elementView(toPlayer, to);
-    const node = this._boards[fromPlayer]?.[from];
     return {
       kind,
       from,
@@ -288,7 +309,7 @@ export class BoardView extends Container {
       y1: source.y,
       x2: target.x,
       y2: target.y,
-      active: node !== undefined && (node.yin >= 1 || node.yang >= 1),
+      active: this._activePaths.has(connectionKey(kind, from)),
     };
   }
 
@@ -374,7 +395,7 @@ export class BoardView extends Container {
     ctx.restore();
   }
 
-  /** 内环相生边（实线）+ 跨环径向线（虚线）；源主印任一侧点亮（≥1）时转为活动色。 */
+  /** 内环相生边（实线）+ 跨环径向线（虚线）；只有当前动作会走的那条转活动色。 */
   private _drawConnections(ctx: CanvasRenderingContext2D): void {
     for (const line of this._connections) {
       ctx.save();
@@ -531,4 +552,29 @@ function buildGenerationRing(): readonly WuXing[] {
     current = GENERATION_CYCLE[current];
   }
   return ring;
+}
+
+/** 连线高亮的键：`(kind, from)` 唯一确定一条连线。 */
+function connectionKey(kind: BoardConnectionKind, from: WuXing): string {
+  return `${kind}:${from}`;
+}
+
+/**
+ * 把一个动作映射成它在法盘上会走的连线路径；不沿连线走的动作返回 `null`。
+ * 起点是当前天干的五行：化 / 强化走内环相生边，破 / 强破走跨环径向线。
+ */
+export function resolveActionPath(actionType: ActionType, element: WuXing): BoardActivePath | null {
+  switch (actionType) {
+    case ActionType.TRANS:
+    case ActionType.BURST:
+      return { kind: 'generation', from: element };
+    case ActionType.ATK:
+    case ActionType.BURST_ATK:
+      return { kind: 'attack', from: element };
+    case ActionType.AUTO:
+    case ActionType.CONVERT:
+    case ActionType.DISSIPATE:
+    case ActionType.PASS:
+      return null;
+  }
 }
