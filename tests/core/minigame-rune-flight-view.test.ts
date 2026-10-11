@@ -1,0 +1,382 @@
+import { describe, it, expect } from 'vitest';
+import { BoardView } from '../../src/minigame/views/board-view.js';
+import { RuneFlightView } from '../../src/minigame/views/rune-flight-view.js';
+import { Polarity, TianGanInfo, WuXing } from '../../src/core/types/domain.js';
+
+/** 甲：木·阳（金乌日冕）。 */
+const TIAN_GAN_JIA: TianGanInfo = { name: '甲', element: WuXing.WOOD, polarity: Polarity.YANG };
+
+/** 乙：木·阴（玄阴幽光）。 */
+const TIAN_GAN_YI: TianGanInfo = { name: '乙', element: WuXing.WOOD, polarity: Polarity.YIN };
+
+/** 记录绘制调用的伪 Canvas 2D 上下文：只关心「有没有画东西」，不关心具体像素。 */
+class RecordingContext {
+  public globalAlpha = 1;
+  public fillStyle: string | CanvasGradient | CanvasPattern = '#000';
+  public strokeStyle: string | CanvasGradient | CanvasPattern = '#000';
+  public lineWidth = 1;
+  public lineCap: CanvasLineCap = 'butt';
+  public font = '';
+  public textAlign: CanvasTextAlign = 'start';
+  public textBaseline: CanvasTextBaseline = 'alphabetic';
+  public shadowColor = '#000';
+  public shadowBlur = 0;
+  public readonly calls: string[] = [];
+
+  public save(): void {
+    this.calls.push('save');
+  }
+
+  public restore(): void {
+    this.calls.push('restore');
+  }
+
+  public translate(_x: number, _y: number): void {
+    this.calls.push('translate');
+  }
+
+  public scale(_x: number, _y: number): void {
+    this.calls.push('scale');
+  }
+
+  public rotate(_angle: number): void {
+    this.calls.push('rotate');
+  }
+
+  public beginPath(): void {
+    this.calls.push('beginPath');
+  }
+
+  public arc(
+    _x: number,
+    _y: number,
+    _radius: number,
+    _start: number,
+    _end: number,
+    _anticlockwise?: boolean,
+  ): void {
+    this.calls.push('arc');
+  }
+
+  public rect(_x: number, _y: number, _w: number, _h: number): void {
+    this.calls.push('rect');
+  }
+
+  public roundRect(
+    _x: number,
+    _y: number,
+    _w: number,
+    _h: number,
+    _radii?: number | number[],
+  ): void {
+    this.calls.push('roundRect');
+  }
+
+  public moveTo(_x: number, _y: number): void {
+    this.calls.push('moveTo');
+  }
+
+  public lineTo(_x: number, _y: number): void {
+    this.calls.push('lineTo');
+  }
+
+  public stroke(): void {
+    this.calls.push('stroke');
+  }
+
+  public fill(): void {
+    this.calls.push('fill');
+  }
+
+  public fillRect(_x: number, _y: number, _w: number, _h: number): void {
+    this.calls.push('fillRect');
+  }
+
+  public fillText(_text: string, _x: number, _y: number): void {
+    this.calls.push('fillText');
+  }
+
+  public setLineDash(_segments: number[]): void {
+    this.calls.push('setLineDash');
+  }
+
+  public createRadialGradient(
+    _x0: number,
+    _y0: number,
+    _r0: number,
+    _x1: number,
+    _y1: number,
+    _r1: number,
+  ): CanvasGradient {
+    this.calls.push('createRadialGradient');
+    return { addColorStop: () => {} } as unknown as CanvasGradient;
+  }
+
+  public asContext(): CanvasRenderingContext2D {
+    return this as unknown as CanvasRenderingContext2D;
+  }
+
+  /** 真正落笔的绘制指令数（排除 save/translate 之类的状态指令）。 */
+  public drawCallCount(): number {
+    return this.calls.filter(
+      (call) => call === 'fill' || call === 'stroke' || call === 'fillRect' || call === 'fillText',
+    ).length;
+  }
+}
+
+/** 测试用法盘：固定极坐标参数，槽位坐标由 `getSlot` 给出（不在这里重算几何）。 */
+function makeBoardView(): BoardView {
+  return new BoardView({
+    centerX: 0,
+    centerY: 0,
+    sealRadius: 100,
+    slotRadius: 200,
+    slotSpread: 0.4,
+    startAngle: -Math.PI / 2,
+  });
+}
+
+/** 点到「起点→终点」直线的**带符号**垂距：用来独立判定轨迹弯曲方向。 */
+function signedDistanceFromLine(
+  point: { x: number; y: number },
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+): number {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.hypot(dx, dy);
+  return (dx * (point.y - from.y) - dy * (point.x - from.x)) / length;
+}
+
+/** 飞满全程并记录每一步的位置（用于观察轨迹形状）。 */
+function sampleFlight(
+  view: RuneFlightView,
+  duration: number,
+  steps: number,
+): { x: number; y: number }[] {
+  const samples: { x: number; y: number }[] = [];
+  for (let index = 0; index < steps; index += 1) {
+    view.update(duration / steps);
+    samples.push(view.position);
+  }
+  return samples;
+}
+
+describe('Minigame RuneFlightView: 天干入场浮空', () => {
+  it('入场动效跑满时长后停在待机态，回调只触发一次', () => {
+    const view = new RuneFlightView({
+      board: makeBoardView(),
+      centerX: 0,
+      centerY: 0,
+      entranceDuration: 0.4,
+    });
+    const completions: string[] = [];
+
+    expect(view.phase).toBe('hidden');
+    expect(view.isAnimating).toBe(false);
+
+    view.playEntrance(TIAN_GAN_JIA, { onComplete: () => completions.push('entrance') });
+    expect(view.phase).toBe('entering');
+    expect(view.isAnimating).toBe(true);
+    expect(view.tianGan).toEqual(TIAN_GAN_JIA);
+
+    view.update(0.2);
+    expect(view.phase).toBe('entering');
+    expect(completions).toEqual([]);
+
+    view.update(0.2);
+    expect(view.phase).toBe('ready');
+    expect(view.isAnimating).toBe(false);
+    expect(completions).toEqual(['entrance']);
+    expect(view.position).toEqual({ x: 0, y: 0 });
+
+    view.update(1);
+    expect(completions).toEqual(['entrance']);
+  });
+
+  it('阳天干取金乌日冕、阴天干取玄阴幽光', () => {
+    const view = new RuneFlightView({ board: makeBoardView(), entranceDuration: 0.4 });
+
+    view.playEntrance(TIAN_GAN_JIA);
+    expect(view.haloStyle).toBe('corona');
+
+    view.playEntrance(TIAN_GAN_YI);
+    expect(view.haloStyle).toBe('moonlight');
+    expect(view.tianGan).toEqual(TIAN_GAN_YI);
+  });
+});
+
+describe('Minigame RuneFlightView: 渲染', () => {
+  it('render 在 Canvas 2D 上下文上落笔（未入场时也不崩）', () => {
+    const hidden = new RecordingContext();
+    const view = new RuneFlightView({ board: makeBoardView() });
+    expect(() => view.render(hidden.asContext())).not.toThrow();
+    expect(hidden.drawCallCount()).toBe(0);
+
+    const entered = new RecordingContext();
+    view.playEntrance(TIAN_GAN_JIA);
+    view.update(0.2);
+    expect(() => view.render(entered.asContext())).not.toThrow();
+    expect(entered.drawCallCount()).toBeGreaterThan(0);
+
+    // 命中波纹扩散中也要能落笔（复用 pixel-art 的冲击效果例程）。
+    const impact = new RecordingContext();
+    view.update(0.24);
+    view.flyTo(WuXing.WOOD, Polarity.YIN);
+    view.update(0.55);
+    expect(view.phase).toBe('impact');
+    view.update(0.15);
+    expect(() => view.render(impact.asContext())).not.toThrow();
+    expect(impact.drawCallCount()).toBeGreaterThan(0);
+  });
+});
+
+describe('Minigame RuneFlightView: 符文飞行与命中', () => {
+  it('从屏幕中央飞向目标槽位，波纹结束后才交回控制权', () => {
+    const board = makeBoardView();
+    const view = new RuneFlightView({
+      board,
+      centerX: 150,
+      centerY: 320,
+      entranceDuration: 0.4,
+      flightDuration: 0.5,
+      impactDuration: 0.3,
+    });
+    const completions: string[] = [];
+    view.playEntrance(TIAN_GAN_JIA);
+    view.update(0.4);
+
+    const start = view.position;
+    const target = board.getSlot(WuXing.WOOD, Polarity.YIN);
+    expect(start).toEqual({ x: 150, y: 320 });
+
+    view.flyTo(WuXing.WOOD, Polarity.YIN, { onComplete: () => completions.push('flight') });
+    expect(view.phase).toBe('flying');
+    expect(view.isAnimating).toBe(true);
+    // 未步进时仍停在起点，不会瞬间吸过去。
+    expect(view.position).toEqual(start);
+
+    // 半程（时长过半）：已离开起点，且不在起点—终点的直线上。
+    view.update(0.25);
+    const mid = view.position;
+    expect(Math.hypot(mid.x - start.x, mid.y - start.y)).toBeGreaterThan(50);
+    expect(Math.abs(signedDistanceFromLine(mid, start, target))).toBeGreaterThan(5);
+
+    // 飞满时长：落在目标槽位的投影坐标上，波纹开始、控制权还没交回。
+    view.update(0.25);
+    expect(view.position.x).toBeCloseTo(target.x, 6);
+    expect(view.position.y).toBeCloseTo(target.y, 6);
+    expect(view.phase).toBe('impact');
+    expect(view.isAnimating).toBe(true);
+    expect(completions).toEqual([]);
+
+    // 波纹跑完：控制权交回，且只回调一次。
+    view.update(0.3);
+    expect(view.phase).toBe('absorbed');
+    expect(view.isAnimating).toBe(false);
+    expect(completions).toEqual(['flight']);
+
+    view.update(1);
+    expect(completions).toEqual(['flight']);
+    expect(view.position.x).toBeCloseTo(target.x, 6);
+    expect(view.position.y).toBeCloseTo(target.y, 6);
+  });
+
+  it('阳天干走流星弧线：全程只偏向直线一侧', () => {
+    const board = makeBoardView();
+    const view = new RuneFlightView({ board, entranceDuration: 0.4, flightDuration: 0.5 });
+    view.playEntrance(TIAN_GAN_JIA);
+    view.update(0.4);
+
+    const start = view.position;
+    const target = board.getSlot(WuXing.FIRE, Polarity.YANG);
+    view.flyTo(WuXing.FIRE, Polarity.YANG);
+
+    const offsets = sampleFlight(view, 0.5, 10).map((point) =>
+      signedDistanceFromLine(point, start, target),
+    );
+
+    // 流星弧线只偏向一侧（不越过直线），且偏移量确实存在。
+    expect(offsets.every((offset) => offset <= 0)).toBe(true);
+    expect(Math.min(...offsets)).toBeLessThan(-5);
+  });
+
+  it('阴天干走灵蛇蜿蜒：轨迹在直线两侧交替偏移', () => {
+    const board = makeBoardView();
+    const view = new RuneFlightView({ board, entranceDuration: 0.4, flightDuration: 0.5 });
+    view.playEntrance(TIAN_GAN_YI);
+    view.update(0.4);
+
+    const start = view.position;
+    const target = board.getSlot(WuXing.FIRE, Polarity.YIN);
+    view.flyTo(WuXing.FIRE, Polarity.YIN);
+
+    const offsets = sampleFlight(view, 0.5, 10).map((point) =>
+      signedDistanceFromLine(point, start, target),
+    );
+
+    expect(offsets.some((offset) => offset > 5)).toBe(true);
+    expect(offsets.some((offset) => offset < -5)).toBe(true);
+    expect(Math.abs(offsets[offsets.length - 1])).toBeCloseTo(0, 6);
+  });
+
+  it('未入场就起飞会直接报错，不会静默吞掉', () => {
+    const board = makeBoardView();
+    const view = new RuneFlightView({ board });
+
+    expect(() => view.flyTo(WuXing.WOOD, Polarity.YIN)).toThrow();
+  });
+
+  it('入场还没跑完就派发动作：符文直接落到待机态并起飞，不丢飞行', () => {
+    const board = makeBoardView();
+    const view = new RuneFlightView({
+      board,
+      centerX: 150,
+      centerY: 320,
+      entranceDuration: 0.4,
+      flightDuration: 0.5,
+      impactDuration: 0.3,
+    });
+    const completions: string[] = [];
+    view.playEntrance(TIAN_GAN_JIA);
+    view.update(0.1);
+
+    view.flyTo(WuXing.WOOD, Polarity.YIN, { onComplete: () => completions.push('flight') });
+    expect(view.phase).toBe('flying');
+
+    view.update(0.5);
+    const target = board.getSlot(WuXing.WOOD, Polarity.YIN);
+    expect(view.position.x).toBeCloseTo(target.x, 6);
+    expect(view.position.y).toBeCloseTo(target.y, 6);
+
+    view.update(0.3);
+    expect(view.phase).toBe('absorbed');
+    expect(completions).toEqual(['flight']);
+  });
+
+  it('飞行途中重新入场会打断旧动效，两条动效不会互相抢符文', () => {
+    const board = makeBoardView();
+    const view = new RuneFlightView({
+      board,
+      centerX: 150,
+      centerY: 320,
+      entranceDuration: 0.4,
+      flightDuration: 0.5,
+      impactDuration: 0.3,
+    });
+    view.playEntrance(TIAN_GAN_JIA);
+    view.update(0.4);
+    const completions: string[] = [];
+    view.flyTo(WuXing.WOOD, Polarity.YIN, { onComplete: () => completions.push('flight') });
+    view.update(0.25);
+
+    view.playEntrance(TIAN_GAN_YI);
+    expect(view.phase).toBe('entering');
+    expect(view.position).toEqual({ x: 150, y: 320 });
+
+    view.update(0.4);
+    expect(view.phase).toBe('ready');
+    expect(view.position).toEqual({ x: 150, y: 320 });
+    expect(completions).toEqual([]);
+  });
+});
