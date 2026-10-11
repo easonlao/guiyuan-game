@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { BoardView, resolveActionPath } from '../../src/minigame/views/board-view.js';
+import {
+  BoardReadoutView,
+  BoardView,
+  resolveActionPath,
+} from '../../src/minigame/views/board-view.js';
 import { ActionType, PlayerId, Polarity, WuXing } from '../../src/core/types/domain.js';
+import { WUXING_PALETTE } from '../../src/minigame/pixel-art.js';
+import { estimateTextWidth } from '../../src/minigame/text-metrics.js';
 import { boardWith } from '../../tools/BoardFixture.js';
 import { RecordingContext } from './helpers/recording-context.js';
 
@@ -14,8 +20,6 @@ const RING_STEP = (Math.PI * 2) / 5;
 const INNER_RADIUS = 90;
 const OUTER_RADIUS = 150;
 const START_ANGLE = -Math.PI / 2;
-/** 槽位相对主印中心的阴/阳横向偏移：主印半径 22.5 * 0.7。 */
-const SLOT_SIDE = 15.75;
 
 /** 内环五行（射线 0..4，角度 -90° 起每 72° 一格）的手算坐标。 */
 const INNER_EXPECTED: Record<WuXing, { x: number; y: number }> = {
@@ -119,28 +123,29 @@ describe('Minigame BoardView: 同心双环几何', () => {
 describe('Minigame BoardView: 槽位投影与 getSlot', () => {
   it('getSlot(player, …) 返回对应环上阴/阳半环一侧的点，角度为主印射线角', () => {
     const view = new BoardView();
+    const sealRadius = view.layout.sealSize;
 
-    // 己方木：主印 (0,-90)，阴侧偏左、阳侧偏右，偏移量 = 22.5 * 0.7。
+    // 己方木：主印 (0,-90)，阴侧偏左、阳侧偏右；两点关于主印中心对称、且都落在主印半径内
+    // （横向偏移不抄实现的比例常量，只按布局参数与「落在半环一侧」的关系断言）。
     const ownYin = view.getSlot('P1', WuXing.WOOD, Polarity.YIN);
     const ownYang = view.getSlot('P1', WuXing.WOOD, Polarity.YANG);
-    expect(ownYin.x).toBeCloseTo(-SLOT_SIDE, 5);
+    expect(ownYin.x).toBeCloseTo(-ownYang.x, 9);
+    expect(ownYin.x).toBeLessThan(0);
+    expect(ownYang.x).toBeGreaterThan(0);
+    expect(Math.abs(ownYin.x)).toBeLessThan(sealRadius);
     expect(ownYin.y).toBeCloseTo(-90, 5);
-    expect(ownYang.x).toBeCloseTo(SLOT_SIDE, 5);
     expect(ownYang.y).toBeCloseTo(-90, 5);
     expect(ownYin.angle).toBeCloseTo(START_ANGLE, 9);
     expect(ownYang.angle).toBeCloseTo(START_ANGLE, 9);
 
-    // 对方木：在射线 126°（= 内环木角 - 2 * 72°）的外环主印 (-88.167788, 121.352549) 上。
+    // 对方木：在射线 126°（= 内环木角 - 2 * 72°）的外环主印 (-88.167788, 121.352549) 上，
+    // 阴/阳偏移与内环同一个量。
     const opponentYin = view.getSlot('P2', WuXing.WOOD, Polarity.YIN);
-    expect(opponentYin.x).toBeCloseTo(-88.167788 - SLOT_SIDE, 5);
+    const opponentYang = view.getSlot('P2', WuXing.WOOD, Polarity.YANG);
+    expect(opponentYin.x).toBeCloseTo(-88.167788 + ownYin.x, 5);
+    expect(opponentYang.x).toBeCloseTo(-88.167788 + ownYang.x, 5);
     expect(opponentYin.y).toBeCloseTo(121.352549, 5);
     expect(opponentYin.angle).toBeCloseTo(START_ANGLE + 3 * RING_STEP, 9);
-    expect(view.getSlot('P2', WuXing.WOOD, Polarity.YANG).x).toBeCloseTo(-88.167788 + SLOT_SIDE, 5);
-
-    // 同一个五行的两块盘落在不同半径上，阴在左、阳在右。
-    expect(ownYin.x).toBeLessThan(0);
-    expect(ownYang.x).toBeGreaterThan(0);
-    expect(opponentYin.x).toBeLessThan(-88.167788);
   });
 
   it('两块盘各自投影：同一五行在内外环上的等级互不串台', () => {
@@ -248,7 +253,7 @@ describe('Minigame BoardView: 相生边与跨环径向线', () => {
       boardWith({ [WuXing.EARTH]: { yin: 1, yang: 1 } }),
     );
 
-    expect(view.connections.every((line) => !line.active)).toBe(true);
+    expect(view.connections.every((line) => !line.isActive)).toBe(true);
   });
 
   it('setActivePaths 只点亮给定的 (kind, from)，其余九条静默', () => {
@@ -260,7 +265,9 @@ describe('Minigame BoardView: 相生边与跨环径向线', () => {
     ]);
 
     expect(
-      view.connections.filter((line) => line.active).map((line) => [line.kind, line.from, line.to]),
+      view.connections
+        .filter((line) => line.isActive)
+        .map((line) => [line.kind, line.from, line.to]),
     ).toEqual([
       ['generation', WuXing.WOOD, WuXing.FIRE],
       ['attack', WuXing.WATER, WuXing.FIRE],
@@ -270,14 +277,14 @@ describe('Minigame BoardView: 相生边与跨环径向线', () => {
   it('setActivePaths([]) 清空高亮；换盘面快照不清除已设置的高亮', () => {
     const view = new BoardView();
     view.setActivePaths([{ kind: 'attack', from: WuXing.WOOD }]);
-    expect(view.connections.filter((line) => line.active)).toHaveLength(1);
+    expect(view.connections.filter((line) => line.isActive)).toHaveLength(1);
 
     // 高亮由动作驱动、与盘面等级解耦：投影新快照只换数据，不换高亮。
     view.update(boardWith(), boardWith());
-    expect(view.connections.filter((line) => line.active)).toHaveLength(1);
+    expect(view.connections.filter((line) => line.isActive)).toHaveLength(1);
 
     view.setActivePaths([]);
-    expect(view.connections.every((line) => !line.active)).toBe(true);
+    expect(view.connections.every((line) => !line.isActive)).toBe(true);
   });
 });
 
@@ -417,19 +424,107 @@ describe('Minigame BoardView: 只读快照投影', () => {
   });
 });
 
-describe('Minigame BoardView: 渲染', () => {
-  it('render 在 Canvas 2D 上下文上输出绘制指令（未投影快照也不崩）', () => {
-    const empty = new RecordingContext();
-    const view = new BoardView();
-    expect(() => view.render(empty.asContext())).not.toThrow();
-    expect(empty.drawCallCount()).toBeGreaterThan(0);
+describe('Minigame BoardView: 归元读数版面', () => {
+  /** 全归一 / 全亢极的盘面：半环与归一外环都画到最大，读数的避让按最坏情况算。 */
+  const fullGuiYi = boardWith({
+    [WuXing.WOOD]: { yin: 1, yang: 1 },
+    [WuXing.FIRE]: { yin: 1, yang: 1 },
+    [WuXing.EARTH]: { yin: 1, yang: 1 },
+    [WuXing.METAL]: { yin: 1, yang: 1 },
+    [WuXing.WATER]: { yin: 1, yang: 1 },
+  });
+  const fullKangJi = boardWith({
+    [WuXing.WOOD]: { yin: 2, yang: 2 },
+    [WuXing.FIRE]: { yin: 2, yang: 2 },
+    [WuXing.EARTH]: { yin: 2, yang: 2 },
+    [WuXing.METAL]: { yin: 2, yang: 2 },
+    [WuXing.WATER]: { yin: 2, yang: 2 },
+  });
 
+  /** 常见竖屏视口（含 spec 点名的 375 与更宽的 390 / 414）。 */
+  const VIEWPORTS: readonly (readonly [number, number])[] = [
+    [375, 667],
+    [375, 812],
+    [390, 844],
+    [414, 896],
+    [300, 900],
+  ];
+
+  /** 点到矩形底板的最近距离（落在矩形内为 0）。 */
+  function distanceToReadout(x: number, y: number, readout: BoardReadoutView): number {
+    const dx = Math.max(readout.x - x, 0, x - (readout.x + readout.width));
+    const dy = Math.max(readout.y - y, 0, y - (readout.y + readout.height));
+    return Math.hypot(dx, dy);
+  }
+
+  it('底板宽度由文案推出：字号随主印半径变大，底板跟着变宽（不写死像素宽）', () => {
+    const narrow = new BoardView();
+    narrow.resize(375, 667);
+    const wide = new BoardView();
+    wide.resize(414, 896);
+
+    expect(wide.layout.sealSize).toBeGreaterThan(narrow.layout.sealSize);
+    expect(wide.readout.fontSize).toBeGreaterThan(narrow.readout.fontSize);
+    expect(wide.readout.width).toBeGreaterThan(narrow.readout.width);
+    for (const view of [narrow, wide]) {
+      const { text, fontSize, width, height } = view.readout;
+      // 文案排得下：底板宽度不低于按同一字宽口径估出的文本宽度。
+      expect(width).toBeGreaterThanOrEqual(estimateTextWidth(text, fontSize));
+      expect(height).toBeGreaterThanOrEqual(fontSize);
+    }
+  });
+
+  it('底板与任何主印圆（含半环外沿 sealSize + 4）不相交，且落在视口内', () => {
+    for (const [width, height] of VIEWPORTS) {
+      const view = new BoardView();
+      view.resize(width, height);
+      view.update(fullGuiYi, fullKangJi);
+      const readout = view.readout;
+      const where = `${String(width)}x${String(height)}`;
+      // 十个主印都真的在盘上：下面的不相交断言不是空循环。
+      expect(view.elements).toHaveLength(10);
+
+      expect(readout.x, `${where} 左边界`).toBeGreaterThanOrEqual(0);
+      expect(readout.x + readout.width, `${where} 右边界`).toBeLessThanOrEqual(width);
+      expect(readout.y, `${where} 上边界`).toBeGreaterThanOrEqual(0);
+      expect(readout.y + readout.height, `${where} 下边界`).toBeLessThanOrEqual(height);
+
+      const clearance = view.layout.sealSize + 4;
+      for (const seal of view.elements) {
+        const distance = distanceToReadout(seal.x, seal.y, readout);
+        expect(distance, `${where} 的 ${seal.player} ${seal.element} 主印被遮住`).toBeGreaterThan(
+          clearance,
+        );
+      }
+    }
+  });
+});
+
+describe('Minigame BoardView: 渲染', () => {
+  it('render 画出十个五行名与归元读数（未投影快照也不崩）', () => {
+    const view = new BoardView();
+    const empty = new RecordingContext();
+    expect(() => view.render(empty.asContext())).not.toThrow();
+
+    const texts = empty.texts.map((entry) => entry.text);
+    for (const element of RING_ORDER) {
+      expect(texts).toContain(WUXING_PALETTE[element].name);
+    }
+    expect(view.readout.text).toBe('己 0/5 · 敌 0/5 归一');
+    expect(texts).toContain(view.readout.text);
+
+    // 投影后归元读数换文案，且确实画在投影出的底板上。
     const populated = new RecordingContext();
     view.update(
       boardWith({ [WuXing.WATER]: { yin: 2, yang: 2 } }),
       boardWith({ [WuXing.WOOD]: { yin: -1, yang: 1 } }),
     );
     expect(() => view.render(populated.asContext())).not.toThrow();
-    expect(populated.drawCallCount()).toBeGreaterThan(0);
+    const readout = view.readout;
+    expect(readout.text).toBe('己 1/5 · 敌 0/5 归一');
+    const drawn = populated.texts.find((entry) => entry.text === readout.text);
+    expect(drawn).toBeDefined();
+    expect(drawn?.x).toBeCloseTo(readout.x + readout.width / 2, 5);
+    expect(drawn?.y).toBeCloseTo(readout.y + readout.height / 2, 5);
   });
 });
