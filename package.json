@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "postinstall": "patch-package",
+    "setup:hooks": "git config core.hooksPath .githooks",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src/core src/adapters tests/core",
