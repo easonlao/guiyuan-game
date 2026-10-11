@@ -39,7 +39,7 @@
 - [x] [06: 分区——无头推演搬出核心](issues/06-partition-core-vs-tools.md) (Blocked by: 04)
 - [x] [07: 包边界——没声明就不能用](issues/07-package-boundary.md) (Blocked by: 06)
 - [x] [08: 产物边界](issues/08-artifact-boundary.md) (Blocked by: 05)
-- [x] [09: 目录约定与文档对账](issues/09-directory-convention-and-doc-reconciliation.md) `[FRONTIER]` (Blocked by: 04)
+- [x] [09: 目录约定与文档对账](issues/09-directory-convention-and-doc-reconciliation.md) (Blocked by: 04)
 - [x] [10: `.scratch/archive` 按 feature 目录归位](issues/10-archive-normalization.md)
 - [x] [11: 删除 `legacy/`](issues/11-legacy-removal.md)
 

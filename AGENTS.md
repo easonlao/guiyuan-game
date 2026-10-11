@@ -32,23 +32,23 @@
 
 ## 目录约定
 
-东西放哪，看这张表。
+东西放哪，看这张表。包名与包拓扑见 `docs/HLD.md` §2；进 / 不进库的理由以根目录 `.gitignore` 为真源。
 
 | 东西 | 放哪 | 说明 |
 |---|---|---|
-| 游戏核心（会打进 `game.js`） | `src/` | npm 包 `@guiyuan/game`；包拓扑见 `docs/HLD.md` §2 |
-| 开发工具与 CLI（不进 `game.js`） | `tools/` | npm 包 `@guiyuan/devtools`，只在你电脑上用 Node 跑 |
-| 仓库基建脚本 | `scripts/`（共享实现放 `scripts/lib/`） | 构建、门禁、变异对比；不属任何 workspace 包 |
-| 测试 | `tests/` | 根包；用相对路径引用 `src/` 与 `tools/` |
-| 设计文档 | `docs/` | ADR 放 `docs/adr/`，issue-tracker / triage / domain 规格放 `docs/agents/` |
-| 实验报告 | `docs/headless/` | 报告类：证据，不是定义 |
-| 归档文档 | `docs/archive/` | 报告类：历史证据，不是定义 |
-| 任务（spec / map / issue） | `.scratch/<feature>/` | 真源，入库；已完成的 feature 归档在 `.scratch/archive/<feature>/` |
+| 游戏核心 | `src/` | |
+| 开发工具与 CLI | `tools/` | |
+| 仓库基建脚本 | `scripts/`（共享实现 `scripts/lib/`） | 构建、门禁、变异对比 |
+| 测试 | `tests/` | |
+| 设计文档 | `docs/` | 含 `docs/adr/`、`docs/agents/` |
+| 实验报告 | `docs/headless/` | 报告类 |
+| 归档文档 | `docs/archive/` | 报告类 |
+| 任务（spec / map / issue） | `.scratch/<feature>/` | 完成的 feature 归档在 `.scratch/archive/<feature>/` |
 | 小游戏交付产物 | `minigame/` | `game.js` 入库，对账见「验收命令」 |
-| 工具落盘报告 | `reports/` | 不入库，每次重算 |
-| 其他工具的构建输出 | 任意层级的 `dist/` | 不入库；`.gitignore` 的 `dist/` 是无锚点规则 |
+| 工具落盘报告 | `reports/` | 不入库 |
+| 其他构建输出 | 任意层级的 `dist/` | 不入库 |
 
-版本库里的其余顶层目录：`.github/`（CI workflow）、`patches/`（patch-package 补丁，见 `docs/MUTATION-TESTING.md` §8）、`.pi/`（工具配置，`.pi/skills/` 除外）。「什么不进库、为什么」以根目录 `.gitignore` 为真源（每条规则都写了理由），本表不复制。
+版本库里的其余顶层目录：`.github/`（CI workflow）、`.githooks/`（提交信息 hook）、`patches/`（patch-package 补丁）、`.pi/`（工具配置，`.pi/skills/` 除外）。
 
 ## 提交纪律
 

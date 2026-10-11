@@ -41,3 +41,9 @@
 | 反向探针（`src/adapters/__probe.ts`：用 `window` + `import 'cc'`） | `npx oxlint src/adapters` | 退出 `0`（override 只作用于 `src/core/**`，未误伤适配层） |
 
 复核发现见 `reviews/`（Standards / Spec 两轴）。
+
+复核后修：
+
+- 提交类型由 `docs(repo)` 改 `chore(repo)`——新增 `.oxlintrc.json` 改变了 `npm run lint` 的行为，按 `CONTRIBUTING.md` §3 属「辅助工具的变动」而非文档变更。
+- 按「每个事实只有一个家」收敛重复：`AGENTS.md` 目录表只留落点（包描述交回 `docs/HLD.md` §2，`tests/` 归属不再复述，`dist/` 不再抄 `.gitignore` 的理由）；`CONTRIBUTING.md` §1 的 depcruise 段落改为指针；`docs/HLD.md` §4.1 不再反向指认 `CONTRIBUTING.md` §1（打破归属成环）。
+- 补 `.githooks/` 进「其余顶层目录」；`map.md` 去掉已完成票的 `[FRONTIER]`；`docs/HLD.md` §4.3 措辞精确到「全量 + 棘轮」不属任何一档。

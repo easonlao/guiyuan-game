@@ -14,9 +14,9 @@
 * **Layer 1 必须保持纯粹（Pure）**：所有动作解析 (`ActionResolver`) 必须是**纯函数**。任何依赖随机数的地方（如天干生成），必须通过传入 Seed 或 RandomGenerator 的方式注入，确保 100% 可重现。
 * **跨区引用走包名，且先声明**：`src/`（包 `@guiyuan/game`）与 `tools/`（包 `@guiyuan/devtools`）是两块独立的包。`tools/` 只能用 `@guiyuan/game/…` 引用核心，并在 `tools/package.json` 里声明；`src/` 不得引用 `@guiyuan/devtools`——没声明，类型检查期就解析不到。机制与安装布局前提见 `docs/HLD.md` §4.2。
 
-**依赖方向**由 `dependency-cruiser`（`npm run check:deps`）拦：小游戏侧 `src/` 不得依赖 `src/` 之外的本地模块（含 `tools/`）、不得 import Node 内建模块；`src/core` 不得反向依赖 `src/adapters`。规则真源以根目录 `.dependency-cruiser.js` 为准。
+**依赖方向**由 `dependency-cruiser`（`npm run check:deps`）拦；规则真源为根目录 `.dependency-cruiser.js`，工程方案见 `docs/HLD.md` §4.2。
 
-以上规则分别由 `npm run lint`、`npm run check:deps`、`npm run check:boundary` 与 `npm run typecheck` 执行：前三项在 `npm run check:quick` 内，`typecheck` 在 `npm run verify` 内。任一门禁报红，提交将被拒绝。
+以上门禁均由命名脚本执行（见 §5）；任一门禁报红，提交将被拒绝。
 
 ---
 
