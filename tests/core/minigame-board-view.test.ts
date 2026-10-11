@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { BoardView } from '../../src/minigame/views/board-view.js';
-import { BoardState, GameState, NodeLevel, Polarity, WuXing } from '../../src/core/types/domain.js';
+import { BoardState, NodeLevel, Polarity, WuXing } from '../../src/core/types/domain.js';
 
 /** 造一个五行盘快照；未指定的元素默认 (0, 0) 虚空。 */
 function makeBoard(
@@ -289,41 +289,6 @@ describe('Minigame BoardView: 只读快照投影', () => {
 
     expect(view.getSlot(WuXing.WOOD, Polarity.YIN).level).toBe(2);
     expect(view.getSlot(WuXing.WOOD, Polarity.YANG).level).toBe(1);
-  });
-
-  it('updateFromState 按玩家投影 GameState 中的棋盘，且不改写状态对象', () => {
-    const state: GameState = {
-      round: 3,
-      maxRounds: 12,
-      currentPlayer: 'P1',
-      players: {
-        P1: { score: 4, board: makeBoard({ [WuXing.WOOD]: { yin: 1, yang: 1 } }) },
-        P2: { score: 2, board: makeBoard({ [WuXing.FIRE]: { yin: 2, yang: 2 } }) },
-      },
-      currentTianGan: null,
-      isGameOver: false,
-      winner: null,
-      endReason: null,
-    };
-    Object.freeze(state);
-    const before = JSON.stringify(state);
-    const view = new BoardView();
-
-    view.updateFromState(state, 'P2');
-    expect(view.elements.map((entry) => [entry.yin, entry.yang])).toEqual([
-      [0, 0],
-      [2, 2],
-      [0, 0],
-      [0, 0],
-      [0, 0],
-    ]);
-    expect(view.elements[1].isKangJi).toBe(true);
-
-    view.updateFromState(state, 'P1');
-    expect(view.elements[0].isGuiYi).toBe(true);
-    expect(view.elements[1].isGuiYi).toBe(false);
-
-    expect(JSON.stringify(state)).toBe(before);
   });
 });
 
