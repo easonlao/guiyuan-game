@@ -1,10 +1,6 @@
----
-title: "01: 回合生命周期引擎 (TurnManager) 与连动/平局规则"
-parent: "../spec.md"
-blocked_by: []
-labels:
-  - "completed"
----
+# 01: 回合生命周期引擎 (TurnManager) 与连动/平局规则
+
+**Status:** resolved
 
 ## Context & Question
 

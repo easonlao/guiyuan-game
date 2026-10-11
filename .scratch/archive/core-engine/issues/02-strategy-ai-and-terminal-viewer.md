@@ -1,11 +1,8 @@
----
-title: "02: 纯 TS 策略 AI 引擎与 Terminal 棋盘回放检视器"
-parent: "../spec.md"
-blocked_by:
-  - "01-turn-manager.md"
-labels:
-  - "completed"
----
+# 02: 纯 TS 策略 AI 引擎与 Terminal 棋盘回放检视器
+
+**Blocked by:** 01
+
+**Status:** resolved
 
 ## Context & Question
 

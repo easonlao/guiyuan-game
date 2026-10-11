@@ -1,12 +1,10 @@
----
-title: "T3: 迁移重构策略 AI 引擎与轻量 Terminal 回放检视器"
-parent: "003-wayfinder-milestone1-map.md"
-blocked_by:
-  - "005-turn-rules-and-scoring.md"
-labels:
-  - "wayfinder:task"
-  - "ready-for-agent"
----
+# T3: 迁移重构策略 AI 引擎与轻量 Terminal 回放检视器
+
+**Type:** task
+
+**Blocked by:** 005
+
+**Status:** ready-for-agent
 
 ## Question
 

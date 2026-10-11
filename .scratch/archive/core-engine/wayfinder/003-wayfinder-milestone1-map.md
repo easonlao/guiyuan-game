@@ -1,9 +1,4 @@
----
-title: "里程碑 1 路线图：核心逻辑完全脱水与无头推演闭环 (Milestone 1.1 升级版)"
-labels:
-  - "wayfinder:map"
-  - "ready-for-agent"
----
+# 里程碑 1 路线图：核心逻辑完全脱水与无头推演闭环 (Milestone 1.1 升级版)
 
 ## Destination
 
