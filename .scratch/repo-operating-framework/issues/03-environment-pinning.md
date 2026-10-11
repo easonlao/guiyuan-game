@@ -24,7 +24,7 @@
 
 实现：
 
-- `package.json` 加 `packageManager: "npm@11.13.0"` 与 `engines.node: "^24.16.0"`；新增 `.npmrc`（`engine-strict=true`）让 `engines` 真正生效，`.nvmrc`（`24.16.0`）保留为人类精确 pin。
+- `package.json` 加 `packageManager: "npm@11.13.0"` 与 `engines.node: "^24.16.0"`；新增 `.npmrc`（`engine-strict=true`）让 `engines` 真正生效，`.nvmrc`（`24.16.0`）保留为人类精确 pin；`CONTRIBUTING.md` §5 加「环境」一步指向这两处。
 - 装 `oxfmt@0.72.0`（devDependency），配置 `.oxfmtrc.json`（`singleQuote: true`，忽略生成的 `minigame/game.js`）。命名脚本 `npm run fmt`（就地写）与 `npm run fmt:check`（只检查、非零退出），匹配全仓代码文件 `"**/*.{ts,mts,cts,js,mjs,cjs}"`（尊重 `.gitignore`，当前 91 个）——不是手写白名单，新顶层目录自动落入。
 - 全仓按 oxfmt 格式化一次（76 个文件：73 个源文件 + 3 个根配置文件；纯格式改动，`typecheck` / `lint` / 728 用例均无变化）。
 - `scripts/run-tests.mjs` 整体删除，`npm test` 改为 `vitest run`，直接读仓库里的 `vitest.config.ts`。`vitest.stryker.config.ts` 保留（`stryker.config.json` 引用，承载 Stryker 专属的 `hookTimeout` 与 `exclude`，理由见文件头注）。
