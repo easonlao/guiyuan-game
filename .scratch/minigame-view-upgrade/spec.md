@@ -6,7 +6,7 @@ status: ready-for-agent
 
 ## Problem Statement
 
-当前《归元弈》微信小游戏表现层（`src/minigame/`）采用纯命令式原生 Canvas 2D 逐像素绘制（`pixel-art.ts` 包含 900+ 行手绘 `ctx.fillRect` 坐标计算，`game-manager.ts` 包含 700+ 行手动触摸碰撞判定与时间帧步进）。这种“从零手搓像素与坐标”的开发模式极度沉重：
+当前《归元弈》微信小游戏表现层（`src/minigame/`）采用纯命令式原生 Canvas 2D 逐像素绘制（`pixel-art.ts` 约 510 行手绘 `ctx.fillRect` 坐标计算，`game-manager.ts` 约 814 行手动触摸碰撞判定与时间帧步进）。这种“从零手搓像素与坐标”的开发模式极度沉重：
 1. **排版与交互极其繁琐**：每一个操作按钮【调息】【化】【破】【强化】都需要手动硬编码矩形区域，并在 `handleTouch` 中编写复杂的几何命中判定；
 2. **动效与状态耦合严重**：天干符文飞行动画、生克连线、受击震屏与业务逻辑交织在单一全局渲染循环中，缺乏独立的补间驱动；
 3. **表现力受限且维护成本高**：角色表情、法盘高亮、状态气泡难以快速迭代与复用，违背了低成本、高质量小游戏开发的初衷。
@@ -26,38 +26,25 @@ status: ready-for-agent
 
 ## User Stories
 
-1. As a player, I want to see a clear Five Elements pentagram board (Wood, Fire, Earth, Metal, Water) with distinct Yin and Yang slots, so that I can easily recognize the state of all 10 nodes (-1 damaged, 0 void, 1 lit, 2 blessed).
+1. As a player, I want to see a clear Five Elements pentagram board (Wood, Fire, Earth, Metal, Water) with distinct Yin and Yang slots, so that I can easily recognize the state of all 10 nodes (-1 道损, 0 虚空, 1 点亮, 2 加持).
 2. As a player, I want the TianGan rune of the current turn to appear at the center of the screen with clear element and polarity styling, so that I instantly know which element is in play.
-3. As a player, I want action buttons (Convert, Trans, Attack, Burst) to be dynamically displayed and styled based on currently valid moves, so that I cannot execute illegal actions.
+3. As a player, I want action buttons (调息 / 化 / 破 / 强化 / 强破) to be dynamically displayed and styled based on currently valid moves, so that I cannot execute illegal actions.
 4. As a player, I want action buttons to provide immediate visual feedback (e.g. scale down on press, highlight active choices) when touched, so that the game feels responsive and tactile.
 5. As a player, I want the TianGan rune to smoothly animate from the center to its target node upon absorption, so that I can visually track the flow of energy.
-6. As a player, I want burst actions (Strengthen / Burst Attack) to have distinct visual emphasis, so that I feel the strategic impact of high-tier plays.
+6. As a player, I want 爆发动作（强化 / 强破）to have distinct visual emphasis, so that I feel the strategic impact of high-tier plays.
 7. As a player, I want my avatar and the opponent's avatar to react with distinct visual states (idle, cast, damaged, stunned), so that the match feels alive with emotional feedback.
 8. As a player, I want banner announcements and turn status to clearly indicate whose turn it is, whether an extra turn was granted, and game over results, so that I always understand match progress.
-9. As a developer, I want a unified `UIElement` / `Node` hierarchy with automatic touch hit testing, so that I never have to write hardcoded `if (x >= btn.x && ...)` collision logic again.
+9. As a developer, I want a unified `Node` / `Container` hierarchy with automatic touch hit testing, so that I never have to write hardcoded `if (x >= btn.x && ...)` collision logic again.
 10. As a developer, I want a standalone `Tween` engine for animations, so that flight paths, screen shakes, and fades can be chained without polluting the game state loop with manual tick counters.
 11. As a developer, I want the view layer to be a pure reactive projection of `TurnManager.getState()`, so that UI bugs cannot corrupt core game rule state.
 12. As a developer, I want the game to compile seamlessly into `minigame/game.js` via existing Vite build pipeline with zero external GUI engine dependencies, so that WSL and WeChat DevTools development remains frictionless.
 
 ## Implementation Decisions
 
-- **Architecture Pattern**: Hierarchical Scene Graph (inspired by PixiJS Container/Node model) implemented in pure TypeScript without heavyweight DOM or WebGL polyfills, keeping the minigame package clean and fast.
-- **Node & Container Model**:
-  - `Node`: Base visual entity with local transforms (`x`, `y`, `scaleX`, `scaleY`, `alpha`, `visible`), parent/child graph management, and recursive `render(ctx)` and `hitTest(x, y)`.
-  - `Container`: Composite node holding child lists with automatic z-order ordering.
-- **Interaction Contract**:
-  - `Button`: Extends `Node` / `Container`. Supports `onTap` callbacks, disabled state, normal/pressed visual feedback, and auto-computed bounding box hit testing.
-  - `InputManager`: Listens to WeChat `wx.onTouchStart` / `onTouchEnd`, transforms screen touch coordinates by device `pixelRatio`, and queries the root scene graph in reverse render order (top-most first) to dispatch tap events.
-- **Animation Contract**:
-  - `Tween`: Encapsulates duration-based property interpolation (`easeInOutQuad`, `easeOutCubic`, etc.) updated via `requestAnimationFrame` loop, dispatching `onUpdate` and `onComplete`.
-- **View Module Boundaries**:
-  - `BoardView`: Calculates pentagram layout for 5 elements with Yin/Yang orbital coordinates. Draws connection arcs for generating (生) and overcoming (克) relationships.
-  - `ActionBarView`: Receives `ActionCandidates` from `TurnManager` and formats action labels and disabled states cleanly.
-  - `CharacterView`: Renders player and AI avatars with status-dependent visual badges and floating bubbles.
-  - `RuneFlightView`: Handles the flight trajectory from center rune position `(cx, cy)` to target node `(nx, ny)`.
-- **Core Engine Boundary Preservation**:
-  - Layer 1 (`src/core/`) remains 100% untouched. All game rules, scores, PRNG, and AI evaluators remain immutable pure functions.
-  - `GameScene` interacts with Layer 1 strictly via `TurnManager` public APIs: `startTurn()`, `getState()`, `getCurrentTianGan()`, `getAvailableActions()`, and `resolveAction()`.
+- **Architecture Decision**: Introduce a lightweight scene graph (`Node` / `Container` / `Button` / `InputManager`) plus a tween engine (`Tween`) into the view layer, leaving Layer 1 untouched. Rationale lives in ADR 0005; component contracts (fields, signatures, transform and hit-test semantics) live in `docs/HLD.md` §2 Layer 3 and `docs/LLD.md` §4 — this spec does not restate them.
+- **Modules to Build**: the `Node` / `Container` / `Button` / `InputManager` / `Tween` base, the four business views `BoardView` / `ActionBarView` / `CharacterView` / `RuneFlightView`, and the `GameScene` orchestrator. Per-module responsibilities are in HLD §2 Layer 3.
+- **Core Engine Boundary**: Layer 1 (`src/core/`) stays 100% untouched; `GameScene` talks to it only through `TurnManager` public APIs — `startTurn()`, `getState()`, `getCurrentTianGan()`, `getAvailableActions()`, `executeAction()`, `getEventBus()`. The presentation-layer contract (read-only snapshot, candidate query, action submission, one-way data flow, event subscription) lives in `docs/LLD.md` §4.
+- **Interaction Constraint (must be preserved)**: low-state `AUTO` and extreme-state `DISSIPATE` flow through animation directly from the view layer; interactive buttons render only when the mid-state has multiple choices. This is the contract of ADR 0006 and ADR 0008, already implemented in `game-manager.ts`, and the refactor must not regress it.
 
 ## Testing Decisions
 
@@ -67,7 +54,7 @@ status: ready-for-agent
   - Secondary Seam: `InputManager` hit testing against nested `Container` / `Button` graphs.
   - Animation Seam: `Tween` ticker deterministic step advances without real-time delays.
 - **Prior Art**:
-  - Existing core tests in `tests/core/` (such as `TurnManager.test.ts` and `minigame-action-buttons.test.ts`) demonstrate deterministic testing using seeded PRNG and mock callbacks.
+  - Existing core tests in `tests/core/` (such as `turn-manager.test.ts` and `minigame-action-buttons.test.ts`) demonstrate deterministic testing using seeded PRNG and mock callbacks.
 
 ## Out of Scope
 
@@ -78,5 +65,5 @@ status: ready-for-agent
 
 ## Further Notes
 
-- Maintains complete compliance with ADR 0004 (`docs/adr/0004-pure-ts-canvas-wechat-minigame.md`).
-- Builds directly into `minigame/game.js` via `npm run build:minigame`.
+- Complies with ADR 0004 (`docs/adr/0004-pure-ts-canvas-wechat-minigame.md`). The architectural decision behind this refactor is ADR 0005 (`docs/adr/0005-scene-graph-and-tween-for-minigame-view.md`); the interaction contract is bound by ADR 0006 (strict three-tier state + zero-latency low-state absorption) and ADR 0008 (single-candidate auto-execution).
+- The artifact `minigame/game.js` is committed and gated by a byte-for-byte reconciliation check (ADR 0014). Final acceptance runs `npm run verify` (typecheck / test / `check:artifact`), not `npm run build:minigame` alone.
