@@ -14,11 +14,7 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "skipLibCheck": true,
-    "allowJs": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    }
+    "allowJs": true
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "tools/**/*.ts", "tests/**/*.ts"],
   "exclude": ["node_modules", "dist"]
