@@ -1,5 +1,5 @@
 ---
-status: ready-for-agent
+status: resolved
 ---
 
 # Spec: 微信小游戏表现层轻量化场景树架构改造 (minigame-view-upgrade)
