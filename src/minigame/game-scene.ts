@@ -29,7 +29,6 @@ import { formatActionButton, getActionTargetElement } from './action-button-form
 import { drawPixelRect, WUXING_PALETTE } from './pixel-art.js';
 import { Container } from './scene/container.js';
 import { EASINGS, Tween } from './scene/tween.js';
-import { AnimationMode } from './types.js';
 import { ActionBarView } from './views/action-bar-view.js';
 import { BoardView } from './views/board-view.js';
 import { CharacterView } from './views/character-view.js';
@@ -71,8 +70,6 @@ export interface GameSceneOptions {
   readonly rules?: RuleSwitches;
   /** 注入回合管理器（测试接缝）；不传则用 `prng` / `initialState` 自建。 */
   readonly turnManager?: TurnManager;
-  /** 绘制方案（像素 / 流光），默认流光。 */
-  readonly animationMode?: AnimationMode;
   /** 唯一候选的缓冲倒计时（秒），对齐 GDD §2.4 的约 0.75 秒，默认 0.75。 */
   readonly autoExecuteDelay?: number;
   /** 天道推演的思考停顿（秒），默认 0.55。 */
@@ -162,7 +159,6 @@ export class GameScene extends Container {
   private _turnManager: TurnManager;
   private readonly strategy: DecisionStrategy;
   private readonly rules: RuleSwitches;
-  private readonly animationMode: AnimationMode;
   private readonly autoExecuteDelay: number;
   private readonly aiThinkDelay: number;
   private readonly expressionHold: number;
@@ -201,7 +197,6 @@ export class GameScene extends Container {
     this.safeTop = options.safeTop ?? DEFAULT_SAFE_TOP;
     this.safeBottom = options.safeBottom ?? DEFAULT_SAFE_BOTTOM;
     this.rules = options.rules ?? {};
-    this.animationMode = options.animationMode ?? 'flow';
     this.autoExecuteDelay = options.autoExecuteDelay ?? DEFAULT_AUTO_EXECUTE_DELAY;
     this.aiThinkDelay = options.aiThinkDelay ?? DEFAULT_AI_THINK_DELAY;
     this.expressionHold = options.expressionHold ?? DEFAULT_EXPRESSION_HOLD;
@@ -564,7 +559,6 @@ export class GameScene extends Container {
       board: this.board,
       centerX: this.width / 2,
       centerY: this.height / 2,
-      mode: this.animationMode,
       entranceDuration: this.entranceDuration,
       flightDuration: this.flightDuration,
       impactDuration: this.impactDuration,
