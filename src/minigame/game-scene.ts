@@ -178,8 +178,6 @@ export class GameScene extends Container {
   private pendingAction: ActionPayload | null = null;
   /** `action:execute` 记录的完整载荷，供 `action:executed` 计算飞行落点。 */
   private actionInFlight: ActionPayload | null = null;
-  /** `action:execute` 时点的行动前快照（飞行期间显示它，落点后才投影结算结果）。 */
-  private stateBeforeAction: GameState | null = null;
   private lastShowdown: { tianGan: TianGanInfo; success: boolean } | null = null;
   private unsubscribes: (() => void)[] = [];
 
@@ -274,7 +272,6 @@ export class GameScene extends Container {
     this._turnManager = new TurnManager({ prng });
     this.lastShowdown = null;
     this.actionInFlight = null;
-    this.stateBeforeAction = null;
     this.actionBar.dispose();
     this.actionBar.removeFromParent();
     this.actionBar = this.buildActionBar(this._turnManager);
@@ -341,7 +338,7 @@ export class GameScene extends Container {
       this.presentGameOver(before);
       return;
     }
-    this.projectBoard(state.currentPlayer, state);
+    this.projectBoards(state);
     this.hideActionBar();
     this.announceTurnStart(state, tianGan, actions);
 
@@ -407,18 +404,15 @@ export class GameScene extends Container {
     return this.strategy(state, tianGan, actions);
   }
 
-  /** `action:execute`：记录完整载荷与行动前快照（此时核心尚未结算）。 */
+  /** `action:execute`：记录完整载荷（此时核心尚未结算），供 `action:executed` 解析飞行落点。 */
   private handleActionExecute(event: { action: ActionPayload }): void {
     this.actionInFlight = event.action;
-    this.stateBeforeAction = this._turnManager.getState();
   }
 
-  /** `action:executed`：动作已结算，播放符文飞行并把棋盘变更留到落点之后再投影。 */
+  /** `action:executed`：动作已结算，播放符文飞行；法盘已是行动前等级，落点后才投影结算结果。 */
   private handleActionExecuted(event: { player: PlayerId; actionType: ActionType }): void {
     const action = this.actionInFlight;
-    const before = this.stateBeforeAction ?? this._turnManager.getState();
     this.actionInFlight = null;
-    this.stateBeforeAction = null;
     const state = this._turnManager.getState();
     const actor = event.player;
     const target = resolveActionTarget(action, event.actionType, actor, this._turnManager);
@@ -437,18 +431,17 @@ export class GameScene extends Container {
       this.shake(event.actionType === ActionType.BURST_ATK ? SHAKE_BURST : SHAKE_ATTACK);
     }
 
-    // 飞行期间法盘切到被作用的一方，并保持行动前的等级；落点后再投影结算结果。
-    this.board.update(before.players[target.player].board);
+    // 法盘已是双环（行动前等级），飞行期不再换盘；落点后才投影结算结果。
     this._phase = 'flying';
-    this.runeFlight.flyTo(target.element, target.polarity, {
-      onComplete: () => this.afterFlight(target.player),
+    this.runeFlight.flyTo(target.player, target.element, target.polarity, {
+      onComplete: () => this.afterFlight(),
     });
   }
 
-  /** 飞行结束：投影结算后的棋盘，然后进入下一回合或终局。 */
-  private afterFlight(targetPlayer: PlayerId): void {
+  /** 飞行结束：投影结算后的双盘，然后进入下一回合或终局。 */
+  private afterFlight(): void {
     const state = this._turnManager.getState();
-    this.projectBoard(targetPlayer, state);
+    this.projectBoards(state);
     this.characters.update(state, { isExtraTurn: this._turnManager.isExtraTurnActive() });
     if (state.isGameOver) {
       this.presentGameOver(null);
@@ -484,14 +477,14 @@ export class GameScene extends Container {
       if (showdown.success) {
         this.shake(SHAKE_SHOWDOWN);
       }
-      // 揭牌：先把法盘定格在揭晓前的 P2 棋盘，符文降临后飞向抽中的槽位，落点才点亮。
-      this.board.update(beforeShowdown.players.P2.board);
+      // 揭牌：法盘定格在揭晓前的双盘，符文降临后飞向对方盘上抽中的槽位，落点才点亮。
+      this.board.update(beforeShowdown.players.P1.board, beforeShowdown.players.P2.board);
       const { element, polarity } = showdown.tianGan;
       this.runeFlight.playEntrance(showdown.tianGan, {
         onComplete: () => {
-          this.runeFlight.flyTo(element, polarity, {
+          this.runeFlight.flyTo('P2', element, polarity, {
             onComplete: () => {
-              this.board.update(state.players.P2.board);
+              this.board.update(state.players.P1.board, state.players.P2.board);
             },
           });
         },
@@ -503,7 +496,7 @@ export class GameScene extends Container {
       state.winner === 'P1' ? '★ 五行归元 ★ 玩家大胜！' : '天道通玄 · 遗憾惜败！',
       describeEndReason(state.endReason),
     );
-    this.board.update(state.players[state.winner === 'P2' ? 'P2' : 'P1'].board);
+    this.projectBoards(state);
   }
 
   /** 回合开始的播报：连动标记、天干名与「势在必行」的自动流转提示。 */
@@ -532,9 +525,9 @@ export class GameScene extends Container {
     this.characters.showBanner(main, sub);
   }
 
-  /** 把指定玩家的棋盘投影到法盘（只读快照，不写回）。 */
-  private projectBoard(player: PlayerId, state: GameState): void {
-    this.board.update(state.players[player].board);
+  /** 一次投影双方的棋盘到法盘双环（只读快照，不写回；ADR 0015）。 */
+  private projectBoards(state: GameState): void {
+    this.board.update(state.players.P1.board, state.players.P2.board);
   }
 
   private hideActionBar(): void {
