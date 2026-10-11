@@ -1,0 +1,21 @@
+---
+title: "T2: 回合生命周期引擎 (TurnManager) 与连动/终局结算对齐"
+parent: "003-wayfinder-milestone1-map.md"
+blocked_by:
+  - "004-action-candidates.md"
+labels:
+  - "wayfinder:task"
+  - "ready-for-agent"
+---
+
+## Question
+
+如何构建清晰的回合生命周期调度引擎（抽天干 -> 等待输入 -> 解析动作 -> 连动判定 -> 终局结算），并确保强化/强破连动（不可连续爆发）、亢极状态以及 60 回合上限后手优势（同分后手胜）完全符合设计规范？
+
+## Acceptance Criteria
+
+1. 连动限制：执行 BURST / BURST_ATK 后获得额外行动，但在该额外行动中禁止再次使用 BURST / BURST_ATK。
+2. 亢极与边界：加持达到 2 后的亢极状态与道损 (-1) 下限控制。
+3. 终局结算：第 60 回合未达成五行归元时的比分结算，若平分严格判定 P2（后手）获胜。
+4. 提供统一的状态机生命周期驱动接口（调度天干生成与回合切替）。
+5. 单元测试 `tests/core/turn-rules.test.ts` 完整覆盖。
