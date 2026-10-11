@@ -1,5 +1,9 @@
 # 归元弈 (Guiyuan) - LLD (详细设计文档)
 
+> **归属**：本文档唯一拥有**数据格式与类型契约**（状态结构、动作载荷、模块间接口签名、不可变性约定）。规则机制与取值见 `docs/GDD.md`，需求与验收见 `docs/SRS.md`，架构与包拓扑见 `docs/HLD.md`。
+>
+> **类型定义真源是 `src/core/types/domain.ts`**。本文档只写字段语义与契约约定，不复制代码——手抄的代码块一定会与真源漂移。
+
 ## 1. 架构范式: 纯数据驱动 (Data-Driven / Immutable)
 
 基于 `HLD.md` 中 AI-First 的原则以及对无头推演的强需求，核心逻辑层（Layer 1）采用**纯数据驱动（Immutable State）**。
@@ -8,104 +12,51 @@
 
 ## 2. 核心状态数据结构 (State Data Models)
 
-状态被设计为完全支持序列化（如 JSON）的友好结构。
+类型定义真源：`src/core/types/domain.ts`。本节只说明各结构的语义与不变式，字段与类型以该文件为准。
+
+**通用约定**：所有结构必须可 JSON 序列化（无函数、无类实例、无循环引用）——这是确定性回放与无头推演分支模拟的前提。
 
 ### 2.1 游戏总状态 (`GameState`)
-```typescript
-export interface GameState {
-  readonly round: number;                                    // 当前大回合数 (1 ~ 30)
-  readonly maxRounds: number;                                // 大回合上限 (30，即 60 次行动机会)
-  readonly currentPlayer: PlayerId;                          // 当前行动玩家 ('P1' | 'P2')
-  readonly players: Readonly<Record<PlayerId, PlayerState>>; // 双方玩家状态
-  readonly currentTianGan: TianGanInfo | null;               // 本回合抽取的天干
-  readonly isGameOver: boolean;                              // 终局标志
-  readonly winner: PlayerId | 'DRAW' | null;                 // 获胜方
-  readonly endReason: 'GUI_YUAN' | 'MAX_ROUNDS' | null;      // 终局原因
-  readonly lockedGuiYuan?: Readonly<Record<PlayerId, boolean>>; // 归元锁定（终轮天命揭牌判定用）
-}
 
-export type PlayerId = 'P1' | 'P2';
+| 字段 | 语义 | 约定 |
+| --- | --- | --- |
+| `round` / `maxRounds` | 当前大回合与上限 | 上限取值归规则侧（GDD §2.1） |
+| `currentPlayer` | 当前行动方 | 半回合切换；爆发连动时不变 |
+| `players` | 双方 `PlayerState` 只读映射 | 双方各自持有独立棋盘，互不引用 |
+| `currentTianGan` | 本半回合抽取的天干 | 天干池与极性映射见 `TIAN_GAN_LIST` |
+| `isGameOver` / `winner` / `endReason` | 终局标志、胜方、终局原因 | 三者必须同时写入；`endReason` 只取 `GUI_YUAN` / `MAX_ROUNDS` |
+| `lockedGuiYuan` | 归元锁定标记 | 供终轮天命揭牌判定使用（ADR 0007 / ADR 0009） |
 
-export interface PlayerState {
-  readonly id: PlayerId;
-  readonly score: number;                                    // 玩家累计分数
-  readonly board: BoardState;                                // 玩家独立五行棋盘
-}
-```
+### 2.2 棋盘与节点 (`BoardState` / `NodeData`)
 
-### 2.2 棋盘与节点状态 (`BoardState` & `NodeData`)
-双方各自拥有木、火、土、金、水 5 个五行节点。
-```typescript
-export type BoardState = Readonly<Record<WuXing, NodeData>>;
+- `BoardState` 是 `WuXing` → `NodeData` 的只读映射，固定五个元素；
+- `NodeData` 的阴、阳两侧取 `NodeLevel`；
+- **`NodeLevel` 是 `-1 | 0 | 1 | 2` 的联合类型，不是 `number`**——越界在类型层就被挡住，取值语义与边界规则见 GDD §2.2。
 
-export enum WuXing {
-  WOOD = 'WOOD',
-  FIRE = 'FIRE',
-  EARTH = 'EARTH',
-  METAL = 'METAL',
-  WATER = 'WATER'
-}
+### 2.3 五行关系常量
 
-// 节点状态: 道损 (-1), 虚空 (0), 点亮 (1), 加持 (2)
-export type NodeLevel = -1 | 0 | 1 | 2;
-export enum Polarity {
-  YIN = 'yin',
-  YANG = 'yang'
-}
-
-export interface NodeData {
-  readonly yin: NodeLevel;   // 阴侧状态
-  readonly yang: NodeLevel;  // 阳侧状态
-}
-```
+`GENERATION_CYCLE`（相生）与 `OVERCOMING_CYCLE`（相克）是**唯一**的生克真源，规则引擎与 AI 都必须从这里取，不得各自硬编码。相生相克序列的设计意图见 GDD §2。
 
 ## 3. 核心接口与业务契约
 
 ### 3.1 动作类型 (`ActionType` & `ActionPayload`)
-对应《GDD》与《HLD》定义的基础动作与爆发动作。
-```typescript
-export enum ActionType {
-  AUTO = 'AUTO',             // 吸纳 (基础吸收)
-  CONVERT = 'CONVERT',       // 调息 (同节点内阴阳转移)
-  TRANS = 'TRANS',           // 化 (相生路径强化己方)
-  ATK = 'ATK',               // 破 (相克路径削弱敌方)
-  BURST = 'BURST',           // 强化 (消耗己方归一节点强化相生，连动)
-  BURST_ATK = 'BURST_ATK',   // 强破 (消耗己方归一节点削弱敌相克，连动)
-  DISSIPATE = 'DISSIPATE',   // 亢极散气 (满溢回落)
-  PASS = 'PASS'              // 消散过牌 (无合法动作时流转)
-}
 
-export interface ActionPayload {
-  readonly actionType: ActionType;
-  readonly player: PlayerId;
-  readonly element?: WuXing;
-  readonly targetElement?: WuXing;
-  readonly polarity?: Polarity;
-  readonly sourceElement?: WuXing;
-  readonly consumePolarity?: Polarity;
-}
-```
+- **`ActionType`** 的八个成员与 GDD §2.2 / §2.3 的动作一一对应（吸纳 / 调息 / 化 / 破 / 强化 / 强破 / 亢极散气 / 消散过牌）；枚举名与中文名的对照见 `src/core/types/domain.ts`。
+- **`ActionPayload`** 是表现层向核心层提交动作的**唯一载荷格式**：`actionType` + `player` 必填，其余字段（`element` / `targetElement` / `polarity` / `sourceElement` / `consumePolarity`）按动作类型可选。各动作需要哪些字段由 `ActionCandidates` 生成的候选对象决定，表现层不得自行拼装未定义的组合。
+- **`ActionResult`** 是解析器回传的唯一结果格式（`nextState` / `success` / `scoreDelta` / `extraTurn` / `message?`）；`scoreDelta` 的取值真源见 GDD §2.1。
 
 ### 3.2 动作解析器 (`ActionResolver`) 与回合调度器 (`TurnManager`)
 - **`ActionResolver`**：纯函数动作处理器，接收 `GameState` 与 `ActionPayload`，基于轻量增量 Patch 与结构共享返回包含 `nextState`、`scoreDelta` 与 `extraTurn` 的 `ActionResult`。
 - **`TurnManager`**：生命周期状态机驱动器，调度抽天干 -> 生成合法候选动作（`ActionCandidates`）-> 校验执行 -> 连动判定 -> 终局检测。
 
-## 4. 与表现层的解耦与交互机制 (EventBus & Scene Graph Architecture)
+## 4. 与表现层的解耦与交互机制 (EventBus & Scene Graph)
 
-> **实现状态**：第 1、2 点为已实现契约；第 3 点的 `GameScene` 单向投影已实现（`src/minigame/game-manager.ts`），第 4 点的 `src/minigame/engine/` 场景树与 `BoardView`/`ActionBarView`/`CharacterView`/`RuneFlightView` 是**目标架构（未实现）**，依据 ADR 0005 与在办 spec `.scratch/minigame-view-upgrade`。
+场景树、`InputManager`、`Button` / `Tween` 等表现层架构与包拓扑归 `docs/HLD.md` §2 Layer 3，唯一候选动作的自动流转规则归 `docs/GDD.md` §2.4，本节不复制。
 
-核心计算层（Layer 1）与表现层（Layer 3）完全解耦（对齐 ADR-0004、ADR-0005 与 ADR-0008）：
+本节只固定**核心层对表现层暴露的契约**（对齐 ADR-0004、ADR-0005 与 ADR-0008）：
 
-1. **指令输入与派发**：
-   - 微信触摸输入通过 `InputManager` 捕获，并映射至场景树根节点（`Stage`），沿节点层级逆序递归判定 `hitTest`；
-   - 按钮组件（`Button`）触发 `onTap` 回调，向控制器提供合法的 `ActionPayload`。
-2. **唯一候选动作自动流转（ADR-0008 契约）**：
-   - 当 `turnManager.getAvailableActions().length === 1` 时，表现层判定为无分叉确定性流转，启动 0.75s 缓冲倒计时后自动触发调度执行，玩家亦可轻触屏幕/按钮直接加速触发；
-   - 仅当候选动作数量 $\ge 2$ 时，要求玩家进行手动选择决策。
-3. **状态推进与单向数据流**：
-   - 场景控制器（`GameScene`）调用 `turnManager.executeAction(action)` 驱动核心状态机演进；
-   - `GameScene` 获取最新只读快照 `turnManager.getState()`，单向投影至 `BoardView`、`ActionBarView`、`CharacterView` 等各子视图。
-4. **表现层微型场景树与动画管线 (`src/minigame/engine/`)**：
-   - **`Node` & `Container`**：承载局部矩阵变换（位置、缩放、透明度、可见性）与递归绘制（`render(ctx)`）；
-   - **`Button`**：声明式交互组件，内置尺寸自动判定、按压缩小微动反馈与置灰禁用态；
-   - **`Tween`**：轻量级补间缓动系统，负责天干流星飞行、五行法阵发光弧线、受击顿帧与震屏效果，彻底从业务帧步进循环中解耦。
+1. **只读状态快照**：表现层只能通过 `turnManager.getState()` 获取只读快照，不得直接改写状态对象。
+2. **候选动作查询**：表现层通过 `turnManager.getAvailableActions()` 取候选集合；`length === 1` 时的表现行为见 GDD §2.4。
+3. **动作提交**：表现层把用户意图包装成 `ActionPayload`，经 `turnManager.executeAction(action)` 提交，核心层返回 `ActionResult`（见 §3.1）。
+4. **单向数据流**：状态变更只能由核心层发起并回传新状态，表现层按新快照重新投影，禁止反向写入。
+5. **事件通知**：核心层的非状态通知（如 `showdown:draw`）经 `turnManager.getEventBus()` 订阅，表现层只消费、不发布。

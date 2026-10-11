@@ -18,21 +18,12 @@ Accepted (已接受)
 
 ## 决策
 
-1. **保留核心逻辑（Layer 1）100% 不变**：
-   - `src/core/` 下的 `TurnManager`、`ActionResolver`、AI、计分器与 PRNG 保持纯函数与不可变数据模型，不引入任何视图书写污染。
-2. **在表现层（Layer 3: `src/minigame/`）构建轻量场景树（Scene Graph）**：
-   - **`Node` 与 `Container` 基类**：支持局部坐标系、缩放（`scale`）、透明度（`alpha`）、可见性（`visible`）与层级递归渲染；
-   - **声明式组件 `Button`**：内置自动边界盒命中判定、按下缩放回弹微动和禁用态样式，彻底移除手动 `handleTouch` 范围判定；
-   - **统一输入调度器 `InputManager`**：将微信触摸事件（`wx.onTouchStart` / `onTouchEnd`）映射到场景树，逆序（自上而下）分发捕获，自动阻止事件冒泡穿透。
-3. **引入独立轻量缓动引擎（Tween Engine）**：
-   - 建立声明式补间系统（支持 `Cubic.Out`, `Quad.InOut` 等曲线与 `onComplete` 回调）；
-   - 将天干符文飞向阵盘、受击顿帧、暴击震屏交给补间管线驱动，主循环只负责每帧步进。
-4. **业务表现层解耦与模块化**：
-   - `BoardView`：五行（金木水火土）10 个阴阳节点环形阵盘与生克动态连线；
-   - `ActionBarView`：响应 `TurnManager.getAvailableActions()` 自动排布与高亮可选动作按钮；
-   - `CharacterView`：双方角色头像、表情与气泡播报；
-   - `RuneFlightView`：天干降临与流星吸收轨迹；
-   - `GameScene`：总协调控制器，将纯数据 `GameState` 只读投影到各 View。
+1. **核心逻辑（Layer 1）100% 不变。** `src/core/` 不引入任何视图污染。
+2. **在表现层（Layer 3: `src/minigame/`）构建轻量场景树。** 用 `Node` / `Container` / `Button` / `InputManager` 取代手写点阵与手工命中判定。
+3. **引入独立轻量缓动引擎（Tween）。** 动画交给补间管线驱动，主循环只负责每帧步进。
+4. **业务表现层模块化。** 拆为 `BoardView` / `ActionBarView` / `CharacterView` / `RuneFlightView`，由 `GameScene` 把只读 `GameState` 投影到各 View。
+
+各模块职责、组件契约与实现状态归 `docs/HLD.md` §2 Layer 3 与 `docs/LLD.md` §4，本节不复述。
 
 ## 被否决的备选方案
 

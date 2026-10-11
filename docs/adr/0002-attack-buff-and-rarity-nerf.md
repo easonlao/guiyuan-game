@@ -16,11 +16,8 @@ status: accepted
    - 其他动作（调息 CONVERT、化 TRANS、破 ATK）的稀有度加成维持原机制不变。
 
 2. **硬编码 2.5 倍攻击压制状态得分：**
-   - 在 `POINTS_CONFIG.STATE_CHANGE` 中，将敌方状态破坏的配置数值直接按原值 2.5 倍进行静态重写：
-     - 致道损（CAUSE_DMG）：阳从 120 调至 **300**，阴从 100 调至 **250**。
-     - 破点亮（BREAK_LIGHT）：阳从 80 调至 **200**，阴从 60 调至 **150**。
-     - 削弱加持（WEAKEN）：从 80 调至 **200**。
-   - 运行时直接采用该常量表，不引入额外的动态乘数。
+   - 在 `POINTS_CONFIG.STATE_CHANGE` 中把敌方状态破坏的三项（`CAUSE_DMG` / `BREAK_LIGHT` / `WEAKEN`）按原值 2.5 倍静态重写，运行时直接采用该常量表，不引入额外的动态乘数。
+   - **取值真源是 `src/core/logic/ScoreCalculator.ts` 的 `POINTS_CONFIG`，本文档不复制数字。**
 
 3. **控制变量：**
    - 动作行为基础分（如 BURST 基础 100 分、BURST_ATK 基础 80 分）保持不变。
@@ -72,6 +69,6 @@ status: accepted
 - `NO_RARITY_ACTIONS` 删除前其实际取值已扩为 `[BURST, BURST_ATK, DISSIPATE, PASS]`，多于本文原文的 `['BURST', 'BURST_ATK']`；
 - 本文「决定 1」提到的 `StateScoreRecorder` 从未存在于 `src/`，仅存于旧 JS 路径 `legacy/src/state/StateScoreRecorder.js`。
 
-**本文「决定 2」（攻击压制状态分 2.5× 硬编码）仍然有效**：`CAUSE_DMG` 阳 300 / 阴 250、`BREAK_LIGHT` 阳 200 / 阴 150、`WEAKEN` 200 与生产 `POINTS_CONFIG` 一致（`src/core/logic/ScoreCalculator.ts:98-100`）。后续攻击进度定价（ADR 0011「采纳记录」）在此基础上对攻击状态分做进度缩放。
+**本文「决定 2」（攻击压制状态分 2.5× 硬编码）仍然有效**：`CAUSE_DMG` 阳 300 / 阴 250、`BREAK_LIGHT` 阳 200 / 阴 150、`WEAKEN` 200 与生产 `POINTS_CONFIG` 一致（`src/core/logic/ScoreCalculator.ts:98-100`）。后续攻击进度定价（ADR 0011「决定 1」）在此基础上对攻击状态分做进度缩放。
 
 稀有度链的处置（接线或删除）由 ADR 0011「决策 3」定为「另立工单」；删除工单见本地 issue tracker `.scratch/dead-scoring-code-removal/`（该目录不入版本库）。逐参数证据见 `docs/headless/knob-census.md`。
