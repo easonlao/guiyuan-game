@@ -103,7 +103,6 @@ const DEFAULT_AI_THINK_DELAY = 0.55;
 const DEFAULT_EXPRESSION_HOLD = 0.6;
 const DEFAULT_CELEBRATE_HOLD = 1.2;
 /** 底部操作台高度（含按钮最多两行）。 */
-const ACTION_BAR_HEIGHT = 130;
 const ACTION_BAR_MARGIN = 14;
 /** 震屏时长与幅度（像素）。 */
 const SHAKE_DURATION = 0.28;
@@ -227,6 +226,7 @@ export class GameScene extends Container {
     });
     this.actionBar = this.buildActionBar(this._turnManager);
     this.actionBar.visible = false;
+    this.placeActionBar();
     this.addChild(this.board);
     this.addChild(this.runeFlight);
     this.addChild(this.characters);
@@ -283,8 +283,7 @@ export class GameScene extends Container {
     this.safeBottom = safeBottom ?? this.safeBottom;
     this.board.resize(width, height);
     this.characters.resize(width, this.safeTop);
-    this.actionBar.x = ACTION_BAR_MARGIN;
-    this.actionBar.y = this.actionBarY();
+    this.placeActionBar();
     if (this._phase === 'idle' || this._phase === 'game-over') {
       this.replaceRuneFlight();
       this.runeFlightStale = false;
@@ -313,6 +312,7 @@ export class GameScene extends Container {
     this.actionBar.dispose();
     this.actionBar.removeFromParent();
     this.actionBar = this.buildActionBar(this._turnManager);
+    this.placeActionBar();
     this.addChild(this.actionBar);
     this.bindTurnManager(this._turnManager);
     this.setPhase('idle');
@@ -408,6 +408,7 @@ export class GameScene extends Container {
     this.actionBar.visible = true;
     this.actionBar.interactive = true;
     this.actionBar.refresh();
+    this.placeActionBar();
   }
 
   /** 缓冲结束（或被点击加速）：把待定动作交给核心层结算。 */
@@ -605,15 +606,16 @@ export class GameScene extends Container {
     this.actionBar.interactive = false;
   }
 
-  private actionBarY(): number {
-    return this.height - this.safeBottom - ACTION_BAR_HEIGHT;
+  /** 把操作面板底对齐到安全区底部：按钮实测多高就占多高，不留空档。 */
+  private placeActionBar(): void {
+    this.actionBar.x = ACTION_BAR_MARGIN;
+    this.actionBar.y = this.height - this.safeBottom - this.actionBar.contentHeight;
   }
 
   private buildActionBar(turnManager: TurnManager): ActionBarView {
     return new ActionBarView({
       turnManager,
       width: this.width - ACTION_BAR_MARGIN * 2,
-      y: this.actionBarY(),
     });
   }
 

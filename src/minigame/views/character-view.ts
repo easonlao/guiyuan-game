@@ -354,18 +354,21 @@ export class CharacterView extends Container {
 
 const PLAYER_IDS: readonly PlayerId[] = ['P1', 'P2'];
 
-/** 按可用宽度折行：最多 `maxLines` 行；放不下的部分在末行以省略号收尾。 */
+/**
+ * 按可用宽度折行：最多 `maxLines` 行；放不下的部分在末行以省略号收尾。
+ * 折行以「可读单元」为单位：`【…】` 整组不可拆（否则会出现「天干【庚」/「】降临」这种断在括号里的难看折行）。
+ */
 function wrapText(text: string, maxWidth: number, fontSize: number, maxLines: number): string[] {
   if (text === '') {
     return [];
   }
   const lines: string[] = [];
   let current = '';
-  for (const char of text) {
-    const next = current + char;
+  for (const unit of textUnits(text)) {
+    const next = current + unit;
     if (current !== '' && estimateTextWidth(next, fontSize) > maxWidth) {
       lines.push(current);
-      current = char;
+      current = unit;
       if (lines.length === maxLines) {
         break;
       }
@@ -381,6 +384,31 @@ function wrapText(text: string, maxWidth: number, fontSize: number, maxLines: nu
     lines[lines.length - 1] = `${truncateToWidth(last, maxWidth, fontSize)}…`;
   }
   return lines;
+}
+
+/** 把文案切成折行的最小单位：`【…】` 整组一个单位，其余逐字。 */
+function textUnits(text: string): string[] {
+  const units: string[] = [];
+  let bracket = '';
+  for (const char of text) {
+    if (bracket !== '') {
+      bracket += char;
+      if (char === '】') {
+        units.push(bracket);
+        bracket = '';
+      }
+      continue;
+    }
+    if (char === '【') {
+      bracket = char;
+      continue;
+    }
+    units.push(char);
+  }
+  if (bracket !== '') {
+    units.push(bracket);
+  }
+  return units;
 }
 
 /** 截断到可用宽度（超出部分用省略号）。 */
