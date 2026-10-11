@@ -1,9 +1,16 @@
-# 变异测试「100%」诚实性审计（只读）
+# 05: 审计变异测试「100%」的诚实性（阶段 3a 过度 disable）
 
-审计对象：`src/core/logic/**` 的 `// Stryker disable`（阶段 3a，commit `515140a`）、门禁脚本、以及阶段 3b（`eaee33a`）的「真 bug」断言。
-方法：静态逐条判定 + **实验**——把仓库拷贝到 `/tmp/audit` 并**删掉全部 71 条 disable 注释**，重跑一次全量 Stryker（1072 突变体 / 42 分钟），把结果与仓库内报告 `reports/mutation/mutation.json` 的 150 条 `Ignored` 按（文件+行+列+mutator+replacement）精确对齐。
+**Type:** task
 
-## 关键量化结论
+**Blocked by:** 02
+
+**Status:** resolved
+
+**What to build:** 审计对象：`src/core/logic/**` 的 `// Stryker disable`（阶段 3a，commit `515140a`）、门禁脚本、以及阶段 3b（`eaee33a`）的「真 bug」断言。 方法：静态逐条判定 + **实验**——把仓库拷贝到 `/tmp/audit` 并**删掉全部 71 条 disable 注释**，重跑一次全量 Stryker（1072 突变体 / 42 分钟），把结果与仓库内报告 `reports/mutation/mutation.json` 的 150 条 `Ignored` 按（文件+行+列+mutator+replacement）精确对齐。
+
+## Answer
+
+### 关键量化结论
 
 | 指标 | 数值 | 来源 |
 |---|---|---|
@@ -17,14 +24,14 @@
 
 ---
 
-## 审计 1：逐条检查 `src/core/logic/**` 的 `// Stryker disable`
+### 审计 1：逐条检查 `src/core/logic/**` 的 `// Stryker disable`
 
-### 1.1 机制核查（先排掉两个可能的「过度」来源）
+#### 1.1 机制核查（先排掉两个可能的「过度」来源）
 
 - **不是块级 disable。** `// Stryker disable next-line X` 由 `directive-bookkeeper.ts` 的 `IgnoreRule(line=node.loc.start.line)` 实现，只命中紧随其后那个节点起始行。我把 71 条指令与报告里 `Ignored` 的位置做了 1:1 核对：**每条指令请求的 mutator 都在下一行产出了对应 `Ignored`，且没有一条指令漏配/错名/无 mutant**。所以「StringLiteral 成片 disable 连带禁掉别的字符串逻辑」**不成立**（每条只影响一行一个 mutator）。
 - **mutator 语义**（`conditional-expression-mutator.ts`）：`if (cond)` 的**整条条件**会同时产出 `→true` 与 `→false`；而 `&&`/`||` 的**单个操作数**只产出对侧一个（`&&` 的操作数只产 `→true`）。这决定了下面「一个 disable 同时覆盖等价方向与非等价方向」的系统性问题。
 
-### 1.2 重点：disable 了「若进生产会改变可观测行为」的突变体（35 条 / 27 处）
+#### 1.2 重点：disable 了「若进生产会改变可观测行为」的突变体（35 条 / 27 处）
 
 这些位置**同时**禁掉了等价方向与**非等价方向**。注释只论证了等价方向，非等价方向被顺手禁掉。实验证明这 35 条在去 disable 后**都被现有测试杀掉**（所以不是当前测试缺口），但：
 
@@ -63,7 +70,7 @@
 
 > 说明：上表 35 条**全部被现有测试杀掉**（去 disable 后状态为 `Killed`），因此**不是当前测试缺口、不是现网 bug**；问题是「注释理由不成立 + 过度 disable 削弱了门禁敏感度」。
 
-### 1.3 判定为「成立」的 disable（其余 115 条）
+#### 1.3 判定为「成立」的 disable（其余 115 条）
 
 - **恒真操作数**（`State.ts:151/160/162` 的 `tianGan.polarity ===/!== targetPolarity`、`board[...] >= 1`，`State.ts:179:9` 的第一个操作数）：去 disable 后 `→true` 存活，验证确为恒真、等价。✓
 - **生产不可达的防御守卫体**（`ActionResolver` 各 case 的 `if (!element/!sourceElement)` 返回体、`state.lockedGuiYuan ?? {...}` 兜底、`if (!success)` 兜底、`TurnManager` 的 `if (!result.success)`、`if (!actionToExecute)` 兜底）：去 disable 后多为 **NoCoverage（55 条）**，即任何测试都没执行到——确属死/防御分支。✓
@@ -72,7 +79,7 @@
 - **常量吸收**（`ActionResolver.ts:126` 的 `+=`→`-=`，因 `ACTION.AUTO=0`；`TurnManager.ts:166` 的 `winner` 初值必被覆盖）：等价。✓
 - **OptionalChaining**（`state.currentTianGan?.x` 等）：`payload.x || ...` 左侧恒有值，短路使右侧永不求值，等价。✓
 
-### 1.4 去掉 disable 后仍存活的 58 条——逐条判定：**全部等价/不可观测**（无「非等价存活」）
+#### 1.4 去掉 disable 后仍存活的 58 条——逐条判定：**全部等价/不可观测**（无「非等价存活」）
 
 核对要点（其余同 1.3）：
 
@@ -86,7 +93,7 @@
 
 ---
 
-## 审计 2：门禁是否诚实
+### 审计 2：门禁是否诚实
 
 1. **`mutation-baseline.jsonl` = 0 条：是真的没有存活/无覆盖。**
    - 文件只有 5 行注释头，无记录；`git log` 显示由 `eaee33a` 从 `reports/mutation/mutation.json` 重建（223→0）。
@@ -117,7 +124,7 @@
 
 ---
 
-## 审计 3：4 条「真 bug」断言
+### 审计 3：4 条「真 bug」断言
 
 **实验验证**（在 `/tmp/audit2` 施加突变后跑对应测试文件）：
 
@@ -129,25 +136,25 @@
 
 ---
 
-## 三类清单
+### 三类清单
 
-### 必须处理
+#### 必须处理
 - **无「非等价存活被掩盖」的实例。** 去 disable 重跑，113 条存活/无覆盖逐条判定全部等价/不可观测/死分支，无真 bug 被静默。
 
-### 存疑（建议处理，非阻塞）
+#### 存疑（建议处理，非阻塞）
 1. **35 条过度 disable（1.2 表，27 处）**：注释只论证了等价方向，却把 `ConditionalExpression`/`EqualityOperator` 的另一（非等价）方向一并禁掉。建议二选一：把 disable 收窄到仅等价方向（去掉 `ConditionalExpression`、只留 `EqualityOperator` 或反之），或改写注释明确「另一方向由测试 `X` 覆盖」。现状虽不掩盖 bug，但**永久降低了门禁对这段行为的敏感度**，且让「150 条等价」的说法失真（实际仅 ~113 条测不到）。
 2. **`stryker.config.json` 的 `coverageAnalysis:"off"` 名不副实**：实测 vitest-runner 仍提供 per-test 覆盖（`coveredBy` 非空、出现 55 条 `NoCoverage`）。`_comment` 与 `docs/MUTATION-TESTING.md` §2.1/§3 的相关解释需要订正（否则读者会以为跑的是「全测试打每个突变体」）。
 3. **`mutation-baseline.mjs` 用宽松读报告且不校验全量**：与 `mutation:check` 拒绝子集报告的严格性不一致；文档还默许 `mutation:changed → mutation:baseline`。建议 `baseline` 也走 `readReportEntriesStrict` + `assertReportIsFullRun`（或明确记录「子集重刷会导致基线变小、check 噪声变大」）。
 4. **`EventBus.on` 双注册**是公开 API 契约 bug，但当前无生产调用点触发；文档/注释若称其为「生产 bug」宜改为「契约 bug」。
 
-### 可接受
+#### 可接受
 - **`mutation-baseline.jsonl` = 0 条**：与报告、disable 集合自洽，非错误刷空；文档 §3.3 已如实披露 100% 的来源。
 - **门禁退出码防护**：全量/子集/空/坏报告/新增存活/缺文件 6 类场景实测退出码 0/2/2/2/2/1 全部符合文档。
 - **`mutate` 范围与 patch**：`src/core/logic/**`（排除 `index.ts`）保持不变；patch 生效且 `patch-package --error-on-fail` 退出 0。
 - **`next-line` disable 的粒度**：71 条指令与 `Ignored` 一一对应，无块级/跨行误伤；被测试真正断言的文案（`TurnManager.ts:269/416`）未被 disable。
 - **4 条「真 bug」断言**：均钉住行为（1、2 已实验复现，3、4 在报告中为 Killed）。
 
-## 复现命令
+### 复现命令
 ```bash
 # 1) 去 disable 重跑全量（约 42 分钟）
 mkdir -p /tmp/audit && tar -cf - --exclude=./node_modules --exclude=./.git \
