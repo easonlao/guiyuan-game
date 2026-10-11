@@ -1,20 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { BoardView } from '../../src/minigame/views/board-view.js';
-import { BoardState, NodeLevel, Polarity, WuXing } from '../../src/core/types/domain.js';
-
-/** 造一个五行盘快照；未指定的元素默认 (0, 0) 虚空。 */
-function makeBoard(
-  levels: Partial<Record<WuXing, { yin: NodeLevel; yang: NodeLevel }>>,
-): BoardState {
-  return {
-    [WuXing.WOOD]: { yin: 0, yang: 0 },
-    [WuXing.FIRE]: { yin: 0, yang: 0 },
-    [WuXing.EARTH]: { yin: 0, yang: 0 },
-    [WuXing.METAL]: { yin: 0, yang: 0 },
-    [WuXing.WATER]: { yin: 0, yang: 0 },
-    ...levels,
-  };
-}
+import { Polarity, WuXing } from '../../src/core/types/domain.js';
+import { boardWith } from '../../tools/BoardFixture.js';
+import { RecordingContext } from './helpers/recording-context.js';
 
 describe('Minigame BoardView: 五行法盘环形布局', () => {
   it('按相生顺序（木火土金水）等分环布五行，木居正上方', () => {
@@ -105,7 +93,7 @@ describe('Minigame BoardView: 生克连线', () => {
     expect(view.connections.every((line) => !line.active)).toBe(true);
 
     // 仅木点亮：木生火与木克土转为活动，其余八条保持静默。
-    view.update(makeBoard({ [WuXing.WOOD]: { yin: 1, yang: 0 } }));
+    view.update(boardWith({ [WuXing.WOOD]: { yin: 1, yang: 0 } }));
     const active = view.connections.filter((line) => line.active);
     expect(active.map((line) => [line.kind, line.from, line.to])).toEqual([
       ['generation', WuXing.WOOD, WuXing.FIRE],
@@ -113,7 +101,7 @@ describe('Minigame BoardView: 生克连线', () => {
     ]);
 
     // 水亢极：以水为源的两条线转为活动。
-    view.update(makeBoard({ [WuXing.WATER]: { yin: 2, yang: 2 } }));
+    view.update(boardWith({ [WuXing.WATER]: { yin: 2, yang: 2 } }));
     expect(
       view.connections.filter((line) => line.active).map((line) => [line.kind, line.from, line.to]),
     ).toEqual([
@@ -127,7 +115,7 @@ describe('Minigame BoardView: 归一与亢极高亮', () => {
   it('双侧均≥1 投影为归一；双侧均达 2 才投影为亢极', () => {
     const view = new BoardView();
     view.update(
-      makeBoard({
+      boardWith({
         [WuXing.WOOD]: { yin: 1, yang: 1 },
         [WuXing.FIRE]: { yin: 2, yang: 2 },
         [WuXing.EARTH]: { yin: 2, yang: 1 },
@@ -162,10 +150,10 @@ describe('Minigame BoardView: 归一与亢极高亮', () => {
 
   it('重新投影新快照时丢弃旧的归一/亢极高亮', () => {
     const view = new BoardView();
-    view.update(makeBoard({ [WuXing.WOOD]: { yin: 2, yang: 2 } }));
+    view.update(boardWith({ [WuXing.WOOD]: { yin: 2, yang: 2 } }));
     expect(view.elements[0].isKangJi).toBe(true);
 
-    view.update(makeBoard({ [WuXing.WOOD]: { yin: 0, yang: 0 } }));
+    view.update(boardWith({ [WuXing.WOOD]: { yin: 0, yang: 0 } }));
 
     expect(view.elements[0].isGuiYi).toBe(false);
     expect(view.elements[0].isKangJi).toBe(false);
@@ -195,7 +183,7 @@ describe('Minigame BoardView: 十阴阳槽位状态投影', () => {
   it('把快照里每一侧的等级投影到对应槽位（含 -1 道损与 2 加持）', () => {
     const view = new BoardView();
     view.update(
-      makeBoard({
+      boardWith({
         [WuXing.WOOD]: { yin: 2, yang: 1 },
         [WuXing.FIRE]: { yin: -1, yang: 0 },
         [WuXing.EARTH]: { yin: 0, yang: 2 },
@@ -278,7 +266,7 @@ describe('Minigame BoardView: 自适应视口布局', () => {
 
 describe('Minigame BoardView: 只读快照投影', () => {
   it('投影深冻结的快照不会写入（严格模式下写入会抛错）', () => {
-    const board = makeBoard({ [WuXing.WOOD]: { yin: 2, yang: 1 } });
+    const board = boardWith({ [WuXing.WOOD]: { yin: 2, yang: 1 } });
     for (const node of Object.values(board)) {
       Object.freeze(node);
     }
@@ -292,93 +280,6 @@ describe('Minigame BoardView: 只读快照投影', () => {
   });
 });
 
-/** 记录绘制调用的伪 Canvas 2D 上下文：只关心「有没有画东西」，不关心具体坐标。 */
-class RecordingContext {
-  public globalAlpha = 1;
-  public fillStyle: string | CanvasGradient | CanvasPattern = '#000';
-  public strokeStyle: string | CanvasGradient | CanvasPattern = '#000';
-  public lineWidth = 1;
-  public lineCap: CanvasLineCap = 'butt';
-  public font = '';
-  public textAlign: CanvasTextAlign = 'start';
-  public textBaseline: CanvasTextBaseline = 'alphabetic';
-  public readonly calls: string[] = [];
-
-  public save(): void {
-    this.calls.push('save');
-  }
-
-  public restore(): void {
-    this.calls.push('restore');
-  }
-
-  public translate(_x: number, _y: number): void {
-    this.calls.push('translate');
-  }
-
-  public scale(_x: number, _y: number): void {
-    this.calls.push('scale');
-  }
-
-  public beginPath(): void {
-    this.calls.push('beginPath');
-  }
-
-  public closePath(): void {
-    this.calls.push('closePath');
-  }
-
-  public arc(
-    _x: number,
-    _y: number,
-    _radius: number,
-    _start: number,
-    _end: number,
-    _anticlockwise?: boolean,
-  ): void {
-    this.calls.push('arc');
-  }
-
-  public moveTo(_x: number, _y: number): void {
-    this.calls.push('moveTo');
-  }
-
-  public lineTo(_x: number, _y: number): void {
-    this.calls.push('lineTo');
-  }
-
-  public stroke(): void {
-    this.calls.push('stroke');
-  }
-
-  public fill(): void {
-    this.calls.push('fill');
-  }
-
-  public fillRect(_x: number, _y: number, _w: number, _h: number): void {
-    this.calls.push('fillRect');
-  }
-
-  public fillText(_text: string, _x: number, _y: number): void {
-    this.calls.push('fillText');
-  }
-
-  public setLineDash(_segments: number[]): void {
-    this.calls.push('setLineDash');
-  }
-
-  public asContext(): CanvasRenderingContext2D {
-    return this as unknown as CanvasRenderingContext2D;
-  }
-
-  /** 真正落笔的绘制指令数（排除 save/translate 之类的状态指令）。 */
-  public drawCallCount(): number {
-    return this.calls.filter(
-      (call) => call === 'fill' || call === 'stroke' || call === 'fillRect' || call === 'fillText',
-    ).length;
-  }
-}
-
 describe('Minigame BoardView: 渲染', () => {
   it('render 在 Canvas 2D 上下文上输出绘制指令（未投影快照也不崩）', () => {
     const empty = new RecordingContext();
@@ -387,7 +288,7 @@ describe('Minigame BoardView: 渲染', () => {
     expect(empty.drawCallCount()).toBeGreaterThan(0);
 
     const populated = new RecordingContext();
-    view.update(makeBoard({ [WuXing.WATER]: { yin: 2, yang: 2 } }));
+    view.update(boardWith({ [WuXing.WATER]: { yin: 2, yang: 2 } }));
     expect(() => view.render(populated.asContext())).not.toThrow();
     expect(populated.drawCallCount()).toBeGreaterThan(0);
   });

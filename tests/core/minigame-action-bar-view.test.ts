@@ -1,62 +1,19 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ActionType, GameState, NodeLevel, Polarity, WuXing } from '../../src/core/types/domain.js';
-import { createInitialGameState } from '../../src/core/logic/State.js';
 import { TurnManager, TurnPhase } from '../../src/core/logic/TurnManager.js';
 import { createPRNG, PRNG } from '../../src/core/utils/prng.js';
 import { Container } from '../../src/minigame/scene/container.js';
 import { InputManager } from '../../src/minigame/scene/input-manager.js';
 import { ActionBarView } from '../../src/minigame/views/action-bar-view.js';
-
-/** 伪 Canvas 2D 上下文：只记录文字，用于确认按钮真的把文案画了出来。 */
-class FakeCanvasContext {
-  public globalAlpha = 1;
-  public fillStyle = '';
-  public strokeStyle = '';
-  public lineWidth = 1;
-  public font = '';
-  public textAlign = 'left';
-  public textBaseline = 'alphabetic';
-  public readonly texts: string[] = [];
-  private readonly stack: number[] = [];
-
-  public save(): void {
-    this.stack.push(this.globalAlpha);
-  }
-
-  public restore(): void {
-    this.globalAlpha = this.stack.pop() ?? this.globalAlpha;
-  }
-
-  public translate(_x: number, _y: number): void {}
-  public scale(_x: number, _y: number): void {}
-  public fillRect(_x: number, _y: number, _width: number, _height: number): void {}
-  public strokeRect(_x: number, _y: number, _width: number, _height: number): void {}
-
-  public fillText(text: string, _x: number, _y: number): void {
-    this.texts.push(text);
-  }
-
-  public asContext(): CanvasRenderingContext2D {
-    return this as unknown as CanvasRenderingContext2D;
-  }
-}
+import { gameStateWith } from '../../tools/BoardFixture.js';
+import { RecordingContext } from './helpers/recording-context.js';
 
 /** `createPRNG(7)` 的首抽天干是「甲」（木·阳），后续断言依赖这个确定性事实。 */
 const SEED_JIA = 7;
 
-/** 把 P1 的木节点设成指定等级，其余盘面保持初始状态。 */
+/** 把 P1 的木节点设成指定等级，其余盘面保持初始状态（fixture 见 `tools/BoardFixture.ts`）。 */
 function stateWithWood(wood: { yin: NodeLevel; yang: NodeLevel }): GameState {
-  const base = createInitialGameState();
-  return {
-    ...base,
-    players: {
-      ...base.players,
-      P1: {
-        ...base.players.P1,
-        board: { ...base.players.P1.board, [WuXing.WOOD]: wood },
-      },
-    },
-  };
+  return gameStateWith({ P1: { [WuXing.WOOD]: wood } });
 }
 
 /** 用指定 P1 木节点盘面 + 固定种子构造真实 TurnManager。 */
@@ -296,10 +253,15 @@ describe('ActionBarView: 重排与生命周期', () => {
     const view = new ActionBarView({ turnManager: manager, width: 300, maxColumns: 2 });
     view.refresh();
 
-    const ctx = new FakeCanvasContext();
+    const ctx = new RecordingContext();
     view.render(ctx.asContext());
 
-    expect(ctx.texts).toEqual(['【调息】', '转同属阴', '【破】', '克敌土(阴)-1']);
+    expect(ctx.texts.map((entry) => entry.text)).toEqual([
+      '【调息】',
+      '转同属阴',
+      '【破】',
+      '克敌土(阴)-1',
+    ]);
   });
 
   it('dispose() 后不再跟随核心事件重新投影', () => {

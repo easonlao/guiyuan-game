@@ -2,127 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { BoardView } from '../../src/minigame/views/board-view.js';
 import { RuneFlightView } from '../../src/minigame/views/rune-flight-view.js';
 import { Polarity, TianGanInfo, WuXing } from '../../src/core/types/domain.js';
+import { RecordingContext } from './helpers/recording-context.js';
 
 /** 甲：木·阳（金乌日冕）。 */
 const TIAN_GAN_JIA: TianGanInfo = { name: '甲', element: WuXing.WOOD, polarity: Polarity.YANG };
 
 /** 乙：木·阴（玄阴幽光）。 */
 const TIAN_GAN_YI: TianGanInfo = { name: '乙', element: WuXing.WOOD, polarity: Polarity.YIN };
-
-/** 记录绘制调用的伪 Canvas 2D 上下文：只关心「有没有画东西」，不关心具体像素。 */
-class RecordingContext {
-  public globalAlpha = 1;
-  public fillStyle: string | CanvasGradient | CanvasPattern = '#000';
-  public strokeStyle: string | CanvasGradient | CanvasPattern = '#000';
-  public lineWidth = 1;
-  public lineCap: CanvasLineCap = 'butt';
-  public font = '';
-  public textAlign: CanvasTextAlign = 'start';
-  public textBaseline: CanvasTextBaseline = 'alphabetic';
-  public shadowColor = '#000';
-  public shadowBlur = 0;
-  public readonly calls: string[] = [];
-
-  public save(): void {
-    this.calls.push('save');
-  }
-
-  public restore(): void {
-    this.calls.push('restore');
-  }
-
-  public translate(_x: number, _y: number): void {
-    this.calls.push('translate');
-  }
-
-  public scale(_x: number, _y: number): void {
-    this.calls.push('scale');
-  }
-
-  public rotate(_angle: number): void {
-    this.calls.push('rotate');
-  }
-
-  public beginPath(): void {
-    this.calls.push('beginPath');
-  }
-
-  public arc(
-    _x: number,
-    _y: number,
-    _radius: number,
-    _start: number,
-    _end: number,
-    _anticlockwise?: boolean,
-  ): void {
-    this.calls.push('arc');
-  }
-
-  public rect(_x: number, _y: number, _w: number, _h: number): void {
-    this.calls.push('rect');
-  }
-
-  public roundRect(
-    _x: number,
-    _y: number,
-    _w: number,
-    _h: number,
-    _radii?: number | number[],
-  ): void {
-    this.calls.push('roundRect');
-  }
-
-  public moveTo(_x: number, _y: number): void {
-    this.calls.push('moveTo');
-  }
-
-  public lineTo(_x: number, _y: number): void {
-    this.calls.push('lineTo');
-  }
-
-  public stroke(): void {
-    this.calls.push('stroke');
-  }
-
-  public fill(): void {
-    this.calls.push('fill');
-  }
-
-  public fillRect(_x: number, _y: number, _w: number, _h: number): void {
-    this.calls.push('fillRect');
-  }
-
-  public fillText(_text: string, _x: number, _y: number): void {
-    this.calls.push('fillText');
-  }
-
-  public setLineDash(_segments: number[]): void {
-    this.calls.push('setLineDash');
-  }
-
-  public createRadialGradient(
-    _x0: number,
-    _y0: number,
-    _r0: number,
-    _x1: number,
-    _y1: number,
-    _r1: number,
-  ): CanvasGradient {
-    this.calls.push('createRadialGradient');
-    return { addColorStop: () => {} } as unknown as CanvasGradient;
-  }
-
-  public asContext(): CanvasRenderingContext2D {
-    return this as unknown as CanvasRenderingContext2D;
-  }
-
-  /** 真正落笔的绘制指令数（排除 save/translate 之类的状态指令）。 */
-  public drawCallCount(): number {
-    return this.calls.filter(
-      (call) => call === 'fill' || call === 'stroke' || call === 'fillRect' || call === 'fillText',
-    ).length;
-  }
-}
 
 /** 测试用法盘：固定极坐标参数，槽位坐标由 `getSlot` 给出（不在这里重算几何）。 */
 function makeBoardView(): BoardView {
