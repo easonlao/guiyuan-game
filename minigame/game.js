@@ -2510,7 +2510,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const OPPONENT_BADGE_ANGLE = Math.PI * 0.1;
   const CONNECTION_IDLE = {
     generation: "#2f4f3f",
-    attack: "#4a2a2a"
+    // 径向线常驻但极淡：不误导，只在当前动作指向它时转亮。
+    attack: "rgba(229, 62, 62, 0.22)"
   };
   const CONNECTION_ACTIVE = {
     generation: "#48bb78",
@@ -2524,6 +2525,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "_slots", []);
       __publicField(this, "_connections", []);
       __publicField(this, "_boards", { P1: null, P2: null });
+      /** 当前动作会走的连线（键为 `kind:from`）；高亮与盘面等级无关（票 02）。 */
+      __publicField(this, "_activePaths", /* @__PURE__ */ new Set());
       this._layout = { ...DEFAULT_BOARD_LAYOUT, ...layout };
       this._rebuild();
     }
@@ -2565,6 +2568,14 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         throw new Error(`法盘上不存在 ${player} 的五行 ${element} 的 ${polarity} 槽位。`);
       }
       return slot;
+    }
+    /**
+     * 点亮「当前动作会走」的连线路径（其余连线静默）；传空数组清空高亮。
+     * 高亮只由这个入口驱动，不再从盘面等级推导（票 02）。
+     */
+    setActivePaths(paths) {
+      this._activePaths = new Set(paths.map((path) => connectionKey(path.kind, path.from)));
+      this._rebuild();
     }
     /** 一次投影双方只读棋盘快照；只读不写回（LLD §4.1）。 */
     update(p1Board, p2Board) {
@@ -2639,7 +2650,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     _projectConnection(kind, fromPlayer, from, toPlayer, to) {
       const source = this._elementView(fromPlayer, from);
       const target = this._elementView(toPlayer, to);
-      const node = this._boards[fromPlayer]?.[from];
       return {
         kind,
         from,
@@ -2648,7 +2658,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         y1: source.y,
         x2: target.x,
         y2: target.y,
-        active: node !== void 0 && (node.yin >= 1 || node.yang >= 1)
+        active: this._activePaths.has(connectionKey(kind, from))
       };
     }
     _elementView(player, element) {
@@ -2712,7 +2722,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.fillText(label, x, y);
       ctx.restore();
     }
-    /** 内环相生边（实线）+ 跨环径向线（虚线）；源主印任一侧点亮（≥1）时转为活动色。 */
+    /** 内环相生边（实线）+ 跨环径向线（虚线）；只有当前动作会走的那条转活动色。 */
     _drawConnections(ctx) {
       for (const line of this._connections) {
         ctx.save();
@@ -2842,6 +2852,24 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       current = GENERATION_CYCLE[current];
     }
     return ring;
+  }
+  function connectionKey(kind, from) {
+    return `${kind}:${from}`;
+  }
+  function resolveActionPath(actionType, element) {
+    switch (actionType) {
+      case ActionType.TRANS:
+      case ActionType.BURST:
+        return { kind: "generation", from: element };
+      case ActionType.ATK:
+      case ActionType.BURST_ATK:
+        return { kind: "attack", from: element };
+      case ActionType.AUTO:
+      case ActionType.CONVERT:
+      case ActionType.DISSIPATE:
+      case ActionType.PASS:
+        return null;
+    }
   }
   const AVATAR_WIDTH = 88;
   const AVATAR_HEIGHT = 112;
@@ -3573,6 +3601,32 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     get phase() {
       return this._phase;
     }
+    /** 切换表现阶段：连线高亮与阶段一致（只有 `awaiting-player` 的待定动作会点亮连线）。 */
+    setPhase(phase) {
+      this._phase = phase;
+      this.board.setActivePaths(this.activePathsFor(phase));
+    }
+    /**
+     * 当前阶段该点亮的连线：候选动作各自映射成路径后取并集（同一根天干下最多两类，
+     * 分别指向内环相生边与跨环径向线）；非抉择阶段一律为空，避免误导。
+     */
+    activePathsFor(phase) {
+      if (phase !== "awaiting-player") {
+        return [];
+      }
+      const tianGan = this._turnManager.getCurrentTianGan();
+      if (tianGan === null) {
+        return [];
+      }
+      const paths = [];
+      for (const action of this._turnManager.getAvailableActions()) {
+        const path = resolveActionPath(action.actionType, tianGan.element);
+        if (path !== null) {
+          paths.push(path);
+        }
+      }
+      return paths;
+    }
     /**
      * 视口自适应：法盘、角色卡与操作台重新排布。
      * 符文层的入场锚点是构造期常量，只能重建；空闲 / 终局时立即重建，对局中则延到下一回合开始前。
@@ -3613,7 +3667,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.actionBar = this.buildActionBar(this._turnManager);
       this.addChild(this.actionBar);
       this.bindTurnManager(this._turnManager);
-      this._phase = "idle";
+      this.setPhase("idle");
       this.beginTurn();
     }
     /** 退订核心事件（销毁场景时调用）。 */
@@ -3676,7 +3730,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         this.afterEntrance();
         return;
       }
-      this._phase = "entrance";
+      this.setPhase("entrance");
       this.runeFlight.playEntrance(tianGan, { onComplete: () => this.afterEntrance() });
     }
     /** 降临结束：进入玩家抉择 / 自动流转 / 天道推演三者之一。 */
@@ -3684,17 +3738,17 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const state = this._turnManager.getState();
       const actions = this._turnManager.getAvailableActions();
       if (state.currentPlayer === "P2") {
-        this._phase = "ai-thinking";
+        this.setPhase("ai-thinking");
         this.timer = this.aiThinkDelay;
         return;
       }
       if (actions.length === 1) {
-        this._phase = "auto-pending";
+        this.setPhase("auto-pending");
         this.timer = this.autoExecuteDelay;
         this.pendingAction = actions[0];
         return;
       }
-      this._phase = "awaiting-player";
+      this.setPhase("awaiting-player");
       this.actionBar.visible = true;
       this.actionBar.interactive = true;
       this.actionBar.refresh();
@@ -3749,7 +3803,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         this.characters.setExpression(opponentOf(actor), "hurt", this.expressionHold);
         this.shake(event.actionType === ActionType.BURST_ATK ? SHAKE_BURST : SHAKE_ATTACK);
       }
-      this._phase = "flying";
+      this.setPhase("flying");
       this.runeFlight.flyTo(target.player, target.element, target.polarity, {
         onComplete: () => this.afterFlight()
       });
@@ -3785,7 +3839,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
      */
     presentGameOver(beforeShowdown) {
       const state = this._turnManager.getState();
-      this._phase = "game-over";
+      this.setPhase("game-over");
       this.pendingAction = null;
       this.timer = 0;
       this.hideActionBar();
