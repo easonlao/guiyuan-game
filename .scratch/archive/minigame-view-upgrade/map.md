@@ -18,7 +18,7 @@
 - [x] [04: 轻量缓动引擎与天干降临/流星飞行动效](issues/04-tween-engine-and-rune-flight-animation.md)
 - [x] [05: 双方对战角色卡与完整对局主场景串联](issues/05-dual-characters-and-full-scene-integration.md)
 
-全部五票已 resolved，功能完成于集成分支 `feat/minigame-view-upgrade`（`npm run verify` 全绿，46 文件 / 799 用例，`check:artifact` 逐字节一致）。
+全部五票已 resolved，功能完成于集成分支 `feat/minigame-view-upgrade`（`npm run verify` 全绿，46 文件 / 799 用例，`check:artifact` 逐字节一致）。（勘误：本地分支已合并，该分支及其余 feature 分支均已删除，全部内容现位于 `frontend-design`。）
 
 ## Decisions so far
 
