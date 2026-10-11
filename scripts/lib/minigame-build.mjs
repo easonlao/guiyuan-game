@@ -6,7 +6,7 @@
 // 产物为什么入库、为什么要有对账门禁、落点为什么不能在任何 `dist/` 下，见 ADR 0014。
 
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
 
@@ -16,29 +16,31 @@ export const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 /** 产物入库路径（相对仓库根）。落点判定写死在这里，不靠 `.gitignore` 兜（见 ADR 0014）。 */
 export const ARTIFACT_PATH = 'minigame/game.js';
 
-/** 产物文件名。 */
-const ARTIFACT_FILE_NAME = 'game.js';
-
 /**
  * 产物构建配置。`write: false`：交回内存里的字符串，由调用方决定写盘还是比对。
+ *
+ * `outDir` 与 `fileName` 从 `ARTIFACT_PATH` 拆出，不另写一份：落点这个事实只有一个家，
+ * 否则把 `outDir` 改到 `dist/` 下时，落点判定仍看常量、照样绿（见 ADR 0014）。
  *
  * `minify: false`：产物入库后要能在 diff 里读——压缩会把这个决定变得无法复核（ADR 0014）。
  * `emptyOutDir: false`：`minigame/` 里还有 `game.json` / `project.config.json` 等手写文件，
  * 清目录会把它们一起删掉。
+ * `logLevel` 默认 `info`（保留 `dev:minigame` 的监听输出）；门禁侧传 `silent`，
+ * 不让 vite 的构建日志混进门禁报告。
  */
-function miniGameBuildConfig({ watch }) {
+function miniGameBuildConfig({ watch, logLevel = 'info' }) {
   return {
     configFile: false,
     publicDir: false,
-    logLevel: 'silent',
+    logLevel,
     build: {
       target: 'es2020',
-      outDir: 'minigame',
+      outDir: dirname(ARTIFACT_PATH),
       emptyOutDir: false,
       lib: {
         entry: resolve(repoRoot, 'src/minigame/main.ts'),
         name: 'GuiyuanMiniGame',
-        fileName: () => ARTIFACT_FILE_NAME,
+        fileName: () => basename(ARTIFACT_PATH),
         formats: ['iife'],
       },
       minify: false,
@@ -56,13 +58,13 @@ function miniGameBuildConfig({ watch }) {
  * 写回侧与核查侧共用本函数：门禁「现算 == 入库」比的就是这里产出的字节。
  */
 export async function buildMiniGameCode() {
-  const result = await build(miniGameBuildConfig({ watch: false }));
+  const result = await build(miniGameBuildConfig({ watch: false, logLevel: 'silent' }));
   const outputs = Array.isArray(result) ? result : [result];
   const chunk = outputs
     .flatMap((output) => output.output ?? [])
-    .find((output) => output.type === 'chunk' && output.fileName === ARTIFACT_FILE_NAME);
+    .find((output) => output.type === 'chunk' && output.fileName === basename(ARTIFACT_PATH));
   if (chunk === undefined) {
-    throw new Error(`vite 没有产出 ${ARTIFACT_FILE_NAME}`);
+    throw new Error(`vite 没有产出 ${basename(ARTIFACT_PATH)}`);
   }
   return chunk.code;
 }

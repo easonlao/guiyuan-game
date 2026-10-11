@@ -18,12 +18,10 @@ import { ARTIFACT_PATH, buildMiniGameCode, repoRoot } from './lib/minigame-build
 
 /** 首个不同的字节位置；完全相同报 -1。只给人看，不参与判定。 */
 function firstDifference(left, right) {
-  const a = Buffer.from(left, 'utf8');
-  const b = Buffer.from(right, 'utf8');
-  for (let i = 0; i < Math.min(a.length, b.length); i += 1) {
-    if (a[i] !== b[i]) return i;
+  for (let i = 0; i < Math.min(left.length, right.length); i += 1) {
+    if (left[i] !== right[i]) return i;
   }
-  return a.length === b.length ? -1 : Math.min(a.length, b.length);
+  return left.length === right.length ? -1 : Math.min(left.length, right.length);
 }
 
 const failures = [];
@@ -39,17 +37,18 @@ if (ARTIFACT_PATH.split('/').includes('dist')) {
 const target = resolve(repoRoot, ARTIFACT_PATH);
 let committed;
 try {
-  committed = readFileSync(target, 'utf8');
-} catch {
+  committed = readFileSync(target);
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
   failures.push(`找不到入库产物 ${ARTIFACT_PATH}——先跑 npm run build:minigame 并把它提交。`);
 }
 
 if (committed !== undefined) {
-  const fresh = await buildMiniGameCode();
-  if (fresh !== committed) {
+  const fresh = Buffer.from(await buildMiniGameCode(), 'utf8');
+  if (!fresh.equals(committed)) {
     failures.push(
       `入库的 ${ARTIFACT_PATH} 与重新构建的结果不一致` +
-        `（入库 ${String(Buffer.byteLength(committed))} 字节 / 重构建 ${String(Buffer.byteLength(fresh))} 字节，` +
+        `（入库 ${String(committed.length)} 字节 / 重构建 ${String(fresh.length)} 字节，` +
         `首个差异在第 ${String(firstDifference(fresh, committed))} 字节）。` +
         '改完源码请跑 npm run build:minigame，并把新产物一并提交。',
     );
