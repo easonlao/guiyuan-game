@@ -195,9 +195,9 @@ function measureText(text: string, fontSize: number): number {
 }
 
 /**
- * 粗略判定全角字符：码点大于 CJK 部首补充区起点（`〿` U+303F）之后的字符，
- * 覆盖 CJK 标点（【】、（））、汉字与假名；ASCII 与 `·` 等按半角处理。
+ * 粗略判定全角字符：码点 ≥ U+2E80（CJK 部首补充区起点）的字符按全角计，
+ * 覆盖 CJK 标点（【】、（））、汉字、假名与 emoji；ASCII 与 `·` 等按半角处理。
  */
 function isFullWidth(char: string): boolean {
-  return (char.codePointAt(0) ?? 0) > 0x2e7f;
+  return (char.codePointAt(0) ?? 0) >= 0x2e80;
 }
