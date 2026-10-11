@@ -158,7 +158,7 @@ export class ScoreCalculator {
     polarity: Polarity = Polarity.YANG,
     isAttack: boolean = false
   ): number {
-    // Stryker disable next-line ConditionalExpression,BlockStatement: prevLevel===newLevel 时后续各分支均不命中、末尾同样返回 0，提前返回被完全吸收（等价）
+    // Stryker disable next-line BlockStatement: prevLevel===newLevel 时后续各分支均不命中、末尾同样返回 0，提前返回被完全吸收（等价）
     if (prevLevel === newLevel) {
       return 0;
     }
