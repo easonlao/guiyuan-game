@@ -30,6 +30,10 @@
 
 变更历史由 git 承载：文档头部不写版本号，也不写逐版本变更记录。
 
+## 提交纪律
+
+提交信息禁止 `Co-Authored-By` trailer；门禁与安装见 `CONTRIBUTING.md` §3。
+
 ## Agent skills
 
 ### Issue tracker

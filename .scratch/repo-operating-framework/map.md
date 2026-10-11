@@ -19,12 +19,13 @@
 - [01: 版本库边界与任务层规格](issues/01-version-control-boundary.md)：`.scratch/` 入库；`.gitignore` 重写为有理由的边界清单（`.pi/` 只排 `.pi/skills/`，`.agents/` 整目录排除）；三份 codegraph MCP 配置收敛到 `.pi/mcp.json`；五项废弃 web 残骸（`vite.config.js`、`@supabase/supabase-js`、`wrangler.toml`、`public/vite.svg`、`.env.example`）判定为删。已验证 `npm test` 39 文件 / 728 用例全绿。
 - [10: `.scratch/archive` 按 feature 目录归位](issues/10-archive-normalization.md)：7 个根下散文件收进 `headless-strategy-evaluation/`、`balance-diagnostics/`、`core-engine/wayfinder/`；archive 根下不再有游离文件。
 - [11: 删除 `legacy/`](issues/11-legacy-removal.md)：反转 spec 的 Out of Scope（原写「删不得」）。旧 Web JS 资产无代码引用、联机届时重做，故整体删除并修掉 18 处文档引用；ADR 0003 文末追加勘误。
+- [02: 提交纪律](issues/02-commit-discipline.md)：`.githooks/commit-msg` 拦 `Co-Authored-By`，默认剥离放行、`COMMIT_MSG_MODE=fail` 判红；`prepare` 与 `npm run setup:hooks` 两道安装。
 
 ## Tickets & Frontier
 
 - [x] [Spec](spec.md): 定下六层骨架、9 条票的切法与 8 条决定。
 - [x] [01: 版本库边界与任务层规格](issues/01-version-control-boundary.md)
-- [ ] [02: 提交纪律](issues/02-commit-discipline.md) `[FRONTIER]`
+- [x] [02: 提交纪律](issues/02-commit-discipline.md)
 - [ ] [03: 环境固化](issues/03-environment-pinning.md) `[FRONTIER]`
 - [ ] [04: 验收命令分档](issues/04-verify-command-tiers.md) (Blocked by: 03)
 - [ ] [05: CI 快链与手动里程碑](issues/05-ci-pipelines.md) (Blocked by: 04)

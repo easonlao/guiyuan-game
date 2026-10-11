@@ -4,13 +4,13 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] 有一道提交信息门禁，拦 `Co-Authored-By` trailer
-- [ ] 默认行为是**剥离并警告后放行**；有环境变量可切成**判红中止**（两种模式都要能验）
-- [ ] 新克隆装得上：装依赖时自动装，另有一条显式命令兜底
-- [ ] 试提交一条带 trailer 的信息 → 被处理，且处理结果打印出来可见
-- [ ] 试提交一条不带 trailer 的信息 → 原样通过，不被改动
+- [x] 有一道提交信息门禁，拦 `Co-Authored-By` trailer。证据：`.githooks/commit-msg`（可执行）。
+- [x] 默认行为是**剥离并警告后放行**；有环境变量可切成**判红中止**（两种模式都要能验）。证据：`COMMIT_MSG_MODE` 默认 `strip`、取 `fail` 判红；四种组合见验证记录。
+- [x] 新克隆装得上：装依赖时自动装，另有一条显式命令兜底。证据：`prepare` = `git config core.hooksPath .githooks`（`npm install` 实测生效）；`npm run setup:hooks` 为显式命令。
+- [x] 试提交一条带 trailer 的信息 → 被处理，且处理结果打印出来可见。证据：真实 `git commit` 退出 0，stderr 打印「提交信息含…」「已剥离…」与剥离后全文，落库信息只剩标题。
+- [x] 试提交一条不带 trailer 的信息 → 原样通过，不被改动。证据：钩子对干净信息退出 0，文件逐字节不变。
 
 **实现要点：**
 
@@ -20,4 +20,25 @@
 - 绕过方式（`--no-verify`）不要写进文档的显眼位置。
 - **历史改写不在本票范围内**（`git filter-repo` 是破坏性操作，见 spec 的 Out of Scope）。
 
-**验证记录：**（待填）
+**验证记录：**
+
+实现：`.githooks/commit-msg`（`COMMIT_MSG_MODE` 默认 `strip`）；`package.json` 加 `setup:hooks`（显式）与 `prepare`（装依赖时自动）；规则与安装写在 `CONTRIBUTING.md` §3，`AGENTS.md` 只留指针。
+
+四种组合（直接跑钩子，输入为临时文件）：
+
+| 输入 | 模式 | 退出 | 结果 |
+|---|---|---|---|
+| 带 trailer | strip（默认） | 0 | 剥离该行与尾部空行，改写结果打到 stderr |
+| 带 trailer | fail | 1 | 中止，文件原样不动 |
+| 无 trailer | strip | 0 | 原样通过 |
+| 无 trailer | fail | 0 | 原样通过 |
+
+端到端（真实 `git commit --allow-empty`，跑完即 `git reset --soft HEAD~1` 撤掉）：
+
+- 带 trailer、默认模式 → 退出 0；`git log -1 --format=%B` 只剩 `chore: hook selftest`。
+- 同一命令加 `COMMIT_MSG_MODE=fail` → 退出 1，HEAD 未变。
+
+安装：
+
+- `npm run setup:hooks` → `git config core.hooksPath` = `.githooks`。
+- 清空 `core.hooksPath` 后 `npm install` → `prepare` 自动把它设回 `.githooks`，`package-lock.json` 未被改动。

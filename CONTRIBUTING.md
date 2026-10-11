@@ -52,6 +52,10 @@
 * `test(headless): add deterministic matches for Phase 1`
 * `docs(lld): update state management paradigm to immutable`
 
+**禁止 `Co-Authored-By` trailer：** 提交信息里不得出现 `Co-Authored-By`（任意大小写）。GitHub 会把 trailer 里的邮箱算作 contributor，于是仓库页面多出并非本项目作者的贡献者。`.githooks/commit-msg` 负责拦这道：默认剥离该行并警告后放行，`COMMIT_MSG_MODE=fail` 则判红中止。
+
+新克隆装上门禁：`npm install` 会自动装（`prepare`），也可显式跑 `npm run setup:hooks`。
+
 ---
 
 ## 4. 给 AI Agent 的特别指引 (AI Agent Guidelines)
