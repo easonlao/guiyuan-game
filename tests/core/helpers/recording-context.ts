@@ -22,6 +22,12 @@ export class RecordingContext {
   public readonly calls: string[] = [];
   /** 按调用顺序记录落笔文本（文本、锚点、字号），供「文本不越界」这类版面断言使用。 */
   public readonly texts: { text: string; x: number; y: number; fontSize: number }[] = [];
+  /** 按调用顺序记录落笔矩形（坐标、尺寸与当时的填充色），供姿势与配色断言使用。 */
+  public readonly rects: { x: number; y: number; w: number; h: number; color: string }[] = [];
+  /** 按调用顺序记录 translate 的位移参数（不参与坐标换算，供「呼吸浮动」这类断言使用）。 */
+  public readonly translations: { x: number; y: number }[] = [];
+  /** 按调用顺序记录 scale 的缩放参数（节点自身的 1:1 变换与真正的放大都记在这里）。 */
+  public readonly scales: { x: number; y: number }[] = [];
 
   public save(): void {
     this.calls.push('save');
@@ -29,11 +35,13 @@ export class RecordingContext {
   public restore(): void {
     this.calls.push('restore');
   }
-  public translate(_x: number, _y: number): void {
+  public translate(x: number, y: number): void {
     this.calls.push('translate');
+    this.translations.push({ x, y });
   }
-  public scale(_x: number, _y: number): void {
+  public scale(x: number, y: number): void {
     this.calls.push('scale');
+    this.scales.push({ x, y });
   }
   public rotate(_angle: number): void {
     this.calls.push('rotate');
@@ -78,8 +86,9 @@ export class RecordingContext {
   public fill(): void {
     this.calls.push('fill');
   }
-  public fillRect(_x: number, _y: number, _w: number, _h: number): void {
+  public fillRect(x: number, y: number, w: number, h: number): void {
     this.calls.push('fillRect');
+    this.rects.push({ x, y, w, h, color: String(this.fillStyle) });
   }
   public strokeRect(_x: number, _y: number, _w: number, _h: number): void {
     this.calls.push('strokeRect');

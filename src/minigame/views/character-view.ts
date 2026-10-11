@@ -9,7 +9,13 @@
 
 import { GameState, PlayerId } from '../../core/types/domain.js';
 import { CharacterActionState } from '../types.js';
-import { drawPixelBox, drawPixelCharacter, drawPixelRect } from '../pixel-art.js';
+import {
+  CHARACTER_PIXEL_SIZE,
+  CHARACTER_SPRITE_BOUNDS,
+  drawPixelBox,
+  drawPixelCharacter,
+  drawPixelRect,
+} from '../pixel-art.js';
 import { Container } from '../scene/container.js';
 import { estimateTextWidth } from '../text-metrics.js';
 
@@ -27,7 +33,8 @@ export interface CharacterProjectionOptions {
 }
 
 /** 头像框架尺寸与边距（本视图局部样式常量，不引入共享主题模块）。 */
-const AVATAR_SIZE = 54;
+const AVATAR_WIDTH = 88;
+const AVATAR_HEIGHT = 112;
 const SIDE_MARGIN = 10;
 const TOP_BAR_HEIGHT = 26;
 const BANNER_GAP = 10;
@@ -50,6 +57,9 @@ const EXPRESSION_COLOR: Record<CharacterActionState, string | null> = {
   attack: '#f6e05e',
   hurt: HURT_COLOR,
   cast: '#4fd1c5',
+  celebrate: '#ed8936',
+  win: '#48bb78',
+  lose: '#a0aec0',
 };
 
 const PLAYER_LABEL: Record<PlayerId, string> = { P1: '玩家 P1', P2: '天道 P2' };
@@ -131,7 +141,10 @@ export class CharacterView extends Container {
     this._safeTop = safeTop ?? this._safeTop;
   }
 
-  /** 表情反馈：`holdSeconds` 秒后自动回落待机；重复触发会重新计时。 */
+  /**
+   * 表情反馈：`holdSeconds` 秒后自动回落待机；`holdSeconds <= 0` 表示**持续**到下一次表情
+   * 覆盖或 `resetFeedback()`（终局胜 / 负用）。重复触发会重新计时。
+   */
   public setExpression(
     player: PlayerId,
     expression: CharacterActionState,
@@ -144,6 +157,15 @@ export class CharacterView extends Container {
   /** 指定玩家当前的表情。 */
   public getExpression(player: PlayerId): CharacterActionState {
     return this._expressions[player];
+  }
+
+  /** 清空双方表情与气泡（重开一局时调用）：终局胜 / 负的持续姿势不跨局残留。 */
+  public resetFeedback(): void {
+    for (const player of PLAYER_IDS) {
+      this._expressions[player] = 'idle';
+      this._expressionTimers[player] = 0;
+      this._bubbles[player] = null;
+    }
   }
 
   /** 气泡播报：`holdSeconds` 秒后消散。 */
@@ -214,7 +236,7 @@ export class CharacterView extends Container {
 
   private drawAvatar(ctx: CanvasRenderingContext2D, player: PlayerId): void {
     const isPlayer = player === 'P1';
-    const frameX = isPlayer ? SIDE_MARGIN : this._width - SIDE_MARGIN - AVATAR_SIZE;
+    const frameX = isPlayer ? SIDE_MARGIN : this._width - SIDE_MARGIN - AVATAR_WIDTH;
     const frameY = this._safeTop + TOP_BAR_HEIGHT + 4;
     const isCurrent = this._currentPlayer === player;
     const expression = this._expressions[player];
@@ -222,30 +244,37 @@ export class CharacterView extends Container {
       EXPRESSION_COLOR[expression] ?? (isCurrent ? ACTIVE_COLOR : isPlayer ? P1_COLOR : P2_COLOR);
 
     ctx.save();
-    drawPixelBox(ctx, frameX, frameY, AVATAR_SIZE, AVATAR_SIZE, PANEL_COLOR, border, 2);
-    // 角色本体按框架缩放居中：绘制例程以角色腰腹为原点、总高约 66px。
+    drawPixelBox(ctx, frameX, frameY, AVATAR_WIDTH, AVATAR_HEIGHT, PANEL_COLOR, border, 2);
+    // 角色本体按精灵声明的包围盒在框架内居中：绘制例程直接画到最终尺寸，不在这里缩放。
+    const spriteTop = CHARACTER_SPRITE_BOUNDS.top * CHARACTER_PIXEL_SIZE;
+    const spriteHeight =
+      (CHARACTER_SPRITE_BOUNDS.bottom - CHARACTER_SPRITE_BOUNDS.top) * CHARACTER_PIXEL_SIZE;
     ctx.save();
-    ctx.translate(frameX + AVATAR_SIZE / 2, frameY + AVATAR_SIZE / 2 + 6);
-    ctx.scale(0.66, 0.66);
+    ctx.translate(
+      frameX + AVATAR_WIDTH / 2,
+      frameY + (AVATAR_HEIGHT - spriteHeight) / 2 - spriteTop,
+    );
     drawPixelCharacter(ctx, 0, 0, isPlayer, expression, this._tick * 60);
     ctx.restore();
 
-    ctx.textAlign = 'center';
+    // 名牌：贴着头像框下沿向屏幕内侧排（越靠屏幕外缘越靠近法盘）。
+    const labelX = isPlayer ? frameX : frameX + AVATAR_WIDTH;
+    ctx.textAlign = isPlayer ? 'left' : 'right';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = PLAYER_COLOR[player];
     ctx.font = 'bold 11px monospace';
-    ctx.fillText(PLAYER_LABEL[player], frameX + AVATAR_SIZE / 2, frameY + AVATAR_SIZE + 12);
+    ctx.fillText(PLAYER_LABEL[player], labelX, frameY + AVATAR_HEIGHT + 12);
     ctx.fillStyle = TEXT_COLOR;
     ctx.font = 'bold 12px monospace';
-    ctx.fillText(`${this._scores[player]} 分`, frameX + AVATAR_SIZE / 2, frameY + AVATAR_SIZE + 26);
+    ctx.fillText(`${this._scores[player]} 分`, labelX, frameY + AVATAR_HEIGHT + 26);
 
     if (isCurrent) {
       ctx.fillStyle = this._isExtraTurn ? EXTRA_TURN_COLOR : ACTIVE_COLOR;
-      ctx.font = 'bold 10px monospace';
+      ctx.font = 'bold 9px monospace';
       ctx.fillText(
         this._isExtraTurn ? '连动行动中' : '行动中',
-        frameX + AVATAR_SIZE / 2,
-        frameY + AVATAR_SIZE + 40,
+        labelX,
+        frameY + AVATAR_HEIGHT + 40,
       );
     }
 
@@ -256,7 +285,7 @@ export class CharacterView extends Container {
     ctx.restore();
   }
 
-  /** 气泡：挂在头像上方，宽度按头像列夹紧，文本超宽时截断。 */
+  /** 气泡：挂在头像上方，宽度夹在头像列与居中回合条之间，文本超宽时截断。 */
   private drawBubble(
     ctx: CanvasRenderingContext2D,
     player: PlayerId,
@@ -265,14 +294,14 @@ export class CharacterView extends Container {
     text: string,
   ): void {
     const isPlayer = player === 'P1';
-    const maxWidth = this._width / 2 - SIDE_MARGIN * 2;
+    const maxWidth = this._width / 2 - SIDE_MARGIN - AVATAR_WIDTH - 12;
     const fontSize = 10;
     const label = truncateToWidth(text, maxWidth - 12, fontSize);
     const width = estimateTextWidth(label, fontSize) + 12;
     const height = 20;
     const x = isPlayer
-      ? Math.min(frameX, Math.max(SIDE_MARGIN, frameX + AVATAR_SIZE - width))
-      : Math.max(frameX + AVATAR_SIZE - width, this._width - SIDE_MARGIN - width);
+      ? Math.min(frameX, Math.max(SIDE_MARGIN, frameX + AVATAR_WIDTH - width))
+      : Math.max(frameX + AVATAR_WIDTH - width, this._width - SIDE_MARGIN - width);
     const y = frameY - height - 4;
 
     drawPixelRect(ctx, x, y, width, height, '#1a202c');
@@ -290,7 +319,7 @@ export class CharacterView extends Container {
       return;
     }
     // 横幅夹在两侧头像列之间（左右各让出头像列 + 间距），长文案折行而不越界。
-    const x = SIDE_MARGIN + AVATAR_SIZE + BANNER_GAP;
+    const x = SIDE_MARGIN + AVATAR_WIDTH + BANNER_GAP;
     const width = Math.max(80, this._width - 2 * x);
     const y = this._safeTop + TOP_BAR_HEIGHT + 4;
 
