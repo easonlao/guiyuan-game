@@ -7,6 +7,7 @@ import {
   WuXing,
 } from '../core/types/domain.js';
 import { WUXING_PALETTE } from './pixel-art.js';
+import { isAttackAction } from './action-semantics.js';
 
 export interface FormattedActionButton {
   label: string;
@@ -25,7 +26,7 @@ export function getActionTargetElement(act: ActionPayload, fallbackElement?: WuX
   if (act.actionType === ActionType.TRANS || act.actionType === ActionType.BURST) {
     return act.targetElement ?? GENERATION_CYCLE[srcElem];
   }
-  if (act.actionType === ActionType.ATK || act.actionType === ActionType.BURST_ATK) {
+  if (isAttackAction(act.actionType)) {
     return act.targetElement ?? OVERCOMING_CYCLE[srcElem];
   }
   return act.targetElement ?? act.element ?? srcElem;

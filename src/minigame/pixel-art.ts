@@ -98,9 +98,14 @@ export function drawPixelCharacter(
     case 'lose':
       bobY = 2;
       break;
-    default:
+    case 'idle':
       bobY = Math.sin(animTick * 0.08) * 2;
       break;
+    default: {
+      // 类型穷举保护：新增姿势必须显式给浮动，不许静默落回待机（与下方手臂分支同一口径）。
+      const unhandled: never = state;
+      throw new Error(`未处理的角色姿势：${String(unhandled)}`);
+    }
   }
 
   // 角色基础色彩
