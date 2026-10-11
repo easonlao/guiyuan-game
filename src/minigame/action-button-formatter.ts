@@ -33,13 +33,11 @@ export function getActionTargetElement(act: ActionPayload, fallbackElement?: WuX
 
 /**
  * 格式化动作按钮的文本与样式配置
- * @param act 动作载荷
- * @param isAutoAbsorb 是否处于自动吸纳缓冲期
+ *
+ * 只服务于「有分支可选、需要玩家点击」的多候选局面（`ActionBarView`）。唯一候选的自动流转
+ * 不渲染按钮，其播报文案归 `GameScene.describeAutoFlow()`（ADR 0008 / GDD §2.4）。
  */
-export function formatActionButton(
-  act: ActionPayload,
-  isAutoAbsorb: boolean = false,
-): FormattedActionButton {
+export function formatActionButton(act: ActionPayload): FormattedActionButton {
   let label = '';
   let subLabel = '';
   let color = '#63b3ed';
@@ -50,83 +48,67 @@ export function formatActionButton(
 
   switch (act.actionType) {
     case ActionType.AUTO: {
-      label = isAutoAbsorb ? '【自动吸纳】' : '【吸纳】';
-      subLabel = isAutoAbsorb
-        ? '天干能量自动吸纳中（点击可立即吸纳）'
-        : '天干能量吸纳（充盈虚空/修复道损）';
+      label = '【吸纳】';
+      subLabel = '天干能量吸纳（充盈虚空/修复道损）';
       color = '#68d391';
       break;
     }
 
     case ActionType.CONVERT: {
-      label = isAutoAbsorb ? '【自动调息】' : '【调息】';
-      subLabel = isAutoAbsorb
-        ? `转同属${act.polarity === Polarity.YANG ? '阳' : '阴'}（点击立即调息）`
-        : `转同属${act.polarity === Polarity.YANG ? '阳' : '阴'}`;
+      label = '【调息】';
+      subLabel = `转同属${act.polarity === Polarity.YANG ? '阳' : '阴'}`;
       color = '#63b3ed';
       break;
     }
 
     case ActionType.TRANS: {
-      label = isAutoAbsorb ? '【自动化气】' : '【化】';
+      label = '【化】';
       const targetElem = getActionTargetElement(act);
       const targetName = WUXING_PALETTE[targetElem]?.name ?? '';
-      subLabel = isAutoAbsorb
-        ? `生${targetName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})+1（点击立即化气）`
-        : `生${targetName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})+1`;
+      subLabel = `生${targetName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})+1`;
       color = '#4fd1c5';
       break;
     }
 
     case ActionType.ATK: {
-      label = isAutoAbsorb ? '【自动击破】' : '【破】';
+      label = '【破】';
       const targetElem = getActionTargetElement(act);
       const targetName = WUXING_PALETTE[targetElem]?.name ?? '';
-      subLabel = isAutoAbsorb
-        ? `克敌${targetName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})-1（点击立即击破）`
-        : `克敌${targetName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})-1`;
+      subLabel = `克敌${targetName}(${act.polarity === Polarity.YANG ? '阳' : '阴'})-1`;
       color = '#fc8181';
       break;
     }
 
     case ActionType.BURST: {
-      label = isAutoAbsorb ? '【自动强化】' : '【强化】';
+      label = '【强化】';
       const targetElem = getActionTargetElement(act);
       const targetName = WUXING_PALETTE[targetElem]?.name ?? '';
-      subLabel = isAutoAbsorb
-        ? `消耗${srcName}·生${targetName}+2（点击立即强化）`
-        : `消耗${srcName}·生${targetName}+2`;
+      subLabel = `消耗${srcName}·生${targetName}+2`;
       color = '#f6e05e';
       isBurst = true;
       break;
     }
 
     case ActionType.BURST_ATK: {
-      label = isAutoAbsorb ? '【自动强破】' : '【强破】';
+      label = '【强破】';
       const targetElem = getActionTargetElement(act);
       const targetName = WUXING_PALETTE[targetElem]?.name ?? '';
-      subLabel = isAutoAbsorb
-        ? `消耗${srcName}·克${targetName}-2（点击立即强破）`
-        : `消耗${srcName}·克${targetName}-2`;
+      subLabel = `消耗${srcName}·克${targetName}-2`;
       color = '#f56565';
       isBurst = true;
       break;
     }
 
     case ActionType.DISSIPATE: {
-      label = isAutoAbsorb ? '【亢极散气】' : '【散气】';
-      subLabel = isAutoAbsorb
-        ? '亢极满溢自动散气中（点击立即散气）'
-        : `天道满溢则亏·${act.polarity === Polarity.YANG ? '阳' : '阴'}回落至加持(-1)`;
+      label = '【散气】';
+      subLabel = `天道满溢则亏·${act.polarity === Polarity.YANG ? '阳' : '阴'}回落至加持(-1)`;
       color = '#e2e8f0';
       break;
     }
 
     case ActionType.PASS: {
       label = '【消散】';
-      subLabel = isAutoAbsorb
-        ? '无有效动作·消散过牌中（点击立即消散）'
-        : '无有效动作·消散过牌交接回合';
+      subLabel = '无有效动作·消散过牌交接回合';
       color = '#a0aec0';
       break;
     }
