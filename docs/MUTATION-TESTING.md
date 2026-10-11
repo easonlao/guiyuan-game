@@ -32,7 +32,7 @@
 
 - **命令**：`npm run mutation:changed`，默认对比 `HEAD`（含未提交改动），只对 `src/core/logic/**` 里改动的 `.ts` 文件跑（排除纯 re-export 的 `src/core/logic/index.ts`）。
 - **时机**：`implement` 收尾。反馈最紧——刚写的代码、刚写的测试，改动小、跑得快，能当场把漏掉的断言补上。补测试本来就属于 `implement` 的职责，所以变异收敛到这一步，而不是留到事后。
-- **为什么不用全量**：全量一次约 33 分钟（1073 个突变体 / 6 个文件，其中 993 个计分），不适合每次改动都跑。
+- **为什么不用全量**：全量一次耗时较长（1073 个突变体 / 6 个文件，其中 993 个计分），不适合每次改动都跑。
 - **子集报告不能做棘轮对比**：Stryker 的 perTest 覆盖按**被变异文件集**选测试，子集跑出的存活集与全量不同。`mutation:check` 会识别并**拒绝**子集报告（退出 `2`），见 §3.1。
 - **实际覆盖粒度是 per-test，与 `coverageAnalysis` 配置无关**：`stryker.config.json` 里的 `coverageAnalysis: "off"` **并不生效**——`@stryker-mutator/vitest-runner@10.0.0` 的 `dryRun()` 无条件调用 `readMutantCoverage()`，实际总是按 per-test 收集覆盖（报告里每个 mutant 都带 `coveredBy`）。保留 `off` 只是沿用既有值，**不代表**「所有测试都打每个突变体」；也因此 `NoCoverage` 是真实存在的状态（不是结构性恒 0），纳入棘轮有意义（§3.1）。
 - **无改动文件时**：退出 `0`（合法状态，不是失败）。
