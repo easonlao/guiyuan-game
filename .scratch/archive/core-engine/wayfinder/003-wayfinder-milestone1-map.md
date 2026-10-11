@@ -21,8 +21,8 @@ labels:
 
 <!-- the index: one line per closed ticket, enough to judge relevance, then zoom the link for the detail the ticket holds -->
 
-- [T0: 确定性随机生成器 (PRNG) 与轻量对局日志契约](.scratch/007-deterministic-prng-and-record.md): 基于 Mulberry32 实现可重现 PRNG，定义 GameRecord 动作回放格式，消除全局 Math.random() 依赖。
-- [T1: 完备规则与合法动作候选生成器 (ActionCandidates) 及增量状态转换](.scratch/004-action-candidates.md): 实现 ActionCandidates 纯函数全规则候选生成器，重构 ActionResolver 增量结构共享浅更新，降低 GC 压力。
+- [T0: 确定性随机生成器 (PRNG) 与轻量对局日志契约](007-deterministic-prng-and-record.md): 基于 Mulberry32 实现可重现 PRNG，定义 GameRecord 动作回放格式，消除全局 Math.random() 依赖。
+- [T1: 完备规则与合法动作候选生成器 (ActionCandidates) 及增量状态转换](004-action-candidates.md): 实现 ActionCandidates 纯函数全规则候选生成器，重构 ActionResolver 增量结构共享浅更新，降低 GC 压力。
 
 
 ## Not yet specified
