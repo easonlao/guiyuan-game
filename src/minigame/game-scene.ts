@@ -30,7 +30,7 @@ import { drawPixelRect, WUXING_PALETTE } from './pixel-art.js';
 import { Container } from './scene/container.js';
 import { EASINGS, Tween } from './scene/tween.js';
 import { ActionBarView } from './views/action-bar-view.js';
-import { BoardView } from './views/board-view.js';
+import { BoardActivePath, BoardView, resolveActionPath } from './views/board-view.js';
 import { CharacterView } from './views/character-view.js';
 import { RuneFlightView } from './views/rune-flight-view.js';
 
@@ -236,6 +236,34 @@ export class GameScene extends Container {
     return this._phase;
   }
 
+  /** 切换表现阶段：连线高亮与阶段一致（只有 `awaiting-player` 的待定动作会点亮连线）。 */
+  private setPhase(phase: GameScenePhase): void {
+    this._phase = phase;
+    this.board.setActivePaths(this.activePathsFor(phase));
+  }
+
+  /**
+   * 当前阶段该点亮的连线：候选动作各自映射成路径后取并集（同一根天干下最多两类，
+   * 分别指向内环相生边与跨环径向线）；非抉择阶段一律为空，避免误导。
+   */
+  private activePathsFor(phase: GameScenePhase): readonly BoardActivePath[] {
+    if (phase !== 'awaiting-player') {
+      return [];
+    }
+    const tianGan = this._turnManager.getCurrentTianGan();
+    if (tianGan === null) {
+      return [];
+    }
+    const paths: BoardActivePath[] = [];
+    for (const action of this._turnManager.getAvailableActions()) {
+      const path = resolveActionPath(action.actionType, tianGan.element);
+      if (path !== null) {
+        paths.push(path);
+      }
+    }
+    return paths;
+  }
+
   /**
    * 视口自适应：法盘、角色卡与操作台重新排布。
    * 符文层的入场锚点是构造期常量，只能重建；空闲 / 终局时立即重建，对局中则延到下一回合开始前。
@@ -277,7 +305,7 @@ export class GameScene extends Container {
     this.actionBar = this.buildActionBar(this._turnManager);
     this.addChild(this.actionBar);
     this.bindTurnManager(this._turnManager);
-    this._phase = 'idle';
+    this.setPhase('idle');
     this.beginTurn();
   }
 
@@ -346,7 +374,7 @@ export class GameScene extends Container {
       this.afterEntrance();
       return;
     }
-    this._phase = 'entrance';
+    this.setPhase('entrance');
     this.runeFlight.playEntrance(tianGan, { onComplete: () => this.afterEntrance() });
   }
 
@@ -355,18 +383,18 @@ export class GameScene extends Container {
     const state = this._turnManager.getState();
     const actions = this._turnManager.getAvailableActions();
     if (state.currentPlayer === 'P2') {
-      this._phase = 'ai-thinking';
+      this.setPhase('ai-thinking');
       this.timer = this.aiThinkDelay;
       return;
     }
     // ADR 0006 / ADR 0008：唯一候选没有分支决策，不渲染按钮，缓冲后自动执行。
     if (actions.length === 1) {
-      this._phase = 'auto-pending';
+      this.setPhase('auto-pending');
       this.timer = this.autoExecuteDelay;
       this.pendingAction = actions[0];
       return;
     }
-    this._phase = 'awaiting-player';
+    this.setPhase('awaiting-player');
     this.actionBar.visible = true;
     this.actionBar.interactive = true;
     this.actionBar.refresh();
@@ -432,7 +460,7 @@ export class GameScene extends Container {
     }
 
     // 法盘已是双环（行动前等级），飞行期不再换盘；落点后才投影结算结果。
-    this._phase = 'flying';
+    this.setPhase('flying');
     this.runeFlight.flyTo(target.player, target.element, target.polarity, {
       onComplete: () => this.afterFlight(),
     });
@@ -456,7 +484,7 @@ export class GameScene extends Container {
    */
   private presentGameOver(beforeShowdown: GameState | null): void {
     const state = this._turnManager.getState();
-    this._phase = 'game-over';
+    this.setPhase('game-over');
     this.pendingAction = null;
     this.timer = 0;
     this.hideActionBar();

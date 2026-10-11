@@ -569,6 +569,148 @@ describe('GameScene：法盘双环投影', () => {
   });
 });
 
+/**
+ * 连线高亮的语义：只由「当前天干 + 待定动作」驱动，告诉玩家这一手会走哪条线（票 02）。
+ * 期望值来自票面契约：化 / 强化 = 内环相生边（内环顺时针一格），破 / 强破 = 跨环径向线（向外一格）。
+ */
+describe('GameScene：连线高亮 = 当前动作会走的路径（票 02）', () => {
+  /** 当前点亮的连线，读作 `类型:起点->终点`。 */
+  function activeLines(scene: GameScene): string[] {
+    return scene.board.connections
+      .filter((line) => line.active)
+      .map((line) => `${line.kind}:${line.from}->${line.to}`);
+  }
+
+  it('玩家抉择时点亮候选动作会走的线：破 / 强破走径向线，强化走内环相生边', () => {
+    // 甲木（木·阳）归一 (1,1)、相生火虚空、对方土可破 -> 候选【破】【强化】【强破】。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 0, yang: 0 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    scene.start();
+    advance(scene, 0.15);
+
+    expect(scene.phase).toBe('awaiting-player');
+    expect(scene.turnManager.getAvailableActions().map((action) => action.actionType)).toEqual([
+      ActionType.ATK,
+      ActionType.BURST,
+      ActionType.BURST_ATK,
+    ]);
+    expect(activeLines(scene)).toEqual(['generation:WOOD->FIRE', 'attack:WOOD->EARTH']);
+  });
+
+  it('候选动作都走同一条线时只点亮那一条，另一类线保持静默', () => {
+    // 乙木（木·阴）归一、相生火可养 -> 候选【化】【强化】都走「木→火」；对方土双道损封死强破。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: -1, yang: -1 } },
+      }),
+      prng: scriptedPrng([1]),
+    });
+    scene.start();
+    advance(scene, 0.15);
+
+    expect(scene.phase).toBe('awaiting-player');
+    expect(scene.turnManager.getAvailableActions().map((action) => action.actionType)).toEqual([
+      ActionType.TRANS,
+      ActionType.BURST,
+    ]);
+    expect(activeLines(scene)).toEqual(['generation:WOOD->FIRE']);
+  });
+
+  it('自动流转与天道推演没有待定抉择，不点亮任何连线', () => {
+    // 初盘甲木：木阳虚空 -> 唯一【吸纳】，无按钮自动流转。
+    const auto = new GameScene({
+      ...FAST_TIMING,
+      initialState: createInitialGameState(),
+      prng: scriptedPrng([0]),
+    });
+    auto.start();
+    advance(auto, 0.15);
+    expect(auto.phase).toBe('auto-pending');
+    expect(activeLines(auto)).toEqual([]);
+
+    // 天道回合：AI 自己决策，玩家侧没有待定动作。
+    const ai = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({ currentPlayer: 'P2' }),
+      prng: scriptedPrng([0]),
+    });
+    ai.start();
+    advance(ai, 0.15);
+    expect(ai.phase).toBe('ai-thinking');
+    expect(activeLines(ai)).toEqual([]);
+  });
+
+  it('玩家选定动作后进入飞行，高亮立即熄灭', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 0, yang: 0 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    const input = new InputManager(scene);
+    scene.start();
+    advance(scene, 0.15);
+    expect(activeLines(scene)).toHaveLength(2);
+
+    tapButton(input, scene.actionBar.getButtons()[0]);
+    expect(scene.phase).toBe('flying');
+    expect(activeLines(scene)).toEqual([]);
+
+    // 飞行结束、换到天道回合后仍无高亮。
+    advanceUntil(scene, () => scene.phase === 'ai-thinking');
+    expect(scene.phase).toBe('ai-thinking');
+    expect(activeLines(scene)).toEqual([]);
+  });
+
+  it('终局（含天命揭牌）不残留高亮', () => {
+    // 常规终局：开局即终局，盘面全归一也不点亮任何连线。
+    const normal = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        round: 5,
+        isGameOver: true,
+        winner: 'P1',
+        endReason: 'GUI_YUAN',
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    normal.start();
+    expect(normal.phase).toBe('game-over');
+    expect(activeLines(normal)).toEqual([]);
+
+    // 天命揭牌：定格在揭牌前的双盘（己方盘多处点亮），同样不残留高亮。
+    const showdown = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        round: 6,
+        currentPlayer: 'P2',
+        lockedGuiYuan: { P1: true, P2: false },
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.WATER]: { yin: 1, yang: 0 } },
+      }),
+      prng: scriptedPrng([8]),
+    });
+    showdown.start();
+    expect(showdown.phase).toBe('game-over');
+    expect(activeLines(showdown)).toEqual([]);
+
+    // 揭牌飞行动效跑完、法盘定格在结算结果上，仍无高亮。
+    advance(showdown, 0.5);
+    expect(activeLines(showdown)).toEqual([]);
+  });
+});
+
 describe('GameScene：终轮天命揭牌与终局', () => {
   /** 全五行归一的 P1 棋盘（10 侧点亮）。 */
   const fullGuiYuanBoard = boardWith({
