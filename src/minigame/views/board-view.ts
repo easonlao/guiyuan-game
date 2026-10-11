@@ -1,6 +1,7 @@
 import {
   ActionType,
   BoardState,
+  NodeData,
   NodeLevel,
   PlayerId,
   Polarity,
@@ -8,7 +9,10 @@ import {
   GENERATION_CYCLE,
   OVERCOMING_CYCLE,
 } from '../../core/types/domain.js';
+import { isNodeGuiYi, isNodeKangJi } from '../../core/logic/State.js';
+import { isAttackAction } from '../action-semantics.js';
 import { WUXING_PALETTE } from '../pixel-art.js';
+import { estimateTextWidth } from '../text-metrics.js';
 import { Container } from '../scene/container.js';
 
 /** 五行主印个数，也是相生环的边数。 */
@@ -45,6 +49,11 @@ const SEAL_SIZE_RATIO = 0.06;
 
 /** 阴阳槽位相对主印中心在阴/阳一侧的横向偏移（占主印半径的比例）。 */
 const SLOT_SIDE_RATIO = 0.7;
+
+/** 读数底板的内边距（横 / 纵）、它到主印外沿的最小间距。 */
+const READOUT_PADDING_X = 12;
+const READOUT_PADDING_Y = 8;
+const READOUT_GAP = 6;
 
 export const DEFAULT_BOARD_LAYOUT: BoardViewLayout = {
   centerX: 0,
@@ -90,6 +99,18 @@ export interface BoardSlotView {
 
 /** 虚空：未指定快照或快照缺省时的槽位等级。 */
 const VOID_LEVEL: NodeLevel = 0;
+/** 虚空节点：未投影过该盘时，归一 / 亢极判定按它走（真源仍是核心层 `isNodeGuiYi`）。 */
+const VOID_NODE: NodeData = { yin: VOID_LEVEL, yang: VOID_LEVEL };
+
+/** 归元进度读数的投影视图（底板左上角在父坐标系里的 `x/y` + 文案与字号）。 */
+export interface BoardReadoutView {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly text: string;
+  readonly fontSize: number;
+}
 
 /** 连线类型：内环相生边（表「化 / 强化」）与跨环径向线（表「破 / 强破」）。 */
 export type BoardConnectionKind = 'generation' | 'attack';
@@ -138,7 +159,7 @@ export interface BoardConnectionView {
   readonly x2: number;
   readonly y2: number;
   /** 表现态：是否属于当前动作会走的路径（由 `setActivePaths` 驱动，与盘面等级无关）。 */
-  readonly active: boolean;
+  readonly isActive: boolean;
 }
 
 /**
@@ -154,6 +175,8 @@ export class BoardView extends Container {
   private readonly _boards: Record<PlayerId, BoardState | null> = { P1: null, P2: null };
   /** 当前动作会走的连线（键为 `kind:from`）；高亮与盘面等级无关（票 02）。 */
   private _activePaths = new Set<string>();
+  /** 最近一次 `resize` 的视口高度；未 resize 过时为 null（读数不做贴边兜底）。 */
+  private _viewportHeight: number | null = null;
 
   public constructor(layout: Partial<BoardViewLayout> = {}) {
     super();
@@ -169,6 +192,7 @@ export class BoardView extends Container {
   /** 按视口自适应：圆心取视口中心，内外环半径与主印半径按短边等比缩放。 */
   public resize(width: number, height: number): void {
     const span = Math.min(width, height);
+    this._viewportHeight = height;
     this._layout = {
       ...this._layout,
       centerX: width / 2,
@@ -193,6 +217,19 @@ export class BoardView extends Container {
   /** 十条连线：五条内环相生边 + 五条跨环径向线。 */
   public get connections(): readonly BoardConnectionView[] {
     return this._connections;
+  }
+
+  /**
+   * 归元进度读数（「己 x/5 · 敌 y/5 归一」）的版面投影：底板宽度由文案与字号推出，
+   * 位置排在对方盘外侧，与任何主印圆（含半环与归一外环）都不相交。
+   */
+  public get readout(): BoardReadoutView {
+    return projectReadout(
+      this._layout,
+      this._viewportHeight,
+      this._countGuiYi(OWN_PLAYER),
+      this._countGuiYi(OPPONENT_PLAYER),
+    );
   }
 
   /** 按玩家、主印与极性取一个槽位的投影视图；未知玩家 / 元素 / 极性抛错。 */
@@ -235,39 +272,26 @@ export class BoardView extends Container {
         const rayIndex =
           player === OWN_PLAYER ? index : (index - OUTER_RING_OFFSET + WUXING_COUNT) % WUXING_COUNT;
         const angle = this._layout.startAngle + rayIndex * RING_STEP;
-        const node = this._boards[player]?.[element];
-        const yin = node?.yin ?? VOID_LEVEL;
-        const yang = node?.yang ?? VOID_LEVEL;
-        const isGuiYi = yin >= 1 && yang >= 1;
-        const isKangJi = yin === 2 && yang === 2;
+        const node = this._boards[player]?.[element] ?? VOID_NODE;
         const x = this._layout.centerX + radius * Math.cos(angle);
         const y = this._layout.centerY + radius * Math.sin(angle);
-        this._elements.push({ player, element, angle, x, y, yin, yang, isGuiYi, isKangJi });
+        const view: BoardElementView = {
+          player,
+          element,
+          angle,
+          x,
+          y,
+          yin: node.yin,
+          yang: node.yang,
+          // 归一 / 亢极的真源在核心层（`src/core/logic/State.ts`），这里不再各推一份。
+          isGuiYi: isNodeGuiYi(node),
+          isKangJi: isNodeKangJi(node),
+        };
+        this._elements.push(view);
         // 阴阳状态由主印左右半环承载：阴侧偏左、阳侧偏右，槽位点落在点亮的半环上。
-        const sideOffset = this._layout.sealSize * SLOT_SIDE_RATIO;
         this._slots.push(
-          this._projectSlot(
-            player,
-            element,
-            Polarity.YIN,
-            yin,
-            angle,
-            x - sideOffset,
-            y,
-            isGuiYi,
-            isKangJi,
-          ),
-          this._projectSlot(
-            player,
-            element,
-            Polarity.YANG,
-            yang,
-            angle,
-            x + sideOffset,
-            y,
-            isGuiYi,
-            isKangJi,
-          ),
+          this._projectSlot(view, Polarity.YIN),
+          this._projectSlot(view, Polarity.YANG),
         );
       });
     }
@@ -309,7 +333,7 @@ export class BoardView extends Container {
       y1: source.y,
       x2: target.x,
       y2: target.y,
-      active: this._activePaths.has(connectionKey(kind, from)),
+      isActive: this._activePaths.has(connectionKey(kind, from)),
     };
   }
 
@@ -323,18 +347,21 @@ export class BoardView extends Container {
     return view;
   }
 
-  private _projectSlot(
-    player: PlayerId,
-    element: WuXing,
-    polarity: Polarity,
-    level: NodeLevel,
-    angle: number,
-    x: number,
-    y: number,
-    isGuiYi: boolean,
-    isKangJi: boolean,
-  ): BoardSlotView {
-    return { player, element, polarity, level, angle, x, y, isGuiYi, isKangJi };
+  /** 槽位投影：只收主印视图与极性，落点由主印中心向阴 / 阳一侧偏移推出。 */
+  private _projectSlot(element: BoardElementView, polarity: Polarity): BoardSlotView {
+    const isYin = polarity === Polarity.YIN;
+    const sideOffset = this._layout.sealSize * SLOT_SIDE_RATIO;
+    return {
+      player: element.player,
+      element: element.element,
+      polarity,
+      level: isYin ? element.yin : element.yang,
+      angle: element.angle,
+      x: element.x + (isYin ? -sideOffset : sideOffset),
+      y: element.y,
+      isGuiYi: element.isGuiYi,
+      isKangJi: element.isKangJi,
+    };
   }
 
   /** 先画环级底晕与连线，再画主印，最后叠加归元读数（读数压在最上层）。 */
@@ -402,8 +429,8 @@ export class BoardView extends Container {
       ctx.beginPath();
       ctx.moveTo(line.x1, line.y1);
       ctx.lineTo(line.x2, line.y2);
-      ctx.strokeStyle = line.active ? CONNECTION_ACTIVE[line.kind] : CONNECTION_IDLE[line.kind];
-      ctx.lineWidth = line.active ? 3 : 1.5;
+      ctx.strokeStyle = line.isActive ? CONNECTION_ACTIVE[line.kind] : CONNECTION_IDLE[line.kind];
+      ctx.lineWidth = line.isActive ? 3 : 1.5;
       ctx.lineCap = 'round';
       if (line.kind === 'attack') {
         ctx.setLineDash([6, 5]);
@@ -416,7 +443,7 @@ export class BoardView extends Container {
   /** 十个主印：底盘 + 阴/阳半环 + 归一/亢极高亮 + 五行名；内外环主印共用同一套画法。 */
   private _drawSeals(ctx: CanvasRenderingContext2D): void {
     const sealRadius = this._layout.sealSize;
-    const halfRingRadius = sealRadius + Math.max(3, sealRadius * 0.16);
+    const ringRadius = halfRingRadius(sealRadius);
     for (const entry of this._elements) {
       const palette = WUXING_PALETTE[entry.element];
       ctx.save();
@@ -428,12 +455,12 @@ export class BoardView extends Container {
       ctx.strokeStyle = entry.isKangJi ? BLESSED_COLOR : palette.dark;
       ctx.stroke();
 
-      drawHalfRing(ctx, entry.x, entry.y, halfRingRadius, true, entry.yin, entry.element);
-      drawHalfRing(ctx, entry.x, entry.y, halfRingRadius, false, entry.yang, entry.element);
+      drawHalfRing(ctx, entry.x, entry.y, ringRadius, true, entry.yin, entry.element);
+      drawHalfRing(ctx, entry.x, entry.y, ringRadius, false, entry.yang, entry.element);
 
       if (entry.isGuiYi) {
         ctx.beginPath();
-        ctx.arc(entry.x, entry.y, halfRingRadius + 5, 0, Math.PI * 2);
+        ctx.arc(entry.x, entry.y, ringRadius + 5, 0, Math.PI * 2);
         ctx.strokeStyle = entry.isKangJi ? BLESSED_COLOR : GUI_YI_COLOR;
         ctx.lineWidth = entry.isKangJi ? 3 : 1.5;
         ctx.setLineDash(entry.isKangJi ? [] : [4, 3]);
@@ -457,18 +484,15 @@ export class BoardView extends Container {
 
   /** 归元进度读数：统计内外环各自的归一节点数，补上「谁离归元更近」的数值口径。 */
   private _drawGuiYuanReadout(ctx: CanvasRenderingContext2D): void {
-    const own = this._countGuiYi(OWN_PLAYER);
-    const opponent = this._countGuiYi(OPPONENT_PLAYER);
-    const x = this._layout.centerX;
-    const y = this._layout.centerY + this._layout.outerRadius - this._layout.sealSize - 10;
+    const readout = this.readout;
     ctx.save();
     ctx.fillStyle = BOARD_BG_COLOR;
-    ctx.fillRect(x - 70, y - 10, 140, 20);
+    ctx.fillRect(readout.x, readout.y, readout.width, readout.height);
     ctx.fillStyle = READOUT_COLOR;
-    ctx.font = `bold ${Math.round(Math.max(11, this._layout.sealSize * 0.55))}px monospace`;
+    ctx.font = `bold ${String(readout.fontSize)}px monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`己 ${own}/${WUXING_COUNT} · 敌 ${opponent}/${WUXING_COUNT} 归一`, x, y);
+    ctx.fillText(readout.text, readout.x + readout.width / 2, readout.y + readout.height / 2);
     ctx.restore();
   }
 
@@ -543,6 +567,46 @@ function drawHalfRing(
   ctx.restore();
 }
 
+/** 主印半环相对主印半径的外扩量（内外环主印共用同一口径）。 */
+function halfRingRadius(sealRadius: number): number {
+  return sealRadius + Math.max(3, sealRadius * 0.16);
+}
+
+/**
+ * 主印连同半环、归一外环在内可能占据的最大视觉半径：主印半径 + 半环外扩 + 归一外环偏移 + 描边一半。
+ * 归元读数底板按它避让，保证不遮住半环（半环是阴阳等级的唯一载体）。
+ */
+function sealOuterRadius(sealRadius: number): number {
+  return halfRingRadius(sealRadius) + 5 + 1.5;
+}
+
+/**
+ * 归元进度读数的版面投影。底板宽度由文案与字号推出（不写死像素宽），字号随主印半径缩放；
+ * 位置优先排在对方盘**外侧**（下方留给操作台），与任何主印圆都不相交；视口放不下时贴边兜底。
+ */
+function projectReadout(
+  layout: BoardViewLayout,
+  viewportHeight: number | null,
+  own: number,
+  opponent: number,
+): BoardReadoutView {
+  const fontSize = Math.round(Math.max(11, layout.sealSize * 0.55));
+  const text = `己 ${own}/${WUXING_COUNT} · 敌 ${opponent}/${WUXING_COUNT} 归一`;
+  const width = Math.ceil(estimateTextWidth(text, fontSize)) + READOUT_PADDING_X;
+  const height = fontSize + READOUT_PADDING_Y;
+  const clearance = sealOuterRadius(layout.sealSize) + READOUT_GAP;
+
+  let y = layout.centerY - layout.outerRadius - clearance - height;
+  if (viewportHeight !== null) {
+    if (y < 0) {
+      y = layout.centerY + layout.outerRadius + clearance;
+    }
+    // 极端扁视口兜底：宁可贴边也不出屏（此时无法再保证与主印不相交）。
+    y = Math.min(Math.max(y, 0), Math.max(0, viewportHeight - height));
+  }
+  return { x: layout.centerX - width / 2, y, width, height, text, fontSize };
+}
+
 /** 沿相生环从木出发遍历五行；环本身以 `GENERATION_CYCLE` 为唯一真源（LLD §2.3）。 */
 function buildGenerationRing(): readonly WuXing[] {
   const ring: WuXing[] = [];
@@ -561,20 +625,25 @@ function connectionKey(kind: BoardConnectionKind, from: WuXing): string {
 
 /**
  * 把一个动作映射成它在法盘上会走的连线路径；不沿连线走的动作返回 `null`。
- * 起点是当前天干的五行：化 / 强化走内环相生边，破 / 强破走跨环径向线。
+ * 起点是当前天干的五行：化 / 强化走内环相生边，攻击类（共享判定 `isAttackAction`）走跨环径向线。
  */
 export function resolveActionPath(actionType: ActionType, element: WuXing): BoardActivePath | null {
+  if (isAttackAction(actionType)) {
+    return { kind: 'attack', from: element };
+  }
   switch (actionType) {
     case ActionType.TRANS:
     case ActionType.BURST:
       return { kind: 'generation', from: element };
-    case ActionType.ATK:
-    case ActionType.BURST_ATK:
-      return { kind: 'attack', from: element };
     case ActionType.AUTO:
     case ActionType.CONVERT:
     case ActionType.DISSIPATE:
     case ActionType.PASS:
       return null;
+    default: {
+      // 类型穷举保护：新增动作必须显式给路径，不许静默归入「不指向任何连线」。
+      const unhandled: never = actionType;
+      throw new Error(`未处理的动作类型：${String(unhandled)}`);
+    }
   }
 }
