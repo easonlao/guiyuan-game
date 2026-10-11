@@ -14,25 +14,27 @@ function mountAt(stageX: number, stageY: number, button: Button): Container {
 
 describe('Button: 自动尺寸计算', () => {
   it('按标题与副标题自动计算尺寸，命中区居中在原点', () => {
-    // 工作示例：全角字符按字号计宽（14px），左右各留 12 内边距，上下各 8
-    // 【吸纳】= 4 字 × 14 = 56 → 宽 56 + 24 = 80；高 = 8*2 + 标题行 20 + 副标题行 14 = 50
+    // 工作示例：全角按 1.2 倍字号计宽（14 × 1.2 = 16.8，口径见 `text-metrics.ts`），
+    // 左右各留 12 内边距，上下各 8。
+    // 【吸纳】= 4 字 × 16.8 = 67.2 → 向上取整 68 → 宽 68 + 24 = 92；
+    // 高 = 8*2 + 标题行 20 + 副标题行 14 = 50
     const button = new Button({ label: '【吸纳】', subLabel: '吸纳' });
 
-    expect(button.width).toBe(80);
+    expect(button.width).toBe(92);
     expect(button.height).toBe(50);
-    expect(button.hitArea).toEqual({ x: -40, y: -25, width: 80, height: 50 });
+    expect(button.hitArea).toEqual({ x: -46, y: -25, width: 92, height: 50 });
   });
 
-  it('半角字符按半个字号计宽', () => {
-    // ABCDEFGHIJ = 10 个半角字 × (14/2) = 70 → 宽 70 + 24 = 94
+  it('半角字符按 0.6 倍字号计宽', () => {
+    // ABCDEFGHIJ = 10 个半角字 × (14 × 0.6) = 84 → 宽 84 + 24 = 108
     const button = new Button({ label: 'ABCDEFGHIJ' });
 
-    expect(button.width).toBe(94);
+    expect(button.width).toBe(108);
   });
 
   it('短标签时宽度不小于最小可点宽度', () => {
-    // 【破】= 3 字 × 14 = 42 → 42 + 24 = 66，小于最小宽度 72，取 72
-    const button = new Button({ label: '【破】' });
+    // 破 = 1 字 × 16.8 = 16.8 → 向上取整 17 → 17 + 24 = 41，小于最小宽度 72，取 72
+    const button = new Button({ label: '破' });
 
     expect(button.width).toBe(72);
   });

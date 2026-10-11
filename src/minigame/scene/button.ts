@@ -1,14 +1,16 @@
 /**
  * 轻量交互按钮组件（Layer 3）：自动尺寸 + 按压缩放反馈 + 禁用态 + `onTap` 回调。
  *
- * 尺寸策略：标题与副标题按字号估算文本宽度（全角字符占一个字号宽，半角占半个），
- * 加上内边距得到自动尺寸；`hitArea` 始终以节点原点为中心，因此按钮的 `x` / `y` 即按钮中心。
+ * 尺寸策略：标题与副标题按字号估算文本宽度（口径见 `text-metrics.ts`：全角 1.2 倍字号、
+ * 其余 0.6 倍的上界），加上内边距得到自动尺寸；`hitArea` 始终以节点原点为中心，因此按钮的
+ * `x` / `y` 即按钮中心。
  * 命中检测、局部变换与渲染顺序由 `Node` 提供，见 `docs/HLD.md` §2 Layer 3。
  *
  * 已知边界：`InputManager` 在手指移出按钮后抬起时不会给按钮任何回调，此时按钮会停在按下
  * 缩放态；调用方（如 `ActionBarView`）可在适当时机调用 `release()` 手动复位。
  */
 
+import { estimateTextWidth } from '../text-metrics.js';
 import { Node } from './node.js';
 
 /** 按钮内边距与字号（本模块局部样式常量，不引入共享主题模块）。 */
@@ -172,9 +174,11 @@ export class Button extends Node {
 
 /** 自动宽度：左右内边距 + 较长一行的文本宽度，且不小于最小宽度。 */
 function autoWidth(label: string, subLabel: string): number {
-  const contentWidth = Math.max(
-    measureText(label, LABEL_FONT_SIZE),
-    measureText(subLabel, SUB_LABEL_FONT_SIZE),
+  const contentWidth = Math.ceil(
+    Math.max(
+      estimateTextWidth(label, LABEL_FONT_SIZE),
+      estimateTextWidth(subLabel, SUB_LABEL_FONT_SIZE),
+    ),
   );
   return Math.max(MIN_WIDTH, PADDING_X * 2 + contentWidth);
 }
@@ -183,21 +187,4 @@ function autoWidth(label: string, subLabel: string): number {
 function autoHeight(subLabel: string): number {
   const lines = subLabel === '' ? LABEL_LINE_HEIGHT : LABEL_LINE_HEIGHT + SUB_LABEL_LINE_HEIGHT;
   return PADDING_Y * 2 + lines;
-}
-
-/** 估算文本宽度：全角字符占一个字号宽，半角占半个（等宽字体近似）。 */
-function measureText(text: string, fontSize: number): number {
-  let width = 0;
-  for (const char of text) {
-    width += isFullWidth(char) ? fontSize : fontSize / 2;
-  }
-  return width;
-}
-
-/**
- * 粗略判定全角字符：码点 ≥ U+2E80（CJK 部首补充区起点）的字符按全角计，
- * 覆盖 CJK 标点（【】、（））、汉字、假名与 emoji；ASCII 与 `·` 等按半角处理。
- */
-function isFullWidth(char: string): boolean {
-  return (char.codePointAt(0) ?? 0) >= 0x2e80;
 }
