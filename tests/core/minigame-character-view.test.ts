@@ -108,7 +108,7 @@ function stateWith(overrides: Partial<GameState> = {}): GameState {
 }
 
 function makeView(): CharacterView {
-  return new CharacterView({ width: 375, height: 667, safeTop: 24 });
+  return new CharacterView({ width: 375, safeTop: 24 });
 }
 
 describe('CharacterView：双方角色卡投影', () => {
@@ -250,7 +250,7 @@ describe('CharacterView：双方角色卡投影', () => {
   it('视口变化后重新投影不抛错', () => {
     const view = makeView();
     view.update(stateWith({ currentPlayer: 'P2' }));
-    view.resize(320, 568, 20);
+    view.resize(320, 20);
 
     const ctx = new RecordingContext();
     expect(() => view.render(ctx.asContext())).not.toThrow();

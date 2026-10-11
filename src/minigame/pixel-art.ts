@@ -1,11 +1,5 @@
-import { NodeLevel, Polarity, TianGanInfo, WuXing } from '../core/types/domain.js';
-import {
-  AnimationMode,
-  CharacterActionState,
-  FlyingProjectile,
-  ImpactEffect,
-  TouchButton,
-} from './types.js';
+import { Polarity, TianGanInfo, WuXing } from '../core/types/domain.js';
+import { AnimationMode, CharacterActionState, ImpactEffect } from './types.js';
 
 export const WUXING_PALETTE: Record<
   WuXing,
@@ -132,112 +126,6 @@ export function drawPixelCharacter(
   }
 
   ctx.restore();
-}
-
-/**
- * 绘制五行灵核 (含阴/阳两仪状态)
- */
-export function drawWuXingSeal(
-  ctx: any,
-  x: number,
-  y: number,
-  radius: number,
-  element: WuXing,
-  yinLevel: NodeLevel,
-  yangLevel: NodeLevel,
-  isGuiYi: boolean,
-  animTick: number,
-): void {
-  const cfg = WUXING_PALETTE[element];
-
-  // 1. 底盘背景
-  ctx.fillStyle = '#111827';
-  ctx.beginPath();
-  ctx.arc(x, y, radius, 0, Math.PI * 2);
-  ctx.fill();
-
-  // 2. 阴侧 (左半环) 与 阳侧 (右半环) 状态渲染
-  const drawHalfArc = (isLeft: boolean, level: NodeLevel) => {
-    ctx.save();
-    ctx.beginPath();
-    const startAngle = isLeft ? Math.PI * 0.5 : -Math.PI * 0.5;
-    const endAngle = isLeft ? Math.PI * 1.5 : Math.PI * 0.5;
-    ctx.arc(x, y, radius - 2, startAngle, endAngle);
-
-    if (level === -1) {
-      // 道损: 暗红裂纹
-      ctx.strokeStyle = '#742a2a';
-      ctx.lineWidth = 4;
-      ctx.stroke();
-    } else if (level === 0) {
-      // 虚空: 暗灰虚线
-      ctx.strokeStyle = '#374151';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    } else if (level === 1) {
-      // 点亮: 五行本色
-      ctx.strokeStyle = cfg.main;
-      ctx.lineWidth = 4;
-      ctx.stroke();
-    } else if (level === 2) {
-      // 加持: 高光流金
-      ctx.strokeStyle = '#f6e05e';
-      ctx.lineWidth = 6;
-      ctx.stroke();
-    }
-    ctx.restore();
-  };
-
-  drawHalfArc(true, yinLevel); // 左: 阴
-  drawHalfArc(false, yangLevel); // 右: 阳
-
-  // 3. 归一状态：中央旋转灵光光核
-  if (isGuiYi) {
-    ctx.save();
-    const rot = animTick * 0.05;
-    ctx.translate(x, y);
-    ctx.rotate(rot);
-    ctx.strokeStyle = '#ecc94b';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(-radius * 0.4, -radius * 0.4, radius * 0.8, radius * 0.8);
-    ctx.restore();
-  }
-
-  // 4. 五行文字 (木/火/土/金/水)
-  ctx.fillStyle = cfg.light;
-  ctx.font = 'bold 12px monospace';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(cfg.name, x, y);
-
-  // 5. 阴/阳指示微标
-  ctx.font = '8px monospace';
-  ctx.fillStyle = yinLevel > 0 ? '#9ae6b4' : yinLevel === -1 ? '#feb2b2' : '#6b7280';
-  ctx.fillText('阴', x - radius - 5, y);
-  ctx.fillStyle = yangLevel > 0 ? '#9ae6b4' : yangLevel === -1 ? '#feb2b2' : '#6b7280';
-  ctx.fillText('阳', x + radius + 5, y);
-}
-
-/**
- * 绘制复古像素动作按钮
- */
-export function drawTouchButton(ctx: any, btn: TouchButton, isSelected: boolean): void {
-  const borderColor = btn.isBurst ? '#f6e05e' : isSelected ? '#63b3ed' : '#4b5563';
-  const bgColor = isSelected ? '#2d3748' : '#1a202c';
-
-  drawPixelBox(ctx, btn.x, btn.y, btn.width, btn.height, bgColor, borderColor, 2);
-
-  // 按钮标题
-  ctx.fillStyle = btn.color;
-  ctx.font = 'bold 14px monospace';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText(btn.label, btn.x + btn.width / 2, btn.y + 20);
-
-  // 按钮说明
-  ctx.fillStyle = '#9ca3af';
-  ctx.font = '10px monospace';
-  ctx.fillText(btn.subLabel, btn.x + btn.width / 2, btn.y + 36);
 }
 
 /** 绘制中央天元区天干符文 (支持方案A像素与方案B流光) */
@@ -386,62 +274,6 @@ export function drawCenterTianGanRune(
   ctx.restore();
 }
 
-/** 绘制飞行的吸收能量 */
-export function drawFlyingEnergy(ctx: any, flyer: FlyingProjectile): void {
-  ctx.save();
-  const { currentX, currentY, color, lightColor, mode, trail } = flyer;
-
-  if (mode === 'pixel') {
-    // 方案 A: 16-bit 像素颗粒尾迹与核心
-    trail.forEach((t) => {
-      ctx.globalAlpha = Math.max(0, t.alpha);
-      const s = t.size || 3;
-      drawPixelRect(ctx, t.x - s / 2, t.y - s / 2, s, s, color);
-    });
-    ctx.globalAlpha = 1;
-
-    // 核心像素菱形星斑
-    const cx = Math.floor(currentX);
-    const cy = Math.floor(currentY);
-    drawPixelRect(ctx, cx - 4, cy - 2, 8, 4, color);
-    drawPixelRect(ctx, cx - 2, cy - 4, 4, 8, color);
-    drawPixelRect(ctx, cx - 2, cy - 2, 4, 4, lightColor);
-    drawPixelRect(ctx, cx - 1, cy - 1, 2, 2, '#ffffff');
-  } else {
-    // 方案 B: 流光气劲游龙尾迹
-    if (trail.length > 1) {
-      for (let i = 0; i < trail.length - 1; i++) {
-        const p1 = trail[i];
-        const p2 = trail[i + 1];
-        const progressRatio = i / trail.length;
-        const lineWidth = 2 + progressRatio * 7;
-        ctx.strokeStyle = color;
-        ctx.globalAlpha = p1.alpha * 0.7;
-        ctx.lineWidth = lineWidth;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.stroke();
-      }
-    }
-
-    // 核心柔和光球
-    ctx.globalAlpha = 1;
-    const grad = ctx.createRadialGradient(currentX, currentY, 2, currentX, currentY, 14);
-    grad.addColorStop(0, '#ffffff');
-    grad.addColorStop(0.4, lightColor);
-    grad.addColorStop(0.8, color + '88');
-    grad.addColorStop(1, 'transparent');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(currentX, currentY, 14, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.restore();
-}
-
 /** 绘制受击/吸收到达冲击效果 */
 export function drawImpactEffect(ctx: any, impact: ImpactEffect): void {
   ctx.save();
@@ -479,35 +311,4 @@ export function drawImpactEffect(ctx: any, impact: ImpactEffect): void {
   }
 
   ctx.restore();
-}
-
-/** 绘制动效方案切换控制栏 */
-export function drawModeToggleBar(
-  ctx: any,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  mode: AnimationMode,
-): void {
-  const isPixel = mode === 'pixel';
-  const borderColor = isPixel ? '#f6e05e' : '#4fd1c5';
-  const activeColor = isPixel ? '#f6e05e' : '#38b2ac';
-  drawPixelBox(ctx, x, y, w, h, '#1a202c', borderColor, 2);
-
-  ctx.fillStyle = '#a0aec0';
-  ctx.font = 'bold 11px monospace';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('动效对比: ', x + 12, y + h / 2);
-
-  ctx.fillStyle = activeColor;
-  ctx.font = 'bold 12px monospace';
-  const label = isPixel ? '【 方案 A: 16-bit 像素粒子轨 】' : '【 方案 B: 柔光气劲流线轨 】';
-  ctx.fillText(label, x + 72, y + h / 2);
-
-  ctx.fillStyle = '#63b3ed';
-  ctx.textAlign = 'right';
-  ctx.font = '10px monospace';
-  ctx.fillText('⇄ 点此切换', x + w - 12, y + h / 2);
 }
