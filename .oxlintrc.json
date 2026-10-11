@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "overrides": [
+    {
+      "files": ["src/core/**/*.ts"],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "window",
+            "message": "Layer 1 核心逻辑层必须保持纯 TS，不得引用浏览器全局 window。见 CONTRIBUTING.md §1。"
+          },
+          {
+            "name": "document",
+            "message": "Layer 1 核心逻辑层必须保持纯 TS，不得引用浏览器全局 document。见 CONTRIBUTING.md §1。"
+          }
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "cc",
+                "message": "Layer 1 核心逻辑层不得引入引擎库 cc。见 CONTRIBUTING.md §1。"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -10,11 +10,13 @@
 
 在 `HLD.md` 和 `LLD.md` 中，我们确立了分层架构与纯数据驱动。
 **核心纪律：**
-* **Layer 1 (核心逻辑层 `src/core/*`) 绝对禁止** 引入任何引擎相关的库（如 `cc`, `window`, `document`）。
+* **Layer 1 (核心逻辑层 `src/core/*`) 不得引用引擎库或浏览器全局**（`cc`、`window`、`document`）。这条由 `npm run lint` 真正执行：`.oxlintrc.json` 对 `src/core/**` 开了 `no-restricted-globals`（拦 `window` / `document` 全局引用）与 `no-restricted-imports`（拦 `cc` 导入）；规则真源以该配置文件为准。
 * **Layer 1 必须保持纯粹（Pure）**：所有动作解析 (`ActionResolver`) 必须是**纯函数**。任何依赖随机数的地方（如天干生成），必须通过传入 Seed 或 RandomGenerator 的方式注入，确保 100% 可重现。
 * **跨区引用走包名，且先声明**：`src/`（包 `@guiyuan/game`）与 `tools/`（包 `@guiyuan/devtools`）是两块独立的包。`tools/` 只能用 `@guiyuan/game/…` 引用核心，并在 `tools/package.json` 里声明；`src/` 不得引用 `@guiyuan/devtools`——没声明，类型检查期就解析不到。机制与安装布局前提见 `docs/HLD.md` §4.2。
 
-若依赖探测工具（如 `dependency-cruiser`）在检查中检测到越界引用，提交将被拒绝。
+**依赖方向**由 `dependency-cruiser`（`npm run check:deps`）拦：小游戏侧 `src/` 不得依赖 `src/` 之外的本地模块（含 `tools/`）、不得 import Node 内建模块；`src/core` 不得反向依赖 `src/adapters`。规则真源以根目录 `.dependency-cruiser.js` 为准。
+
+以上规则分别由 `npm run lint`、`npm run check:deps`、`npm run check:boundary` 与 `npm run typecheck` 执行：前三项在 `npm run check:quick` 内，`typecheck` 在 `npm run verify` 内。任一门禁报红，提交将被拒绝。
 
 ---
 
