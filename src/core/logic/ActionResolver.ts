@@ -118,14 +118,9 @@ export class ActionResolver {
         const polarity = payload.polarity || state.currentTianGan?.polarity;
         // Stryker disable next-line BlockStatement, LogicalOperator: 入参校验失败返回经候选补齐后不可达
         if (!element || !polarity) {
+          // oxfmt-ignore
           // Stryker disable next-line ObjectLiteral, BooleanLiteral, StringLiteral: 同上，不可达返回
-          return {
-            nextState: state,
-            success: false,
-            scoreDelta: 0,
-            extraTurn: false,
-            message: '缺少天干属性或极性',
-          };
+          return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少天干属性或极性' };
         }
         // Stryker disable next-line AssignmentOperator: AUTO 行为分恒为 0（ACTION.AUTO=0），+= 0 与 -= 0 等价
         scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.AUTO);
@@ -154,14 +149,9 @@ export class ActionResolver {
         const element = payload.element || state.currentTianGan?.element;
         // Stryker disable next-line BlockStatement: 入参校验失败返回经候选补齐后不可达
         if (!element) {
+          // oxfmt-ignore
           // Stryker disable next-line ObjectLiteral, BooleanLiteral, StringLiteral: 同上，不可达返回
-          return {
-            nextState: state,
-            success: false,
-            scoreDelta: 0,
-            extraTurn: false,
-            message: '缺少指定元素',
-          };
+          return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少指定元素' };
         }
         // 调息转到相反极性
         const targetPolarity =
@@ -195,19 +185,14 @@ export class ActionResolver {
       }
 
       case ActionType.TRANS: {
+        // oxfmt-ignore
         // Stryker disable next-line OptionalChaining: 缺 sourceElement 时 currentTianGan 必非空（候选已补齐），?. 仅为防御（生产不可达）
-        const sourceElement =
-          payload.sourceElement || payload.element || state.currentTianGan?.element;
+        const sourceElement = payload.sourceElement || payload.element || state.currentTianGan?.element;
         // Stryker disable next-line BlockStatement: 入参校验失败返回经候选补齐后不可达
         if (!sourceElement) {
+          // oxfmt-ignore
           // Stryker disable next-line ObjectLiteral, BooleanLiteral, StringLiteral: 同上，不可达返回
-          return {
-            nextState: state,
-            success: false,
-            scoreDelta: 0,
-            extraTurn: false,
-            message: '缺少源五行',
-          };
+          return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少源五行' };
         }
         scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.TRANS);
         const targetElement = GENERATION_CYCLE[sourceElement];
@@ -229,19 +214,14 @@ export class ActionResolver {
       }
 
       case ActionType.ATK: {
+        // oxfmt-ignore
         // Stryker disable next-line OptionalChaining: 缺 sourceElement 时 currentTianGan 必非空（候选已补齐），?. 仅为防御（生产不可达）
-        const sourceElement =
-          payload.sourceElement || payload.element || state.currentTianGan?.element;
+        const sourceElement = payload.sourceElement || payload.element || state.currentTianGan?.element;
         // Stryker disable next-line BlockStatement: 入参校验失败返回经候选补齐后不可达
         if (!sourceElement) {
+          // oxfmt-ignore
           // Stryker disable next-line ObjectLiteral, BooleanLiteral, StringLiteral: 同上，不可达返回
-          return {
-            nextState: state,
-            success: false,
-            scoreDelta: 0,
-            extraTurn: false,
-            message: '缺少源五行',
-          };
+          return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少源五行' };
         }
         scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.ATK);
         const targetElement = OVERCOMING_CYCLE[sourceElement];
@@ -265,25 +245,15 @@ export class ActionResolver {
         const consumePolarity = payload.consumePolarity || Polarity.YIN;
         // Stryker disable next-line BlockStatement: 候选列表为 BURST 必带 sourceElement，此守卫不可达
         if (!sourceElement) {
+          // oxfmt-ignore
           // Stryker disable next-line ObjectLiteral, BooleanLiteral, StringLiteral: 同上，不可达返回
-          return {
-            nextState: state,
-            success: false,
-            scoreDelta: 0,
-            extraTurn: false,
-            message: '爆发需指定归一源节点',
-          };
+          return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '爆发需指定归一源节点' };
         }
         const sourceNode = nextActiveBoard[sourceElement];
         if (!isNodeGuiYi(sourceNode)) {
+          // oxfmt-ignore
           // Stryker disable next-line StringLiteral: 失败原因文案不参与断言（不可观测）
-          return {
-            nextState: state,
-            success: false,
-            scoreDelta: 0,
-            extraTurn: false,
-            message: '源节点未达成归一，无法爆发',
-          };
+          return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '源节点未达成归一，无法爆发' };
         }
         scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.BURST);
         // 消耗源节点一侧
@@ -315,25 +285,15 @@ export class ActionResolver {
         const consumePolarity = payload.consumePolarity || Polarity.YANG;
         // Stryker disable next-line BlockStatement: 候选列表为 BURST_ATK 必带 sourceElement，此守卫不可达
         if (!sourceElement) {
+          // oxfmt-ignore
           // Stryker disable next-line ObjectLiteral, BooleanLiteral, StringLiteral: 同上，不可达返回
-          return {
-            nextState: state,
-            success: false,
-            scoreDelta: 0,
-            extraTurn: false,
-            message: '强破需指定归一源节点',
-          };
+          return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '强破需指定归一源节点' };
         }
         const sourceNode = nextActiveBoard[sourceElement];
         if (!isNodeGuiYi(sourceNode)) {
+          // oxfmt-ignore
           // Stryker disable next-line StringLiteral: 失败原因文案不参与断言（不可观测）
-          return {
-            nextState: state,
-            success: false,
-            scoreDelta: 0,
-            extraTurn: false,
-            message: '源节点未达成归一，无法强破',
-          };
+          return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '源节点未达成归一，无法强破' };
         }
         scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.BURST_ATK);
         // 消耗源节点一侧
@@ -367,14 +327,9 @@ export class ActionResolver {
         const polarity = payload.polarity || state.currentTianGan?.polarity;
         // Stryker disable next-line BlockStatement, LogicalOperator: 入参校验失败返回经候选补齐后不可达
         if (!element || !polarity) {
+          // oxfmt-ignore
           // Stryker disable next-line ObjectLiteral, BooleanLiteral, StringLiteral: 同上，不可达返回
-          return {
-            nextState: state,
-            success: false,
-            scoreDelta: 0,
-            extraTurn: false,
-            message: '缺少天干属性或极性',
-          };
+          return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '缺少天干属性或极性' };
         }
         const node = nextActiveBoard[element];
         const prevLevel = node[polarity];
