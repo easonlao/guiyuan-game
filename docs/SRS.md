@@ -1,7 +1,7 @@
 # 归元弈 (Guiyuan) - 软件需求规格说明书 (SRS)
 
 **项目状态：** 核心规则、无头仿真引擎与微信小游戏单机版均已实现；联机对战为远期规划
-**基准实现：** `src/core/`（TS 确定性规则库 + 无头诊断平台）、`src/minigame/`（微信小游戏表现层）；旧 Web JS 原型与 Supabase 网络层已删除（ADR 0003 及其勘误）
+**基准实现：** `src/core/`（TS 确定性规则库）、`tools/`（无头仿真与诊断平台）、`src/minigame/`（微信小游戏表现层）；旧 Web JS 原型与 Supabase 网络层已删除（ADR 0003 及其勘误）
 
 ---
 
@@ -77,7 +77,7 @@
 ## 4. 非功能需求规格 (Non-Functional Requirements)
 
 ### 4.1 架构独立性与解耦 (NFR-1: Decoupling)
-*   核心逻辑库（`src/core/`）**严禁**导入任何 DOM、BOM、Canvas、CSS 或具体游戏引擎 API（CI 强制手段见 `docs/HLD.md` §4.2）。
+*   核心逻辑库（`src/core/`）**严禁**导入任何 DOM、BOM、Canvas、CSS 或具体游戏引擎 API（强制手段见 `CONTRIBUTING.md` §1）。
 *   表现层与核心逻辑层仅通过**事件总线 (EventBus)** 或纯数据契约（Data Transfer Object）通信。
 
 ### 4.2 计算性能与帧率保障 (NFR-2: Performance)

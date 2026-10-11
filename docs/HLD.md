@@ -111,7 +111,7 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 ### 4.3 突变测试与健壮性体检 (Stryker.js)
 *   **工具集**：[Stryker.js](https://stryker-mutator.io/)
 *   **用途**：在业务逻辑中注入突变（Mutations，如把 `+` 变 `-`，把 `true` 变 `false`），检验现有的 Vitest 单元测试是否能精准捕捉到这些错误（杀死突变体）。
-*   **流程定位**：两条路径。**改动处**（`npm run mutation:changed`）在 `implement` 收尾跑，反馈最紧，当场把漏掉的断言补上；**全量 + 棘轮**（`npm run mutation:milestone`）在每个 spec 收尾、发版 / 提审前跑，作为最后一道防线。全量 + 棘轮不属 §4.4 的任何一档，由 agent 手动触发（§4.5）；改动处那条由 CI 快链当观察项跑、不做门禁。节奏、门禁口径与理由见 `docs/MUTATION-TESTING.md`（唯一规则来源）。
+*   **流程定位**：分改动处（`npm run mutation:changed`）与里程碑全量（`npm run mutation:milestone`）两条路径。全量不属 §4.4 任何一档、由 agent 手动触发（§4.5），改动处在 CI 快链里当观察项跑；节奏、门禁口径与理由见 `docs/MUTATION-TESTING.md`（唯一规则来源）。
 
 ### 4.4 验收命令分档 (Verification Tiers)
 

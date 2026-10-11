@@ -16,7 +16,7 @@
 
 **依赖方向**由 `dependency-cruiser`（`npm run check:deps`）拦；规则真源为根目录 `.dependency-cruiser.js`，工程方案见 `docs/HLD.md` §4.2。
 
-以上门禁均由命名脚本执行（见 §5）；任一门禁报红，提交将被拒绝。
+以上门禁均由命名脚本执行（见 §5）：本地由 agent 在提交前跑，CI 快链在 PR / push 时判红。仓库没有 `pre-commit` hook，`git commit` 本身不拦这些检查（唯一的 hook 是 §3 的 `commit-msg`）。
 
 ---
 
@@ -75,7 +75,7 @@
 0. **环境**：Node 用 `.nvmrc` 的版本（`nvm use`），npm 版本见 `package.json#packageManager`。`npm install` 在 Node 版本不符时判红（`engines` + `.npmrc` 的 `engine-strict`）。
 1. **领取任务**：阅读对应的 Issue 或 `.scratch/` 里的 Markdown 规范。
 2. **脱水开发**：在纯 TS 环境下实现功能并跑通 `npm test`（内部调用 Vitest）。
-3. **内循环检查**：`npm run check:quick`——改一处跑一次，秒级返回，不含测试与构建。
-4. **收尾验收**：`npm run verify`——收尾时跑这一条，绿了才算做完。
+3. **内循环检查**：`npm run check:quick`——改一处跑一次。
+4. **收尾验收**：`npm run verify`——收尾时跑这一条。
 5. **提交代码**：按照上述 Git 规范 `git commit`。
 6. **表现层打包**：`npm run build:minigame`（`scripts/build-minigame.mjs`）把 `src/minigame/` 打成 IIFE 产物 `minigame/game.js`；在微信开发者工具中导入 `minigame/` 目录做真机预览。产物**入库**：改了 `src/` 后要重跑并把新产物一并提交，`npm run verify` 的产物对账会拦住忘记重建（见 ADR 0014）。

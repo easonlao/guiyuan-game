@@ -18,7 +18,8 @@ export default {
     {
       name: 'core-not-to-adapters',
       severity: 'error',
-      comment: 'Layer 1 核心逻辑层禁止反向依赖 Layer 2 适配层或外部运行时',
+      comment:
+        'Layer 1 核心逻辑层禁止反向依赖 Layer 2 适配层（Node 内建模块由 game-side-not-to-node-builtins 覆盖）',
       from: {
         path: '^src/core',
       },

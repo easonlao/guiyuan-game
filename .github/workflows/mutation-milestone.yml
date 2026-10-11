@@ -22,7 +22,7 @@ jobs:
   milestone:
     name: 全量变异 + 棘轮 (mutation:milestone)
     runs-on: ubuntu-latest
-    # 全量实测约 33 分钟（见 `docs/MUTATION-TESTING.md`），超时给够。
+    # 全量耗时较长（见 `docs/MUTATION-TESTING.md`），超时给够。
     timeout-minutes: 120
     steps:
       - name: Checkout
