@@ -3,7 +3,7 @@ import { ActionType } from '../../src/core/types/domain.js';
 import { POINTS_CONFIG, type PointsConfig } from '../../src/core/logic/ScoreCalculator.js';
 import {
   ATTACK_ZERO_POINTS_CONFIG,
-  DEFAULT_STRATEGY_VARIANTS
+  DEFAULT_STRATEGY_VARIANTS,
 } from '../../src/core/headless/ExperimentRunner.js';
 import {
   DEFAULT_VALIDATION_MATCHES_PER_SEAT,
@@ -11,14 +11,17 @@ import {
   formatCandidateValidationReport,
   validateCandidate,
   type CandidateSpec,
-  type CandidateValidationReport
+  type CandidateValidationReport,
 } from '../../src/core/headless/CandidateValidation.js';
-import { GUARDRAIL_GUIYUAN_MAX, GUARDRAIL_GUIYUAN_MIN } from '../../src/core/headless/GuardrailBand.js';
+import {
+  GUARDRAIL_GUIYUAN_MAX,
+  GUARDRAIL_GUIYUAN_MIN,
+} from '../../src/core/headless/GuardrailBand.js';
 import { parseCandidateArgs } from '../../src/core/headless/CandidateValidationCli.js';
 import { runActionValueCensus } from '../../src/core/headless/ActionValueCensus.js';
 import {
   formatActionSummaryTable,
-  formatActionValueCensusReport
+  formatActionValueCensusReport,
 } from '../../src/core/headless/ActionValueCensusReport.js';
 
 /**
@@ -40,25 +43,25 @@ const FAST = {
   seed: 10000,
   maxRounds: 30,
   guardrailMatches: 500,
-  guardrailSeed: 10000
+  guardrailSeed: 10000,
 } as const;
 
 /** 使【破】行为分极低，从而让 ATK 在所有被测盘面上都被支配（标准 2 失败）。 */
 const ATK_DOMINATED_CONFIG = {
   ...POINTS_CONFIG,
-  ACTION: { ...POINTS_CONFIG.ACTION, ATK: -100000 }
+  ACTION: { ...POINTS_CONFIG.ACTION, ATK: -100000 },
 };
 
 const DOMINATED_CANDIDATE: CandidateSpec = {
   name: 'atk-dominated',
   description: '把【破】行为分压到极低，制造全局被支配动作',
-  pointsConfig: ATK_DOMINATED_CONFIG
+  pointsConfig: ATK_DOMINATED_CONFIG,
 };
 
 const ATTACK_ZERO_CANDIDATE: CandidateSpec = {
   name: 'attack-zero',
   description: '攻击净收益归零（ADR 0010 被否决候选，护栏被推极端）',
-  pointsConfig: ATTACK_ZERO_POINTS_CONFIG
+  pointsConfig: ATTACK_ZERO_POINTS_CONFIG,
 };
 
 /**
@@ -68,13 +71,13 @@ const ATTACK_ZERO_CANDIDATE: CandidateSpec = {
  */
 const NO_PROGRESS_PRICING_CONFIG: PointsConfig = {
   ...POINTS_CONFIG,
-  ATTACK_PROGRESS_SCALE: undefined
+  ATTACK_PROGRESS_SCALE: undefined,
 };
 
 const DOMINANCE_CANDIDATE: CandidateSpec = {
   name: 'no-progress-pricing',
   description: '关闭进度定价（等价于工单 06 采纳前），重新造出激进压制严格占优',
-  pointsConfig: NO_PROGRESS_PRICING_CONFIG
+  pointsConfig: NO_PROGRESS_PRICING_CONFIG,
 };
 
 describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
@@ -101,7 +104,7 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
         report.noStrictDominance.passed &&
           report.everyActionHasValue.passed &&
           report.guardrails.passed &&
-          report.dynamicBeatsStatics.passed
+          report.dynamicBeatsStatics.passed,
       );
     }
   });
@@ -127,13 +130,13 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
     const tiny = validateCandidate(PRODUCTION_CANDIDATE, {
       ...FAST,
       matchesPerSeat: 20, // 每格 40 局 < MIN_DOMINANCE_MATCHES(100) → 全部 insufficient
-      baselineHeadToHead: production.noStrictDominance.headToHead
+      baselineHeadToHead: production.noStrictDominance.headToHead,
     });
     expect(tiny.noStrictDominance.strictDominators).toEqual([]);
     expect(tiny.noStrictDominance.fullyDecided).toBe(false);
     expect(tiny.noStrictDominance.undecidable.length).toBeGreaterThan(0);
-    expect(tiny.noStrictDominance.undecidable.every(item => item.reason === 'insufficient')).toBe(
-      true
+    expect(tiny.noStrictDominance.undecidable.every((item) => item.reason === 'insufficient')).toBe(
+      true,
     );
     expect(tiny.noStrictDominance.verdict).toBe('inconclusive');
     expect(tiny.noStrictDominance.passed).toBe(false);
@@ -151,12 +154,12 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
     // 工单 02/03 收紧后的带把「无进度定价」的回退挡在带外：该候选的归元率 88.40%
     // 低于下界 0.89，因此标准 3 也随之独立失败（这正是带的用意，不是回归）。
     expect(dominance.guardrails.passed).toBe(false);
-    const dominanceGuiYuan = dominance.guardrails.checks.find(check => check.key === 'guiYuanRate');
+    const dominanceGuiYuan = dominance.guardrails.checks.find(
+      (check) => check.key === 'guiYuanRate',
+    );
     expect(dominanceGuiYuan?.passed).toBe(false);
     expect(dominance.guardrails.guiYuanRate).toBeLessThan(GUARDRAIL_GUIYUAN_MIN);
-    expect(dominance.dynamicBeatsStatics.evidence.length).toBe(
-      DEFAULT_STRATEGY_VARIANTS.length
-    );
+    expect(dominance.dynamicBeatsStatics.evidence.length).toBe(DEFAULT_STRATEGY_VARIANTS.length);
   });
 
   it('标准 2 独立失败：ATK 在所有被测盘面上都被支配，其余标准照常输出', () => {
@@ -164,19 +167,17 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
     expect(dominated.everyActionHasValue.globallyDominated).toContain(ActionType.ATK);
     // 其余三条标准仍然存在（未必通过，但一定被计算）
     expect(dominated.noStrictDominance.matrix.cells.length).toBe(
-      DEFAULT_STRATEGY_VARIANTS.length * (DEFAULT_STRATEGY_VARIANTS.length - 1)
+      DEFAULT_STRATEGY_VARIANTS.length * (DEFAULT_STRATEGY_VARIANTS.length - 1),
     );
     expect(dominated.guardrails.checks.length).toBe(3);
-    expect(dominated.dynamicBeatsStatics.evidence.length).toBe(
-      DEFAULT_STRATEGY_VARIANTS.length
-    );
+    expect(dominated.dynamicBeatsStatics.evidence.length).toBe(DEFAULT_STRATEGY_VARIANTS.length);
   });
 
   it('标准 3 独立失败：攻击净收益归零把归元率推到极端（≥ 95%），其余标准照常输出', () => {
     expect(attackZero.guardrails.passed).toBe(false);
     expect(attackZero.guardrails.guiYuanRate).toBeGreaterThan(GUARDRAIL_GUIYUAN_MAX);
-    expect(attackZero.guardrails.checks.find(check => check.key === 'guiYuanRate')?.passed).toBe(
-      false
+    expect(attackZero.guardrails.checks.find((check) => check.key === 'guiYuanRate')?.passed).toBe(
+      false,
     );
     // 其余三条标准仍然存在
     expect(attackZero.noStrictDominance.matrix.cells.length).toBeGreaterThan(0);
@@ -186,9 +187,9 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
 
   it('无严格占优结论必须附带完整对拼矩阵', () => {
     const result = production.noStrictDominance;
-    expect(result.matrix.strategies).toEqual(DEFAULT_STRATEGY_VARIANTS.map(v => v.name));
+    expect(result.matrix.strategies).toEqual(DEFAULT_STRATEGY_VARIANTS.map((v) => v.name));
     expect(result.matrix.cells.length).toBe(
-      DEFAULT_STRATEGY_VARIANTS.length * (DEFAULT_STRATEGY_VARIANTS.length - 1)
+      DEFAULT_STRATEGY_VARIANTS.length * (DEFAULT_STRATEGY_VARIANTS.length - 1),
     );
     // 每个格子都来自座次平衡对拼（两座次合计样本）
     for (const cell of result.matrix.cells) {
@@ -216,7 +217,7 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
       expect(item.upperBound).toBeCloseTo(item.dynamicWinRate + item.threshold, 10);
     }
     // 对激进压制：裸胜率可能 >50%，但显著判定为否（与 50% 无法区分）
-    const vsAggressive = evidence.find(item => item.staticStrategy === '激进压制');
+    const vsAggressive = evidence.find((item) => item.staticStrategy === '激进压制');
     expect(vsAggressive).toBeDefined();
     if (vsAggressive!.dynamicWinRate > 0.5) {
       expect(vsAggressive!.significant).toBe(false);
@@ -237,14 +238,14 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
     // 逐对明细也成对出现
     const bodyRows = markdown
       .split('\n')
-      .filter(line => line.includes('流局率') && line.startsWith('|'));
+      .filter((line) => line.includes('流局率') && line.startsWith('|'));
     expect(bodyRows.length).toBeGreaterThan(0);
   });
 
   it('改动前后逐格对照：候选改变强弱关系时报告翻转格，并覆盖全部有序对', () => {
     expect(attackZero.baselineComparison.baselineName).toBe(PRODUCTION_CANDIDATE.name);
     expect(attackZero.baselineComparison.comparison.matchups.length).toBe(
-      DEFAULT_STRATEGY_VARIANTS.length * (DEFAULT_STRATEGY_VARIANTS.length - 1)
+      DEFAULT_STRATEGY_VARIANTS.length * (DEFAULT_STRATEGY_VARIANTS.length - 1),
     );
     expect(attackZero.baselineComparison.flips.length).toBeGreaterThan(0);
     for (const flip of attackZero.baselineComparison.flips) {
@@ -265,14 +266,14 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
     const spec: CandidateSpec = {
       name: 'determinism',
       description: '确定性探针',
-      pointsConfig: { ...POINTS_CONFIG, ACTION: { ...POINTS_CONFIG.ACTION, ATK: 41 } }
+      pointsConfig: { ...POINTS_CONFIG, ACTION: { ...POINTS_CONFIG.ACTION, ATK: 41 } },
     };
     const options = {
       matchesPerSeat: 50,
       seed: 4242,
       maxRounds: 30,
       guardrailMatches: 100,
-      guardrailSeed: 10000
+      guardrailSeed: 10000,
     } as const;
     const stripRuntimeDiagnostics = (report: CandidateValidationReport) => ({
       ...report,
@@ -281,10 +282,10 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
       guardrails: {
         ...report.guardrails,
         heapUsedDeltaMB: 0,
-        checks: report.guardrails.checks.map(check =>
-          check.key === 'heapUsedDeltaMB' ? { ...check, actual: 0 } : check
-        )
-      }
+        checks: report.guardrails.checks.map((check) =>
+          check.key === 'heapUsedDeltaMB' ? { ...check, actual: 0 } : check,
+        ),
+      },
     });
     const a = validateCandidate(spec, options);
     const b = validateCandidate(spec, options);
@@ -312,7 +313,7 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
       '--guardrail-matches',
       '100',
       '--guardrail-seed',
-      '9'
+      '9',
     ]);
     expect(parsed).toMatchObject({
       isHelp: false,
@@ -322,7 +323,7 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
       seed: 7,
       maxRounds: 20,
       guardrailMatches: 100,
-      guardrailSeed: 9
+      guardrailSeed: 9,
     });
     expect(parseCandidateArgs(['--help']).isHelp).toBe(true);
     expect(() => parseCandidateArgs(['--mode', 'nope'])).toThrow(/未知结算方式/);
@@ -337,13 +338,15 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
   it('动作类型结论表由同一个 formatter 渲染（消除候选验证与普查的重复表格）', () => {
     const census = runActionValueCensus({
       pointsConfig: PRODUCTION_CANDIDATE.pointsConfig,
-      rules: PRODUCTION_CANDIDATE.rules
+      rules: PRODUCTION_CANDIDATE.rules,
     });
     const table = formatActionSummaryTable(census.actions);
     // 两处报告都逐字包含同一张表。
     expect(formatActionValueCensusReport(census)).toContain(table);
     expect(formatCandidateValidationReport(production)).toContain(table);
     // 表头唯一且完整。
-    expect(table).toContain('| 动作类型 | 可用 | 观测数 | 最优盘面数 | 被支配盘面数 | 全局被支配 |');
+    expect(table).toContain(
+      '| 动作类型 | 可用 | 观测数 | 最优盘面数 | 被支配盘面数 | 全局被支配 |',
+    );
   });
 });

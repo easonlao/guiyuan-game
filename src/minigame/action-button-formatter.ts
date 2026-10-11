@@ -4,7 +4,7 @@ import {
   GENERATION_CYCLE,
   OVERCOMING_CYCLE,
   Polarity,
-  WuXing
+  WuXing,
 } from '../core/types/domain.js';
 import { WUXING_PALETTE } from './pixel-art.js';
 
@@ -36,7 +36,10 @@ export function getActionTargetElement(act: ActionPayload, fallbackElement?: WuX
  * @param act 动作载荷
  * @param isAutoAbsorb 是否处于自动吸纳缓冲期
  */
-export function formatActionButton(act: ActionPayload, isAutoAbsorb: boolean = false): FormattedActionButton {
+export function formatActionButton(
+  act: ActionPayload,
+  isAutoAbsorb: boolean = false,
+): FormattedActionButton {
   let label = '';
   let subLabel = '';
   let color = '#63b3ed';
@@ -48,7 +51,9 @@ export function formatActionButton(act: ActionPayload, isAutoAbsorb: boolean = f
   switch (act.actionType) {
     case ActionType.AUTO: {
       label = isAutoAbsorb ? '【自动吸纳】' : '【吸纳】';
-      subLabel = isAutoAbsorb ? '天干能量自动吸纳中（点击可立即吸纳）' : '天干能量吸纳（充盈虚空/修复道损）';
+      subLabel = isAutoAbsorb
+        ? '天干能量自动吸纳中（点击可立即吸纳）'
+        : '天干能量吸纳（充盈虚空/修复道损）';
       color = '#68d391';
       break;
     }
@@ -110,14 +115,18 @@ export function formatActionButton(act: ActionPayload, isAutoAbsorb: boolean = f
 
     case ActionType.DISSIPATE: {
       label = isAutoAbsorb ? '【亢极散气】' : '【散气】';
-      subLabel = isAutoAbsorb ? '亢极满溢自动散气中（点击立即散气）' : `天道满溢则亏·${act.polarity === Polarity.YANG ? '阳' : '阴'}回落至加持(-1)`;
+      subLabel = isAutoAbsorb
+        ? '亢极满溢自动散气中（点击立即散气）'
+        : `天道满溢则亏·${act.polarity === Polarity.YANG ? '阳' : '阴'}回落至加持(-1)`;
       color = '#e2e8f0';
       break;
     }
 
     case ActionType.PASS: {
       label = '【消散】';
-      subLabel = isAutoAbsorb ? '无有效动作·消散过牌中（点击立即消散）' : '无有效动作·消散过牌交接回合';
+      subLabel = isAutoAbsorb
+        ? '无有效动作·消散过牌中（点击立即消散）'
+        : '无有效动作·消散过牌交接回合';
       color = '#a0aec0';
       break;
     }
@@ -127,6 +136,6 @@ export function formatActionButton(act: ActionPayload, isAutoAbsorb: boolean = f
     label,
     subLabel,
     color,
-    isBurst
+    isBurst,
   };
 }

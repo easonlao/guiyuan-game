@@ -3,7 +3,7 @@ import { ActionPayload, ActionType, Polarity, WuXing } from '../../src/core/type
 import {
   POINTS_CONFIG,
   ScoreCalculator,
-  type PointsConfig
+  type PointsConfig,
 } from '../../src/core/logic/ScoreCalculator.js';
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
 import { gameStateWith } from '../../src/core/headless/BoardFixture.js';
@@ -29,19 +29,19 @@ const ATK_YANG: ActionPayload = {
   actionType: ActionType.ATK,
   player: 'P1',
   sourceElement: WuXing.WOOD,
-  polarity: Polarity.YANG
+  polarity: Polarity.YANG,
 };
 const ATK_YIN: ActionPayload = {
   actionType: ActionType.ATK,
   player: 'P1',
   sourceElement: WuXing.WOOD,
-  polarity: Polarity.YIN
+  polarity: Polarity.YIN,
 };
 const CONVERT_YIN: ActionPayload = {
   actionType: ActionType.CONVERT,
   player: 'P1',
   element: WuXing.WOOD,
-  polarity: Polarity.YIN
+  polarity: Polarity.YIN,
 };
 
 const GUI_YI = { yin: 1 as const, yang: 1 as const };
@@ -59,9 +59,17 @@ function opponentWithGuiYi(count: 0 | 2 | 4 | 5): BoardOverrides {
   return nodes;
 }
 
-function resolveAtk(config: PointsConfig, opponentGuiYi: 0 | 2 | 4 | 5, payload: ActionPayload = ATK_YANG) {
+function resolveAtk(
+  config: PointsConfig,
+  opponentGuiYi: 0 | 2 | 4 | 5,
+  payload: ActionPayload = ATK_YANG,
+) {
   const resolver = new ActionResolver(new ScoreCalculator(config));
-  const state = gameStateWith({ P1: {}, P2: opponentWithGuiYi(opponentGuiYi), currentPlayer: 'P1' });
+  const state = gameStateWith({
+    P1: {},
+    P2: opponentWithGuiYi(opponentGuiYi),
+    currentPlayer: 'P1',
+  });
   return resolver.resolve(state, payload);
 }
 
@@ -113,14 +121,14 @@ describe('Ticket 05 候选 A - 攻击进度定价 (ATTACK_PROGRESS_SCALE)', () =
     const state = gameStateWith({
       P1: { [WuXing.WOOD]: GUI_YI },
       P2: opponentWithGuiYi(2),
-      currentPlayer: 'P1'
+      currentPlayer: 'P1',
     });
     const result = resolver.resolve(state, {
       actionType: ActionType.BURST_ATK,
       player: 'P1',
       sourceElement: WuXing.WOOD,
       consumePolarity: Polarity.YANG,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
     // 行为分 BURST_ATK = 80；攻击状态分 round(300 × 0.66) = 198；总计 278
     expect(result.scoreDelta).toBe(278);
@@ -131,7 +139,7 @@ describe('Ticket 05 候选 A - 攻击进度定价 (ATTACK_PROGRESS_SCALE)', () =
     const production = new ActionResolver(new ScoreCalculator(POINTS_CONFIG));
     const state = gameStateWith({
       P1: { [WuXing.WOOD]: { yin: 0, yang: 1 } },
-      currentPlayer: 'P1'
+      currentPlayer: 'P1',
     });
     const a = scaled.resolve(state, CONVERT_YIN);
     const b = production.resolve(state, CONVERT_YIN);

@@ -1,15 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import {
-  ActionType,
-  WuXing,
-  Polarity,
-  TIAN_GAN_LIST
-} from '../../src/core/types/domain.js';
+import { ActionType, WuXing, Polarity, TIAN_GAN_LIST } from '../../src/core/types/domain.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
-import {
-  TurnManager,
-  TurnPhase
-} from '../../src/core/logic/TurnManager.js';
+import { TurnManager, TurnPhase } from '../../src/core/logic/TurnManager.js';
 import { EventBus } from '../../src/core/logic/EventBus.js';
 import { createPRNG } from '../../src/core/utils/prng.js';
 import { getAvailableActions } from '../../src/core/logic/ActionCandidates.js';
@@ -85,7 +77,7 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(false);
@@ -100,7 +92,7 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         actionType: ActionType.AUTO,
         player: 'P2', // Current player is P1!
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(false);
@@ -116,7 +108,7 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         actionType: ActionType.ATK,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       });
 
       expect(result.success).toBe(false);
@@ -135,7 +127,7 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
       expect(result.success).toBe(false);
       expect(result.message).toContain('对局已结束');
@@ -153,10 +145,10 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
             ...state.players.P1,
             board: {
               ...state.players.P1.board,
-              [WuXing.METAL]: { yin: 1, yang: 1 } // GuiYi node!
-            }
-          }
-        }
+              [WuXing.METAL]: { yin: 1, yang: 1 }, // GuiYi node!
+            },
+          },
+        },
       };
 
       const gengMetal = TIAN_GAN_LIST.find((tg) => tg.name === '庚')!;
@@ -184,17 +176,17 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
             board: {
               ...state.players.P1.board,
               [WuXing.WOOD]: { yin: 1, yang: 1 },
-              [WuXing.METAL]: { yin: 1, yang: 1 }
-            }
-          }
-        }
+              [WuXing.METAL]: { yin: 1, yang: 1 },
+            },
+          },
+        },
       };
 
       let turnCount = 0;
       const sequencePrng = {
         next: () => 0,
         nextInt: () => (turnCount++ === 0 ? 0 : 6), // turn 1 draws index 0 (甲 WOOD), turn 2 draws index 6 (庚 METAL)
-        getState: () => 0
+        getState: () => 0,
       };
 
       const manager = new TurnManager({ initialState: state, prng: sequencePrng });
@@ -206,7 +198,7 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         player: 'P1' as const,
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const result = manager.executeAction(burstAction);
@@ -227,7 +219,7 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         player: 'P1',
         sourceElement: WuXing.METAL,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       });
       expect(illegalBurst.success).toBe(false);
       expect(illegalBurst.message).toContain('连动行动中禁止再次使用爆发动作');
@@ -257,17 +249,17 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
               [WuXing.FIRE]: { yin: 1, yang: 1 },
               [WuXing.EARTH]: { yin: 1, yang: 1 },
               [WuXing.METAL]: { yin: 1, yang: 1 },
-              [WuXing.WATER]: { yin: 1, yang: 0 }
-            }
-          }
-        }
+              [WuXing.WATER]: { yin: 1, yang: 0 },
+            },
+          },
+        },
       };
 
       // Custom PRNG that always draws 壬 (WATER, YANG, index 8)
       const prng = {
         next: () => 0.8,
         nextInt: () => 8,
-        getState: () => 8
+        getState: () => 8,
       };
 
       const manager = new TurnManager({ initialState: state, prng });
@@ -277,7 +269,7 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         actionType: ActionType.AUTO,
         player: 'P1' as const,
         element: WuXing.WATER,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
 
       const result = manager.executeAction(winAction);
@@ -321,8 +313,8 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         players: {
           ...state.players,
           P1: { ...state.players.P1, score: 200 },
-          P2: { ...state.players.P2, score: 10 }
-        }
+          P2: { ...state.players.P2, score: 10 },
+        },
       };
 
       const manager = new TurnManager({ initialState: state });
@@ -346,10 +338,10 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
             ...state.players.P2,
             board: {
               ...state.players.P2.board,
-              [WuXing.WOOD]: { yin: 1, yang: 1 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1, yang: 1 },
+            },
+          },
+        },
       };
 
       const manager = new TurnManager({
@@ -357,8 +349,8 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         prng: {
           next: () => 0,
           nextInt: () => 0, // draws index 0 (甲 WOOD)
-          getState: () => 0
-        }
+          getState: () => 0,
+        },
       });
       manager.startTurn();
 
@@ -368,7 +360,7 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         player: 'P2' as const,
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
       const res1 = manager.executeAction(burstAction);
       expect(res1.success).toBe(true);
@@ -408,10 +400,10 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
       expect(onTurnStart).toHaveBeenCalledWith({
         round: 1,
         player: 'P1',
-        isExtraTurn: false
+        isExtraTurn: false,
       });
       expect(onTianganDraw).toHaveBeenCalledWith({
-        tianGan: manager.getCurrentTianGan()
+        tianGan: manager.getCurrentTianGan(),
       });
 
       manager.executeAction(actions[0]);
@@ -421,12 +413,12 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         expect.objectContaining({
           player: 'P1',
           actionType: actions[0].actionType,
-          extraTurn: false
-        })
+          extraTurn: false,
+        }),
       );
       expect(onTurnEnd).toHaveBeenCalledWith({
         round: 1,
-        player: 'P1'
+        player: 'P1',
       });
     });
 
@@ -444,10 +436,10 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
             ...state.players.P1,
             board: {
               ...state.players.P1.board,
-              [WuXing.WOOD]: { yin: 1, yang: 1 }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1, yang: 1 },
+            },
+          },
+        },
       };
 
       const manager = new TurnManager({
@@ -456,8 +448,8 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         prng: {
           next: () => 0,
           nextInt: () => 0, // draws index 0 (甲 WOOD)
-          getState: () => 0
-        }
+          getState: () => 0,
+        },
       });
       manager.startTurn();
 
@@ -466,7 +458,7 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       });
 
       expect(onBurstExtraTurn).toHaveBeenCalledWith({ player: 'P1' });
@@ -479,7 +471,7 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
 
       const state = {
         ...createInitialGameState(1),
-        currentPlayer: 'P2' as const
+        currentPlayer: 'P2' as const,
       };
       const manager = new TurnManager({ initialState: state, eventBus: bus });
       manager.step();
@@ -487,8 +479,8 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
       expect(onGameOver).toHaveBeenCalledWith(
         expect.objectContaining({
           winner: expect.anything(),
-          endReason: 'MAX_ROUNDS'
-        })
+          endReason: 'MAX_ROUNDS',
+        }),
       );
     });
   });

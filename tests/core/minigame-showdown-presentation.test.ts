@@ -10,7 +10,7 @@ describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
     [WuXing.FIRE]: { yin: 1, yang: 1 },
     [WuXing.EARTH]: { yin: 1, yang: 1 },
     [WuXing.METAL]: { yin: 1, yang: 1 },
-    [WuXing.WATER]: { yin: 1, yang: 1 }
+    [WuXing.WATER]: { yin: 1, yang: 1 },
   });
 
   // 辅助棋盘：差 1 侧水阳达成归元 (9 侧点亮，未点亮 1 侧 -> 听牌临界态)
@@ -19,7 +19,7 @@ describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
     [WuXing.FIRE]: { yin: 1, yang: 1 },
     [WuXing.EARTH]: { yin: 1, yang: 1 },
     [WuXing.METAL]: { yin: 1, yang: 1 },
-    [WuXing.WATER]: { yin: 1, yang: 0 } // 水阳未点亮 (0)
+    [WuXing.WATER]: { yin: 1, yang: 0 }, // 水阳未点亮 (0)
   });
 
   // 辅助棋盘：差 2 侧达成归元 (8 侧点亮，未点亮 2 侧 -> 未听牌)
@@ -28,14 +28,14 @@ describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
     [WuXing.FIRE]: { yin: 1, yang: 1 },
     [WuXing.EARTH]: { yin: 1, yang: 1 },
     [WuXing.METAL]: { yin: 1, yang: 1 },
-    [WuXing.WATER]: { yin: 0, yang: 0 } // 水阴阳皆未点亮
+    [WuXing.WATER]: { yin: 0, yang: 0 }, // 水阴阳皆未点亮
   });
 
   // 固化 PRNG 工厂：用于按天干索引稳定抽取天干
   const createMockPrng = (tianGanIndex: number) => ({
     next: () => (tianGanIndex + 0.1) / 10,
     nextInt: () => tianGanIndex,
-    getState: () => tianGanIndex
+    getState: () => tianGanIndex,
   });
 
   it('triggers showdown draw presentation when P1 achieved Guiyuan and P2 is strictly tingpai, succeeding on hit', () => {
@@ -44,14 +44,14 @@ describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
       currentPlayer: 'P2',
       lockedGuiYuan: { P1: true, P2: false },
       P1: fullGuiYuanBoard,
-      P2: tingPaiBoard9SidesWaterYang
+      P2: tingPaiBoard9SidesWaterYang,
     });
 
     // 壬水 (WATER, YANG, index 8) -> 成功点亮水阳
     const renWaterPrng = createMockPrng(8);
     const gm = new GameManager({
       initialState: state,
-      prng: renWaterPrng
+      prng: renWaterPrng,
     });
 
     const finalState = gm.getState();
@@ -82,14 +82,14 @@ describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
       currentPlayer: 'P2',
       lockedGuiYuan: { P1: true, P2: false },
       P1: fullGuiYuanBoard,
-      P2: tingPaiBoard9SidesWaterYang
+      P2: tingPaiBoard9SidesWaterYang,
     });
 
     // 丙火 (FIRE, YANG, index 2) -> 无法点亮水阳
     const bingFirePrng = createMockPrng(2);
     const gm = new GameManager({
       initialState: state,
-      prng: bingFirePrng
+      prng: bingFirePrng,
     });
 
     const finalState = gm.getState();
@@ -120,13 +120,13 @@ describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
       currentPlayer: 'P2',
       lockedGuiYuan: { P1: true, P2: false },
       P1: fullGuiYuanBoard,
-      P2: tingPaiBoard9SidesWaterYang
+      P2: tingPaiBoard9SidesWaterYang,
     });
 
     const renWaterPrng = createMockPrng(8);
     const gm = new GameManager({
       initialState: state,
-      prng: renWaterPrng
+      prng: renWaterPrng,
     });
 
     // 创建虚拟 Canvas 2D 上下文以验证渲染流程
@@ -137,14 +137,14 @@ describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
         lineWidth: 1,
         font: '',
         textAlign: 'left',
-        measureText: () => ({ width: 50 })
+        measureText: () => ({ width: 50 }),
       },
       {
         get(target: any, prop: string) {
           if (prop in target) return target[prop];
           return () => {};
-        }
-      }
+        },
+      },
     );
 
     expect(() => gm.render(mockCtx)).not.toThrow();
@@ -156,13 +156,13 @@ describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
       currentPlayer: 'P2',
       lockedGuiYuan: { P1: true, P2: false },
       P1: fullGuiYuanBoard,
-      P2: tingPaiBoard9SidesWaterYang
+      P2: tingPaiBoard9SidesWaterYang,
     });
 
     const renWaterPrng = createMockPrng(8);
     const gm = new GameManager({
       initialState: state,
-      prng: renWaterPrng
+      prng: renWaterPrng,
     });
 
     expect(gm.getState().isGameOver).toBe(true);
@@ -187,12 +187,12 @@ describe('Minigame Showdown Draw Presentation & Transition (Ticket 02)', () => {
       winner: 'P1',
       endReason: 'GUI_YUAN',
       P1: fullGuiYuanBoard,
-      P2: notTingPaiBoard8Sides
+      P2: notTingPaiBoard8Sides,
     });
 
     const gm = new GameManager({
       initialState: state,
-      seed: 999
+      seed: 999,
     });
 
     expect(gm.getState().isGameOver).toBe(true);

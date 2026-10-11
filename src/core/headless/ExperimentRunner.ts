@@ -28,7 +28,7 @@ import {
   type DominanceUndecidableReason,
   type DominanceVerdict,
   type HeadToHeadMatrix,
-  type UndecidableMatchup
+  type UndecidableMatchup,
 } from './Metrics.js';
 import {
   BALANCED_WEIGHTS,
@@ -38,7 +38,7 @@ import {
   PURE_RUSH_WEIGHTS,
   PURE_SUPPRESS_WEIGHTS,
   SCORE_STRIPPED_WEIGHTS,
-  createScoreBoundStrategy
+  createScoreBoundStrategy,
 } from '../ai/Strategy.js';
 import type { DecisionStrategy, StrategyWeights } from '../ai/types.js';
 import { POINTS_CONFIG, type PointsConfig } from '../logic/ScoreCalculator.js';
@@ -89,7 +89,7 @@ export interface StrategyVariant {
 export function buildVariantStrategy(
   variant: StrategyVariant,
   config: PointsConfig,
-  rules: RuleSwitches
+  rules: RuleSwitches,
 ): DecisionStrategy {
   return variant.create
     ? variant.create(config, rules)
@@ -112,8 +112,8 @@ export const SUPPRESS_BOOST_POINTS_CONFIG: PointsConfig = {
     ...POINTS_CONFIG.STATE_CHANGE,
     CAUSE_DMG: { yang: 450, yin: 375 },
     BREAK_LIGHT: { yang: 300, yin: 225 },
-    WEAKEN: 300
-  }
+    WEAKEN: 300,
+  },
 };
 
 /** 攻击净收益归零配置（对照用，非生产默认）：【破】/【强破】行为分与攻击状态分全部清零。 */
@@ -122,20 +122,20 @@ export const ATTACK_ZERO_POINTS_CONFIG: PointsConfig = {
   ACTION: {
     ...POINTS_CONFIG.ACTION,
     ATK: 0,
-    BURST_ATK: 0
+    BURST_ATK: 0,
   },
   STATE_CHANGE: {
     ...POINTS_CONFIG.STATE_CHANGE,
     CAUSE_DMG: { yang: 0, yin: 0 },
     BREAK_LIGHT: { yang: 0, yin: 0 },
-    WEAKEN: 0
-  }
+    WEAKEN: 0,
+  },
 };
 
 export const DEFAULT_SCORE_CONFIG_VARIANTS: readonly ScoreConfigVariant[] = [
   { name: 'default', config: POINTS_CONFIG },
   { name: 'suppress-boost', config: SUPPRESS_BOOST_POINTS_CONFIG },
-  { name: 'attack-zero', config: ATTACK_ZERO_POINTS_CONFIG }
+  { name: 'attack-zero', config: ATTACK_ZERO_POINTS_CONFIG },
 ];
 
 /**
@@ -149,7 +149,7 @@ export const DEFAULT_STRATEGY_VARIANTS: readonly StrategyVariant[] = [
   { name: '保守自保', weights: DEFENSIVE_WEIGHTS },
   { name: '纯推进', weights: PURE_RUSH_WEIGHTS },
   { name: '纯压制', weights: PURE_SUPPRESS_WEIGHTS },
-  { name: '剥离计分', weights: SCORE_STRIPPED_WEIGHTS }
+  { name: '剥离计分', weights: SCORE_STRIPPED_WEIGHTS },
 ];
 
 export const DEFAULT_MATCHES_PER_CELL = 2000;
@@ -211,14 +211,10 @@ function runCell(
   strategyVariant: StrategyVariant,
   matches: number,
   baseSeed: number,
-  maxRounds: number
+  maxRounds: number,
 ): ExperimentCell {
   const rules = ruleSwitchesFor(mode);
-  const strategy = buildVariantStrategy(
-    strategyVariant,
-    scoreConfigVariant.config,
-    rules
-  );
+  const strategy = buildVariantStrategy(strategyVariant, scoreConfigVariant.config, rules);
   const benchmark = new HeadlessBenchmark();
   const metrics = benchmark.run({
     matches,
@@ -228,7 +224,7 @@ function runCell(
     strategyP2: strategy,
     scoreConfig: scoreConfigVariant.config,
     rules,
-    isBoardSettlement: isBoardSettlementFor(mode)
+    isBoardSettlement: isBoardSettlementFor(mode),
   });
 
   return {
@@ -244,7 +240,7 @@ function runCell(
     p2WinRate: metrics.p2WinRate,
     opponentResidualDamage: metrics.opponentResidualDamage,
     suppressionLevels: metrics.suppressionLevels,
-    constructionLevels: metrics.constructionLevels
+    constructionLevels: metrics.constructionLevels,
   };
 }
 
@@ -268,12 +264,12 @@ export function runExperimentMatrix(options: ExperimentMatrixOptions = {}): Expe
 
   return {
     modes,
-    scoreConfigNames: scoreConfigs.map(variant => variant.name),
-    strategyNames: strategies.map(variant => variant.name),
+    scoreConfigNames: scoreConfigs.map((variant) => variant.name),
+    strategyNames: strategies.map((variant) => variant.name),
     matches,
     baseSeed,
     maxRounds,
-    cells
+    cells,
   };
 }
 
@@ -358,7 +354,7 @@ function runSeat(
   isBoardSettlement: boolean,
   matches: number,
   baseSeed: number,
-  maxRounds: number
+  maxRounds: number,
 ): SeatRun {
   const benchmark = new HeadlessBenchmark();
   const metrics = benchmark.run({
@@ -369,7 +365,7 @@ function runSeat(
     strategyP2: buildVariantStrategy(strategyP2, scoreConfig.config, rules),
     scoreConfig: scoreConfig.config,
     rules,
-    isBoardSettlement
+    isBoardSettlement,
   });
   return {
     totalMatches: metrics.totalMatches,
@@ -379,7 +375,7 @@ function runSeat(
     drawRate: metrics.drawRate,
     guiYuanCount: metrics.guiYuanCount,
     avgRounds: metrics.avgRounds,
-    opponentResidualDamage: metrics.opponentResidualDamage
+    opponentResidualDamage: metrics.opponentResidualDamage,
   };
 }
 
@@ -404,26 +400,43 @@ export function runHeadToHeadMatrix(options: HeadToHeadMatrixOptions = {}): Head
       const b = strategies[j];
 
       // 座次 1：A 执先手；座次 2：B 执先手。两个座次使用同一随机种子序列。
-      const aAsP1 = runSeat(a, b, scoreConfig, rules, isBoardSettlement, matches, baseSeed, maxRounds);
-      const bAsP1 = runSeat(b, a, scoreConfig, rules, isBoardSettlement, matches, baseSeed, maxRounds);
+      const aAsP1 = runSeat(
+        a,
+        b,
+        scoreConfig,
+        rules,
+        isBoardSettlement,
+        matches,
+        baseSeed,
+        maxRounds,
+      );
+      const bAsP1 = runSeat(
+        b,
+        a,
+        scoreConfig,
+        rules,
+        isBoardSettlement,
+        matches,
+        baseSeed,
+        maxRounds,
+      );
 
       const total = aAsP1.totalMatches + bAsP1.totalMatches;
       const aWins = aAsP1.p1Wins + bAsP1.p2Wins;
       const bWins = aAsP1.p2Wins + bAsP1.p1Wins;
       const trueDraws = aAsP1.trueDraws + bAsP1.trueDraws;
       const safe = (value: number): number => (total > 0 ? value / total : 0);
-      const safePerSeat = (value: number): number =>
-        matches > 0 ? value / matches : 0;
+      const safePerSeat = (value: number): number => (matches > 0 ? value / matches : 0);
       const weightedAvgRounds = safe(
-        aAsP1.avgRounds * aAsP1.totalMatches + bAsP1.avgRounds * bAsP1.totalMatches
+        aAsP1.avgRounds * aAsP1.totalMatches + bAsP1.avgRounds * bAsP1.totalMatches,
       );
       const opponentResidualDamage = safe(
         aAsP1.opponentResidualDamage * aAsP1.totalMatches +
-          bAsP1.opponentResidualDamage * bAsP1.totalMatches
+          bAsP1.opponentResidualDamage * bAsP1.totalMatches,
       );
       // 流局率（回合上限结算率）按座次样本量加权；口径同 Metrics.ts 的 drawRate。
       const drawRate = safe(
-        aAsP1.drawRate * aAsP1.totalMatches + bAsP1.drawRate * bAsP1.totalMatches
+        aAsP1.drawRate * aAsP1.totalMatches + bAsP1.drawRate * bAsP1.totalMatches,
       );
 
       const common = {
@@ -435,7 +448,7 @@ export function runHeadToHeadMatrix(options: HeadToHeadMatrixOptions = {}): Head
         avgRounds: weightedAvgRounds,
         p1WinRate: safe(aAsP1.p1Wins + bAsP1.p1Wins),
         p2WinRate: safe(aAsP1.p2Wins + bAsP1.p2Wins),
-        opponentResidualDamage
+        opponentResidualDamage,
       };
 
       matchups.push({
@@ -447,7 +460,7 @@ export function runHeadToHeadMatrix(options: HeadToHeadMatrixOptions = {}): Head
         aWinRateAsP2: safePerSeat(bAsP1.p2Wins),
         bWinRateAsP1: safePerSeat(bAsP1.p1Wins),
         bWinRateAsP2: safePerSeat(aAsP1.p2Wins),
-        ...common
+        ...common,
       });
       matchups.push({
         strategyA: b.name,
@@ -457,19 +470,19 @@ export function runHeadToHeadMatrix(options: HeadToHeadMatrixOptions = {}): Head
         aWinRateAsP2: safePerSeat(aAsP1.p2Wins),
         bWinRateAsP1: safePerSeat(aAsP1.p1Wins),
         bWinRateAsP2: safePerSeat(bAsP1.p2Wins),
-        ...common
+        ...common,
       });
     }
   }
 
   return {
-    strategies: strategies.map(variant => variant.name),
+    strategies: strategies.map((variant) => variant.name),
     matchups,
     matchesPerSeat: matches,
     baseSeed,
     maxRounds,
     mode,
-    scoreConfigName: scoreConfig.name
+    scoreConfigName: scoreConfig.name,
   };
 }
 
@@ -477,10 +490,10 @@ export function runHeadToHeadMatrix(options: HeadToHeadMatrixOptions = {}): Head
 export function findSeatBalancedWinRate(
   report: HeadToHeadReport,
   strategyA: string,
-  strategyB: string
+  strategyB: string,
 ): number | undefined {
   return report.matchups.find(
-    matchup => matchup.strategyA === strategyA && matchup.strategyB === strategyB
+    (matchup) => matchup.strategyA === strategyA && matchup.strategyB === strategyB,
   )?.seatBalancedWinRate;
 }
 
@@ -488,12 +501,12 @@ export function findSeatBalancedWinRate(
 export function toHeadToHeadMatrix(report: HeadToHeadReport): HeadToHeadMatrix {
   return {
     strategies: report.strategies,
-    cells: report.matchups.map(matchup => ({
+    cells: report.matchups.map((matchup) => ({
       p1Strategy: matchup.strategyA,
       p2Strategy: matchup.strategyB,
       matches: matchup.matches,
-      seatBalancedWinRate: matchup.seatBalancedWinRate
-    }))
+      seatBalancedWinRate: matchup.seatBalancedWinRate,
+    })),
   };
 }
 
@@ -508,13 +521,13 @@ function formatPercent(value: number): string {
 const RULE_MODE_NOTES: Readonly<Record<RuleMode, string>> = {
   scoring: '`scoring` = 计分轴开启（AI 估值读取规则得分，生产默认）',
   'board-only':
-    '`board-only` = 计分轴关闭（AI 只按盘面判优，RuleSwitches.isBoardOnly）；回合上限时按盘面进度判定胜负，不读计分'
+    '`board-only` = 计分轴关闭（AI 只按盘面判优，RuleSwitches.isBoardOnly）；回合上限时按盘面进度判定胜负，不读计分',
 };
 
 const SCORE_CONFIG_NOTES: Readonly<Record<string, string>> = {
   default: '生产默认 POINTS_CONFIG',
   'suppress-boost': '对敌破坏状态分放大（验证计分配置轴到达 AI 估值）',
-  'attack-zero': '【破】/【强破】行为分与攻击状态分归零'
+  'attack-zero': '【破】/【强破】行为分与攻击状态分归零',
 };
 
 /** 对照矩阵的 markdown 报告；流局率始终与先后手胜率成对输出。 */
@@ -533,28 +546,28 @@ export function formatExperimentReport(report: ExperimentReport): string {
   for (const name of report.scoreConfigNames) {
     lines.push(`  - \`${name}\`: ${SCORE_CONFIG_NOTES[name] ?? ''}`);
   }
-  lines.push('- 指标口径: 唯一来源 Metrics.ts（归元率 = 五行归元终局占比；流局率 = 回合上限结算占比；平均大回合 = roundsPlayed 均值）');
+  lines.push(
+    '- 指标口径: 唯一来源 Metrics.ts（归元率 = 五行归元终局占比；流局率 = 回合上限结算占比；平均大回合 = roundsPlayed 均值）',
+  );
   lines.push('- 座次平衡口径: 对拼矩阵中 A 对 B 胜率 = (A 胜场 + 0.5 × 流局) / 两座次总局数');
   lines.push('');
   lines.push(
-    '| 规则模式 | 计分配置 | 策略 | 归元率 | 平均大回合 | 对手残留道损 | 压制度量 | 流局率 / 先后手胜率 |'
+    '| 规则模式 | 计分配置 | 策略 | 归元率 | 平均大回合 | 对手残留道损 | 压制度量 | 流局率 / 先后手胜率 |',
   );
-  lines.push(
-    '| --- | --- | --- | ---: | ---: | ---: | ---: | --- |'
-  );
+  lines.push('| --- | --- | --- | ---: | ---: | ---: | ---: | --- |');
   for (const cell of report.cells) {
     // 流局率必须与先后手胜率成对输出（Metrics.ts 守卫）。
     const drawPaired = formatDrawRateWithWinRates({
       drawRate: cell.drawRate,
       p1WinRate: cell.p1WinRate,
-      p2WinRate: cell.p2WinRate
+      p2WinRate: cell.p2WinRate,
     });
     lines.push(
       `| ${cell.mode} | ${cell.scoreConfigName} | ${cell.strategyName} | ${formatPercent(
-        cell.guiYuanRate
+        cell.guiYuanRate,
       )} | ${cell.avgRounds.toFixed(2)} | ${cell.opponentResidualDamage.toFixed(
-        2
-      )} | ${cell.suppressionLevels.toFixed(2)} | ${drawPaired} |`
+        2,
+      )} | ${cell.suppressionLevels.toFixed(2)} | ${drawPaired} |`,
     );
   }
   return lines.join('\n');
@@ -568,7 +581,7 @@ export function formatSeatBalancedMatrix(report: HeadToHeadReport): string {
   lines.push(`| A \\ B | ${report.strategies.join(' | ')} |`);
   lines.push(`| --- | ${report.strategies.map(() => '---:').join(' | ')} |`);
   for (const strategyA of report.strategies) {
-    const row = report.strategies.map(strategyB => {
+    const row = report.strategies.map((strategyB) => {
       if (strategyA === strategyB) return '—';
       const rate = findSeatBalancedWinRate(report, strategyA, strategyB);
       return rate === undefined ? '—' : formatPercent(rate);
@@ -591,7 +604,7 @@ export function analyzeDominance(report: HeadToHeadReport): DominanceAnalysis {
 const UNDECIDABLE_REASON_LABEL: Readonly<Record<DominanceUndecidableReason, string>> = {
   missing: '矩阵缺格',
   insufficient: '样本不足',
-  'within-noise': '与 50% 无法区分'
+  'within-noise': '与 50% 无法区分',
 };
 
 /** 汇总无法判定的对：总数 + 按原因拆分。 */
@@ -601,7 +614,7 @@ function formatUndecidableSummary(undecidable: readonly UndecidableMatchup[]): s
     counts.set(item.reason, (counts.get(item.reason) ?? 0) + 1);
   }
   const parts = [...counts.entries()].map(
-    ([reason, count]) => `${UNDECIDABLE_REASON_LABEL[reason]} ${count} 对`
+    ([reason, count]) => `${UNDECIDABLE_REASON_LABEL[reason]} ${count} 对`,
   );
   return `不可判定 ${undecidable.length} 对（${parts.join(' / ')}）`;
 }
@@ -631,19 +644,19 @@ export function formatDominanceSection(report: HeadToHeadReport): string {
   lines.push('### 占优结论');
   lines.push('');
 
-  const verdicts = analysis.verdicts.filter(verdict => verdict.dominates.length > 0);
+  const verdicts = analysis.verdicts.filter((verdict) => verdict.dominates.length > 0);
 
   if (verdicts.length === 0) {
     // 即使结论是「无占优」，也必须先由矩阵守卫确认矩阵在场。
     assertDominanceVerdictHasMatrix(
       { strategy: report.strategies[0] ?? '', dominates: [] },
-      matrix
+      matrix,
     );
     if (analysis.undecidable.length === 0) {
       lines.push('本对拼矩阵未发现任何策略对全部其它策略严格占优（全部格子均已判定）。');
     } else {
       lines.push(
-        `本对拼矩阵无法判定是否存在严格占优：${formatUndecidableSummary(analysis.undecidable)}，不能据此断言「无占优」。`
+        `本对拼矩阵无法判定是否存在严格占优：${formatUndecidableSummary(analysis.undecidable)}，不能据此断言「无占优」。`,
       );
       lines.push('');
       for (const item of analysis.undecidable) {
@@ -673,9 +686,13 @@ export function formatHeadToHeadReport(report: HeadToHeadReport): string {
   lines.push('## 跨策略对拼矩阵（全部有序对，座次平衡）');
   lines.push('');
   lines.push(`- 种子基数: ${report.baseSeed} (每座次连续 ${report.matchesPerSeat} 局)`);
-  lines.push(`- 每座次样本量: ${report.matchesPerSeat} (每个有序对合计 ${report.matchesPerSeat * 2} 局)`);
+  lines.push(
+    `- 每座次样本量: ${report.matchesPerSeat} (每个有序对合计 ${report.matchesPerSeat * 2} 局)`,
+  );
   lines.push(`- 回合上限: ${report.maxRounds}`);
-  lines.push(`- 计分配置: \`${report.scoreConfigName}\` (${SCORE_CONFIG_NOTES[report.scoreConfigName] ?? ''})`);
+  lines.push(
+    `- 计分配置: \`${report.scoreConfigName}\` (${SCORE_CONFIG_NOTES[report.scoreConfigName] ?? ''})`,
+  );
   lines.push(`- 规则模式: ${RULE_MODE_NOTES[report.mode]}`);
   lines.push('- 座次平衡: 同一对策略打两个座次取平均，消除先手优势；A 对 B 与 B 对 A 严格互补');
   lines.push('- 座次平衡胜率口径: (A 胜场 + 0.5 × 平局) / 两座次总局数');
@@ -685,25 +702,25 @@ export function formatHeadToHeadReport(report: HeadToHeadReport): string {
   lines.push('### 逐对明细');
   lines.push('');
   lines.push(
-    '| A | B | 两座次样本 | 座次平衡胜率 | A执先手胜率 | A执后手胜率 | B执先手胜率 | B执后手胜率 | 归元率 | 平均大回合 | 对手残留道损 | 流局率 / 先后手胜率 |'
+    '| A | B | 两座次样本 | 座次平衡胜率 | A执先手胜率 | A执后手胜率 | B执先手胜率 | B执后手胜率 | 归元率 | 平均大回合 | 对手残留道损 | 流局率 / 先后手胜率 |',
   );
   lines.push('| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |');
   for (const matchup of report.matchups) {
     const drawPaired = formatDrawRateWithWinRates({
       drawRate: matchup.drawRate,
       p1WinRate: matchup.p1WinRate,
-      p2WinRate: matchup.p2WinRate
+      p2WinRate: matchup.p2WinRate,
     });
     lines.push(
       `| ${matchup.strategyA} | ${matchup.strategyB} | ${matchup.matches} | ${formatPercent(
-        matchup.seatBalancedWinRate
+        matchup.seatBalancedWinRate,
       )} | ${formatPercent(matchup.aWinRateAsP1)} | ${formatPercent(
-        matchup.aWinRateAsP2
+        matchup.aWinRateAsP2,
       )} | ${formatPercent(matchup.bWinRateAsP1)} | ${formatPercent(
-        matchup.bWinRateAsP2
+        matchup.bWinRateAsP2,
       )} | ${formatPercent(matchup.guiYuanRate)} | ${matchup.avgRounds.toFixed(
-        2
-      )} | ${matchup.opponentResidualDamage.toFixed(2)} | ${drawPaired} |`
+        2,
+      )} | ${matchup.opponentResidualDamage.toFixed(2)} | ${drawPaired} |`,
     );
   }
   lines.push('');
@@ -714,11 +731,15 @@ export function formatHeadToHeadReport(report: HeadToHeadReport): string {
 /** 一次性输出对照表与对拼矩阵（同一命令的可粘贴报告）。 */
 export function formatCombinedReport(
   experiment: ExperimentReport,
-  headToHead: HeadToHeadReport
+  headToHead: HeadToHeadReport,
 ): string {
-  return [formatExperimentReport(experiment), '', '---', '', formatHeadToHeadReport(headToHead)].join(
-    '\n'
-  );
+  return [
+    formatExperimentReport(experiment),
+    '',
+    '---',
+    '',
+    formatHeadToHeadReport(headToHead),
+  ].join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -778,7 +799,7 @@ function relationOf(rate: number): MatchupRelation {
  */
 export function compareHeadToHeadMatrices(
   scoring: HeadToHeadReport,
-  boardOnly: HeadToHeadReport
+  boardOnly: HeadToHeadReport,
 ): HeadToHeadComparison {
   if (scoring.strategies.join('\u0000') !== boardOnly.strategies.join('\u0000')) {
     throw new Error('逐格对照要求两个对拼矩阵使用同一策略族');
@@ -794,10 +815,10 @@ export function compareHeadToHeadMatrices(
         throw new Error(`对拼矩阵缺少 ${strategyA} vs ${strategyB} 的数据`);
       }
       const scoringMatchup = scoring.matchups.find(
-        matchup => matchup.strategyA === strategyA && matchup.strategyB === strategyB
+        (matchup) => matchup.strategyA === strategyA && matchup.strategyB === strategyB,
       )!;
       const boardOnlyMatchup = boardOnly.matchups.find(
-        matchup => matchup.strategyA === strategyA && matchup.strategyB === strategyB
+        (matchup) => matchup.strategyA === strategyA && matchup.strategyB === strategyB,
       )!;
       const scoringRelation = relationOf(scoringWinRate);
       const boardOnlyRelation = relationOf(boardOnlyWinRate);
@@ -813,7 +834,7 @@ export function compareHeadToHeadMatrices(
         scoringDrawRate: scoringMatchup.drawRate,
         boardOnlyDrawRate: boardOnlyMatchup.drawRate,
         scoringP1WinRate: scoringMatchup.p1WinRate,
-        boardOnlyP1WinRate: boardOnlyMatchup.p1WinRate
+        boardOnlyP1WinRate: boardOnlyMatchup.p1WinRate,
       });
     }
   }
@@ -826,22 +847,22 @@ export function compareHeadToHeadMatrices(
     scoringDominates: scoringVerdicts[index].dominates,
     boardOnlyDominates: boardOnlyVerdicts[index].dominates,
     scoringDominatesAll: scoringVerdicts[index].dominates.length === allCount,
-    boardOnlyDominatesAll: boardOnlyVerdicts[index].dominates.length === allCount
+    boardOnlyDominatesAll: boardOnlyVerdicts[index].dominates.length === allCount,
   }));
 
   return {
     scoring,
     boardOnly,
     matchups,
-    flips: matchups.filter(matchup => matchup.flipped),
-    dominance
+    flips: matchups.filter((matchup) => matchup.flipped),
+    dominance,
   };
 }
 
 const RELATION_LABEL: Readonly<Record<MatchupRelation, string>> = {
   strong: '强 (A 胜)',
   weak: '弱 (A 负)',
-  tie: '平 (50%)'
+  tie: '平 (50%)',
 };
 
 function formatRelationLabel(relation: MatchupRelation): string {
@@ -864,7 +885,7 @@ export function formatHeadToHeadComparisonReport(comparison: HeadToHeadCompariso
   lines.push('');
   lines.push(`- 种子基数: ${scoring.baseSeed} (每座次连续 ${scoring.matchesPerSeat} 局)`);
   lines.push(
-    `- 每座次样本量: ${scoring.matchesPerSeat} (每个有序对合计 ${scoring.matchesPerSeat * 2} 局)`
+    `- 每座次样本量: ${scoring.matchesPerSeat} (每个有序对合计 ${scoring.matchesPerSeat * 2} 局)`,
   );
   lines.push(`- 回合上限: ${scoring.maxRounds}`);
   lines.push(`- 计分配置: \`${scoring.scoreConfigName}\` (两模式相同)`);
@@ -885,18 +906,18 @@ export function formatHeadToHeadComparisonReport(comparison: HeadToHeadCompariso
     lines.push('无：所有格子的强弱关系在两模式间一致。');
   } else {
     lines.push(
-      '| A | B | scoring 胜率 | scoring 关系 | board-only 胜率 | board-only 关系 | Δ (board − scoring) |'
+      '| A | B | scoring 胜率 | scoring 关系 | board-only 胜率 | board-only 关系 | Δ (board − scoring) |',
     );
     lines.push('| --- | --- | ---: | --- | ---: | --- | ---: |');
     for (const flip of flips) {
       lines.push(
         `| ${flip.strategyA} | ${flip.strategyB} | ${formatPercent(
-          flip.scoringWinRate
+          flip.scoringWinRate,
         )} | ${formatRelationLabel(flip.scoringRelation)} | ${formatPercent(
-          flip.boardOnlyWinRate
+          flip.boardOnlyWinRate,
         )} | ${formatRelationLabel(flip.boardOnlyRelation)} | ${formatSignedPercentPoints(
-          flip.delta
-        )} |`
+          flip.delta,
+        )} |`,
       );
     }
   }
@@ -904,16 +925,16 @@ export function formatHeadToHeadComparisonReport(comparison: HeadToHeadCompariso
   lines.push('### 流局率与先手胜率对照 (逐格)');
   lines.push('');
   lines.push(
-    '| A | B | scoring 流局率 | board-only 流局率 | scoring 先手胜率 | board-only 先手胜率 |'
+    '| A | B | scoring 流局率 | board-only 流局率 | scoring 先手胜率 | board-only 先手胜率 |',
   );
   lines.push('| --- | --- | ---: | ---: | ---: | ---: |');
   for (const matchup of comparison.matchups) {
     lines.push(
       `| ${matchup.strategyA} | ${matchup.strategyB} | ${formatPercent(
-        matchup.scoringDrawRate
+        matchup.scoringDrawRate,
       )} | ${formatPercent(matchup.boardOnlyDrawRate)} | ${formatPercent(
-        matchup.scoringP1WinRate
-      )} | ${formatPercent(matchup.boardOnlyP1WinRate)} |`
+        matchup.scoringP1WinRate,
+      )} | ${formatPercent(matchup.boardOnlyP1WinRate)} |`,
     );
   }
   lines.push('');
@@ -927,15 +948,13 @@ export function formatHeadToHeadComparisonReport(comparison: HeadToHeadCompariso
     // 陷阱 B 守卫：占优结论必须由矩阵支撑。
     assertDominanceVerdictHasMatrix(
       { strategy: verdict.strategy, dominates: verdict.scoringDominates },
-      scoringMatrix
+      scoringMatrix,
     );
     assertDominanceVerdictHasMatrix(
       { strategy: verdict.strategy, dominates: verdict.boardOnlyDominates },
-      boardOnlyMatrix
+      boardOnlyMatrix,
     );
-    const scoringList = verdict.scoringDominates.length
-      ? verdict.scoringDominates.join('、')
-      : '—';
+    const scoringList = verdict.scoringDominates.length ? verdict.scoringDominates.join('、') : '—';
     const boardOnlyList = verdict.boardOnlyDominates.length
       ? verdict.boardOnlyDominates.join('、')
       : '—';
@@ -1019,7 +1038,8 @@ export function parseExperimentArgs(argv: readonly string[]): ParsedArgs {
     }
     if (arg === '--matches') {
       const value = Number(argv[++i]);
-      if (!Number.isFinite(value) || value < 0) throw new Error(`--matches 需要非负数字: ${argv[i]}`);
+      if (!Number.isFinite(value) || value < 0)
+        throw new Error(`--matches 需要非负数字: ${argv[i]}`);
       matches = Math.floor(value);
       continue;
     }
@@ -1031,7 +1051,8 @@ export function parseExperimentArgs(argv: readonly string[]): ParsedArgs {
     }
     if (arg === '--max-rounds') {
       const value = Number(argv[++i]);
-      if (!Number.isFinite(value) || value < 1) throw new Error(`--max-rounds 需要正数: ${argv[i]}`);
+      if (!Number.isFinite(value) || value < 1)
+        throw new Error(`--max-rounds 需要正数: ${argv[i]}`);
       maxRounds = Math.floor(value);
       continue;
     }
@@ -1054,7 +1075,7 @@ runCliIfDirect(import.meta.url, () => {
     const runHeadToHead = (ruleMode: RuleMode): HeadToHeadReport =>
       runHeadToHeadMatrix({ matches, baseSeed, maxRounds, mode: ruleMode });
     console.log(
-      `🚀 运行平衡实验运行器 (${parsed.scan}, ${mode}): ${matches} 局/格, 种子基数 ${baseSeed}, 回合上限 ${maxRounds}...`
+      `🚀 运行平衡实验运行器 (${parsed.scan}, ${mode}): ${matches} 局/格, 种子基数 ${baseSeed}, 回合上限 ${maxRounds}...`,
     );
     if (parsed.scan === 'matrix') {
       console.log(formatExperimentReport(runExperimentMatrix({ matches, baseSeed, maxRounds })));
@@ -1062,9 +1083,9 @@ runCliIfDirect(import.meta.url, () => {
       console.log(
         mode === 'both'
           ? formatHeadToHeadComparisonReport(
-              compareHeadToHeadMatrices(runHeadToHead('scoring'), runHeadToHead('board-only'))
+              compareHeadToHeadMatrices(runHeadToHead('scoring'), runHeadToHead('board-only')),
             )
-          : formatHeadToHeadReport(runHeadToHead(mode))
+          : formatHeadToHeadReport(runHeadToHead(mode)),
       );
     } else {
       const experiment = runExperimentMatrix({ matches, baseSeed, maxRounds });
@@ -1073,8 +1094,8 @@ runCliIfDirect(import.meta.url, () => {
         console.log('---');
         console.log(
           formatHeadToHeadComparisonReport(
-            compareHeadToHeadMatrices(runHeadToHead('scoring'), runHeadToHead('board-only'))
-          )
+            compareHeadToHeadMatrices(runHeadToHead('scoring'), runHeadToHead('board-only')),
+          ),
         );
       } else {
         console.log(formatCombinedReport(experiment, runHeadToHead(mode)));

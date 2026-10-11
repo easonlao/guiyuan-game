@@ -4,7 +4,7 @@ import {
   PlayerId,
   Polarity,
   TIAN_GAN_LIST,
-  WuXing
+  WuXing,
 } from '../../src/core/types/domain.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
 import { TurnManager, TurnPhase } from '../../src/core/logic/TurnManager.js';
@@ -22,7 +22,7 @@ import { boardWith, gameStateWith } from '../../src/core/headless/BoardFixture.j
 const prngFor = (index: number) => ({
   next: () => (index + 0.5) / 10,
   nextInt: () => index,
-  getState: () => index
+  getState: () => index,
 });
 
 /** 伪造一个运行期无效的玩家标识（falsy 且非 nullish），用于验证 player 守卫 */
@@ -33,7 +33,7 @@ const fullGuiYuanBoard = boardWith({
   [WuXing.FIRE]: { yin: 1, yang: 1 },
   [WuXing.EARTH]: { yin: 1, yang: 1 },
   [WuXing.METAL]: { yin: 1, yang: 1 },
-  [WuXing.WATER]: { yin: 1, yang: 1 }
+  [WuXing.WATER]: { yin: 1, yang: 1 },
 });
 
 /** 听牌临界盘：仅 WATER 阳侧未点亮 (0) */
@@ -42,7 +42,7 @@ const tingPaiWaterYang = boardWith({
   [WuXing.FIRE]: { yin: 1, yang: 1 },
   [WuXing.EARTH]: { yin: 1, yang: 1 },
   [WuXing.METAL]: { yin: 1, yang: 1 },
-  [WuXing.WATER]: { yin: 1, yang: 0 }
+  [WuXing.WATER]: { yin: 1, yang: 0 },
 });
 
 /** 低位态盘：P1 木阳为 0，抽甲(木阳) 只产出 AUTO 候选 */
@@ -56,7 +56,7 @@ function autoManager() {
 function atkManager() {
   const manager = new TurnManager({
     initialState: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } } }),
-    prng: prngFor(0)
+    prng: prngFor(0),
   });
   const candidates = manager.startTurn();
   return { manager, candidates };
@@ -74,7 +74,7 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
       actionType: ActionType.AUTO,
       player: 'P1',
       element: WuXing.FIRE,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
     expect(res.success).toBe(false);
   });
@@ -85,7 +85,7 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
       actionType: ActionType.AUTO,
       player: 'P1',
       element: WuXing.WOOD,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
     expect(res.success).toBe(false);
   });
@@ -96,7 +96,7 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
       actionType: ActionType.CONVERT,
       player: 'P1',
       element: WuXing.WOOD,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
     expect(res.success).toBe(false);
   });
@@ -107,7 +107,7 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
       actionType: ActionType.AUTO,
       player: 'P1',
       element: undefined,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
     expect(res.success).toBe(true);
   });
@@ -118,7 +118,7 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
       actionType: ActionType.AUTO,
       player: undefined as unknown as PlayerId,
       element: WuXing.WOOD,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
     expect(res.success).toBe(true);
   });
@@ -129,7 +129,7 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
       actionType: ActionType.AUTO,
       player: invalidPlayer,
       element: WuXing.WOOD,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
     expect(res.success).toBe(false);
   });
@@ -146,7 +146,7 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
       actionType: ActionType.ATK,
       player: 'P1',
       sourceElement: WuXing.FIRE,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
     expect(res.success).toBe(false);
   });
@@ -157,7 +157,7 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
       actionType: ActionType.ATK,
       player: 'P1',
       sourceElement: WuXing.WOOD,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
     expect(res.success).toBe(false);
   });
@@ -168,7 +168,7 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
       actionType: ActionType.ATK,
       player: 'P1',
       sourceElement: undefined,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
     expect(res.success).toBe(true);
   });
@@ -179,7 +179,7 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
       actionType: ActionType.ATK,
       player: 'P1',
       sourceElement: WuXing.WOOD,
-      polarity: undefined
+      polarity: undefined,
     });
     expect(res.success).toBe(true);
   });
@@ -191,7 +191,7 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
       player: 'P1',
       sourceElement: WuXing.WOOD,
       consumePolarity: Polarity.YANG,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
     expect(res.success).toBe(false);
   });
@@ -203,7 +203,7 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
       player: 'P1',
       sourceElement: WuXing.WOOD,
       consumePolarity: undefined,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
     expect(res.success).toBe(true);
   });
@@ -214,7 +214,7 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
       actionType: ActionType.BURST,
       player: 'P1',
       consumePolarity: Polarity.YIN,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
     expect(res.success).toBe(false);
   });
@@ -225,7 +225,7 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
       actionType: ActionType.BURST_ATK,
       player: 'P1',
       consumePolarity: Polarity.YANG,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
     expect(res.success).toBe(false);
   });
@@ -241,7 +241,7 @@ describe('TurnManager 构造与终局守卫', () => {
   it('沿用初始状态携带的天干', () => {
     const tg = TIAN_GAN_LIST[3];
     const manager = new TurnManager({
-      initialState: { ...createInitialGameState(), currentTianGan: tg }
+      initialState: { ...createInitialGameState(), currentTianGan: tg },
     });
     expect(manager.getCurrentTianGan()).toEqual(tg);
   });
@@ -254,7 +254,7 @@ describe('TurnManager 构造与终局守卫', () => {
 
   it('终局状态下 startTurn() 清空候选并停在 GAME_OVER', () => {
     const manager = new TurnManager({
-      initialState: gameStateWith({ isGameOver: true, winner: 'P1', endReason: 'GUI_YUAN' })
+      initialState: gameStateWith({ isGameOver: true, winner: 'P1', endReason: 'GUI_YUAN' }),
     });
     expect(manager.startTurn()).toEqual([]);
     expect(manager.getCurrentPhase()).toBe(TurnPhase.GAME_OVER);
@@ -263,13 +263,13 @@ describe('TurnManager 构造与终局守卫', () => {
 
   it('终局状态下 executeAction() 返回 extraTurn=false', () => {
     const manager = new TurnManager({
-      initialState: gameStateWith({ isGameOver: true, winner: 'P1', endReason: 'GUI_YUAN' })
+      initialState: gameStateWith({ isGameOver: true, winner: 'P1', endReason: 'GUI_YUAN' }),
     });
     const res = manager.executeAction({
       actionType: ActionType.AUTO,
       player: 'P1',
       element: WuXing.WOOD,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
     expect(res.success).toBe(false);
     expect(res.extraTurn).toBe(false);
@@ -278,7 +278,7 @@ describe('TurnManager 构造与终局守卫', () => {
 
   it('终局状态下 endTurn() 停在 GAME_OVER', () => {
     const manager = new TurnManager({
-      initialState: gameStateWith({ isGameOver: true, winner: 'P1', endReason: 'GUI_YUAN' })
+      initialState: gameStateWith({ isGameOver: true, winner: 'P1', endReason: 'GUI_YUAN' }),
     });
     manager.endTurn();
     expect(manager.getCurrentPhase()).toBe(TurnPhase.GAME_OVER);
@@ -304,7 +304,7 @@ describe('TurnManager executeAction 失败路径', () => {
       actionType: ActionType.AUTO,
       player: 'P2',
       element: WuXing.WOOD,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     });
     expect(res.success).toBe(false);
     expect(res.extraTurn).toBe(false);
@@ -313,11 +313,9 @@ describe('TurnManager executeAction 失败路径', () => {
   it('连动额外行动中二次爆发被拒且 extraTurn=false', () => {
     const manager = new TurnManager({
       initialState: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } } }),
-      prng: prngFor(0)
+      prng: prngFor(0),
     });
-    const burst = manager
-      .startTurn()
-      .find((c) => c.actionType === ActionType.BURST)!;
+    const burst = manager.startTurn().find((c) => c.actionType === ActionType.BURST)!;
     expect(manager.executeAction(burst).success).toBe(true);
     expect(manager.isExtraTurnActive()).toBe(true);
 
@@ -327,7 +325,7 @@ describe('TurnManager executeAction 失败路径', () => {
       player: 'P1',
       sourceElement: WuXing.WOOD,
       consumePolarity: Polarity.YIN,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
     expect(res.success).toBe(false);
     expect(res.extraTurn).toBe(false);
@@ -340,7 +338,7 @@ describe('TurnManager executeAction 失败路径', () => {
       actionType: ActionType.ATK,
       player: 'P1',
       sourceElement: WuXing.WOOD,
-      polarity: Polarity.YIN
+      polarity: Polarity.YIN,
     });
     expect(res.success).toBe(false);
     expect(res.extraTurn).toBe(false);
@@ -362,14 +360,12 @@ describe('TurnManager executeAction 失败路径', () => {
           [WuXing.FIRE]: { yin: 1, yang: 1 },
           [WuXing.EARTH]: { yin: 1, yang: 1 },
           [WuXing.METAL]: { yin: 1, yang: 1 },
-          [WuXing.WATER]: { yin: 1, yang: 0 }
-        }
+          [WuXing.WATER]: { yin: 1, yang: 0 },
+        },
       }),
-      prng: prngFor(8) // 壬水 (WATER, YANG) -> AUTO 补全归元
+      prng: prngFor(8), // 壬水 (WATER, YANG) -> AUTO 补全归元
     });
-    const auto = manager
-      .startTurn()
-      .find((c) => c.actionType === ActionType.AUTO)!;
+    const auto = manager.startTurn().find((c) => c.actionType === ActionType.AUTO)!;
     const res = manager.executeAction(auto);
     expect(res.success).toBe(true);
     expect(manager.getState().isGameOver).toBe(true);
@@ -380,7 +376,7 @@ describe('TurnManager executeAction 失败路径', () => {
 describe('TurnManager step / executeTurn 终局与阶段守卫', () => {
   it('终局状态下 step() 返回非成功、无连动、原状态', () => {
     const manager = new TurnManager({
-      initialState: gameStateWith({ isGameOver: true, winner: 'P1', endReason: 'GUI_YUAN' })
+      initialState: gameStateWith({ isGameOver: true, winner: 'P1', endReason: 'GUI_YUAN' }),
     });
     const res = manager.step();
     expect(res.success).toBe(false);
@@ -391,7 +387,7 @@ describe('TurnManager step / executeTurn 终局与阶段守卫', () => {
 
   it('终局状态下 executeTurn() 返回非成功、无连动、原状态', () => {
     const manager = new TurnManager({
-      initialState: gameStateWith({ isGameOver: true, winner: 'P1', endReason: 'GUI_YUAN' })
+      initialState: gameStateWith({ isGameOver: true, winner: 'P1', endReason: 'GUI_YUAN' }),
     });
     const res = manager.executeTurn((_s, _t, actions) => actions[0]);
     expect(res.success).toBe(false);
@@ -439,9 +435,9 @@ describe('TurnManager step / executeTurn 终局与阶段守卫', () => {
         currentPlayer: 'P2',
         lockedGuiYuan: { P1: true, P2: false },
         P1: fullGuiYuanBoard,
-        P2: tingPaiWaterYang
+        P2: tingPaiWaterYang,
       }),
-      prng: prngFor(8)
+      prng: prngFor(8),
     });
     const res = manager.step();
     expect(res.success).toBe(true);
@@ -456,9 +452,9 @@ describe('TurnManager step / executeTurn 终局与阶段守卫', () => {
         currentPlayer: 'P2',
         lockedGuiYuan: { P1: true, P2: false },
         P1: fullGuiYuanBoard,
-        P2: tingPaiWaterYang
+        P2: tingPaiWaterYang,
       }),
-      prng: prngFor(2) // 丙火 -> 未命中 -> P1 胜
+      prng: prngFor(2), // 丙火 -> 未命中 -> P1 胜
     });
     const res = manager.executeTurn((_s, _t, actions) => actions[0]);
     expect(res.success).toBe(true);
@@ -473,9 +469,9 @@ describe('TurnManager 终轮天命揭牌路径', () => {
       initialState: gameStateWith({
         currentPlayer: 'P1',
         lockedGuiYuan: { P1: true, P2: false },
-        P1: fullGuiYuanBoard
+        P1: fullGuiYuanBoard,
       }),
-      prng: prngFor(0)
+      prng: prngFor(0),
     });
     const actions = manager.startTurn();
     expect(manager.getState().isGameOver).toBe(false);
@@ -500,10 +496,10 @@ describe('TurnManager 终轮天命揭牌路径', () => {
         currentPlayer: 'P2',
         lockedGuiYuan: { P1: true, P2: false },
         P1: fullGuiYuanBoard,
-        P2: tingPaiWaterYang
+        P2: tingPaiWaterYang,
       }),
       eventBus: bus,
-      prng: prngFor(8) // 壬水命中
+      prng: prngFor(8), // 壬水命中
     });
 
     expect(manager.startTurn()).toEqual([]);
@@ -529,10 +525,10 @@ describe('TurnManager 终轮天命揭牌路径', () => {
         currentPlayer: 'P2',
         lockedGuiYuan: { P1: true, P2: false },
         P1: fullGuiYuanBoard,
-        P2: tingPaiWaterYang
+        P2: tingPaiWaterYang,
       }),
       eventBus: bus,
-      prng: prngFor(2) // 丙火未命中
+      prng: prngFor(2), // 丙火未命中
     });
 
     manager.startTurn();

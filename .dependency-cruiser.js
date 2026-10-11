@@ -20,20 +20,20 @@ export default {
       severity: 'error',
       comment: 'Layer 1 核心逻辑层禁止反向依赖 Layer 2 适配层或外部运行时',
       from: {
-        path: '^src/core'
+        path: '^src/core',
       },
       to: {
-        path: '^src/adapters'
-      }
-    }
+        path: '^src/adapters',
+      },
+    },
   ],
   options: {
     doNotFollow: {
       path: 'node_modules',
-      dependencyTypes: ['npm', 'npm-dev', 'npm-optional', 'npm-peer', 'npm-bundled', 'npm-no-pkg']
+      dependencyTypes: ['npm', 'npm-dev', 'npm-optional', 'npm-peer', 'npm-bundled', 'npm-no-pkg'],
     },
     tsConfig: {
-      fileName: 'tsconfig.json'
-    }
-  }
+      fileName: 'tsconfig.json',
+    },
+  },
 };

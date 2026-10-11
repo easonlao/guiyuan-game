@@ -28,19 +28,24 @@
 
 import { describe, it, expect } from 'vitest';
 import { HeadlessMatch, type MatchResult } from '../../src/core/headless/HeadlessMatch.js';
-import { HeadlessBenchmark, type BenchmarkMetrics } from '../../src/core/headless/HeadlessBenchmark.js';
+import {
+  HeadlessBenchmark,
+  type BenchmarkMetrics,
+} from '../../src/core/headless/HeadlessBenchmark.js';
 import {
   createScoreBoundStrategy,
   balancedStrategy,
   aggressiveStrategy,
   BALANCED_WEIGHTS,
-  AGGRESSIVE_WEIGHTS
+  AGGRESSIVE_WEIGHTS,
 } from '../../src/core/ai/Strategy.js';
 import { DEFAULT_STRATEGY_WEIGHTS, ActionEvaluator } from '../../src/core/ai/ActionEvaluator.js';
+import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
 import {
-  ActionResolver
-} from '../../src/core/logic/ActionResolver.js';
-import { POINTS_CONFIG, ScoreCalculator, type PointsConfig } from '../../src/core/logic/ScoreCalculator.js';
+  POINTS_CONFIG,
+  ScoreCalculator,
+  type PointsConfig,
+} from '../../src/core/logic/ScoreCalculator.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
 import { getAvailableActions } from '../../src/core/logic/ActionCandidates.js';
 import { TurnManager } from '../../src/core/logic/TurnManager.js';
@@ -52,7 +57,7 @@ import {
   TIAN_GAN_LIST,
   WuXing,
   type ActionPayload,
-  type GameState
+  type GameState,
 } from '../../src/core/types/domain.js';
 
 const SEED = 4242;
@@ -68,8 +73,8 @@ const ATTACK_HEAVY_POINTS_CONFIG: PointsConfig = {
     ...POINTS_CONFIG.STATE_CHANGE,
     CAUSE_DMG: { yang: 3000, yin: 2500 },
     BREAK_LIGHT: { yang: 2000, yin: 1500 },
-    WEAKEN: 2000
-  }
+    WEAKEN: 2000,
+  },
 };
 
 /** 全部计分来源归零：既改变终局分数，也等价于对 AI 关闭计分轴。 */
@@ -81,7 +86,7 @@ const ZERO_POINTS_CONFIG: PointsConfig = {
     TRANS: 0,
     ATK: 0,
     BURST: 0,
-    BURST_ATK: 0
+    BURST_ATK: 0,
   },
   STATE_CHANGE: {
     REPAIR_DMG: { yang: 0, yin: 0 },
@@ -89,10 +94,10 @@ const ZERO_POINTS_CONFIG: PointsConfig = {
     BLESSING: 0,
     CAUSE_DMG: { yang: 0, yin: 0 },
     BREAK_LIGHT: { yang: 0, yin: 0 },
-    WEAKEN: 0
+    WEAKEN: 0,
   },
   GUI_YI_MILESTONE: 0,
-  DAMAGE_PENALTY: 0
+  DAMAGE_PENALTY: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -145,9 +150,12 @@ const MATCH_INJECTION_POINTS: readonly InjectionPoint<MatchResult>[] = [
     run: (perturbed, connected) => {
       // 断开时退回 HeadlessMatch 默认种子 123456789
       const seed = connected ? (perturbed ? 9999 : SEED) : 123456789;
-      return new HeadlessMatch().run(balancedStrategy, balancedStrategy, { seed, maxRounds: MAX_ROUNDS });
+      return new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
+        seed,
+        maxRounds: MAX_ROUNDS,
+      });
     },
-    observe: r => r.record.actions
+    observe: (r) => r.record.actions,
   },
   {
     point: 'maxRounds',
@@ -158,7 +166,7 @@ const MATCH_INJECTION_POINTS: readonly InjectionPoint<MatchResult>[] = [
       const maxRounds = connected ? (perturbed ? MAX_ROUNDS : 1) : MAX_ROUNDS;
       return new HeadlessMatch().run(balancedStrategy, balancedStrategy, { seed: SEED, maxRounds });
     },
-    observe: r => ({ endReason: r.endReason, roundsPlayed: r.roundsPlayed })
+    observe: (r) => ({ endReason: r.endReason, roundsPlayed: r.roundsPlayed }),
   },
   {
     point: 'recordActions',
@@ -170,10 +178,10 @@ const MATCH_INJECTION_POINTS: readonly InjectionPoint<MatchResult>[] = [
       return new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
-        recordActions
+        recordActions,
       });
     },
-    observe: r => r.record.actions.length
+    observe: (r) => r.record.actions.length,
   },
   {
     point: 'shouldCollectStats',
@@ -185,10 +193,10 @@ const MATCH_INJECTION_POINTS: readonly InjectionPoint<MatchResult>[] = [
       return new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
-        shouldCollectStats
+        shouldCollectStats,
       });
     },
-    observe: r => (r.stats ? 'present' : 'absent')
+    observe: (r) => (r.stats ? 'present' : 'absent'),
   },
   {
     point: 'scoreConfig（解析器路径）',
@@ -196,21 +204,29 @@ const MATCH_INJECTION_POINTS: readonly InjectionPoint<MatchResult>[] = [
     terminalOnly: false,
     run: (perturbed, connected) => {
       // 断开时退回默认 POINTS_CONFIG
-      const scoreConfig = connected ? (perturbed ? ZERO_POINTS_CONFIG : POINTS_CONFIG) : POINTS_CONFIG;
+      const scoreConfig = connected
+        ? perturbed
+          ? ZERO_POINTS_CONFIG
+          : POINTS_CONFIG
+        : POINTS_CONFIG;
       return new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
-        scoreConfig
+        scoreConfig,
       });
     },
-    observe: r => [r.finalP1Score, r.finalP2Score]
+    observe: (r) => [r.finalP1Score, r.finalP2Score],
   },
   {
     point: 'scoreConfig（AI 估值器路径）',
     consumer: 'HeadlessMatch.run(strategy=weights, scoreConfig) → ActionEvaluator → AI 动作轨迹',
     terminalOnly: false,
     run: (perturbed, connected) => {
-      const config = connected ? (perturbed ? ATTACK_HEAVY_POINTS_CONFIG : POINTS_CONFIG) : POINTS_CONFIG;
+      const config = connected
+        ? perturbed
+          ? ATTACK_HEAVY_POINTS_CONFIG
+          : POINTS_CONFIG
+        : POINTS_CONFIG;
       // 连通形态 = 修复后：入口收到权重模板，同一份 scoreConfig 同时绑定 AI 估值器与解析器。
       // 断开形态 = 修复前缺陷：策略是已构造的 balancedStrategy，估值器保留默认解析器，
       // 配置只到达 match.run 的解析器。此形态下换配置只改终局分数，AI 轨迹逐字节不变。
@@ -218,10 +234,10 @@ const MATCH_INJECTION_POINTS: readonly InjectionPoint<MatchResult>[] = [
       return new HeadlessMatch().run(strategy, strategy, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
-        scoreConfig: config
+        scoreConfig: config,
       });
     },
-    observe: r => r.record.actions
+    observe: (r) => r.record.actions,
   },
   {
     point: 'strategy weights',
@@ -237,7 +253,7 @@ const MATCH_INJECTION_POINTS: readonly InjectionPoint<MatchResult>[] = [
       const strategy = createScoreBoundStrategy(weights, POINTS_CONFIG);
       return new HeadlessMatch().run(strategy, strategy, { seed: SEED, maxRounds: MAX_ROUNDS });
     },
-    observe: r => r.record.actions
+    observe: (r) => r.record.actions,
   },
   {
     point: 'RuleSwitches.isBoardOnly（AI 估值器路径）',
@@ -250,11 +266,11 @@ const MATCH_INJECTION_POINTS: readonly InjectionPoint<MatchResult>[] = [
       return new HeadlessMatch().run(BALANCED_WEIGHTS, BALANCED_WEIGHTS, {
         seed: SEED,
         maxRounds: MAX_ROUNDS,
-        rules
+        rules,
       });
     },
-    observe: r => r.record.actions
-  }
+    observe: (r) => r.record.actions,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -273,10 +289,10 @@ const BENCHMARK_INJECTION_POINTS: readonly InjectionPoint<BenchmarkMetrics>[] = 
         baseSeed: 10000,
         maxRounds: MAX_ROUNDS,
         strategyP1: balancedStrategy,
-        strategyP2: balancedStrategy
+        strategyP2: balancedStrategy,
       });
     },
-    observe: m => m.totalMatches
+    observe: (m) => m.totalMatches,
   },
   {
     point: 'baseSeed',
@@ -289,66 +305,82 @@ const BENCHMARK_INJECTION_POINTS: readonly InjectionPoint<BenchmarkMetrics>[] = 
         baseSeed,
         maxRounds: MAX_ROUNDS,
         strategyP1: balancedStrategy,
-        strategyP2: balancedStrategy
+        strategyP2: balancedStrategy,
       });
     },
-    observe: m => [m.guiYuanCount, m.p1Wins, m.avgP1Score]
+    observe: (m) => [m.guiYuanCount, m.p1Wins, m.avgP1Score],
   },
   {
     point: 'strategyP1',
     consumer: 'BenchmarkOptions → HeadlessMatch 策略槽位 → 聚合指标',
     terminalOnly: false,
     run: (perturbed, connected) => {
-      const strategyP1 = connected ? (perturbed ? aggressiveStrategy : balancedStrategy) : balancedStrategy;
+      const strategyP1 = connected
+        ? perturbed
+          ? aggressiveStrategy
+          : balancedStrategy
+        : balancedStrategy;
       return new HeadlessBenchmark().run({
         matches: 30,
         baseSeed: 10000,
         maxRounds: MAX_ROUNDS,
         strategyP1,
-        strategyP2: balancedStrategy
+        strategyP2: balancedStrategy,
       });
     },
-    observe: m => [m.guiYuanCount, m.p1Wins, m.avgP1Score]
+    observe: (m) => [m.guiYuanCount, m.p1Wins, m.avgP1Score],
   },
   {
     point: 'strategyP2',
     consumer: 'BenchmarkOptions → HeadlessMatch 策略槽位 → 聚合指标',
     terminalOnly: false,
     run: (perturbed, connected) => {
-      const strategyP2 = connected ? (perturbed ? aggressiveStrategy : balancedStrategy) : balancedStrategy;
+      const strategyP2 = connected
+        ? perturbed
+          ? aggressiveStrategy
+          : balancedStrategy
+        : balancedStrategy;
       return new HeadlessBenchmark().run({
         matches: 30,
         baseSeed: 10000,
         maxRounds: MAX_ROUNDS,
         strategyP1: balancedStrategy,
-        strategyP2
+        strategyP2,
       });
     },
-    observe: m => [m.guiYuanCount, m.p2Wins, m.avgP2Score]
+    observe: (m) => [m.guiYuanCount, m.p2Wins, m.avgP2Score],
   },
   {
     point: 'scoreConfig（批量转发）',
     consumer: 'BenchmarkOptions → HeadlessMatch → ActionResolver → 平均分',
     terminalOnly: false,
     run: (perturbed, connected) => {
-      const scoreConfig = connected ? (perturbed ? ZERO_POINTS_CONFIG : POINTS_CONFIG) : POINTS_CONFIG;
+      const scoreConfig = connected
+        ? perturbed
+          ? ZERO_POINTS_CONFIG
+          : POINTS_CONFIG
+        : POINTS_CONFIG;
       return new HeadlessBenchmark().run({
         matches: 20,
         baseSeed: 10000,
         maxRounds: MAX_ROUNDS,
         scoreConfig,
         strategyP1: balancedStrategy,
-        strategyP2: balancedStrategy
+        strategyP2: balancedStrategy,
       });
     },
-    observe: m => [m.avgP1Score, m.avgP2Score]
+    observe: (m) => [m.avgP1Score, m.avgP2Score],
   },
   {
     point: 'scoreConfig（批量 AI 估值器路径）',
     consumer: 'BenchmarkOptions(strategy=weights) + scoreConfig → ActionEvaluator → 聚合指标',
     terminalOnly: false,
     run: (perturbed, connected) => {
-      const scoreConfig = connected ? (perturbed ? ATTACK_HEAVY_POINTS_CONFIG : POINTS_CONFIG) : POINTS_CONFIG;
+      const scoreConfig = connected
+        ? perturbed
+          ? ATTACK_HEAVY_POINTS_CONFIG
+          : POINTS_CONFIG
+        : POINTS_CONFIG;
       // 连通形态：批量入口收到权重模板，同一份 scoreConfig 到达 AI 估值器。
       // 断开形态：已构造策略，估值器保留默认配置。
       const strategyP1 = connected
@@ -360,17 +392,20 @@ const BENCHMARK_INJECTION_POINTS: readonly InjectionPoint<BenchmarkMetrics>[] = 
         maxRounds: MAX_ROUNDS,
         scoreConfig,
         strategyP1,
-        strategyP2: strategyP1
+        strategyP2: strategyP1,
       });
     },
-    observe: m => [m.guiYuanCount, m.avgRounds]
-  }
+    observe: (m) => [m.guiYuanCount, m.avgRounds],
+  },
   // 说明：BenchmarkOptions.rules 转发到 HeadlessMatch.run，经权重模板策略到达 AI 估值器，
   // 与单局表的 `RuleSwitches.isBoardOnly（AI 估值器路径）` 同一路径，故不在此重复成行。
 ];
 
 describeInjectionTable('主接缝 HeadlessMatch.run：每个旋钮都到达消费者', MATCH_INJECTION_POINTS);
-describeInjectionTable('主接缝 HeadlessBenchmark.run：每个旋钮都到达消费者', BENCHMARK_INJECTION_POINTS);
+describeInjectionTable(
+  '主接缝 HeadlessBenchmark.run：每个旋钮都到达消费者',
+  BENCHMARK_INJECTION_POINTS,
+);
 
 // ---------------------------------------------------------------------------
 // 构造函数实例级注入（HeadlessMatchConfig）
@@ -380,16 +415,14 @@ describe('HeadlessMatch 构造函数实例级注入', () => {
   it('scoreCalculator 注入改变终局分数', () => {
     const normal = new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
       seed: SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
-    const zero = new HeadlessMatch({ scoreCalculator: new ScoreCalculator(ZERO_POINTS_CONFIG) }).run(
-      balancedStrategy,
-      balancedStrategy,
-      { seed: SEED, maxRounds: MAX_ROUNDS }
-    );
+    const zero = new HeadlessMatch({
+      scoreCalculator: new ScoreCalculator(ZERO_POINTS_CONFIG),
+    }).run(balancedStrategy, balancedStrategy, { seed: SEED, maxRounds: MAX_ROUNDS });
     expect([zero.finalP1Score, zero.finalP2Score]).not.toEqual([
       normal.finalP1Score,
-      normal.finalP2Score
+      normal.finalP2Score,
     ]);
     expect(zero.finalP1Score).toBe(0);
   });
@@ -397,11 +430,11 @@ describe('HeadlessMatch 构造函数实例级注入', () => {
   it('resolver 注入优先于 scoreCalculator', () => {
     const match = new HeadlessMatch({
       resolver: new ActionResolver(new ScoreCalculator(ZERO_POINTS_CONFIG)),
-      scoreCalculator: new ScoreCalculator(POINTS_CONFIG)
+      scoreCalculator: new ScoreCalculator(POINTS_CONFIG),
     });
     const result = match.run(balancedStrategy, balancedStrategy, {
       seed: SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
     expect(result.finalP1Score).toBe(0);
   });
@@ -411,7 +444,7 @@ describe('HeadlessMatch 构造函数实例级注入', () => {
     const result = match.run(balancedStrategy, balancedStrategy, {
       seed: SEED,
       maxRounds: MAX_ROUNDS,
-      scoreConfig: POINTS_CONFIG
+      scoreConfig: POINTS_CONFIG,
     });
     expect(result.finalP1Score).toBeGreaterThan(0);
   });
@@ -432,9 +465,9 @@ describe('候选接缝选项：isExtraTurn 过滤爆发候选（连动锁）', (
         ...base.players,
         P1: {
           ...base.players.P1,
-          board: { ...base.players.P1.board, [WuXing.WOOD]: { yin: 1, yang: 1 } }
-        }
-      }
+          board: { ...base.players.P1.board, [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        },
+      },
     };
     const isBurst = (a: ActionPayload): boolean =>
       a.actionType === ActionType.BURST || a.actionType === ActionType.BURST_ATK;
@@ -448,12 +481,12 @@ describe('候选接缝选项：isExtraTurn 过滤爆发候选（连动锁）', (
     // 只把 rules 交给候选生成器、策略为已构造函数时才观察不到变化（见主表 disconnected 分支）。
     const plain = new HeadlessMatch().run(BALANCED_WEIGHTS, BALANCED_WEIGHTS, {
       seed: SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
     const withRule = new HeadlessMatch().run(BALANCED_WEIGHTS, BALANCED_WEIGHTS, {
       seed: SEED,
       maxRounds: MAX_ROUNDS,
-      rules: { isBoardOnly: true }
+      rules: { isBoardOnly: true },
     });
     expect(withRule.record.actions).not.toEqual(plain.record.actions);
   });
@@ -469,12 +502,12 @@ describe('注入同时覆盖游戏内回合管理与无头推演两个入口', (
     const defaultResult = new HeadlessMatch().run(
       createScoreBoundStrategy(BALANCED_WEIGHTS, POINTS_CONFIG),
       createScoreBoundStrategy(BALANCED_WEIGHTS, POINTS_CONFIG),
-      { seed: SEED, maxRounds: MAX_ROUNDS }
+      { seed: SEED, maxRounds: MAX_ROUNDS },
     );
     const heavyResult = new HeadlessMatch().run(
       createScoreBoundStrategy(BALANCED_WEIGHTS, ATTACK_HEAVY_POINTS_CONFIG),
       createScoreBoundStrategy(BALANCED_WEIGHTS, ATTACK_HEAVY_POINTS_CONFIG),
-      { seed: SEED, maxRounds: MAX_ROUNDS }
+      { seed: SEED, maxRounds: MAX_ROUNDS },
     );
     expect(heavyResult.record.actions).not.toEqual(defaultResult.record.actions);
   });
@@ -482,7 +515,7 @@ describe('注入同时覆盖游戏内回合管理与无头推演两个入口', (
   it('游戏内入口 TurnManager：注入的 resolver 决定计分结算', () => {
     const zero = new TurnManager({
       prng: createPRNG(777),
-      resolver: new ActionResolver(new ScoreCalculator(ZERO_POINTS_CONFIG))
+      resolver: new ActionResolver(new ScoreCalculator(ZERO_POINTS_CONFIG)),
     });
     zero.startTurn();
     const zeroResult = zero.executeAction(zero.getAvailableActions()[0]);
@@ -502,8 +535,8 @@ describe('注入同时覆盖游戏内回合管理与无头推演两个入口', (
     // 关闭计分轴后仍选 ATK（保留木阴）。与 headless-config-injection.test.ts 的用例同源。
     const fixedPrng: PRNG = {
       next: () => 0,
-      nextInt: min => min,
-      getState: () => 0
+      nextInt: (min) => min,
+      getState: () => 0,
     };
 
     const controlledState = (): GameState => {
@@ -518,17 +551,17 @@ describe('注入同时覆盖游戏内回合管理与无头推演两个入口', (
             board: {
               ...base.players.P2.board,
               [WuXing.WOOD]: { yin: 1, yang: 1 },
-              [WuXing.FIRE]: { yin: 0, yang: -1 }
-            }
+              [WuXing.FIRE]: { yin: 0, yang: -1 },
+            },
           },
           P1: {
             ...base.players.P1,
             board: {
               ...base.players.P1.board,
-              [WuXing.EARTH]: { yin: -1, yang: 0 }
-            }
-          }
-        }
+              [WuXing.EARTH]: { yin: -1, yang: 0 },
+            },
+          },
+        },
       };
     };
 
@@ -573,17 +606,17 @@ describe('scoreConfig 子项普查（转交 Ticket 05：死旋钮清单）', () 
       players: {
         P1: {
           ...base.players.P1,
-          board: { ...base.players.P1.board, [WuXing.WOOD]: { yin: -1, yang: 0 } }
+          board: { ...base.players.P1.board, [WuXing.WOOD]: { yin: -1, yang: 0 } },
         },
         P2: {
           ...base.players.P2,
           board: {
             ...base.players.P2.board,
             [WuXing.FIRE]: { yin: -1, yang: 0 },
-            [WuXing.METAL]: { yin: -1, yang: -1 }
-          }
-        }
-      }
+            [WuXing.METAL]: { yin: -1, yang: -1 },
+          },
+        },
+      },
     };
   }
 
@@ -591,45 +624,43 @@ describe('scoreConfig 子项普查（转交 Ticket 05：死旋钮清单）', () 
     actionType: ActionType.PASS,
     player: 'P2',
     element: WuXing.WOOD,
-    polarity: Polarity.YANG
+    polarity: Polarity.YANG,
   };
   const tianGan = TIAN_GAN_LIST[0];
 
   it('DAMAGE_PENALTY：改变终局分数（终局判定可见）', () => {
     const state = maxRoundsStateWithDamage();
-    const zero = new ActionResolver(new ScoreCalculator({ ...POINTS_CONFIG, DAMAGE_PENALTY: 0 })).resolve(
-      state,
-      passAction
-    );
+    const zero = new ActionResolver(
+      new ScoreCalculator({ ...POINTS_CONFIG, DAMAGE_PENALTY: 0 }),
+    ).resolve(state, passAction);
     const fifty = new ActionResolver(
-      new ScoreCalculator({ ...POINTS_CONFIG, DAMAGE_PENALTY: 50 })
+      new ScoreCalculator({ ...POINTS_CONFIG, DAMAGE_PENALTY: 50 }),
     ).resolve(state, passAction);
 
     expect(zero.nextState.endReason).toBe('MAX_ROUNDS');
     expect([zero.nextState.players.P1.score, zero.nextState.players.P2.score]).not.toEqual([
       fifty.nextState.players.P1.score,
-      fifty.nextState.players.P2.score
+      fifty.nextState.players.P2.score,
     ]);
   });
 
   it('DAMAGE_PENALTY：AI 估值不可见（scoreDelta 不含终局惩罚）', () => {
     const state = maxRoundsStateWithDamage();
-    const zero = new ActionResolver(new ScoreCalculator({ ...POINTS_CONFIG, DAMAGE_PENALTY: 0 })).resolve(
-      state,
-      passAction
-    );
+    const zero = new ActionResolver(
+      new ScoreCalculator({ ...POINTS_CONFIG, DAMAGE_PENALTY: 0 }),
+    ).resolve(state, passAction);
     const fifty = new ActionResolver(
-      new ScoreCalculator({ ...POINTS_CONFIG, DAMAGE_PENALTY: 50 })
+      new ScoreCalculator({ ...POINTS_CONFIG, DAMAGE_PENALTY: 50 }),
     ).resolve(state, passAction);
 
     // scoreDelta 是 ActionEvaluator 唯一读取的计分量；终局惩罚不计入其中
     expect(zero.scoreDelta).toBe(fifty.scoreDelta);
 
     const evalZero = new ActionEvaluator(
-      new ActionResolver(new ScoreCalculator({ ...POINTS_CONFIG, DAMAGE_PENALTY: 0 }))
+      new ActionResolver(new ScoreCalculator({ ...POINTS_CONFIG, DAMAGE_PENALTY: 0 })),
     ).evaluate(state, tianGan, passAction);
     const evalFifty = new ActionEvaluator(
-      new ActionResolver(new ScoreCalculator({ ...POINTS_CONFIG, DAMAGE_PENALTY: 50 }))
+      new ActionResolver(new ScoreCalculator({ ...POINTS_CONFIG, DAMAGE_PENALTY: 50 })),
     ).evaluate(state, tianGan, passAction);
     expect(evalZero.score).toBe(evalFifty.score);
   });
@@ -643,24 +674,26 @@ describe('scoreConfig 子项普查（转交 Ticket 05：死旋钮清单）', () 
         ...base.players,
         P1: {
           ...base.players.P1,
-          board: { ...base.players.P1.board, [WuXing.WOOD]: { yin: 1, yang: 0 } }
-        }
-      }
+          board: { ...base.players.P1.board, [WuXing.WOOD]: { yin: 1, yang: 0 } },
+        },
+      },
     };
     const convert: ActionPayload = {
       actionType: ActionType.CONVERT,
       player: 'P1',
       element: WuXing.WOOD,
-      polarity: Polarity.YANG
+      polarity: Polarity.YANG,
     };
 
     const evalZero = new ActionEvaluator(
-      new ActionResolver(new ScoreCalculator({ ...POINTS_CONFIG, GUI_YI_MILESTONE: 0 }))
+      new ActionResolver(new ScoreCalculator({ ...POINTS_CONFIG, GUI_YI_MILESTONE: 0 })),
     ).evaluate(state, tianGan, convert);
     const evalHigh = new ActionEvaluator(
-      new ActionResolver(new ScoreCalculator({ ...POINTS_CONFIG, GUI_YI_MILESTONE: 999 }))
+      new ActionResolver(new ScoreCalculator({ ...POINTS_CONFIG, GUI_YI_MILESTONE: 999 })),
     ).evaluate(state, tianGan, convert);
 
-    expect(evalHigh.breakdown.scoreDeltaPoints).toBeGreaterThan(evalZero.breakdown.scoreDeltaPoints);
+    expect(evalHigh.breakdown.scoreDeltaPoints).toBeGreaterThan(
+      evalZero.breakdown.scoreDeltaPoints,
+    );
   });
 });

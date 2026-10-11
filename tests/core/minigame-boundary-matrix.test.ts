@@ -6,26 +6,20 @@ import {
   TIAN_GAN_LIST,
   WuXing,
   GENERATION_CYCLE,
-  OVERCOMING_CYCLE
+  OVERCOMING_CYCLE,
 } from '../../src/core/types/domain.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
 import { getAvailableActions } from '../../src/core/logic/ActionCandidates.js';
 import { GameManager } from '../../src/minigame/game-manager.js';
 
 describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate Auto-Execution', () => {
-  const ALL_ELEMENTS = [
-    WuXing.WOOD,
-    WuXing.FIRE,
-    WuXing.EARTH,
-    WuXing.METAL,
-    WuXing.WATER
-  ];
+  const ALL_ELEMENTS = [WuXing.WOOD, WuXing.FIRE, WuXing.EARTH, WuXing.METAL, WuXing.WATER];
 
   describe('Scenario 1: Extra Turn with GuiYi Node (连动额外回合中抽到已归一节点)', () => {
     ALL_ELEMENTS.forEach((elem) => {
       it(`[${elem}] Yang Stem draws GuiYi node in extra turn -> Single ATK & auto countdown`, () => {
         const yangStem = TIAN_GAN_LIST.find(
-          (tg) => tg.element === elem && tg.polarity === Polarity.YANG
+          (tg) => tg.element === elem && tg.polarity === Polarity.YANG,
         )!;
 
         let state = createInitialGameState();
@@ -38,10 +32,10 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
               ...state.players.P1,
               board: {
                 ...state.players.P1.board,
-                [elem]: { yang: 1, yin: 1 } // GuiYi
-              }
-            }
-          }
+                [elem]: { yang: 1, yin: 1 }, // GuiYi
+              },
+            },
+          },
         };
 
         // Extra turn forbids BURST / BURST_ATK, opposite side is 1 (>0) forbidding CONVERT
@@ -65,7 +59,7 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
 
       it(`[${elem}] Yin Stem draws GuiYi node in extra turn -> Single TRANS & auto countdown`, () => {
         const yinStem = TIAN_GAN_LIST.find(
-          (tg) => tg.element === elem && tg.polarity === Polarity.YIN
+          (tg) => tg.element === elem && tg.polarity === Polarity.YIN,
         )!;
 
         let state = createInitialGameState();
@@ -78,10 +72,10 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
               ...state.players.P1,
               board: {
                 ...state.players.P1.board,
-                [elem]: { yang: 1, yin: 1 } // GuiYi
-              }
-            }
-          }
+                [elem]: { yang: 1, yin: 1 }, // GuiYi
+              },
+            },
+          },
         };
 
         const actions = getAvailableActions(state, yinStem, { isExtraTurn: true });
@@ -97,7 +91,7 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
         actionType: ActionType.ATK,
         player: 'P1',
         sourceElement: yangStem.element,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
 
       const gm = new GameManager(12345);
@@ -132,7 +126,7 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
         actionType: ActionType.TRANS,
         player: 'P1',
         sourceElement: yinStem.element,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const gm = new GameManager(12345);
@@ -157,7 +151,7 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
     ALL_ELEMENTS.forEach((elem) => {
       it(`[${elem}] Yang Stem draws GuiYi node when ke target is (-1, -1) -> Single BURST`, () => {
         const yangStem = TIAN_GAN_LIST.find(
-          (tg) => tg.element === elem && tg.polarity === Polarity.YANG
+          (tg) => tg.element === elem && tg.polarity === Polarity.YANG,
         )!;
         const keEl = OVERCOMING_CYCLE[elem];
 
@@ -171,17 +165,17 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
               ...state.players.P1,
               board: {
                 ...state.players.P1.board,
-                [elem]: { yang: 1, yin: 1 } // GuiYi -> CONVERT locked
-              }
+                [elem]: { yang: 1, yin: 1 }, // GuiYi -> CONVERT locked
+              },
             },
             P2: {
               ...state.players.P2,
               board: {
                 ...state.players.P2.board,
-                [keEl]: { yang: -1, yin: -1 } // Ke target extreme lock -> ATK & BURST_ATK locked
-              }
-            }
-          }
+                [keEl]: { yang: -1, yin: -1 }, // Ke target extreme lock -> ATK & BURST_ATK locked
+              },
+            },
+          },
         };
 
         const actions = getAvailableActions(state, yangStem);
@@ -198,7 +192,7 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
         player: 'P1',
         sourceElement: yangStem.element,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const gm = new GameManager(12345);
@@ -225,7 +219,7 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
     ALL_ELEMENTS.forEach((elem) => {
       it(`[${elem}] Yin Stem draws GuiYi node when sheng target is (2, 2) -> Single BURST_ATK`, () => {
         const yinStem = TIAN_GAN_LIST.find(
-          (tg) => tg.element === elem && tg.polarity === Polarity.YIN
+          (tg) => tg.element === elem && tg.polarity === Polarity.YIN,
         )!;
         const shengEl = GENERATION_CYCLE[elem];
 
@@ -240,10 +234,10 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
               board: {
                 ...state.players.P1.board,
                 [elem]: { yang: 1, yin: 1 }, // GuiYi -> CONVERT locked
-                [shengEl]: { yang: 2, yin: 2 } // Sheng target full -> TRANS & BURST locked
-              }
-            }
-          }
+                [shengEl]: { yang: 2, yin: 2 }, // Sheng target full -> TRANS & BURST locked
+              },
+            },
+          },
         };
 
         const actions = getAvailableActions(state, yinStem);
@@ -260,7 +254,7 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
         player: 'P1',
         sourceElement: yinStem.element,
         consumePolarity: Polarity.YANG,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const gm = new GameManager(12345);
@@ -282,7 +276,7 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
     ALL_ELEMENTS.forEach((elem) => {
       it(`[${elem}] Yang stem with opposite polarity <= 0 and ke target (-1, -1) -> Single CONVERT`, () => {
         const yangStem = TIAN_GAN_LIST.find(
-          (tg) => tg.element === elem && tg.polarity === Polarity.YANG
+          (tg) => tg.element === elem && tg.polarity === Polarity.YANG,
         )!;
         const keEl = OVERCOMING_CYCLE[elem];
 
@@ -296,17 +290,17 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
               ...state.players.P1,
               board: {
                 ...state.players.P1.board,
-                [elem]: { yang: 1, yin: 0 } // Non-GuiYi, opposite <= 0 -> CONVERT allowed
-              }
+                [elem]: { yang: 1, yin: 0 }, // Non-GuiYi, opposite <= 0 -> CONVERT allowed
+              },
             },
             P2: {
               ...state.players.P2,
               board: {
                 ...state.players.P2.board,
-                [keEl]: { yang: -1, yin: -1 } // ATK blocked
-              }
-            }
-          }
+                [keEl]: { yang: -1, yin: -1 }, // ATK blocked
+              },
+            },
+          },
         };
 
         const actions = getAvailableActions(state, yangStem);
@@ -318,7 +312,7 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
 
       it(`[${elem}] Yin stem with opposite polarity <= 0 and sheng target (2, 2) -> Single CONVERT`, () => {
         const yinStem = TIAN_GAN_LIST.find(
-          (tg) => tg.element === elem && tg.polarity === Polarity.YIN
+          (tg) => tg.element === elem && tg.polarity === Polarity.YIN,
         )!;
         const shengEl = GENERATION_CYCLE[elem];
 
@@ -333,10 +327,10 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
               board: {
                 ...state.players.P1.board,
                 [elem]: { yang: -1, yin: 1 }, // Non-GuiYi, opposite <= 0 -> CONVERT allowed
-                [shengEl]: { yang: 2, yin: 2 } // TRANS blocked
-              }
-            }
-          }
+                [shengEl]: { yang: 2, yin: 2 }, // TRANS blocked
+              },
+            },
+          },
         };
 
         const actions = getAvailableActions(state, yinStem);
@@ -353,7 +347,7 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
         actionType: ActionType.CONVERT,
         player: 'P1',
         element: yangStem.element,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
 
       const gm = new GameManager(12345);
@@ -375,7 +369,7 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
     ALL_ELEMENTS.forEach((elem) => {
       it(`[${elem}] Yang Stem with GuiYi node, ke (-1, -1) and sheng (2, 2) -> Single PASS`, () => {
         const yangStem = TIAN_GAN_LIST.find(
-          (tg) => tg.element === elem && tg.polarity === Polarity.YANG
+          (tg) => tg.element === elem && tg.polarity === Polarity.YANG,
         )!;
         const keEl = OVERCOMING_CYCLE[elem];
         const shengEl = GENERATION_CYCLE[elem];
@@ -391,17 +385,17 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
               board: {
                 ...state.players.P1.board,
                 [elem]: { yang: 1, yin: 1 }, // GuiYi -> CONVERT blocked
-                [shengEl]: { yang: 2, yin: 2 } // Sheng blocked -> BURST blocked
-              }
+                [shengEl]: { yang: 2, yin: 2 }, // Sheng blocked -> BURST blocked
+              },
             },
             P2: {
               ...state.players.P2,
               board: {
                 ...state.players.P2.board,
-                [keEl]: { yang: -1, yin: -1 } // Ke blocked -> ATK & BURST_ATK blocked
-              }
-            }
-          }
+                [keEl]: { yang: -1, yin: -1 }, // Ke blocked -> ATK & BURST_ATK blocked
+              },
+            },
+          },
         };
 
         const actions = getAvailableActions(state, yangStem);
@@ -412,7 +406,7 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
 
       it(`[${elem}] Yin Stem with GuiYi node, ke (-1, -1) and sheng (2, 2) -> Single PASS`, () => {
         const yinStem = TIAN_GAN_LIST.find(
-          (tg) => tg.element === elem && tg.polarity === Polarity.YIN
+          (tg) => tg.element === elem && tg.polarity === Polarity.YIN,
         )!;
         const keEl = OVERCOMING_CYCLE[elem];
         const shengEl = GENERATION_CYCLE[elem];
@@ -428,17 +422,17 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
               board: {
                 ...state.players.P1.board,
                 [elem]: { yang: 1, yin: 1 }, // GuiYi -> CONVERT blocked
-                [shengEl]: { yang: 2, yin: 2 } // Sheng blocked -> TRANS & BURST blocked
-              }
+                [shengEl]: { yang: 2, yin: 2 }, // Sheng blocked -> TRANS & BURST blocked
+              },
             },
             P2: {
               ...state.players.P2,
               board: {
                 ...state.players.P2.board,
-                [keEl]: { yang: -1, yin: -1 } // Ke blocked -> BURST_ATK blocked
-              }
-            }
-          }
+                [keEl]: { yang: -1, yin: -1 }, // Ke blocked -> BURST_ATK blocked
+              },
+            },
+          },
         };
 
         const actions = getAvailableActions(state, yinStem);
@@ -454,7 +448,7 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
         actionType: ActionType.PASS,
         player: 'P1',
         element: yangStem.element,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
 
       const gm = new GameManager(12345);

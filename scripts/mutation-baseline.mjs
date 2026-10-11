@@ -23,7 +23,7 @@ import {
   readConfigMutate,
   readReportEntriesStrict,
   serializeEntry,
-  sortEntries
+  sortEntries,
 } from './lib/mutation-baseline-core.mjs';
 
 const reportPath = process.argv[2] ?? DEFAULT_REPORT;
@@ -35,9 +35,7 @@ function fail(message) {
 }
 
 if (!existsSync(reportPath)) {
-  fail(
-    `找不到报告 '${reportPath}'。请先跑 'npm run mutation'（全量）生成报告。`
-  );
+  fail(`找不到报告 '${reportPath}'。请先跑 'npm run mutation'（全量）生成报告。`);
 }
 
 // 与 `mutation:check` 相同的全量跑校验：棘轮只对全量跑有效，基线也只能由全量报告刷新。
@@ -51,7 +49,7 @@ try {
   fail(
     `报告不是全量跑的结果：${error instanceof Error ? error.message : String(error)}。\n` +
       `基线只能由全量跑刷新（子集跑的覆盖集不同，会把基线缩到子集、与门禁口径不一致）。` +
-      `请先跑 'npm run mutation'；'npm run mutation:changed' 仅用于 implement 收尾时查看存活、补断言。`
+      `请先跑 'npm run mutation'；'npm run mutation:changed' 仅用于 implement 收尾时查看存活、补断言。`,
   );
 }
 
@@ -75,7 +73,7 @@ const header = [
   '# mutation-baseline.jsonl — 已确认「未被测试抓住」的突变体（Survived + NoCoverage）。',
   '# 由 `npm run mutation:baseline` 从 Stryker 报告生成；`npm run mutation:check` 只报告本文件之外的存活/无覆盖。',
   '# 每行一条 JSON 记录：{"file","line","column","mutatorName","replacement"}，已按 file/line/column/mutatorName/replacement 稳定排序。',
-  '# 身份键：{file, mutatorName, line, column, replacement}。不要用 Stryker 的 id（单次报告内才唯一）。'
+  '# 身份键：{file, mutatorName, line, column, replacement}。不要用 Stryker 的 id（单次报告内才唯一）。',
 ];
 
 const body = entries.map(serializeEntry);
@@ -87,5 +85,5 @@ const noCoverage = entries.filter((e) => e.status === 'NoCoverage').length;
 process.stdout.write(`mutation:baseline: 报告 ${reportPath}\n`);
 process.stdout.write(
   `mutation:baseline: 写入 ${baselinePath}，共 ${entries.length} 条` +
-    `（Survived ${survived}，NoCoverage ${noCoverage}）。\n`
+    `（Survived ${survived}，NoCoverage ${noCoverage}）。\n`,
 );

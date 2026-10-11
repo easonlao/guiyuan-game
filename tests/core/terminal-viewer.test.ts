@@ -1,18 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import {
-  ActionType,
-  GameState,
-  Polarity,
-  WuXing
-} from '../../src/core/types/domain.js';
-import {
-  createInitialGameState
-} from '../../src/core/logic/State.js';
+import { ActionType, GameState, Polarity, WuXing } from '../../src/core/types/domain.js';
+import { createInitialGameState } from '../../src/core/logic/State.js';
 import { EventBus } from '../../src/core/logic/EventBus.js';
 import { TurnManager } from '../../src/core/logic/TurnManager.js';
-import {
-  TerminalBoardViewer
-} from '../../src/core/headless/TerminalBoardViewer.js';
+import { TerminalBoardViewer } from '../../src/core/headless/TerminalBoardViewer.js';
 import { balancedStrategy } from '../../src/core/ai/Strategy.js';
 
 describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
@@ -44,14 +35,14 @@ describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
             score: 150,
             board: {
               ...state.players.P1.board,
-              [WuXing.WOOD]: { yin: 1, yang: 1 },  // ⭐ 归一
-              [WuXing.FIRE]: { yin: 2, yang: 2 },  // ⭐ 亢极
+              [WuXing.WOOD]: { yin: 1, yang: 1 }, // ⭐ 归一
+              [WuXing.FIRE]: { yin: 2, yang: 2 }, // ⭐ 亢极
               [WuXing.EARTH]: { yin: -1, yang: -1 }, // ⚠️ 道损
-              [WuXing.METAL]: { yin: -1, yang: 1 },  // 损 / 明
-              [WuXing.WATER]: { yin: 0, yang: 2 }    // 空 / 亢
-            }
-          }
-        }
+              [WuXing.METAL]: { yin: -1, yang: 1 }, // 损 / 明
+              [WuXing.WATER]: { yin: 0, yang: 2 }, // 空 / 亢
+            },
+          },
+        },
       };
 
       const output = viewer.formatBoard(customState);
@@ -68,7 +59,7 @@ describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
         ...state,
         isGameOver: true,
         winner: 'P1',
-        endReason: 'GUI_YUAN'
+        endReason: 'GUI_YUAN',
       };
 
       const output = viewer.formatBoard(gameOverState);
@@ -82,7 +73,7 @@ describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
         actionType: ActionType.AUTO,
         player: 'P1' as const,
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
       expect(viewer.formatAction(action)).toBe('P1 执行 [吸纳 AUTO] 木 (阳)');
     });
@@ -92,7 +83,7 @@ describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
         actionType: ActionType.CONVERT,
         player: 'P1' as const,
         element: WuXing.FIRE,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
       expect(viewer.formatAction(action)).toBe('P1 执行 [调息 CONVERT] 火 (阴)');
     });
@@ -102,7 +93,7 @@ describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
         actionType: ActionType.TRANS,
         player: 'P1' as const,
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
       // 木生火
       expect(viewer.formatAction(action)).toBe('P1 执行 [化 TRANS] 木 -> 火 (阴)');
@@ -113,7 +104,7 @@ describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
         actionType: ActionType.ATK,
         player: 'P1' as const,
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
       // 木克土
       expect(viewer.formatAction(action)).toBe('P1 执行 [破 ATK] 木 -> 土 (阴)');
@@ -124,7 +115,7 @@ describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
         actionType: ActionType.BURST,
         player: 'P2' as const,
         sourceElement: WuXing.WATER,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       };
       // 水生木
       expect(viewer.formatAction(action)).toBe('P2 执行 [强化 BURST] 水 -> 木 (阴)');
@@ -135,7 +126,7 @@ describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
         actionType: ActionType.BURST_ATK,
         player: 'P2' as const,
         sourceElement: WuXing.WATER,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
       // 水克火
       expect(viewer.formatAction(action)).toBe('P2 执行 [强破 BURST_ATK] 水 -> 火 (阳)');
@@ -144,7 +135,7 @@ describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
     it('formats PASS action', () => {
       const action = {
         actionType: ActionType.PASS,
-        player: 'P1' as const
+        player: 'P1' as const,
       };
       expect(viewer.formatAction(action)).toBe('P1 执行 [消散 PASS]');
     });
@@ -158,7 +149,7 @@ describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
 
       const unsubscribe = testViewer.attach(bus, {
         autoPrint: true,
-        logger: loggerMock
+        logger: loggerMock,
       });
 
       // 模拟派发事件
@@ -168,14 +159,14 @@ describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
           actionType: ActionType.AUTO,
           player: 'P1',
           element: WuXing.WOOD,
-          polarity: Polarity.YANG
-        }
+          polarity: Polarity.YANG,
+        },
       });
       bus.emit('action:executed', {
         player: 'P1',
         actionType: ActionType.AUTO,
         scoreDelta: 10,
-        extraTurn: false
+        extraTurn: false,
       });
       bus.emit('burst:extra_turn', { player: 'P1' });
       bus.emit('game:over', { winner: 'P1', endReason: 'GUI_YUAN' });
@@ -211,9 +202,9 @@ describe('TerminalBoardViewer (src/core/headless/TerminalBoardViewer)', () => {
 
       const history = testViewer.getHistory();
       expect(history.length).toBeGreaterThanOrEqual(3);
-      expect(history.some(h => h.includes('[回合开始]'))).toBe(true);
-      expect(history.some(h => h.includes('[动作开始]'))).toBe(true);
-      expect(history.some(h => h.includes('[动作结算]'))).toBe(true);
+      expect(history.some((h) => h.includes('[回合开始]'))).toBe(true);
+      expect(history.some((h) => h.includes('[动作开始]'))).toBe(true);
+      expect(history.some((h) => h.includes('[动作结算]'))).toBe(true);
     });
   });
 });

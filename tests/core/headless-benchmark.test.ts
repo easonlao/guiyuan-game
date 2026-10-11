@@ -4,7 +4,7 @@ import {
   BenchmarkMetrics,
   rushGuiyuanStrategy,
   aggressiveStrategy,
-  balancedStrategy
+  balancedStrategy,
 } from '../../src/core/index.js';
 
 describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
@@ -13,7 +13,7 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     const metrics: BenchmarkMetrics = benchmark.run({
       matches: 100,
       baseSeed: 10000,
-      maxRounds: 60
+      maxRounds: 60,
     });
 
     expect(metrics.totalMatches).toBe(100);
@@ -34,17 +34,17 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     // 智能快刀细分终局度量守恒
     expect(
       metrics.doubleGuiYuanCount +
-      metrics.suddenDeathCount +
-      metrics.catchupFailCount +
-      metrics.p2DirectCount
+        metrics.suddenDeathCount +
+        metrics.catchupFailCount +
+        metrics.p2DirectCount,
     ).toBe(metrics.guiYuanCount);
 
     expect(
       metrics.doubleGuiYuanCount +
-      metrics.suddenDeathCount +
-      metrics.catchupFailCount +
-      metrics.p2DirectCount +
-      metrics.maxRoundsCount
+        metrics.suddenDeathCount +
+        metrics.catchupFailCount +
+        metrics.p2DirectCount +
+        metrics.maxRoundsCount,
     ).toBe(100);
 
     expect(metrics.doubleGuiYuanRate).toBeCloseTo(metrics.doubleGuiYuanCount / 100, 5);
@@ -70,7 +70,7 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     const benchmark = new HeadlessBenchmark();
     const metrics = benchmark.run({
       matches: 50,
-      baseSeed: 20000
+      baseSeed: 20000,
     });
 
     const report = benchmark.formatReport(metrics);
@@ -101,7 +101,7 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
       baseSeed: 30000,
       strategyP1: rushGuiyuanStrategy,
       strategyP2: aggressiveStrategy,
-      maxRounds: 40
+      maxRounds: 40,
     });
 
     expect(metrics.totalMatches).toBe(30);
@@ -115,14 +115,14 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
       matches: 50,
       baseSeed: 99999,
       strategyP1: balancedStrategy,
-      strategyP2: balancedStrategy
+      strategyP2: balancedStrategy,
     });
 
     const run2 = benchmark.run({
       matches: 50,
       baseSeed: 99999,
       strategyP1: balancedStrategy,
-      strategyP2: balancedStrategy
+      strategyP2: balancedStrategy,
     });
 
     expect(run1.p1Wins).toBe(run2.p1Wins);
@@ -147,7 +147,7 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
       baseSeed: 10000,
       strategyP1: balancedStrategy,
       strategyP2: balancedStrategy,
-      maxRounds: 30
+      maxRounds: 30,
     });
 
     // 验证各细分终局类型均有采集且相互排他累加守恒
@@ -155,9 +155,9 @@ describe('HeadlessBenchmark (Batch Headless Simulation & Diagnostic)', () => {
     expect(metrics.guiYuanCount).toBeGreaterThan(0);
     expect(
       metrics.doubleGuiYuanCount +
-      metrics.suddenDeathCount +
-      metrics.catchupFailCount +
-      metrics.p2DirectCount
+        metrics.suddenDeathCount +
+        metrics.catchupFailCount +
+        metrics.p2DirectCount,
     ).toBe(metrics.guiYuanCount);
 
     // 验证比率严格在 [0, 1] 区间

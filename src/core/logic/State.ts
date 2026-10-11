@@ -11,7 +11,7 @@ import {
   GameState,
   NodeLevel,
   TianGanInfo,
-  GENERATION_CYCLE
+  GENERATION_CYCLE,
 } from '../types/domain.js';
 
 /** 创建空白五行棋盘 (所有节点阴阳均为虚空 0) */
@@ -21,7 +21,7 @@ export function createEmptyBoard(): BoardState {
     [WuXing.FIRE]: { yin: 0, yang: 0 },
     [WuXing.EARTH]: { yin: 0, yang: 0 },
     [WuXing.METAL]: { yin: 0, yang: 0 },
-    [WuXing.WATER]: { yin: 0, yang: 0 }
+    [WuXing.WATER]: { yin: 0, yang: 0 },
   };
 }
 
@@ -29,7 +29,7 @@ export function createEmptyBoard(): BoardState {
 export function createInitialPlayer(): PlayerState {
   return {
     score: 0,
-    board: createEmptyBoard()
+    board: createEmptyBoard(),
   };
 }
 
@@ -41,7 +41,7 @@ export function createInitialGameState(maxRounds = 30): GameState {
     currentPlayer: 'P1',
     players: {
       P1: createInitialPlayer(),
-      P2: createInitialPlayer()
+      P2: createInitialPlayer(),
     },
     currentTianGan: null,
     isGameOver: false,
@@ -49,8 +49,8 @@ export function createInitialGameState(maxRounds = 30): GameState {
     endReason: null,
     lockedGuiYuan: {
       P1: false,
-      P2: false
-    }
+      P2: false,
+    },
   };
 }
 
@@ -67,7 +67,7 @@ export function isNodeKangJi(node: NodeData): boolean {
 /** 判定棋盘是否达成“五行归元” (己方五个节点全部归一) */
 export function isBoardGuiYuan(board: BoardState): boolean {
   const elements = Object.values(WuXing);
-  return elements.every(element => isNodeGuiYi(board[element]));
+  return elements.every((element) => isNodeGuiYi(board[element]));
 }
 
 /**
@@ -103,7 +103,9 @@ export function isBoardTingPai(board: BoardState): boolean {
  * 获取盘面上唯一未点亮侧的信息
  * 仅当未点亮侧数严格等于 1 时返回该侧的五行属性与极性；否则返回 null
  */
-export function getUnlightedSide(board: BoardState): { element: WuXing; polarity: Polarity } | null {
+export function getUnlightedSide(
+  board: BoardState,
+): { element: WuXing; polarity: Polarity } | null {
   let unlighted: { element: WuXing; polarity: Polarity } | null = null;
   let count = 0;
   for (const element of Object.values(WuXing)) {
@@ -161,10 +163,7 @@ export function canTianGanLightUnlightedSide(board: BoardState, tianGan: TianGan
   }
 
   // 3. TRANS (化气): 抽中阴天干，且相生目标为未点亮侧五行
-  if (
-    tianGan.polarity === Polarity.YIN &&
-    GENERATION_CYCLE[tianGan.element] === targetElement
-  ) {
+  if (tianGan.polarity === Polarity.YIN && GENERATION_CYCLE[tianGan.element] === targetElement) {
     // 阴干优先原则：
     // 若未点亮侧是阴极 (当前等级 < 1 < 2)，化气优先提升阴极
     if (targetPolarity === Polarity.YIN) {
@@ -243,5 +242,3 @@ export function countBoardGuiYi(board: BoardState): number {
   }
   return count;
 }
-
-

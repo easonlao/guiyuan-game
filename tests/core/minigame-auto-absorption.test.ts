@@ -76,8 +76,8 @@ describe('GameManager - P1 First-Turn & Single AUTO Auto-Absorption Scheduler', 
         actionType: ActionType.CONVERT,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
-      }
+        polarity: Polarity.YANG,
+      },
     ]);
 
     // Trigger resize to invoke updateButtons with mocked multiple actions
@@ -112,8 +112,8 @@ describe('GameManager - P1 First-Turn & Single AUTO Auto-Absorption Scheduler', 
         actionType: ActionType.PASS,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
-      }
+        polarity: Polarity.YANG,
+      },
     ]);
 
     const gm = new GameManager(12345);
@@ -134,8 +134,8 @@ describe('GameManager - P1 First-Turn & Single AUTO Auto-Absorption Scheduler', 
         actionType: ActionType.ATK,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YANG
-      }
+        polarity: Polarity.YANG,
+      },
     ]);
 
     const gm = new GameManager(12345);
@@ -164,8 +164,8 @@ describe('GameManager - P1 First-Turn & Single AUTO Auto-Absorption Scheduler', 
         actionType: ActionType.TRANS,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YIN
-      }
+        polarity: Polarity.YIN,
+      },
     ]);
 
     const gm = new GameManager(12345);
@@ -187,8 +187,8 @@ describe('GameManager - P1 First-Turn & Single AUTO Auto-Absorption Scheduler', 
         actionType: ActionType.CONVERT,
         player: 'P1',
         element: WuXing.FIRE,
-        polarity: Polarity.YANG
-      }
+        polarity: Polarity.YANG,
+      },
     ]);
 
     const gm = new GameManager(12345);
@@ -210,8 +210,8 @@ describe('GameManager - P1 First-Turn & Single AUTO Auto-Absorption Scheduler', 
         actionType: ActionType.BURST,
         player: 'P1',
         sourceElement: WuXing.WATER,
-        polarity: Polarity.YANG
-      }
+        polarity: Polarity.YANG,
+      },
     ]);
 
     const gm = new GameManager(12345);
@@ -238,8 +238,8 @@ describe('GameManager - P1 First-Turn & Single AUTO Auto-Absorption Scheduler', 
         actionType: ActionType.BURST_ATK,
         player: 'P1',
         sourceElement: WuXing.METAL,
-        polarity: Polarity.YIN
-      }
+        polarity: Polarity.YIN,
+      },
     ]);
 
     const gm = new GameManager(12345);
@@ -261,8 +261,8 @@ describe('GameManager - P1 First-Turn & Single AUTO Auto-Absorption Scheduler', 
         actionType: ActionType.DISSIPATE,
         player: 'P1',
         element: WuXing.EARTH,
-        polarity: Polarity.YANG
-      }
+        polarity: Polarity.YANG,
+      },
     ]);
 
     const gm = new GameManager(12345);
@@ -284,14 +284,14 @@ describe('GameManager - P1 First-Turn & Single AUTO Auto-Absorption Scheduler', 
         actionType: ActionType.ATK,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       },
       {
         actionType: ActionType.CONVERT,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YIN
-      }
+        polarity: Polarity.YIN,
+      },
     ]);
 
     const gm = new GameManager(12345);
@@ -307,5 +307,3 @@ describe('GameManager - P1 First-Turn & Single AUTO Auto-Absorption Scheduler', 
     tmSpy.mockRestore();
   });
 });
-
-

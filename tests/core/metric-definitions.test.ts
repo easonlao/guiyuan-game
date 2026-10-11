@@ -3,7 +3,7 @@ import { BoardState, WuXing } from '../../src/core/types/domain.js';
 import {
   measureBoardDiff,
   countUnlightedSides,
-  isBoardTingPai
+  isBoardTingPai,
 } from '../../src/core/logic/State.js';
 import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
 import type { MatchResult } from '../../src/core/headless/HeadlessMatch.js';
@@ -17,9 +17,8 @@ import {
   formatDominanceVerdict,
   formatDrawRateWithWinRates,
   type DominanceVerdict,
-  type HeadToHeadMatrix
+  type HeadToHeadMatrix,
 } from '../../src/core/headless/Metrics.js';
-
 
 describe('陷阱 A: 加持 2 -> 点亮 1 必须记为 1 次削弱', () => {
   it('旧口径（未点亮侧数）把 2 -> 1 记为 0 削弱 —— 与事实相反', () => {
@@ -44,11 +43,11 @@ describe('陷阱 A: 加持 2 -> 点亮 1 必须记为 1 次削弱', () => {
   it('1 -> 0 与 0 -> -1 各记 1 次削弱', () => {
     const prev = boardWith({
       [WuXing.WOOD]: { yin: 1, yang: 0 },
-      [WuXing.FIRE]: { yin: 0, yang: 0 }
+      [WuXing.FIRE]: { yin: 0, yang: 0 },
     });
     const next = boardWith({
       [WuXing.WOOD]: { yin: 0, yang: 0 },
-      [WuXing.FIRE]: { yin: -1, yang: 0 }
+      [WuXing.FIRE]: { yin: -1, yang: 0 },
     });
 
     const diff = measureBoardDiff(prev, next);
@@ -63,9 +62,9 @@ describe('陷阱 B: 占优结论必须附带跨策略对拼矩阵', () => {
 
   it('缺少矩阵数据时拒绝输出占优结论', () => {
     expect(() => assertDominanceVerdictHasMatrix(verdict)).toThrow(/对拼矩阵/);
-    expect(() =>
-      assertDominanceVerdictHasMatrix(verdict, { strategies: [], cells: [] })
-    ).toThrow(/对拼矩阵/);
+    expect(() => assertDominanceVerdictHasMatrix(verdict, { strategies: [], cells: [] })).toThrow(
+      /对拼矩阵/,
+    );
     expect(() => formatDominanceVerdict(verdict)).toThrow(/对拼矩阵/);
   });
 
@@ -77,9 +76,9 @@ describe('陷阱 B: 占优结论必须附带跨策略对拼矩阵', () => {
           p1Strategy: '激进压制',
           p2Strategy: '纯推进',
           matches: 2000,
-          seatBalancedWinRate: 0.7
-        }
-      ]
+          seatBalancedWinRate: 0.7,
+        },
+      ],
     };
     expect(() => assertDominanceVerdictHasMatrix(verdict, incomplete)).toThrow(/平衡/);
   });
@@ -92,9 +91,9 @@ describe('陷阱 B: 占优结论必须附带跨策略对拼矩阵', () => {
           p1Strategy: '激进压制',
           p2Strategy: '平衡',
           matches: 2000,
-          seatBalancedWinRate: 0.7
-        }
-      ]
+          seatBalancedWinRate: 0.7,
+        },
+      ],
     };
     expect(() => assertDominanceVerdictHasMatrix(verdict, complete)).not.toThrow();
     expect(formatDominanceVerdict(verdict, complete)).toContain('激进压制');
@@ -102,9 +101,7 @@ describe('陷阱 B: 占优结论必须附带跨策略对拼矩阵', () => {
 
   const matrixWith = (rate: number, matches = 2000): HeadToHeadMatrix => ({
     strategies: ['激进压制', '平衡'],
-    cells: [
-      { p1Strategy: '激进压制', p2Strategy: '平衡', matches, seatBalancedWinRate: rate }
-    ]
+    cells: [{ p1Strategy: '激进压制', p2Strategy: '平衡', matches, seatBalancedWinRate: rate }],
   });
 
   it('真结论通过：矩阵实测显著高于 50% 时放行', () => {
@@ -113,7 +110,7 @@ describe('陷阱 B: 占优结论必须附带跨策略对拼矩阵', () => {
 
   it('假结论被拒：矩阵实测低于 50% 时指出是哪一对、实际值多少', () => {
     expect(() => assertDominanceVerdictHasMatrix(verdict, matrixWith(0.4))).toThrow(
-      /激进压制 vs 平衡.*40\.00%/
+      /激进压制 vs 平衡.*40\.00%/,
     );
   });
 
@@ -125,9 +122,9 @@ describe('陷阱 B: 占优结论必须附带跨策略对拼矩阵', () => {
           p1Strategy: '激进压制',
           p2Strategy: '纯推进',
           matches: 2000,
-          seatBalancedWinRate: 0.7
-        }
-      ]
+          seatBalancedWinRate: 0.7,
+        },
+      ],
     };
     expect(() => assertDominanceVerdictHasMatrix(verdict, incomplete)).toThrow(/平衡/);
   });
@@ -142,17 +139,15 @@ describe('陷阱 B: 占优结论必须附带跨策略对拼矩阵', () => {
           p1Strategy: '归元冲刺',
           p2Strategy: '纯推进',
           matches: 4000,
-          seatBalancedWinRate: 0.5021
-        }
-      ]
+          seatBalancedWinRate: 0.5021,
+        },
+      ],
     };
     expect(() => assertDominanceVerdictHasMatrix(criticalVerdict, matrix)).toThrow(/无法判定/);
   });
 
   it('样本不足被拒：高胜率但样本量不足时不能作为占优证据', () => {
-    expect(() => assertDominanceVerdictHasMatrix(verdict, matrixWith(0.9, 10))).toThrow(
-      /样本不足/
-    );
+    expect(() => assertDominanceVerdictHasMatrix(verdict, matrixWith(0.9, 10))).toThrow(/样本不足/);
   });
 
   it('反向格按互补胜率读取：矩阵只存 B 对 A 时也能判定', () => {
@@ -163,9 +158,9 @@ describe('陷阱 B: 占优结论必须附带跨策略对拼矩阵', () => {
           p1Strategy: '平衡',
           p2Strategy: '激进压制',
           matches: 2000,
-          seatBalancedWinRate: 0.3
-        }
-      ]
+          seatBalancedWinRate: 0.3,
+        },
+      ],
     };
     expect(() => assertDominanceVerdictHasMatrix(verdict, reversed)).not.toThrow();
   });
@@ -175,7 +170,7 @@ describe('陷阱 C: 流局率必须与先后手胜率成对输出', () => {
   it('单独输出流局率被拒绝', () => {
     expect(() => formatDrawRateWithWinRates({ drawRate: 0.5 })).toThrow(/先后手胜率/);
     expect(() => formatDrawRateWithWinRates({ drawRate: 0.5, p1WinRate: 0.5 })).toThrow(
-      /先后手胜率/
+      /先后手胜率/,
     );
   });
 
@@ -183,7 +178,7 @@ describe('陷阱 C: 流局率必须与先后手胜率成对输出', () => {
     const output = formatDrawRateWithWinRates({
       drawRate: 0.5,
       p1WinRate: 0.48,
-      p2WinRate: 0.02
+      p2WinRate: 0.02,
     });
     expect(output).toContain('流局率');
     expect(output).toContain('先手胜率');
@@ -196,7 +191,7 @@ describe('指标口径模块由 MatchResult 派生', () => {
     const result = new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
       seed: 4242,
       maxRounds: 30,
-      shouldCollectStats: true
+      shouldCollectStats: true,
     });
     const metrics = deriveMatchMetrics(result);
 
@@ -214,7 +209,7 @@ describe('指标口径模块由 MatchResult 派生', () => {
   it('未采集统计时压制/建设度量为 null（不臆造 0）', () => {
     const result = new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
       seed: 4242,
-      maxRounds: 30
+      maxRounds: 30,
     });
     const metrics = deriveMatchMetrics(result);
     expect(metrics.suppressionLevels).toBeNull();
@@ -227,7 +222,7 @@ describe('指标口径模块由 MatchResult 派生', () => {
       const result = new HeadlessMatch().run(balancedStrategy, balancedStrategy, {
         seed: 10000 + i,
         maxRounds: 30,
-        shouldCollectStats: true
+        shouldCollectStats: true,
       });
       matches.push(deriveMatchMetrics(result));
     }
@@ -239,10 +234,7 @@ describe('指标口径模块由 MatchResult 派生', () => {
     expect(game.drawRate).toBe(game.maxRoundsRate);
     expect(game.guiYuanRate).toBeCloseTo(game.guiYuanCount / 40, 10);
     expect(
-      game.doubleGuiYuanCount +
-        game.suddenDeathCount +
-        game.catchupFailCount +
-        game.p2DirectCount
+      game.doubleGuiYuanCount + game.suddenDeathCount + game.catchupFailCount + game.p2DirectCount,
     ).toBe(game.guiYuanCount);
     expect(game.suppressionLevels).toBeGreaterThanOrEqual(0);
   });
@@ -254,7 +246,7 @@ describe('盘面进度指标: 还差几次行动到五行归元', () => {
     [WuXing.FIRE]: { yin: 1, yang: 1 },
     [WuXing.EARTH]: { yin: 1, yang: 1 },
     [WuXing.METAL]: { yin: 1, yang: 1 },
-    [WuXing.WATER]: { yin: 1, yang: 1 }
+    [WuXing.WATER]: { yin: 1, yang: 1 },
   });
 
   const tingPaiVoidLastSide = boardWith({
@@ -262,7 +254,7 @@ describe('盘面进度指标: 还差几次行动到五行归元', () => {
     [WuXing.FIRE]: { yin: 1, yang: 1 },
     [WuXing.EARTH]: { yin: 1, yang: 1 },
     [WuXing.METAL]: { yin: 1, yang: 1 },
-    [WuXing.WATER]: { yin: 1, yang: 0 }
+    [WuXing.WATER]: { yin: 1, yang: 0 },
   });
 
   const tingPaiDamagedLastSide = boardWith({
@@ -270,7 +262,7 @@ describe('盘面进度指标: 还差几次行动到五行归元', () => {
     [WuXing.FIRE]: { yin: 1, yang: 1 },
     [WuXing.EARTH]: { yin: 1, yang: 1 },
     [WuXing.METAL]: { yin: 1, yang: 1 },
-    [WuXing.WATER]: { yin: 1, yang: -1 }
+    [WuXing.WATER]: { yin: 1, yang: -1 },
   });
 
   function matchResultWithP1Board(board: BoardState): MatchResult {
@@ -281,7 +273,7 @@ describe('盘面进度指标: 还差几次行动到五行归元', () => {
       finalP1Score: 0,
       finalP2Score: 0,
       finalState: gameStateWith({ P1: board }),
-      record: { seed: 0, maxRounds: 30, actions: [] }
+      record: { seed: 0, maxRounds: 30, actions: [] },
     };
   }
 
@@ -295,7 +287,7 @@ describe('盘面进度指标: 还差几次行动到五行归元', () => {
       [WuXing.FIRE]: { yin: 1, yang: 1 },
       [WuXing.EARTH]: { yin: 1, yang: 1 },
       [WuXing.METAL]: { yin: 1, yang: 1 },
-      [WuXing.WATER]: { yin: 0, yang: -1 }
+      [WuXing.WATER]: { yin: 0, yang: -1 },
     });
 
     // 水阴虚空 1 次 + 水阳道损 2 次 = 3 次

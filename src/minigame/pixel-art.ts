@@ -1,7 +1,16 @@
 import { NodeLevel, Polarity, TianGanInfo, WuXing } from '../core/types/domain';
-import { AnimationMode, CharacterActionState, FlyingProjectile, ImpactEffect, TouchButton } from './types';
+import {
+  AnimationMode,
+  CharacterActionState,
+  FlyingProjectile,
+  ImpactEffect,
+  TouchButton,
+} from './types';
 
-export const WUXING_PALETTE: Record<WuXing, { name: string; main: string; light: string; dark: string }> = {
+export const WUXING_PALETTE: Record<
+  WuXing,
+  { name: string; main: string; light: string; dark: string }
+> = {
   [WuXing.WOOD]: { name: '木', main: '#38a169', light: '#68d391', dark: '#22543d' },
   [WuXing.FIRE]: { name: '火', main: '#e53e3e', light: '#fc8181', dark: '#742a2a' },
   [WuXing.EARTH]: { name: '土', main: '#d69e2e', light: '#f6e05e', dark: '#744210' },
@@ -16,7 +25,7 @@ export function drawPixelRect(
   y: number,
   w: number,
   h: number,
-  color: string
+  color: string,
 ): void {
   ctx.fillStyle = color;
   ctx.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
@@ -31,7 +40,7 @@ export function drawPixelBox(
   h: number,
   bgColor: string,
   borderColor: string,
-  pixelSize: number = 2
+  pixelSize: number = 2,
 ): void {
   // 底色
   drawPixelRect(ctx, x, y, w, h, bgColor);
@@ -52,7 +61,7 @@ export function drawPixelCharacter(
   y: number,
   isPlayer: boolean,
   state: CharacterActionState,
-  animTick: number
+  animTick: number,
 ): void {
   const p = 3; // 每个逻辑像素的屏幕像素大小
 
@@ -137,7 +146,7 @@ export function drawWuXingSeal(
   yinLevel: NodeLevel,
   yangLevel: NodeLevel,
   isGuiYi: boolean,
-  animTick: number
+  animTick: number,
 ): void {
   const cfg = WUXING_PALETTE[element];
 
@@ -179,7 +188,7 @@ export function drawWuXingSeal(
     ctx.restore();
   };
 
-  drawHalfArc(true, yinLevel);   // 左: 阴
+  drawHalfArc(true, yinLevel); // 左: 阴
   drawHalfArc(false, yangLevel); // 右: 阳
 
   // 3. 归一状态：中央旋转灵光光核
@@ -203,21 +212,17 @@ export function drawWuXingSeal(
 
   // 5. 阴/阳指示微标
   ctx.font = '8px monospace';
-  ctx.fillStyle = yinLevel > 0 ? '#9ae6b4' : (yinLevel === -1 ? '#feb2b2' : '#6b7280');
+  ctx.fillStyle = yinLevel > 0 ? '#9ae6b4' : yinLevel === -1 ? '#feb2b2' : '#6b7280';
   ctx.fillText('阴', x - radius - 5, y);
-  ctx.fillStyle = yangLevel > 0 ? '#9ae6b4' : (yangLevel === -1 ? '#feb2b2' : '#6b7280');
+  ctx.fillStyle = yangLevel > 0 ? '#9ae6b4' : yangLevel === -1 ? '#feb2b2' : '#6b7280';
   ctx.fillText('阳', x + radius + 5, y);
 }
 
 /**
  * 绘制复古像素动作按钮
  */
-export function drawTouchButton(
-  ctx: any,
-  btn: TouchButton,
-  isSelected: boolean
-): void {
-  const borderColor = btn.isBurst ? '#f6e05e' : (isSelected ? '#63b3ed' : '#4b5563');
+export function drawTouchButton(ctx: any, btn: TouchButton, isSelected: boolean): void {
+  const borderColor = btn.isBurst ? '#f6e05e' : isSelected ? '#63b3ed' : '#4b5563';
   const bgColor = isSelected ? '#2d3748' : '#1a202c';
 
   drawPixelBox(ctx, btn.x, btn.y, btn.width, btn.height, bgColor, borderColor, 2);
@@ -242,7 +247,7 @@ export function drawCenterTianGanRune(
   centerY: number,
   tg: TianGanInfo,
   mode: AnimationMode,
-  animTick: number
+  animTick: number,
 ): void {
   const elemCfg = WUXING_PALETTE[tg.element] ?? WUXING_PALETTE[WuXing.WOOD];
   const polarityName = tg.polarity === Polarity.YANG ? '阳' : '阴';
@@ -269,9 +274,25 @@ export function drawCenterTianGanRune(
 
     // 3. 符石像素双层框
     const boxSize = 50;
-    drawPixelBox(ctx, centerX - boxSize / 2, boxY - boxSize / 2, boxSize, boxSize, '#171e2e', elemCfg.main, 2);
+    drawPixelBox(
+      ctx,
+      centerX - boxSize / 2,
+      boxY - boxSize / 2,
+      boxSize,
+      boxSize,
+      '#171e2e',
+      elemCfg.main,
+      2,
+    );
     // 内衬高光边框
-    drawPixelRect(ctx, centerX - boxSize / 2 + 4, boxY - boxSize / 2 + 4, boxSize - 8, 2, elemCfg.light);
+    drawPixelRect(
+      ctx,
+      centerX - boxSize / 2 + 4,
+      boxY - boxSize / 2 + 4,
+      boxSize - 8,
+      2,
+      elemCfg.light,
+    );
 
     // 4. 天干文字 (像素粗体与硬阴影)
     ctx.fillStyle = '#0a0d14';
@@ -366,10 +387,7 @@ export function drawCenterTianGanRune(
 }
 
 /** 绘制飞行的吸收能量 */
-export function drawFlyingEnergy(
-  ctx: any,
-  flyer: FlyingProjectile
-): void {
+export function drawFlyingEnergy(ctx: any, flyer: FlyingProjectile): void {
   ctx.save();
   const { currentX, currentY, color, lightColor, mode, trail } = flyer;
 
@@ -425,10 +443,7 @@ export function drawFlyingEnergy(
 }
 
 /** 绘制受击/吸收到达冲击效果 */
-export function drawImpactEffect(
-  ctx: any,
-  impact: ImpactEffect
-): void {
+export function drawImpactEffect(ctx: any, impact: ImpactEffect): void {
   ctx.save();
   const { x, y, radius, maxRadius, color, lightColor, alpha, mode } = impact;
   ctx.globalAlpha = Math.max(0, alpha);
@@ -473,7 +488,7 @@ export function drawModeToggleBar(
   y: number,
   w: number,
   h: number,
-  mode: AnimationMode
+  mode: AnimationMode,
 ): void {
   const isPixel = mode === 'pixel';
   const borderColor = isPixel ? '#f6e05e' : '#4fd1c5';
@@ -496,4 +511,3 @@ export function drawModeToggleBar(
   ctx.font = '10px monospace';
   ctx.fillText('⇄ 点此切换', x + w - 12, y + h / 2);
 }
-

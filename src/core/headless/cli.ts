@@ -17,8 +17,7 @@ export function isDirectRun(moduleUrl: string, argv: readonly string[] = process
   const entry = argv[1];
   if (!entry) return false;
   return (
-    moduleUrl === pathToFileURL(entry).href ||
-    moduleUrl === pathToFileURL(resolve(entry)).href
+    moduleUrl === pathToFileURL(entry).href || moduleUrl === pathToFileURL(resolve(entry)).href
   );
 }
 

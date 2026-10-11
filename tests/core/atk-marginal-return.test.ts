@@ -4,22 +4,19 @@ import {
   BoardState,
   GameState,
   Polarity,
-  WuXing
+  WuXing,
 } from '../../src/core/types/domain.js';
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
 import {
   POINTS_CONFIG,
   ScoreCalculator,
-  type PointsConfig
+  type PointsConfig,
 } from '../../src/core/logic/ScoreCalculator.js';
 import { gameStateWith } from '../../src/core/headless/BoardFixture.js';
-import {
-  atkTempoGain,
-  countActionsToGuiYuan
-} from '../../src/core/headless/Metrics.js';
+import { atkTempoGain, countActionsToGuiYuan } from '../../src/core/headless/Metrics.js';
 import {
   measureAtkSequence,
-  runAtkMarginalReturn
+  runAtkMarginalReturn,
 } from '../../src/core/headless/AtkMarginalReturn.js';
 
 /** 全零计分配置：用于证明盘面边际收益口径与计分无关 */
@@ -30,7 +27,7 @@ const ZERO_POINTS_CONFIG: PointsConfig = {
     TRANS: 0,
     ATK: 0,
     BURST: 0,
-    BURST_ATK: 0
+    BURST_ATK: 0,
   },
   STATE_CHANGE: {
     REPAIR_DMG: { yang: 0, yin: 0 },
@@ -38,10 +35,10 @@ const ZERO_POINTS_CONFIG: PointsConfig = {
     BLESSING: 0,
     CAUSE_DMG: { yang: 0, yin: 0 },
     BREAK_LIGHT: { yang: 0, yin: 0 },
-    WEAKEN: 0
+    WEAKEN: 0,
   },
   GUI_YI_MILESTONE: 0,
-  DAMAGE_PENALTY: 0
+  DAMAGE_PENALTY: 0,
 };
 
 const defaultResolver = new ActionResolver();
@@ -55,13 +52,13 @@ function resolveAtk(
   state: GameState,
   sourceElement: WuXing,
   polarity: Polarity,
-  resolver: ActionResolver = defaultResolver
+  resolver: ActionResolver = defaultResolver,
 ) {
   return resolver.resolve(state, {
     actionType: ActionType.ATK,
     player: 'P1',
     sourceElement,
-    polarity
+    polarity,
   });
 }
 
@@ -77,7 +74,7 @@ describe('【破】盘面边际收益口径 (atkTempoGain)', () => {
 
     expect(atkTempoGain(before, opponentBoard(result.nextState))).toBe(1);
     expect(countActionsToGuiYuan(opponentBoard(result.nextState))).toBe(
-      countActionsToGuiYuan(before) + 1
+      countActionsToGuiYuan(before) + 1,
     );
   });
 
@@ -99,7 +96,7 @@ describe('【破】盘面边际收益口径 (atkTempoGain)', () => {
 
   it('已道损 -1：盘面不再变化，边际收益为 0（封顶）', () => {
     const state = gameStateWith({
-      P2: { [WuXing.WATER]: { yin: -1, yang: -1 } }
+      P2: { [WuXing.WATER]: { yin: -1, yang: -1 } },
     });
     const before = opponentBoard(state);
     // 强制结算：等级被 clampNodeLevel 限制在 -1，不产生任何盘面变化。
@@ -114,8 +111,8 @@ describe('【破】盘面边际收益口径 (atkTempoGain)', () => {
       P2: {
         [WuXing.WATER]: { yin: 0 },
         [WuXing.WOOD]: { yin: 1 },
-        [WuXing.FIRE]: { yin: 2 }
-      }
+        [WuXing.FIRE]: { yin: 2 },
+      },
     });
     const before = opponentBoard(state);
 
@@ -127,7 +124,7 @@ describe('【破】盘面边际收益口径 (atkTempoGain)', () => {
     // ……但盘面变化与盘面边际收益完全一致。
     expect(opponentBoard(stripped.nextState)).toEqual(opponentBoard(scored.nextState));
     expect(atkTempoGain(before, opponentBoard(stripped.nextState))).toBe(
-      atkTempoGain(before, opponentBoard(scored.nextState))
+      atkTempoGain(before, opponentBoard(scored.nextState)),
     );
   });
 
@@ -140,7 +137,7 @@ describe('【破】盘面边际收益口径 (atkTempoGain)', () => {
 
     expect(POINTS_CONFIG.ACTION.ATK).toBeGreaterThan(0);
     expect(atkTempoGain(before, opponentBoard(scored.nextState))).toBe(
-      atkTempoGain(before, opponentBoard(stripped.nextState))
+      atkTempoGain(before, opponentBoard(stripped.nextState)),
     );
   });
 });
@@ -152,7 +149,7 @@ describe('【破】连续序列的不变量（不是复述报告数字）', () =
       [WuXing.FIRE]: { yin: -1, yang: -1 },
       [WuXing.EARTH]: { yin: -1, yang: -1 },
       [WuXing.METAL]: { yin: -1, yang: -1 },
-      [WuXing.WATER]: { yin: -1, yang: -1 }
+      [WuXing.WATER]: { yin: -1, yang: -1 },
     });
 
     expect(sequence.steps).toHaveLength(0);

@@ -1,15 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import {
-  ActionType,
-  WuXing,
-  Polarity
-} from '../../src/core/types/index.js';
+import { ActionType, WuXing, Polarity } from '../../src/core/types/index.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
-import {
-  ScoreCalculator,
-  POINTS_CONFIG
-} from '../../src/core/logic/ScoreCalculator.js';
+import { ScoreCalculator, POINTS_CONFIG } from '../../src/core/logic/ScoreCalculator.js';
 
 describe('Ticket 02: 2.5倍攻击压制状态分实装', () => {
   const calculator = new ScoreCalculator();
@@ -58,7 +51,7 @@ describe('Ticket 02: 2.5倍攻击压制状态分实装', () => {
         actionType: ActionType.ATK,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(res.success).toBe(true);
@@ -74,7 +67,7 @@ describe('Ticket 02: 2.5倍攻击压制状态分实装', () => {
         actionType: ActionType.ATK,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       });
 
       expect(res.success).toBe(true);
@@ -94,17 +87,17 @@ describe('Ticket 02: 2.5倍攻击压制状态分实装', () => {
             ...baseState.players.P2,
             board: {
               ...baseState.players.P2.board,
-              [WuXing.EARTH]: { yin: 0 as const, yang: 1 as const }
-            }
-          }
-        }
+              [WuXing.EARTH]: { yin: 0 as const, yang: 1 as const },
+            },
+          },
+        },
       };
 
       const res = resolver.resolve(stateWithLitOpponent, {
         actionType: ActionType.ATK,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(res.success).toBe(true);
@@ -124,17 +117,17 @@ describe('Ticket 02: 2.5倍攻击压制状态分实装', () => {
             ...baseState.players.P2,
             board: {
               ...baseState.players.P2.board,
-              [WuXing.EARTH]: { yin: 1 as const, yang: 0 as const }
-            }
-          }
-        }
+              [WuXing.EARTH]: { yin: 1 as const, yang: 0 as const },
+            },
+          },
+        },
       };
 
       const res = resolver.resolve(stateWithLitOpponent, {
         actionType: ActionType.ATK,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       });
 
       expect(res.success).toBe(true);
@@ -154,17 +147,17 @@ describe('Ticket 02: 2.5倍攻击压制状态分实装', () => {
             ...baseState.players.P2,
             board: {
               ...baseState.players.P2.board,
-              [WuXing.EARTH]: { yin: 0 as const, yang: 2 as const }
-            }
-          }
-        }
+              [WuXing.EARTH]: { yin: 0 as const, yang: 2 as const },
+            },
+          },
+        },
       };
 
       const res = resolver.resolve(stateWithBlessedOpponent, {
         actionType: ActionType.ATK,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(res.success).toBe(true);
@@ -184,10 +177,10 @@ describe('Ticket 02: 2.5倍攻击压制状态分实装', () => {
             ...baseState.players.P1,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const },
+            },
+          },
+        },
       };
 
       const res = resolver.resolve(stateGuiYi, {
@@ -195,7 +188,7 @@ describe('Ticket 02: 2.5倍攻击压制状态分实装', () => {
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YANG,
-        polarity: Polarity.YANG // Opponent EARTH yang 0 -> -1
+        polarity: Polarity.YANG, // Opponent EARTH yang 0 -> -1
       });
 
       expect(res.success).toBe(true);

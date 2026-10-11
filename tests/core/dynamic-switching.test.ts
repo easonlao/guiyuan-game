@@ -5,7 +5,7 @@ import {
   GameState,
   Polarity,
   TIAN_GAN_LIST,
-  WuXing
+  WuXing,
 } from '../../src/core/types/domain.js';
 import { gameStateWith } from '../../src/core/headless/BoardFixture.js';
 import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
@@ -15,7 +15,7 @@ import {
   TEMPO_ONLY_POLICY,
   createDynamicSwitchingStrategy,
   dynamicStrategyVariant,
-  runDynamicSwitchingExperiment
+  runDynamicSwitchingExperiment,
 } from '../../src/core/headless/DynamicSwitching.js';
 import { aggressiveStrategy } from '../../src/core/ai/Strategy.js';
 import { DEFAULT_STRATEGY_VARIANTS } from '../../src/core/headless/ExperimentRunner.js';
@@ -28,14 +28,14 @@ const convertWoodYin: ActionPayload = {
   actionType: ActionType.CONVERT,
   player: 'P1',
   element: WuXing.WOOD,
-  polarity: Polarity.YIN
+  polarity: Polarity.YIN,
 };
 
 const atkEarthYin: ActionPayload = {
   actionType: ActionType.ATK,
   player: 'P1',
   sourceElement: WuXing.WOOD,
-  polarity: Polarity.YIN
+  polarity: Polarity.YIN,
 };
 
 /**
@@ -48,7 +48,7 @@ function dilemmaState(p2EarthYin: 1 | 2): GameState {
   return gameStateWith({
     P1: { [WuXing.WOOD]: { yin: 0, yang: 1 } },
     P2: { [WuXing.EARTH]: { yin: p2EarthYin, yang: 1 } },
-    currentPlayer: 'P1'
+    currentPlayer: 'P1',
   });
 }
 
@@ -65,10 +65,10 @@ function raceLeadState(): GameState {
       [WuXing.FIRE]: { yin: 1, yang: 0 },
       [WuXing.EARTH]: { yin: 1, yang: 1 },
       [WuXing.METAL]: { yin: 1, yang: 1 },
-      [WuXing.WATER]: { yin: 1, yang: 1 }
+      [WuXing.WATER]: { yin: 1, yang: 1 },
     },
     P2: { [WuXing.EARTH]: { yin: 1, yang: 1 } },
-    currentPlayer: 'P1'
+    currentPlayer: 'P1',
   });
 }
 
@@ -106,11 +106,11 @@ describe('Ticket 10 - 动态切换依据 (board-derived criterion)', () => {
     for (let seed = 10000; seed < 10040 && !differed; seed++) {
       const dynamicRun = match.run(dynamic, aggressiveStrategy, {
         seed,
-        maxRounds: MAX_ROUNDS
+        maxRounds: MAX_ROUNDS,
       });
       const aggressiveRun = match.run(aggressiveStrategy, aggressiveStrategy, {
         seed,
-        maxRounds: MAX_ROUNDS
+        maxRounds: MAX_ROUNDS,
       });
       differed = JSON.stringify(dynamicRun.record) !== JSON.stringify(aggressiveRun.record);
     }
@@ -170,16 +170,16 @@ describe('Ticket 10 - 动态 vs 静态对拼矩阵 (seat-balanced head-to-head)'
       matches: 3,
       baseSeed: BASE_SEED,
       maxRounds: MAX_ROUNDS,
-      shouldCollectStats: false
+      shouldCollectStats: false,
     });
 
-    expect(report.statics).toEqual(DEFAULT_STRATEGY_VARIANTS.map(v => v.name));
+    expect(report.statics).toEqual(DEFAULT_STRATEGY_VARIANTS.map((v) => v.name));
     const policyReport = report.policies[0];
     expect(policyReport.matchups).toHaveLength(DEFAULT_STRATEGY_VARIANTS.length);
     for (const matchup of policyReport.matchups) {
       expect(matchup.matches).toBe(6); // 2 座次 × 3 局
       expect(matchup.dynamicWinRate + matchup.staticWinRate).toBeCloseTo(1, 10);
-      expect(DEFAULT_STRATEGY_VARIANTS.map(v => v.name)).toContain(matchup.staticStrategy);
+      expect(DEFAULT_STRATEGY_VARIANTS.map((v) => v.name)).toContain(matchup.staticStrategy);
     }
   });
 
@@ -189,7 +189,7 @@ describe('Ticket 10 - 动态 vs 静态对拼矩阵 (seat-balanced head-to-head)'
       matches: 3,
       baseSeed: 4242,
       maxRounds: MAX_ROUNDS,
-      shouldCollectStats: true
+      shouldCollectStats: true,
     } as const;
     expect(runDynamicSwitchingExperiment(options)).toEqual(runDynamicSwitchingExperiment(options));
   });
@@ -200,7 +200,7 @@ describe('Ticket 10 - 动态 vs 静态对拼矩阵 (seat-balanced head-to-head)'
       matches: 3,
       baseSeed: BASE_SEED,
       maxRounds: MAX_ROUNDS,
-      shouldCollectStats: true
+      shouldCollectStats: true,
     });
     const stats = report.policies[0].stats;
     expect(stats.decisions).toBeGreaterThan(0);

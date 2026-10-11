@@ -39,7 +39,7 @@ import {
   GUARDRAIL_P1_WIN_MIN,
   GUARDRAIL_P1_WIN_MAX,
   GUARDRAIL_HEAP_MAX_MB,
-  checkGuardrailBand
+  checkGuardrailBand,
 } from './GuardrailBand.js';
 import {
   DEFAULT_BASE_SEED,
@@ -55,7 +55,7 @@ import {
   type HeadToHeadReport,
   type MatchupComparison,
   type RuleMode,
-  type StrategyVariant
+  type StrategyVariant,
 } from './ExperimentRunner.js';
 import {
   DOMINANCE_SIGNIFICANCE_Z,
@@ -63,12 +63,12 @@ import {
   evaluateDominanceEvidence,
   type DominanceVerdict,
   type HeadToHeadMatrix,
-  type UndecidableMatchup
+  type UndecidableMatchup,
 } from './Metrics.js';
 import {
   runActionValueCensus,
   type ActionTypeCensus,
-  type ActionValueCensusReport
+  type ActionValueCensusReport,
 } from './ActionValueCensus.js';
 import {
   DEFAULT_DYNAMIC_POLICY,
@@ -76,7 +76,7 @@ import {
   runDynamicSwitchingExperiment,
   type DynamicPolicyReport,
   type DynamicSwitchPolicy,
-  type DynamicSwitchingReport
+  type DynamicSwitchingReport,
 } from './DynamicSwitching.js';
 
 // ---------------------------------------------------------------------------
@@ -146,7 +146,7 @@ export function resolveCandidate(spec: CandidateSpec): ResolvedCandidate {
     pointsConfig: spec.pointsConfig ?? POINTS_CONFIG,
     rules: spec.rules ?? ruleSwitchesFor(settlementMode),
     settlementMode,
-    isBoardSettlement: spec.isBoardSettlement ?? isBoardSettlementFor(settlementMode)
+    isBoardSettlement: spec.isBoardSettlement ?? isBoardSettlementFor(settlementMode),
   };
 }
 
@@ -156,7 +156,7 @@ export const PRODUCTION_CANDIDATE: CandidateSpec = {
   description: '生产默认 POINTS_CONFIG（scoring 结算）',
   pointsConfig: POINTS_CONFIG,
   rules: {},
-  settlementMode: 'scoring'
+  settlementMode: 'scoring',
 };
 
 /**
@@ -166,7 +166,7 @@ export const PRODUCTION_CANDIDATE: CandidateSpec = {
  */
 export const ATTACK_PROGRESS_SCALE_POINTS_CONFIG: PointsConfig = {
   ...POINTS_CONFIG,
-  ATTACK_PROGRESS_SCALE: { floor: 0.3, span: 0.9 }
+  ATTACK_PROGRESS_SCALE: { floor: 0.3, span: 0.9 },
 };
 
 /** Ticket 05 候选 A（进度定价）的完整声明。 */
@@ -174,7 +174,7 @@ export const TICKET_05_CANDIDATE: CandidateSpec = {
   name: 'progress-pricing',
   description: '攻击进度定价（floor=0.3 / span=0.9）：压制的相对回报随对手归一进度上升',
   pointsConfig: ATTACK_PROGRESS_SCALE_POINTS_CONFIG,
-  settlementMode: 'scoring'
+  settlementMode: 'scoring',
 };
 
 /**
@@ -187,13 +187,13 @@ export const TICKET_05_CANDIDATE: CandidateSpec = {
  */
 export const SEARCH_BASELINE_POINTS_CONFIG: PointsConfig = {
   ...POINTS_CONFIG,
-  ATTACK_PROGRESS_SCALE: undefined
+  ATTACK_PROGRESS_SCALE: undefined,
 };
 
 /** 候选 B：空枪定价（`WEAKEN: 200 → 0`）。 */
 export const WEAKEN_ZERO_POINTS_CONFIG: PointsConfig = {
   ...SEARCH_BASELINE_POINTS_CONFIG,
-  STATE_CHANGE: { ...SEARCH_BASELINE_POINTS_CONFIG.STATE_CHANGE, WEAKEN: 0 }
+  STATE_CHANGE: { ...SEARCH_BASELINE_POINTS_CONFIG.STATE_CHANGE, WEAKEN: 0 },
 };
 
 /** 候选 D：结构化下调（`WEAKEN → 0` + `CAUSE_DMG → 120/100`）。 */
@@ -202,8 +202,8 @@ export const STRUCTURED_REDUCTION_POINTS_CONFIG: PointsConfig = {
   STATE_CHANGE: {
     ...SEARCH_BASELINE_POINTS_CONFIG.STATE_CHANGE,
     WEAKEN: 0,
-    CAUSE_DMG: { yang: 120, yin: 100 }
-  }
+    CAUSE_DMG: { yang: 120, yin: 100 },
+  },
 };
 
 export const CANDIDATE_A: CandidateSpec = TICKET_05_CANDIDATE;
@@ -213,7 +213,7 @@ export const CANDIDATE_B: CandidateSpec = {
   name: 'weaken-zero',
   description: '空枪定价：WEAKEN 200 → 0（搜索基线 + 只改这一旋钮）',
   pointsConfig: WEAKEN_ZERO_POINTS_CONFIG,
-  settlementMode: 'scoring'
+  settlementMode: 'scoring',
 };
 
 /** 候选 D：结构化下调。 */
@@ -221,7 +221,7 @@ export const CANDIDATE_D: CandidateSpec = {
   name: 'structured-reduction',
   description: '结构化下调：WEAKEN → 0 + CAUSE_DMG → 120/100（搜索基线 + 只改这两项）',
   pointsConfig: STRUCTURED_REDUCTION_POINTS_CONFIG,
-  settlementMode: 'scoring'
+  settlementMode: 'scoring',
 };
 
 /** 候选 E：盘面进度终局结算（计分不变，AI 估值不变，回合上限按盘面进度判负）。 */
@@ -230,7 +230,7 @@ export const CANDIDATE_E: CandidateSpec = {
   description: '盘面进度终局结算：scoring 计分不变，回合上限按盘面进度判负',
   pointsConfig: SEARCH_BASELINE_POINTS_CONFIG,
   settlementMode: 'scoring',
-  isBoardSettlement: true
+  isBoardSettlement: true,
 };
 
 /** CLI 可选择的注册候选：候选声明 + 标准 4 使用的动态策略。 */
@@ -248,24 +248,24 @@ export interface RegisteredCandidate {
 export const CANDIDATE_REGISTRY: Readonly<Record<string, RegisteredCandidate>> = {
   [PRODUCTION_CANDIDATE.name]: {
     spec: PRODUCTION_CANDIDATE,
-    dynamicPolicies: [DEFAULT_DYNAMIC_POLICY]
+    dynamicPolicies: [DEFAULT_DYNAMIC_POLICY],
   },
   [TICKET_05_CANDIDATE.name]: {
     spec: TICKET_05_CANDIDATE,
-    dynamicPolicies: [TUNED_DYNAMIC_POLICY]
+    dynamicPolicies: [TUNED_DYNAMIC_POLICY],
   },
   [CANDIDATE_B.name]: {
     spec: CANDIDATE_B,
-    dynamicPolicies: [DEFAULT_DYNAMIC_POLICY]
+    dynamicPolicies: [DEFAULT_DYNAMIC_POLICY],
   },
   [CANDIDATE_D.name]: {
     spec: CANDIDATE_D,
-    dynamicPolicies: [DEFAULT_DYNAMIC_POLICY]
+    dynamicPolicies: [DEFAULT_DYNAMIC_POLICY],
   },
   [CANDIDATE_E.name]: {
     spec: CANDIDATE_E,
-    dynamicPolicies: [DEFAULT_DYNAMIC_POLICY]
-  }
+    dynamicPolicies: [DEFAULT_DYNAMIC_POLICY],
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -438,7 +438,7 @@ function runNoStrictDominance(
   strategies: readonly StrategyVariant[],
   matchesPerSeat: number,
   seed: number,
-  maxRounds: number
+  maxRounds: number,
 ): NoStrictDominanceResult {
   const headToHead = runHeadToHeadMatrix({
     strategies,
@@ -448,14 +448,14 @@ function runNoStrictDominance(
     isBoardSettlement: candidate.isBoardSettlement,
     matches: matchesPerSeat,
     baseSeed: seed,
-    maxRounds
+    maxRounds,
   });
   const matrix = toHeadToHeadMatrix(headToHead);
   const analysis = analyzeDominanceMatrix(matrix);
   const allCount = headToHead.strategies.length - 1;
   const strictDominators = analysis.verdicts
-    .filter(verdict => verdict.dominates.length === allCount && allCount > 0)
-    .map(verdict => verdict.strategy);
+    .filter((verdict) => verdict.dominates.length === allCount && allCount > 0)
+    .map((verdict) => verdict.strategy);
   const fullyDecided = analysis.undecidable.length === 0;
   const verdict: CriterionVerdict =
     strictDominators.length > 0 ? 'fail' : fullyDecided ? 'pass' : 'inconclusive';
@@ -472,7 +472,7 @@ function runNoStrictDominance(
     strategies: headToHead.strategies,
     matchesPerSeat,
     seed,
-    maxRounds
+    maxRounds,
   };
 }
 
@@ -483,13 +483,13 @@ function runNoStrictDominance(
 function runEveryActionHasValue(candidate: ResolvedCandidate): EveryActionHasValueResult {
   const census = runActionValueCensus({
     pointsConfig: candidate.pointsConfig,
-    rules: candidate.rules
+    rules: candidate.rules,
   });
   return {
     passed: census.globallyDominated.length === 0,
     census,
     globallyDominated: census.globallyDominated,
-    actions: census.actions
+    actions: census.actions,
   };
 }
 
@@ -501,7 +501,7 @@ function runGuardrails(
   candidate: ResolvedCandidate,
   guardrailMatches: number,
   guardrailSeed: number,
-  maxRounds: number
+  maxRounds: number,
 ): GuardrailResult {
   const benchmark = new HeadlessBenchmark();
   const balanced: StrategyVariant = { name: '平衡', weights: BALANCED_WEIGHTS };
@@ -513,7 +513,7 @@ function runGuardrails(
     strategyP2: buildVariantStrategy(balanced, candidate.pointsConfig, candidate.rules),
     scoreConfig: candidate.pointsConfig,
     rules: candidate.rules,
-    isBoardSettlement: candidate.isBoardSettlement
+    isBoardSettlement: candidate.isBoardSettlement,
   });
 
   // 与带比较的唯一实现是 `checkGuardrailBand`；本文件不再直接与任何数字比较，
@@ -521,9 +521,9 @@ function runGuardrails(
   const violations = checkGuardrailBand({
     guiYuanRate: metrics.guiYuanRate,
     p1WinRate: metrics.p1WinRate,
-    heapUsedDeltaMB: metrics.heapUsedDeltaMB
+    heapUsedDeltaMB: metrics.heapUsedDeltaMB,
   });
-  const violated = (bound: string): boolean => violations.some(v => v.bound === bound);
+  const violated = (bound: string): boolean => violations.some((v) => v.bound === bound);
 
   const guiYuanCheck: GuardrailCheck = {
     key: 'guiYuanRate',
@@ -531,7 +531,7 @@ function runGuardrails(
     actual: metrics.guiYuanRate,
     min: GUARDRAIL_GUIYUAN_MIN,
     max: GUARDRAIL_GUIYUAN_MAX,
-    passed: !violated('guiYuanRate.min') && !violated('guiYuanRate.max')
+    passed: !violated('guiYuanRate.min') && !violated('guiYuanRate.max'),
   };
   const p1Check: GuardrailCheck = {
     key: 'p1WinRate',
@@ -539,19 +539,19 @@ function runGuardrails(
     actual: metrics.p1WinRate,
     min: GUARDRAIL_P1_WIN_MIN,
     max: GUARDRAIL_P1_WIN_MAX,
-    passed: !violated('p1WinRate.min') && !violated('p1WinRate.max')
+    passed: !violated('p1WinRate.min') && !violated('p1WinRate.max'),
   };
   const heapCheck: GuardrailCheck = {
     key: 'heapUsedDeltaMB',
     label: '堆内存增量 (MB)',
     actual: metrics.heapUsedDeltaMB,
     max: GUARDRAIL_HEAP_MAX_MB,
-    passed: !violated('heapUsedDeltaMB.max')
+    passed: !violated('heapUsedDeltaMB.max'),
   };
   const checks = [guiYuanCheck, p1Check, heapCheck];
 
   return {
-    passed: checks.every(check => check.passed),
+    passed: checks.every((check) => check.passed),
     matches: guardrailMatches,
     seed: guardrailSeed,
     maxRounds,
@@ -560,7 +560,7 @@ function runGuardrails(
     p2WinRate: metrics.p2WinRate,
     drawRate: metrics.drawRate,
     heapUsedDeltaMB: metrics.heapUsedDeltaMB,
-    checks
+    checks,
   };
 }
 
@@ -573,28 +573,32 @@ function toDynamicMatrix(policyReport: DynamicPolicyReport): HeadToHeadMatrix {
   return {
     strategies: [
       policyReport.policy.name,
-      ...policyReport.matchups.map(matchup => matchup.staticStrategy)
+      ...policyReport.matchups.map((matchup) => matchup.staticStrategy),
     ],
-    cells: policyReport.matchups.map(matchup => ({
+    cells: policyReport.matchups.map((matchup) => ({
       p1Strategy: policyReport.policy.name,
       p2Strategy: matchup.staticStrategy,
       matches: matchup.matches,
-      seatBalancedWinRate: matchup.dynamicWinRate
-    }))
+      seatBalancedWinRate: matchup.dynamicWinRate,
+    })),
   };
 }
 
 function evidenceFor(
   policyReport: DynamicPolicyReport,
-  matrix: HeadToHeadMatrix
+  matrix: HeadToHeadMatrix,
 ): DynamicAdvantageEvidence[] {
-  return policyReport.matchups.map(matchup => {
+  return policyReport.matchups.map((matchup) => {
     const matches = matchup.matches;
     const rate = matchup.dynamicWinRate;
     const margin = rate - 0.5;
     const standardError = matches > 0 ? 0.5 / Math.sqrt(matches) : Number.POSITIVE_INFINITY;
     const threshold = DOMINANCE_SIGNIFICANCE_Z * standardError;
-    const evidence = evaluateDominanceEvidence(matrix, policyReport.policy.name, matchup.staticStrategy);
+    const evidence = evaluateDominanceEvidence(
+      matrix,
+      policyReport.policy.name,
+      matchup.staticStrategy,
+    );
     return {
       policy: policyReport.policy.name,
       staticStrategy: matchup.staticStrategy,
@@ -605,7 +609,7 @@ function evidenceFor(
       threshold,
       lowerBound: rate - threshold,
       upperBound: rate + threshold,
-      significant: evidence.kind === 'supported'
+      significant: evidence.kind === 'supported',
     };
   });
 }
@@ -617,7 +621,7 @@ function runDynamicBeatsStatics(
   shouldCollectStats: boolean,
   matchesPerSeat: number,
   seed: number,
-  maxRounds: number
+  maxRounds: number,
 ): DynamicBeatsStaticsResult {
   const report = runDynamicSwitchingExperiment({
     policies,
@@ -629,27 +633,27 @@ function runDynamicBeatsStatics(
     matches: matchesPerSeat,
     baseSeed: seed,
     maxRounds,
-    shouldCollectStats
+    shouldCollectStats,
   });
 
-  const evidence = report.policies.flatMap(policyReport =>
-    evidenceFor(policyReport, toDynamicMatrix(policyReport))
+  const evidence = report.policies.flatMap((policyReport) =>
+    evidenceFor(policyReport, toDynamicMatrix(policyReport)),
   );
   const significantBeats = evidence
-    .filter(item => item.significant)
-    .map(item => `${item.policy} vs ${item.staticStrategy}`);
+    .filter((item) => item.significant)
+    .map((item) => `${item.policy} vs ${item.staticStrategy}`);
   const nonSignificant = evidence
-    .filter(item => !item.significant)
-    .map(item => `${item.policy} vs ${item.staticStrategy}`);
+    .filter((item) => !item.significant)
+    .map((item) => `${item.policy} vs ${item.staticStrategy}`);
 
   return {
-    passed: evidence.length > 0 && evidence.every(item => item.significant),
+    passed: evidence.length > 0 && evidence.every((item) => item.significant),
     report,
-    policies: report.policies.map(policyReport => policyReport.policy.name),
+    policies: report.policies.map((policyReport) => policyReport.policy.name),
     statics: report.statics,
     evidence,
     significantBeats,
-    nonSignificant
+    nonSignificant,
   };
 }
 
@@ -674,7 +678,7 @@ function runBaselineComparison(
   baselineHeadToHead: HeadToHeadReport | undefined,
   matchesPerSeat: number,
   seed: number,
-  maxRounds: number
+  maxRounds: number,
 ): BaselineComparisonResult {
   const reusedCandidateMatrix = configsMatch(candidate, baseline);
   const baselineReport =
@@ -689,7 +693,7 @@ function runBaselineComparison(
           isBoardSettlement: baseline.isBoardSettlement,
           matches: matchesPerSeat,
           baseSeed: seed,
-          maxRounds
+          maxRounds,
         }));
 
   const comparison = compareHeadToHeadMatrices(baselineReport, candidateHeadToHead);
@@ -699,7 +703,7 @@ function runBaselineComparison(
     baselineDescription: baseline.description,
     reusedCandidateMatrix,
     comparison,
-    flips: comparison.flips
+    flips: comparison.flips,
   };
 }
 
@@ -715,7 +719,7 @@ function runBaselineComparison(
  */
 export function validateCandidate(
   spec: CandidateSpec,
-  options: CandidateValidationOptions = {}
+  options: CandidateValidationOptions = {},
 ): CandidateValidationReport {
   const candidate = resolveCandidate(spec);
   const baseline = resolveCandidate(options.baseline ?? PRODUCTION_CANDIDATE);
@@ -734,7 +738,7 @@ export function validateCandidate(
     strategies,
     matchesPerSeat,
     seed,
-    maxRounds
+    maxRounds,
   );
   const everyActionHasValue = runEveryActionHasValue(candidate);
   const guardrails = runGuardrails(candidate, guardrailMatches, guardrailSeed, maxRounds);
@@ -745,7 +749,7 @@ export function validateCandidate(
     shouldCollectDynamicStats,
     matchesPerSeat,
     seed,
-    maxRounds
+    maxRounds,
   );
   const baselineComparison = runBaselineComparison(
     candidate,
@@ -755,7 +759,7 @@ export function validateCandidate(
     options.baselineHeadToHead,
     matchesPerSeat,
     seed,
-    maxRounds
+    maxRounds,
   );
 
   const resolvedOptions: ResolvedValidationOptions = {
@@ -767,7 +771,7 @@ export function validateCandidate(
     strategies: noStrictDominance.strategies,
     statics: dynamicBeatsStatics.statics,
     dynamicPolicies: dynamicBeatsStatics.policies,
-    shouldCollectDynamicStats
+    shouldCollectDynamicStats,
   };
 
   return {
@@ -782,7 +786,7 @@ export function validateCandidate(
       noStrictDominance.passed &&
       everyActionHasValue.passed &&
       guardrails.passed &&
-      dynamicBeatsStatics.passed
+      dynamicBeatsStatics.passed,
   };
 }
 

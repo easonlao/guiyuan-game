@@ -12,10 +12,7 @@
 import { WuXing } from '../types/domain.js';
 import type { BoardState } from '../types/domain.js';
 import { TIAN_GAN_LIST } from '../types/domain.js';
-import type {
-  ActionTypeCensus,
-  ActionValueCensusReport
-} from './ActionValueCensus.js';
+import type { ActionTypeCensus, ActionValueCensusReport } from './ActionValueCensus.js';
 
 function unique(values: readonly string[]): string[] {
   return [...new Set(values)];
@@ -23,7 +20,7 @@ function unique(values: readonly string[]): string[] {
 
 function formatBoard(board: BoardState): string {
   return Object.values(WuXing)
-    .map(element => `${element}(${board[element].yin},${board[element].yang})`)
+    .map((element) => `${element}(${board[element].yin},${board[element].yang})`)
     .join(' ');
 }
 
@@ -51,7 +48,7 @@ export function formatActionSummaryTable(actions: readonly ActionTypeCensus[]): 
     lines.push(
       `| ${action.actionType} | ${action.available ? '是' : '否'} | ${action.observationCount} | ${
         action.optimalBoardKeys.length
-      } | ${action.dominatedBoardKeys.length} | ${action.globallyDominated ? '**是**' : '否'} |`
+      } | ${action.dominatedBoardKeys.length} | ${action.globallyDominated ? '**是**' : '否'} |`,
     );
   }
   return lines.join('\n');
@@ -74,7 +71,7 @@ export function formatActionValueCensusReport(report: ActionValueCensusReport): 
   lines.push(`- 并列容差 epsilon：${valueFunction.epsilon}`);
   lines.push('');
   lines.push(
-    '> 判定「被支配」用的是**动作价值**，不是胜率：同一盘面上某动作价值严格低于另一个可用动作即为该盘面下被支配；'
+    '> 判定「被支配」用的是**动作价值**，不是胜率：同一盘面上某动作价值严格低于另一个可用动作即为该盘面下被支配；',
   );
   lines.push('> 若它在所有可用观测上都被支配，则为全局被支配。并列（价值差 <= epsilon）不算支配。');
   lines.push('');
@@ -109,7 +106,7 @@ export function formatActionValueCensusReport(report: ActionValueCensusReport): 
       lines.push(`- 最优盘面：${action.optimalBoardKeys.join('、')}`);
       const sample = action.optimalObservations
         .slice(0, 12)
-        .map(observation => `${observation.boardKey}@${observation.tianGan}`)
+        .map((observation) => `${observation.boardKey}@${observation.tianGan}`)
         .join('、');
       const suffix =
         action.optimalObservations.length > 12
@@ -125,10 +122,10 @@ export function formatActionValueCensusReport(report: ActionValueCensusReport): 
 
   lines.push('### 被测盘面覆盖');
   lines.push('');
-  lines.push(`阶段：${unique(report.boards.map(board => board.phaseKey)).join(' / ')}`);
+  lines.push(`阶段：${unique(report.boards.map((board) => board.phaseKey)).join(' / ')}`);
   lines.push('');
   lines.push(
-    `阶跃条件：${unique(report.boards.map(board => board.stepConditionKey)).join(' / ')}`
+    `阶跃条件：${unique(report.boards.map((board) => board.stepConditionKey)).join(' / ')}`,
   );
   lines.push('');
   lines.push('| 盘面 | 阶段 | 阶跃条件 | 行动方盘面 | 对手盘面 |');
@@ -136,8 +133,8 @@ export function formatActionValueCensusReport(report: ActionValueCensusReport): 
   for (const board of report.boards) {
     lines.push(
       `| ${board.key} | ${board.phase} | ${board.stepCondition} | \`${formatBoard(
-        board.ownBoard
-      )}\` | \`${formatBoard(board.opponentBoard)}\` |`
+        board.ownBoard,
+      )}\` | \`${formatBoard(board.opponentBoard)}\` |`,
     );
   }
   lines.push('');
@@ -152,19 +149,19 @@ export function formatActionValueCensusReport(report: ActionValueCensusReport): 
     for (const tianGan of TIAN_GAN_LIST) {
       const observations = report.observations
         .filter(
-          observation =>
-            observation.boardKey === board.key && observation.tianGan === tianGan.name
+          (observation) =>
+            observation.boardKey === board.key && observation.tianGan === tianGan.name,
         )
         .sort((a, b) => b.value - a.value);
       for (const observation of observations) {
         lines.push(
           `| ${tianGan.name} | ${observation.actionType} | ${formatNumber(
-            observation.value
+            observation.value,
           )} | ${formatNumber(observation.boardScore)} | ${formatNumber(
-            observation.scoreDeltaPoints
+            observation.scoreDeltaPoints,
           )} | ${formatLevel(observation.suppressionLevels)} | ${formatLevel(
-            observation.constructionLevels
-          )} | ${observation.isOptimal ? '是' : ''} |`
+            observation.constructionLevels,
+          )} | ${observation.isOptimal ? '是' : ''} |`,
         );
       }
     }

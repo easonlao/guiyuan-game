@@ -13,7 +13,7 @@ import {
   Polarity,
   WuXing,
   GENERATION_CYCLE,
-  OVERCOMING_CYCLE
+  OVERCOMING_CYCLE,
 } from '../types/domain.js';
 import { isNodeGuiYi, isNodeKangJi } from '../logic/State.js';
 import { EventBus } from '../logic/EventBus.js';
@@ -23,19 +23,19 @@ export const WUXING_NAMES: Readonly<Record<WuXing, string>> = {
   [WuXing.FIRE]: '火',
   [WuXing.EARTH]: '土',
   [WuXing.METAL]: '金',
-  [WuXing.WATER]: '水'
+  [WuXing.WATER]: '水',
 };
 
 export const POLARITY_NAMES: Readonly<Record<Polarity, string>> = {
   [Polarity.YIN]: '阴',
-  [Polarity.YANG]: '阳'
+  [Polarity.YANG]: '阳',
 };
 
 export const LEVEL_CHARS: Readonly<Record<NodeLevel, string>> = {
   [-1]: '损',
   [0]: '空',
   [1]: '明',
-  [2]: '亢'
+  [2]: '亢',
 };
 
 export interface ViewerAttachOptions {
@@ -79,11 +79,11 @@ export class TerminalBoardViewer {
     lines.push('============================================================');
     if (state.isGameOver) {
       lines.push(
-        ` [对局结束] 胜者: ${state.winner ?? '平局'} | 原因: ${state.endReason ?? '无'} (回合: ${state.round}/${state.maxRounds})`
+        ` [对局结束] 胜者: ${state.winner ?? '平局'} | 原因: ${state.endReason ?? '无'} (回合: ${state.round}/${state.maxRounds})`,
       );
     } else {
       lines.push(
-        ` 归元弈棋盘 [回合: ${state.round}/${state.maxRounds}] [当前行动: ${state.currentPlayer}]`
+        ` 归元弈棋盘 [回合: ${state.round}/${state.maxRounds}] [当前行动: ${state.currentPlayer}]`,
       );
     }
     lines.push('============================================================');
@@ -197,27 +197,27 @@ export class TerminalBoardViewer {
       }
     };
 
-    const unsubTurnStart = eventBus.on('turn:start', data => {
+    const unsubTurnStart = eventBus.on('turn:start', (data) => {
       const extra = data.isExtraTurn ? ' (连动行动)' : '';
       record(`[回合开始] 回合 ${data.round} - 玩家 ${data.player}${extra}`);
     });
 
-    const unsubActionExec = eventBus.on('action:execute', data => {
+    const unsubActionExec = eventBus.on('action:execute', (data) => {
       record(`[动作开始] ${this.formatAction(data.action)}`);
     });
 
-    const unsubActionDone = eventBus.on('action:executed', data => {
+    const unsubActionDone = eventBus.on('action:executed', (data) => {
       const extra = data.extraTurn ? ', 获得连动' : '';
       record(
-        `[动作结算] 玩家 ${data.player} 执行 [${data.actionType}] 完成 (得分: +${data.scoreDelta}${extra})`
+        `[动作结算] 玩家 ${data.player} 执行 [${data.actionType}] 完成 (得分: +${data.scoreDelta}${extra})`,
       );
     });
 
-    const unsubBurstExtra = eventBus.on('burst:extra_turn', data => {
+    const unsubBurstExtra = eventBus.on('burst:extra_turn', (data) => {
       record(`[爆发连动] 玩家 ${data.player} 获得连动额外回合！`);
     });
 
-    const unsubGameOver = eventBus.on('game:over', data => {
+    const unsubGameOver = eventBus.on('game:over', (data) => {
       record(`[对局结束] 胜者: ${data.winner ?? '平局'}, 原因: ${data.endReason ?? '未知'}`);
     });
 

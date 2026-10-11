@@ -4,17 +4,8 @@
  * 纯 TS 规范，零外部运行时依赖
  */
 
-import {
-  ActionScore,
-  StrategyWeights
-} from './types.js';
-import {
-  ActionPayload,
-  GameState,
-  PlayerId,
-  TianGanInfo,
-  WuXing
-} from '../types/domain.js';
+import { ActionScore, StrategyWeights } from './types.js';
+import { ActionPayload, GameState, PlayerId, TianGanInfo, WuXing } from '../types/domain.js';
 import { ActionResolver } from '../logic/ActionResolver.js';
 import type { RuleSwitches } from '../logic/ActionCandidates.js';
 import { isBoardGuiYuan, isNodeGuiYi, isNodeKangJi } from '../logic/State.js';
@@ -31,7 +22,7 @@ export const DEFAULT_STRATEGY_WEIGHTS: StrategyWeights = {
   burstExtraTurn: 70,
   scoreDeltaWeight: 1,
   winReward: 10000,
-  baseActionBias: {}
+  baseActionBias: {},
 };
 
 export class ActionEvaluator {
@@ -45,11 +36,11 @@ export class ActionEvaluator {
     tianGan: TianGanInfo,
     action: ActionPayload,
     weights: StrategyWeights = DEFAULT_STRATEGY_WEIGHTS,
-    rules?: RuleSwitches
+    rules?: RuleSwitches,
   ): ActionScore {
     const simulatedState: GameState = {
       ...state,
-      currentTianGan: tianGan
+      currentTianGan: tianGan,
     };
 
     const result = this.resolver.resolve(simulatedState, action);
@@ -65,8 +56,8 @@ export class ActionEvaluator {
           burstScore: 0,
           scoreDeltaPoints: 0,
           biasScore: 0,
-          totalScore: -999999
-        }
+          totalScore: -999999,
+        },
       };
     }
 
@@ -191,12 +182,7 @@ export class ActionEvaluator {
     const biasScore = weights.baseActionBias?.[action.actionType] ?? 0;
 
     const totalScore =
-      repairScore +
-      unityScore +
-      suppressionScore +
-      burstScore +
-      scoreDeltaPoints +
-      biasScore;
+      repairScore + unityScore + suppressionScore + burstScore + scoreDeltaPoints + biasScore;
 
     return {
       action,
@@ -208,8 +194,8 @@ export class ActionEvaluator {
         burstScore,
         scoreDeltaPoints,
         biasScore,
-        totalScore
-      }
+        totalScore,
+      },
     };
   }
 
@@ -221,8 +207,8 @@ export class ActionEvaluator {
     tianGan: TianGanInfo,
     actions: ActionPayload[],
     weights: StrategyWeights = DEFAULT_STRATEGY_WEIGHTS,
-    rules?: RuleSwitches
+    rules?: RuleSwitches,
   ): ActionScore[] {
-    return actions.map(action => this.evaluate(state, tianGan, action, weights, rules));
+    return actions.map((action) => this.evaluate(state, tianGan, action, weights, rules));
   }
 }

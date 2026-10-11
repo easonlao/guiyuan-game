@@ -31,20 +31,17 @@ import {
   WuXing,
   type ActionPayload,
   type GameState,
-  type TianGanInfo
+  type TianGanInfo,
 } from '../../src/core/types/domain.js';
 import {
   ScoreCalculator,
   POINTS_CONFIG,
   type ActionPointsConfig,
-  type PointsConfig
+  type PointsConfig,
 } from '../../src/core/logic/ScoreCalculator.js';
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
 import { ActionEvaluator, DEFAULT_STRATEGY_WEIGHTS } from '../../src/core/ai/ActionEvaluator.js';
-import {
-  BALANCED_WEIGHTS,
-  createScoreBoundStrategy
-} from '../../src/core/ai/Strategy.js';
+import { BALANCED_WEIGHTS, createScoreBoundStrategy } from '../../src/core/ai/Strategy.js';
 import type { StrategyWeights } from '../../src/core/ai/types.js';
 import { gameStateWith } from '../../src/core/headless/BoardFixture.js';
 import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
@@ -70,7 +67,10 @@ function aiValuation(config: PointsConfig, s: Scenario): number {
 }
 
 /** 终局分数 + 行为快照（ActionResolver 即终局结算与状态转移的唯一入口）。 */
-function settlement(config: PointsConfig, s: Scenario): {
+function settlement(
+  config: PointsConfig,
+  s: Scenario,
+): {
   readonly score: number;
   readonly scoreDelta: number;
   readonly board: unknown;
@@ -80,7 +80,7 @@ function settlement(config: PointsConfig, s: Scenario): {
   return {
     score: result.nextState.players[s.action.player].score,
     scoreDelta: result.scoreDelta,
-    board: result.nextState.players[s.action.player].board
+    board: result.nextState.players[s.action.player].board,
   };
 }
 
@@ -112,7 +112,7 @@ interface ScoringKnob {
 function perturbAction(type: keyof ActionPointsConfig): PointsConfig {
   return {
     ...POINTS_CONFIG,
-    ACTION: { ...POINTS_CONFIG.ACTION, [type]: POINTS_CONFIG.ACTION[type] + 1000 }
+    ACTION: { ...POINTS_CONFIG.ACTION, [type]: POINTS_CONFIG.ACTION[type] + 1000 },
   };
 }
 
@@ -121,22 +121,22 @@ function perturbStateScalar(key: 'LIGHT_UP' | 'BLESSING' | 'WEAKEN'): PointsConf
     ...POINTS_CONFIG,
     STATE_CHANGE: {
       ...POINTS_CONFIG.STATE_CHANGE,
-      [key]: POINTS_CONFIG.STATE_CHANGE[key] + 1000
-    }
+      [key]: POINTS_CONFIG.STATE_CHANGE[key] + 1000,
+    },
   };
 }
 
 function perturbStatePair(
   key: 'REPAIR_DMG' | 'CAUSE_DMG' | 'BREAK_LIGHT',
-  polarity: 'yang' | 'yin'
+  polarity: 'yang' | 'yin',
 ): PointsConfig {
   const stateChange = POINTS_CONFIG.STATE_CHANGE;
   return {
     ...POINTS_CONFIG,
     STATE_CHANGE: {
       ...stateChange,
-      [key]: { ...stateChange[key], [polarity]: stateChange[key][polarity] + 1000 }
-    }
+      [key]: { ...stateChange[key], [polarity]: stateChange[key][polarity] + 1000 },
+    },
   };
 }
 
@@ -144,14 +144,14 @@ const AUTO_YANG: ActionPayload = {
   actionType: ActionType.AUTO,
   player: 'P1',
   element: WuXing.WOOD,
-  polarity: Polarity.YANG
+  polarity: Polarity.YANG,
 };
 
 const ATK_YIN: ActionPayload = {
   actionType: ActionType.ATK,
   player: 'P1',
   sourceElement: WuXing.WOOD,
-  polarity: Polarity.YIN
+  polarity: Polarity.YIN,
 };
 
 const SCORING_KNOBS: readonly ScoringKnob[] = [
@@ -163,8 +163,8 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     scenario: () => ({
       state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 0 } } }),
       tianGan: JIA_WOOD_YANG,
-      action: AUTO_YANG
-    })
+      action: AUTO_YANG,
+    }),
   },
   {
     knob: 'ACTION.CONVERT',
@@ -174,8 +174,13 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     scenario: () => ({
       state: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 0, yang: 1 } } }),
       tianGan: JIA_WOOD_YANG,
-      action: { actionType: ActionType.CONVERT, player: 'P1', element: WuXing.WOOD, polarity: Polarity.YIN }
-    })
+      action: {
+        actionType: ActionType.CONVERT,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YIN,
+      },
+    }),
   },
   {
     knob: 'ACTION.TRANS',
@@ -185,8 +190,13 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     scenario: () => ({
       state: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1 }, [WuXing.FIRE]: { yin: 0 } } }),
       tianGan: YI_WOOD_YIN,
-      action: { actionType: ActionType.TRANS, player: 'P1', sourceElement: WuXing.WOOD, polarity: Polarity.YIN }
-    })
+      action: {
+        actionType: ActionType.TRANS,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        polarity: Polarity.YIN,
+      },
+    }),
   },
   {
     knob: 'ACTION.ATK',
@@ -194,10 +204,13 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     terminalReads: true,
     mutate: () => perturbAction(ActionType.ATK),
     scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 1 } }, P2: { [WuXing.EARTH]: { yin: 0 } } }),
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 0 } },
+      }),
       tianGan: JIA_WOOD_YANG,
-      action: ATK_YIN
-    })
+      action: ATK_YIN,
+    }),
   },
   {
     knob: 'ACTION.BURST',
@@ -205,16 +218,18 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     terminalReads: true,
     mutate: () => perturbAction(ActionType.BURST),
     scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1, yang: 1 }, [WuXing.FIRE]: { yin: 0 } } }),
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 }, [WuXing.FIRE]: { yin: 0 } },
+      }),
       tianGan: JIA_WOOD_YANG,
       action: {
         actionType: ActionType.BURST,
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YIN
-      }
-    })
+        polarity: Polarity.YIN,
+      },
+    }),
   },
   {
     knob: 'ACTION.BURST_ATK',
@@ -222,16 +237,19 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     terminalReads: true,
     mutate: () => perturbAction(ActionType.BURST_ATK),
     scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } }, P2: { [WuXing.EARTH]: { yin: 0 } } }),
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 0 } },
+      }),
       tianGan: JIA_WOOD_YANG,
       action: {
         actionType: ActionType.BURST_ATK,
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YANG,
-        polarity: Polarity.YIN
-      }
-    })
+        polarity: Polarity.YIN,
+      },
+    }),
   },
   {
     knob: 'STATE_CHANGE.REPAIR_DMG.yang',
@@ -241,8 +259,8 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     scenario: () => ({
       state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: -1 } } }),
       tianGan: JIA_WOOD_YANG,
-      action: AUTO_YANG
-    })
+      action: AUTO_YANG,
+    }),
   },
   {
     knob: 'STATE_CHANGE.REPAIR_DMG.yin',
@@ -252,8 +270,13 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     scenario: () => ({
       state: gameStateWith({ P1: { [WuXing.WOOD]: { yin: -1 } } }),
       tianGan: YI_WOOD_YIN,
-      action: { actionType: ActionType.AUTO, player: 'P1', element: WuXing.WOOD, polarity: Polarity.YIN }
-    })
+      action: {
+        actionType: ActionType.AUTO,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YIN,
+      },
+    }),
   },
   {
     knob: 'STATE_CHANGE.LIGHT_UP',
@@ -263,8 +286,8 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     scenario: () => ({
       state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 0 } } }),
       tianGan: JIA_WOOD_YANG,
-      action: AUTO_YANG
-    })
+      action: AUTO_YANG,
+    }),
   },
   {
     knob: 'STATE_CHANGE.BLESSING',
@@ -274,8 +297,13 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     scenario: () => ({
       state: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1 }, [WuXing.FIRE]: { yang: 1 } } }),
       tianGan: YI_WOOD_YIN,
-      action: { actionType: ActionType.TRANS, player: 'P1', sourceElement: WuXing.WOOD, polarity: Polarity.YANG }
-    })
+      action: {
+        actionType: ActionType.TRANS,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        polarity: Polarity.YANG,
+      },
+    }),
   },
   {
     knob: 'STATE_CHANGE.CAUSE_DMG.yang',
@@ -283,10 +311,18 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     terminalReads: true,
     mutate: () => perturbStatePair('CAUSE_DMG', 'yang'),
     scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 1 } }, P2: { [WuXing.EARTH]: { yang: 0 } } }),
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yang: 1 } },
+        P2: { [WuXing.EARTH]: { yang: 0 } },
+      }),
       tianGan: JIA_WOOD_YANG,
-      action: { actionType: ActionType.ATK, player: 'P1', sourceElement: WuXing.WOOD, polarity: Polarity.YANG }
-    })
+      action: {
+        actionType: ActionType.ATK,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        polarity: Polarity.YANG,
+      },
+    }),
   },
   {
     knob: 'STATE_CHANGE.CAUSE_DMG.yin',
@@ -294,10 +330,13 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     terminalReads: true,
     mutate: () => perturbStatePair('CAUSE_DMG', 'yin'),
     scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 1 } }, P2: { [WuXing.EARTH]: { yin: 0 } } }),
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 0 } },
+      }),
       tianGan: JIA_WOOD_YANG,
-      action: ATK_YIN
-    })
+      action: ATK_YIN,
+    }),
   },
   {
     knob: 'STATE_CHANGE.BREAK_LIGHT.yang',
@@ -305,10 +344,18 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     terminalReads: true,
     mutate: () => perturbStatePair('BREAK_LIGHT', 'yang'),
     scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 1 } }, P2: { [WuXing.EARTH]: { yang: 1 } } }),
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yang: 1 } },
+        P2: { [WuXing.EARTH]: { yang: 1 } },
+      }),
       tianGan: JIA_WOOD_YANG,
-      action: { actionType: ActionType.ATK, player: 'P1', sourceElement: WuXing.WOOD, polarity: Polarity.YANG }
-    })
+      action: {
+        actionType: ActionType.ATK,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        polarity: Polarity.YANG,
+      },
+    }),
   },
   {
     knob: 'STATE_CHANGE.BREAK_LIGHT.yin',
@@ -316,10 +363,13 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     terminalReads: true,
     mutate: () => perturbStatePair('BREAK_LIGHT', 'yin'),
     scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 1 } }, P2: { [WuXing.EARTH]: { yin: 1 } } }),
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 1 } },
+      }),
       tianGan: JIA_WOOD_YANG,
-      action: ATK_YIN
-    })
+      action: ATK_YIN,
+    }),
   },
   {
     knob: 'STATE_CHANGE.WEAKEN',
@@ -327,10 +377,18 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     terminalReads: true,
     mutate: () => perturbStateScalar('WEAKEN'),
     scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 1 } }, P2: { [WuXing.EARTH]: { yang: 2 } } }),
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yang: 1 } },
+        P2: { [WuXing.EARTH]: { yang: 2 } },
+      }),
       tianGan: JIA_WOOD_YANG,
-      action: { actionType: ActionType.ATK, player: 'P1', sourceElement: WuXing.WOOD, polarity: Polarity.YANG }
-    })
+      action: {
+        actionType: ActionType.ATK,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        polarity: Polarity.YANG,
+      },
+    }),
   },
   {
     knob: 'GUI_YI_MILESTONE',
@@ -338,13 +396,18 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     terminalReads: true,
     mutate: () => ({
       ...POINTS_CONFIG,
-      GUI_YI_MILESTONE: (POINTS_CONFIG.GUI_YI_MILESTONE ?? 60) + 1000
+      GUI_YI_MILESTONE: (POINTS_CONFIG.GUI_YI_MILESTONE ?? 60) + 1000,
     }),
     scenario: () => ({
       state: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 0, yang: 1 } } }),
       tianGan: JIA_WOOD_YANG,
-      action: { actionType: ActionType.CONVERT, player: 'P1', element: WuXing.WOOD, polarity: Polarity.YIN }
-    })
+      action: {
+        actionType: ActionType.CONVERT,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YIN,
+      },
+    }),
   },
   {
     // 仅终局生效类：只在 MAX_ROUNDS 结算分支从 finalScore 扣减，从不进入 scoreDelta。
@@ -358,11 +421,16 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
         maxRounds: 1,
         currentPlayer: 'P2',
         P1: { [WuXing.WOOD]: { yin: -1 } },
-        P2: { [WuXing.FIRE]: { yang: -1 } }
+        P2: { [WuXing.FIRE]: { yang: -1 } },
       }),
       tianGan: JIA_WOOD_YANG,
-      action: { actionType: ActionType.PASS, player: 'P2', element: WuXing.WOOD, polarity: Polarity.YANG }
-    })
+      action: {
+        actionType: ActionType.PASS,
+        player: 'P2',
+        element: WuXing.WOOD,
+        polarity: Polarity.YANG,
+      },
+    }),
   },
   {
     // 进度定价（ticket 06 采纳）：攻击状态分乘 floor + span × (对手归一节点数 / 5)。
@@ -372,11 +440,14 @@ const SCORING_KNOBS: readonly ScoringKnob[] = [
     terminalReads: true,
     mutate: () => ({ ...POINTS_CONFIG, ATTACK_PROGRESS_SCALE: { floor: 5, span: 0 } }),
     scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 1 } }, P2: { [WuXing.EARTH]: { yin: 0 } } }),
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 0 } },
+      }),
       tianGan: JIA_WOOD_YANG,
-      action: ATK_YIN
-    })
-  }
+      action: ATK_YIN,
+    }),
+  },
 ];
 
 /**
@@ -391,7 +462,7 @@ const POINTS_CONFIG_FIELDS: Record<keyof PointsConfig, true> = {
   STATE_CHANGE: true,
   GUI_YI_MILESTONE: true,
   DAMAGE_PENALTY: true,
-  ATTACK_PROGRESS_SCALE: true
+  ATTACK_PROGRESS_SCALE: true,
 };
 
 /**
@@ -404,7 +475,7 @@ function leafPaths(value: unknown, prefix = ''): string[] {
     return [prefix];
   }
   return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) =>
-    leafPaths(child, prefix === '' ? key : `${prefix}.${key}`)
+    leafPaths(child, prefix === '' ? key : `${prefix}.${key}`),
   );
 }
 
@@ -422,8 +493,8 @@ function knobCoversLeaf(knob: string, leaf: string): boolean {
 
 describe('Ticket 05 — 计分参数普查 (PointsConfig)：AI 估值 / 终局判定 / 扰动输出', () => {
   it('完整性：PointsConfig 的每个声明字段都出现在 SCORING_KNOBS 清单中', () => {
-    const covered = new Set(SCORING_KNOBS.map(row => row.knob.split('.')[0]));
-    const missing = Object.keys(POINTS_CONFIG_FIELDS).filter(field => !covered.has(field));
+    const covered = new Set(SCORING_KNOBS.map((row) => row.knob.split('.')[0]));
+    const missing = Object.keys(POINTS_CONFIG_FIELDS).filter((field) => !covered.has(field));
     expect(missing, `SCORING_KNOBS 清单缺少 PointsConfig 字段：${missing.join('、')}`).toEqual([]);
   });
 
@@ -433,11 +504,11 @@ describe('Ticket 05 — 计分参数普查 (PointsConfig)：AI 估值 / 终局�
     // 这里对生产的 POINTS_CONFIG 递归到叶子路径（数组算叶子），逐条要求有某行覆盖它。
     const leaves = leafPaths(POINTS_CONFIG);
     const uncovered = leaves.filter(
-      leaf => !SCORING_KNOBS.some(row => knobCoversLeaf(row.knob, leaf))
+      (leaf) => !SCORING_KNOBS.some((row) => knobCoversLeaf(row.knob, leaf)),
     );
     expect(
       uncovered,
-      `SCORING_KNOBS 清单缺少 POINTS_CONFIG 叶子路径：${uncovered.join('、')}`
+      `SCORING_KNOBS 清单缺少 POINTS_CONFIG 叶子路径：${uncovered.join('、')}`,
     ).toEqual([]);
   });
 
@@ -473,7 +544,9 @@ describe('Ticket 05 — 计分参数普查 (PointsConfig)：AI 估值 / 终局�
   }
 
   it('活参数清单（由三列普查派生）', () => {
-    const live = SCORING_KNOBS.filter(row => row.aiReads || row.terminalReads).map(row => row.knob);
+    const live = SCORING_KNOBS.filter((row) => row.aiReads || row.terminalReads).map(
+      (row) => row.knob,
+    );
     expect(live).toEqual([
       'ACTION.AUTO',
       'ACTION.CONVERT',
@@ -492,17 +565,21 @@ describe('Ticket 05 — 计分参数普查 (PointsConfig)：AI 估值 / 终局�
       'STATE_CHANGE.WEAKEN',
       'GUI_YI_MILESTONE',
       'DAMAGE_PENALTY',
-      'ATTACK_PROGRESS_SCALE'
+      'ATTACK_PROGRESS_SCALE',
     ]);
   });
 
   it('死参数清单（AI 不读、终局不读、扰动无变化）', () => {
-    const dead = SCORING_KNOBS.filter(row => !row.aiReads && !row.terminalReads).map(row => row.knob);
+    const dead = SCORING_KNOBS.filter((row) => !row.aiReads && !row.terminalReads).map(
+      (row) => row.knob,
+    );
     expect(dead).toEqual([]);
   });
 
   it('「仅终局生效」类当前唯一成员是 DAMAGE_PENALTY（终局读、AI 不读）', () => {
-    const terminalOnly = SCORING_KNOBS.filter(row => row.terminalReads && !row.aiReads).map(row => row.knob);
+    const terminalOnly = SCORING_KNOBS.filter((row) => row.terminalReads && !row.aiReads).map(
+      (row) => row.knob,
+    );
     expect(terminalOnly).toEqual(['DAMAGE_PENALTY']);
   });
 });
@@ -544,10 +621,10 @@ describe('Ticket 05 — 活旋钮改变批量指标（同断言下死旋钮若�
         ...POINTS_CONFIG,
         STATE_CHANGE: {
           ...POINTS_CONFIG.STATE_CHANGE,
-          CAUSE_DMG: { yang: 3000, yin: 2500 }
-        }
-      }
-    }
+          CAUSE_DMG: { yang: 3000, yin: 2500 },
+        },
+      },
+    },
   ];
 
   for (const testCase of cases) {
@@ -561,13 +638,13 @@ describe('Ticket 05 — 活旋钮改变批量指标（同断言下死旋钮若�
         ...base,
         strategyP1: defaultStrategy,
         strategyP2: defaultStrategy,
-        scoreConfig: POINTS_CONFIG
+        scoreConfig: POINTS_CONFIG,
       });
       const perturbed = benchmark.run({
         ...base,
         strategyP1: perturbedStrategy,
         strategyP2: perturbedStrategy,
-        scoreConfig: testCase.config
+        scoreConfig: testCase.config,
       });
 
       expect(deterministicMetrics(perturbed)).not.toEqual(deterministicMetrics(control));
@@ -581,21 +658,21 @@ describe('Ticket 05 — 活旋钮改变批量指标（同断言下死旋钮若�
 
 describe('Ticket 05 — 规则开关 (RuleSwitches) 与选项参数普查', () => {
   it('RuleSwitches.isBoardOnly：AI 估值器直接读取（活旋钮）', () => {
-    const scenario = SCORING_KNOBS.find(row => row.knob === 'ACTION.ATK')!.scenario();
+    const scenario = SCORING_KNOBS.find((row) => row.knob === 'ACTION.ATK')!.scenario();
     const evaluator = new ActionEvaluator(new ActionResolver());
     const scoring = evaluator.evaluate(
       scenario.state,
       scenario.tianGan,
       scenario.action,
       DEFAULT_STRATEGY_WEIGHTS,
-      { isBoardOnly: false }
+      { isBoardOnly: false },
     ).score;
     const boardOnly = evaluator.evaluate(
       scenario.state,
       scenario.tianGan,
       scenario.action,
       DEFAULT_STRATEGY_WEIGHTS,
-      { isBoardOnly: true }
+      { isBoardOnly: true },
     ).score;
     expect(boardOnly).not.toBe(scoring);
   });
@@ -608,13 +685,13 @@ describe('Ticket 05 — 规则开关 (RuleSwitches) 与选项参数普查', () =
     const control = benchmark.run({
       ...base,
       strategyP1: BALANCED_WEIGHTS,
-      strategyP2: BALANCED_WEIGHTS
+      strategyP2: BALANCED_WEIGHTS,
     });
     const withRules = benchmark.run({
       ...base,
       strategyP1: BALANCED_WEIGHTS,
       strategyP2: BALANCED_WEIGHTS,
-      rules: { isBoardOnly: true }
+      rules: { isBoardOnly: true },
     });
     expect(deterministicMetrics(withRules)).not.toEqual(deterministicMetrics(control));
   });
@@ -622,12 +699,12 @@ describe('Ticket 05 — 规则开关 (RuleSwitches) 与选项参数普查', () =
   it('HeadlessMatchConfig.rules：经权重模板策略到达 AI 估值器（活旋钮）', () => {
     const control = new HeadlessMatch().run(BALANCED_WEIGHTS, BALANCED_WEIGHTS, {
       seed: 4242,
-      maxRounds: 30
+      maxRounds: 30,
     });
     const withRules = new HeadlessMatch({ rules: { isBoardOnly: true } }).run(
       BALANCED_WEIGHTS,
       BALANCED_WEIGHTS,
-      { seed: 4242, maxRounds: 30 }
+      { seed: 4242, maxRounds: 30 },
     );
     expect(withRules.record.actions).not.toEqual(control.record.actions);
   });
@@ -650,103 +727,132 @@ function withWeights(overrides: Partial<StrategyWeights>): StrategyWeights {
 const WEIGHT_KNOBS: readonly WeightKnob[] = [
   {
     knob: 'repairDamage',
-    mutate: w => ({ ...w, repairDamage: w.repairDamage + 1000 }),
+    mutate: (w) => ({ ...w, repairDamage: w.repairDamage + 1000 }),
     scenario: () => ({
       state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: -1 } } }),
       tianGan: JIA_WOOD_YANG,
-      action: AUTO_YANG
-    })
+      action: AUTO_YANG,
+    }),
   },
   {
     knob: 'lightVoid',
-    mutate: w => ({ ...w, lightVoid: w.lightVoid + 1000 }),
+    mutate: (w) => ({ ...w, lightVoid: w.lightVoid + 1000 }),
     scenario: () => ({
       state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 0 } } }),
       tianGan: JIA_WOOD_YANG,
-      action: AUTO_YANG
-    })
+      action: AUTO_YANG,
+    }),
   },
   {
     knob: 'reachGuiYi',
-    mutate: w => ({ ...w, reachGuiYi: w.reachGuiYi + 1000 }),
+    mutate: (w) => ({ ...w, reachGuiYi: w.reachGuiYi + 1000 }),
     scenario: () => ({
       state: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 0, yang: 1 } } }),
       tianGan: JIA_WOOD_YANG,
-      action: { actionType: ActionType.CONVERT, player: 'P1', element: WuXing.WOOD, polarity: Polarity.YIN }
-    })
+      action: {
+        actionType: ActionType.CONVERT,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YIN,
+      },
+    }),
   },
   {
     knob: 'reachKangJi',
-    mutate: w => ({ ...w, reachKangJi: w.reachKangJi + 1000 }),
+    mutate: (w) => ({ ...w, reachKangJi: w.reachKangJi + 1000 }),
     scenario: () => ({
       state: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1 }, [WuXing.FIRE]: { yang: 1 } } }),
       tianGan: YI_WOOD_YIN,
-      action: { actionType: ActionType.TRANS, player: 'P1', sourceElement: WuXing.WOOD, polarity: Polarity.YANG }
-    })
+      action: {
+        actionType: ActionType.TRANS,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        polarity: Polarity.YANG,
+      },
+    }),
   },
   {
     knob: 'guiyuanProgress',
-    mutate: w => ({ ...w, guiyuanProgress: w.guiyuanProgress + 1000 }),
+    mutate: (w) => ({ ...w, guiyuanProgress: w.guiyuanProgress + 1000 }),
     scenario: () => ({
       state: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 0, yang: 1 } } }),
       tianGan: JIA_WOOD_YANG,
-      action: { actionType: ActionType.CONVERT, player: 'P1', element: WuXing.WOOD, polarity: Polarity.YIN }
-    })
+      action: {
+        actionType: ActionType.CONVERT,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YIN,
+      },
+    }),
   },
   {
     knob: 'breakOpponentGuiYi',
-    mutate: w => ({ ...w, breakOpponentGuiYi: w.breakOpponentGuiYi + 1000 }),
+    mutate: (w) => ({ ...w, breakOpponentGuiYi: w.breakOpponentGuiYi + 1000 }),
     scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 1 } }, P2: { [WuXing.EARTH]: { yin: 1, yang: 1 } } }),
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 1, yang: 1 } },
+      }),
       tianGan: JIA_WOOD_YANG,
-      action: ATK_YIN
-    })
+      action: ATK_YIN,
+    }),
   },
   {
     knob: 'causeDamage',
-    mutate: w => ({ ...w, causeDamage: w.causeDamage + 1000 }),
+    mutate: (w) => ({ ...w, causeDamage: w.causeDamage + 1000 }),
     scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 1 } }, P2: { [WuXing.EARTH]: { yin: 0 } } }),
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 0 } },
+      }),
       tianGan: JIA_WOOD_YANG,
-      action: ATK_YIN
-    })
+      action: ATK_YIN,
+    }),
   },
   {
     knob: 'suppressNode',
-    mutate: w => ({ ...w, suppressNode: w.suppressNode + 1000 }),
+    mutate: (w) => ({ ...w, suppressNode: w.suppressNode + 1000 }),
     scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 1 } }, P2: { [WuXing.EARTH]: { yin: 2 } } }),
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 2 } },
+      }),
       tianGan: JIA_WOOD_YANG,
-      action: ATK_YIN
-    })
+      action: ATK_YIN,
+    }),
   },
   {
     knob: 'burstExtraTurn',
-    mutate: w => ({ ...w, burstExtraTurn: w.burstExtraTurn + 1000 }),
+    mutate: (w) => ({ ...w, burstExtraTurn: w.burstExtraTurn + 1000 }),
     scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1, yang: 1 }, [WuXing.FIRE]: { yin: 0 } } }),
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 }, [WuXing.FIRE]: { yin: 0 } },
+      }),
       tianGan: JIA_WOOD_YANG,
       action: {
         actionType: ActionType.BURST,
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YIN
-      }
-    })
+        polarity: Polarity.YIN,
+      },
+    }),
   },
   {
     knob: 'scoreDeltaWeight',
-    mutate: w => ({ ...w, scoreDeltaWeight: (w.scoreDeltaWeight ?? 1) + 1 }),
+    mutate: (w) => ({ ...w, scoreDeltaWeight: (w.scoreDeltaWeight ?? 1) + 1 }),
     scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 1 } }, P2: { [WuXing.EARTH]: { yin: 0 } } }),
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 0 } },
+      }),
       tianGan: JIA_WOOD_YANG,
-      action: ATK_YIN
-    })
+      action: ATK_YIN,
+    }),
   },
   {
     knob: 'winReward',
-    mutate: w => ({ ...w, winReward: (w.winReward ?? 0) + 1000 }),
+    mutate: (w) => ({ ...w, winReward: (w.winReward ?? 0) + 1000 }),
     scenario: () => ({
       // P1 四归一 + 水阴已亮、水阳待补：AUTO 水阳即达成五行全归元。
       state: gameStateWith({
@@ -755,22 +861,30 @@ const WEIGHT_KNOBS: readonly WeightKnob[] = [
           [WuXing.FIRE]: { yin: 1, yang: 1 },
           [WuXing.EARTH]: { yin: 1, yang: 1 },
           [WuXing.METAL]: { yin: 1, yang: 1 },
-          [WuXing.WATER]: { yin: 1, yang: 0 }
-        }
+          [WuXing.WATER]: { yin: 1, yang: 0 },
+        },
       }),
       tianGan: { name: '壬', element: WuXing.WATER, polarity: Polarity.YANG },
-      action: { actionType: ActionType.AUTO, player: 'P1', element: WuXing.WATER, polarity: Polarity.YANG }
-    })
+      action: {
+        actionType: ActionType.AUTO,
+        player: 'P1',
+        element: WuXing.WATER,
+        polarity: Polarity.YANG,
+      },
+    }),
   },
   {
     knob: 'baseActionBias',
-    mutate: w => ({ ...w, baseActionBias: { ...w.baseActionBias, [ActionType.ATK]: 1000 } }),
+    mutate: (w) => ({ ...w, baseActionBias: { ...w.baseActionBias, [ActionType.ATK]: 1000 } }),
     scenario: () => ({
-      state: gameStateWith({ P1: { [WuXing.WOOD]: { yang: 1 } }, P2: { [WuXing.EARTH]: { yin: 0 } } }),
+      state: gameStateWith({
+        P1: { [WuXing.WOOD]: { yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 0 } },
+      }),
       tianGan: JIA_WOOD_YANG,
-      action: ATK_YIN
-    })
-  }
+      action: ATK_YIN,
+    }),
+  },
 ];
 
 describe('Ticket 05 — AI 估值权重 (StrategyWeights) 全部为活参数', () => {
@@ -782,13 +896,13 @@ describe('Ticket 05 — AI 估值权重 (StrategyWeights) 全部为活参数', (
         scenario.state,
         scenario.tianGan,
         scenario.action,
-        baseWeights
+        baseWeights,
       ).score;
       const perturbed = new ActionEvaluator(new ActionResolver()).evaluate(
         scenario.state,
         scenario.tianGan,
         scenario.action,
-        row.mutate(baseWeights)
+        row.mutate(baseWeights),
       ).score;
       expect(perturbed).not.toBe(control);
     });

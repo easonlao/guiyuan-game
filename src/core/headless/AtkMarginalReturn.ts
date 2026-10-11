@@ -21,15 +21,11 @@ import {
   NodeLevel,
   OVERCOMING_CYCLE,
   Polarity,
-  WuXing
+  WuXing,
 } from '../types/domain.js';
 import { ActionResolver } from '../logic/ActionResolver.js';
 import { getMinusTargetPolarity } from '../logic/ActionCandidates.js';
-import {
-  type BoardOverrides,
-  type NodeLevelOverride,
-  gameStateWith
-} from './BoardFixture.js';
+import { type BoardOverrides, type NodeLevelOverride, gameStateWith } from './BoardFixture.js';
 import { atkTempoGain, countActionsToGuiYuan } from './Metrics.js';
 import { runCliIfDirect } from './cli.js';
 
@@ -43,7 +39,7 @@ export const ATTACK_SOURCE_ORDER: readonly WuXing[] = [
   WuXing.FIRE,
   WuXing.EARTH,
   WuXing.WATER,
-  WuXing.METAL
+  WuXing.METAL,
 ];
 
 // ---------------------------------------------------------------------------
@@ -105,9 +101,7 @@ export interface AtkMarginalReturnReport {
 // ---------------------------------------------------------------------------
 
 function hasAnyAtkTarget(board: BoardState): boolean {
-  return Object.values(WuXing).some(
-    element => getMinusTargetPolarity(board[element]) !== null
-  );
+  return Object.values(WuXing).some((element) => getMinusTargetPolarity(board[element]) !== null);
 }
 
 /**
@@ -143,7 +137,7 @@ export function measureAtkSequence(opponentOverrides: BoardOverrides): AtkSequen
       actionType: ActionType.ATK,
       player: 'P1',
       sourceElement: source,
-      polarity
+      polarity,
     });
     const after = result.nextState.players.P2.board;
     const gain = atkTempoGain(before, after);
@@ -158,7 +152,7 @@ export function measureAtkSequence(opponentOverrides: BoardOverrides): AtkSequen
       levelAfter: after[target][polarity],
       gain,
       cumulativeGain,
-      actionsToGuiYuan: countActionsToGuiYuan(after)
+      actionsToGuiYuan: countActionsToGuiYuan(after),
     });
 
     state = result.nextState;
@@ -169,7 +163,7 @@ export function measureAtkSequence(opponentOverrides: BoardOverrides): AtkSequen
     isCapped: !hasAnyAtkTarget(state.players.P2.board),
     initialActionsToGuiYuan,
     finalActionsToGuiYuan: countActionsToGuiYuan(state.players.P2.board),
-    totalGain: cumulativeGain
+    totalGain: cumulativeGain,
   };
 }
 
@@ -184,21 +178,21 @@ function singleAttackableNodeBoard(startLevel: NodeLevel): BoardOverrides {
     [WuXing.FIRE]: dead,
     [WuXing.EARTH]: dead,
     [WuXing.METAL]: dead,
-    [WuXing.WATER]: dead
+    [WuXing.WATER]: dead,
   };
 }
 
 /** 逐起始等级测量单一节点的【破】边际收益曲线（0 / 1 / 2 / 已道损 -1） */
 export function measureSideCurves(): AtkSideCurve[] {
   const startLevels: readonly NodeLevel[] = [0, 1, 2, -1];
-  return startLevels.map(startLevel => {
+  return startLevels.map((startLevel) => {
     const sequence = measureAtkSequence(singleAttackableNodeBoard(startLevel));
     return {
       startLevel,
-      gains: sequence.steps.map(step => step.gain),
+      gains: sequence.steps.map((step) => step.gain),
       totalGain: sequence.totalGain,
       hitsToCap: sequence.steps.length,
-      isCapped: sequence.isCapped
+      isCapped: sequence.isCapped,
     };
   });
 }
@@ -219,7 +213,7 @@ export const ATK_PHASES: readonly {
     key: 'low-state',
     phase: '低位态期',
     description: '对手 10 侧全虚空 (0)，尚未建设（开局盘面）',
-    overrides: {}
+    overrides: {},
   },
   {
     key: 'midgame',
@@ -228,8 +222,8 @@ export const ATK_PHASES: readonly {
     overrides: {
       [WuXing.WOOD]: { yin: 1, yang: 1 },
       [WuXing.FIRE]: { yin: 1, yang: 1 },
-      [WuXing.EARTH]: { yin: 2, yang: 0 }
-    }
+      [WuXing.EARTH]: { yin: 2, yang: 0 },
+    },
   },
   {
     key: 'endgame',
@@ -240,19 +234,19 @@ export const ATK_PHASES: readonly {
       [WuXing.FIRE]: { yin: 1, yang: 1 },
       [WuXing.EARTH]: { yin: 1, yang: 1 },
       [WuXing.METAL]: { yin: 1, yang: 1 },
-      [WuXing.WATER]: { yin: 1, yang: -1 }
-    }
-  }
+      [WuXing.WATER]: { yin: 1, yang: -1 },
+    },
+  },
 ];
 
 /** 运行完整诊断：逐侧曲线 + 三阶段曲线。 */
 export function runAtkMarginalReturn(): AtkMarginalReturnReport {
-  const phases: AtkPhaseMeasurement[] = ATK_PHASES.map(phase => ({
+  const phases: AtkPhaseMeasurement[] = ATK_PHASES.map((phase) => ({
     key: phase.key,
     phase: phase.phase,
     description: phase.description,
     opponentBoard: gameStateWith({ P2: phase.overrides }).players.P2.board,
-    sequence: measureAtkSequence(phase.overrides)
+    sequence: measureAtkSequence(phase.overrides),
   }));
 
   return { sideCurves: measureSideCurves(), phases };
@@ -264,7 +258,7 @@ export function runAtkMarginalReturn(): AtkMarginalReturnReport {
 
 function formatBoard(board: BoardState): string {
   return Object.values(WuXing)
-    .map(element => `${element}(${board[element].yin},${board[element].yang})`)
+    .map((element) => `${element}(${board[element].yin},${board[element].yang})`)
     .join(' ');
 }
 
@@ -276,7 +270,7 @@ function formatLevel(level: NodeLevel): string {
 }
 
 function firstGains(sequence: AtkSequence, count: number): number[] {
-  return sequence.steps.slice(0, count).map(step => step.gain);
+  return sequence.steps.slice(0, count).map((step) => step.gain);
 }
 
 /** 把诊断结果格式化为 markdown 报告。 */
@@ -288,40 +282,46 @@ export function formatAtkMarginalReturnReport(report: AtkMarginalReturnReport): 
   lines.push('### 口径');
   lines.push('');
   lines.push(
-    '`atkTempoGain(before, after) = countActionsToGuiYuan(after) - countActionsToGuiYuan(before)`'
+    '`atkTempoGain(before, after) = countActionsToGuiYuan(after) - countActionsToGuiYuan(before)`',
   );
   lines.push('');
   lines.push(
-    '即一次【破】使对手「还差几次行动到五行归元」增加的次数。它只读盘面等级，与计分无关：'
+    '即一次【破】使对手「还差几次行动到五行归元」增加的次数。它只读盘面等级，与计分无关：',
   );
-  lines.push('虚空 0→道损 -1 记 +1；点亮 1→虚空 0 记 +1；加持 2→点亮 1 记 0；已道损 -1 记 0（封顶）。');
+  lines.push(
+    '虚空 0→道损 -1 记 +1；点亮 1→虚空 0 记 +1；加持 2→点亮 1 记 0；已道损 -1 记 0（封顶）。',
+  );
   lines.push('');
   lines.push('### 逐侧基础曲线（单节点阴阳同起始等级，隔离目标顺序）');
   lines.push('');
-  lines.push('| 起始等级 | 第1次 | 第2次 | 第3次 | 第4次 | 第5次 | 第6次 | 合计 | 命中次数 | 封顶 |');
+  lines.push(
+    '| 起始等级 | 第1次 | 第2次 | 第3次 | 第4次 | 第5次 | 第6次 | 合计 | 命中次数 | 封顶 |',
+  );
   lines.push('| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |');
   for (const curve of report.sideCurves) {
     const cells = Array.from({ length: 6 }, (_, i) => curve.gains[i] ?? '—');
     lines.push(
       `| ${formatLevel(curve.startLevel)} | ${cells.join(' | ')} | ${curve.totalGain} | ${
         curve.hitsToCap
-      } | ${curve.isCapped ? '是' : '否'} |`
+      } | ${curve.isCapped ? '是' : '否'} |`,
     );
   }
   lines.push('');
   lines.push('### 收益随使用次数（低位态期盘面：对手全虚空）');
   lines.push('');
-  const lowState = report.phases.find(phase => phase.key === 'low-state');
+  const lowState = report.phases.find((phase) => phase.key === 'low-state');
   if (lowState) {
     const seq = lowState.sequence;
     lines.push(
       `初始 \`actionsToGuiYuan\` = ${seq.initialActionsToGuiYuan}；合法命中 ${seq.steps.length} 次；` +
-        `封顶后 \`actionsToGuiYuan\` = ${seq.finalActionsToGuiYuan}；合计收益 ${seq.totalGain}。`
+        `封顶后 \`actionsToGuiYuan\` = ${seq.finalActionsToGuiYuan}；合计收益 ${seq.totalGain}。`,
     );
     lines.push('');
     lines.push('| 第N次 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11+ |');
-    lines.push('| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |');
-    const gains = seq.steps.map(step => step.gain);
+    lines.push(
+      '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |',
+    );
+    const gains = seq.steps.map((step) => step.gain);
     const first10 = Array.from({ length: 10 }, (_, i) => gains[i] ?? '—');
     lines.push(`| 边际收益 | ${first10.join(' | ')} | ${seq.isCapped ? '0（封顶）' : '—'} |`);
   }
@@ -329,7 +329,7 @@ export function formatAtkMarginalReturnReport(report: AtkMarginalReturnReport): 
   lines.push('### 收益随阶段');
   lines.push('');
   lines.push(
-    '| 阶段 | 初始还差行动 | 第1次 | 第2次 | 第3次 | 合法命中 | 合计收益 | 平均每次 | 封顶后还差行动 | 封顶 |'
+    '| 阶段 | 初始还差行动 | 第1次 | 第2次 | 第3次 | 合法命中 | 合计收益 | 平均每次 | 封顶后还差行动 | 封顶 |',
   );
   lines.push('| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |');
   for (const phase of report.phases) {
@@ -340,8 +340,8 @@ export function formatAtkMarginalReturnReport(report: AtkMarginalReturnReport): 
       `| ${phase.phase} | ${seq.initialActionsToGuiYuan} | ${first3[0] ?? '—'} | ${
         first3[1] ?? '—'
       } | ${first3[2] ?? '—'} | ${seq.steps.length} | ${seq.totalGain} | ${avg.toFixed(
-        3
-      )} | ${seq.finalActionsToGuiYuan} | ${seq.isCapped ? '是' : '否'} |`
+        3,
+      )} | ${seq.finalActionsToGuiYuan} | ${seq.isCapped ? '是' : '否'} |`,
     );
   }
   lines.push('');
@@ -356,16 +356,16 @@ export function formatAtkMarginalReturnReport(report: AtkMarginalReturnReport): 
     for (const step of phase.sequence.steps) {
       lines.push(
         `| ${step.index} | ${step.source} | ${step.target} | ${step.polarity} | ${formatLevel(
-          step.levelBefore
+          step.levelBefore,
         )} → ${formatLevel(step.levelAfter)} | ${step.gain} | ${step.cumulativeGain} | ${
           step.actionsToGuiYuan
-        } |`
+        } |`,
       );
     }
     if (phase.sequence.isCapped) {
       lines.push('');
       lines.push(
-        `> 第 ${phase.sequence.steps.length + 1} 次起封顶：对手 10 侧全部道损，已无合法【破】目标，边际收益 0。`
+        `> 第 ${phase.sequence.steps.length + 1} 次起封顶：对手 10 侧全部道损，已无合法【破】目标，边际收益 0。`,
       );
     }
     lines.push('');

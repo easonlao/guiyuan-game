@@ -8,10 +8,7 @@
  */
 
 import { runCliIfDirect } from './cli.js';
-import {
-  DEFAULT_BASE_SEED,
-  DEFAULT_MAX_ROUNDS
-} from './ExperimentRunner.js';
+import { DEFAULT_BASE_SEED, DEFAULT_MAX_ROUNDS } from './ExperimentRunner.js';
 import {
   CANDIDATE_REGISTRY,
   DEFAULT_GUARDRAIL_MATCHES,
@@ -19,7 +16,7 @@ import {
   DEFAULT_VALIDATION_MATCHES_PER_SEAT,
   PRODUCTION_CANDIDATE,
   validateCandidate,
-  type SettlementMode
+  type SettlementMode,
 } from './CandidateValidation.js';
 import { formatCandidateValidationReport } from './CandidateValidationReport.js';
 
@@ -87,7 +84,7 @@ export function parseCandidateArgs(argv: readonly string[]): ParsedCandidateArgs
       const value = argv[++i];
       if (!value || !CANDIDATE_REGISTRY[value]) {
         throw new Error(
-          `未知候选: ${value}（可选: ${Object.keys(CANDIDATE_REGISTRY).join(' / ')}）`
+          `未知候选: ${value}（可选: ${Object.keys(CANDIDATE_REGISTRY).join(' / ')}）`,
         );
       }
       candidate = value;
@@ -111,7 +108,8 @@ export function parseCandidateArgs(argv: readonly string[]): ParsedCandidateArgs
     }
     if (arg === '--matches') {
       const value = Number(argv[++i]);
-      if (!Number.isFinite(value) || value < 0) throw new Error(`--matches 需要非负数字: ${argv[i]}`);
+      if (!Number.isFinite(value) || value < 0)
+        throw new Error(`--matches 需要非负数字: ${argv[i]}`);
       matches = Math.floor(value);
       continue;
     }
@@ -123,7 +121,8 @@ export function parseCandidateArgs(argv: readonly string[]): ParsedCandidateArgs
     }
     if (arg === '--max-rounds') {
       const value = Number(argv[++i]);
-      if (!Number.isFinite(value) || value < 1) throw new Error(`--max-rounds 需要正数: ${argv[i]}`);
+      if (!Number.isFinite(value) || value < 1)
+        throw new Error(`--max-rounds 需要正数: ${argv[i]}`);
       maxRounds = Math.floor(value);
       continue;
     }
@@ -144,7 +143,18 @@ export function parseCandidateArgs(argv: readonly string[]): ParsedCandidateArgs
     throw new Error(`未知参数: ${arg}`);
   }
 
-  return { isHelp, candidate, name, description, mode, matches, seed, maxRounds, guardrailMatches, guardrailSeed };
+  return {
+    isHelp,
+    candidate,
+    name,
+    description,
+    mode,
+    matches,
+    seed,
+    maxRounds,
+    guardrailMatches,
+    guardrailSeed,
+  };
 }
 
 runCliIfDirect(import.meta.url, () => {
@@ -157,21 +167,20 @@ runCliIfDirect(import.meta.url, () => {
   const seed = parsed.seed ?? DEFAULT_BASE_SEED;
   const maxRounds = parsed.maxRounds ?? DEFAULT_MAX_ROUNDS;
   const registered = CANDIDATE_REGISTRY[parsed.candidate];
-  const name =
-    parsed.name !== PRODUCTION_CANDIDATE.name ? parsed.name : registered.spec.name;
+  const name = parsed.name !== PRODUCTION_CANDIDATE.name ? parsed.name : registered.spec.name;
   const description =
     parsed.description !== PRODUCTION_CANDIDATE.description
       ? parsed.description
       : registered.spec.description;
   console.log(
-    `🚀 候选验证 (${name}, ${parsed.mode}): 对拼 ${matches} 局/座次, 种子 ${seed}, 回合上限 ${maxRounds}...`
+    `🚀 候选验证 (${name}, ${parsed.mode}): 对拼 ${matches} 局/座次, 种子 ${seed}, 回合上限 ${maxRounds}...`,
   );
   const report = validateCandidate(
     {
       ...registered.spec,
       name,
       description,
-      settlementMode: parsed.mode
+      settlementMode: parsed.mode,
     },
     {
       matchesPerSeat: matches,
@@ -179,8 +188,8 @@ runCliIfDirect(import.meta.url, () => {
       maxRounds,
       guardrailMatches: parsed.guardrailMatches,
       guardrailSeed: parsed.guardrailSeed,
-      dynamicPolicies: registered.dynamicPolicies
-    }
+      dynamicPolicies: registered.dynamicPolicies,
+    },
   );
   console.log(formatCandidateValidationReport(report));
 });

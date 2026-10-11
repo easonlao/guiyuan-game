@@ -37,22 +37,9 @@ const ref = process.argv[2] ?? 'HEAD';
 const passthroughArgs = process.argv.slice(3);
 
 // 相对 ref 的已跟踪改动（新增 / 复制 / 修改 / 重命名；不含删除）。
-const trackedChanges = git([
-  'diff',
-  '--name-only',
-  '--diff-filter=ACMR',
-  ref,
-  '--',
-  LOGIC_DIR
-]);
+const trackedChanges = git(['diff', '--name-only', '--diff-filter=ACMR', ref, '--', LOGIC_DIR]);
 // 未跟踪的新文件不在任何提交里，相对任何 ref 都算「改动」，一并纳入。
-const untrackedFiles = git([
-  'ls-files',
-  '--others',
-  '--exclude-standard',
-  '--',
-  LOGIC_DIR
-]);
+const untrackedFiles = git(['ls-files', '--others', '--exclude-standard', '--', LOGIC_DIR]);
 
 const changedFiles = [...new Set([...trackedChanges, ...untrackedFiles])]
   .filter((file) => file.endsWith('.ts'))
@@ -63,14 +50,14 @@ if (changedFiles.length === 0) {
   // 退出 0 以免 CI 或自动化把「没有东西可变异」误判为报错；输出足以让人区分
   // 「跑过了但没目标」和「真的跑过并全部存活」。
   process.stdout.write(
-    `mutation:changed: 相对 '${ref}' 没有改动的 TypeScript 文件（目录 ${LOGIC_DIR}/，已排除 ${BARREL}）。\n`
+    `mutation:changed: 相对 '${ref}' 没有改动的 TypeScript 文件（目录 ${LOGIC_DIR}/，已排除 ${BARREL}）。\n`,
   );
   process.stdout.write('没有可变异的目标，退出 0。\n');
   process.exit(0);
 }
 
 process.stdout.write(
-  `mutation:changed: 相对 '${ref}' 共 ${changedFiles.length} 个改动文件，开始变异：\n`
+  `mutation:changed: 相对 '${ref}' 共 ${changedFiles.length} 个改动文件，开始变异：\n`,
 );
 for (const file of changedFiles) {
   process.stdout.write(`  - ${file}\n`);
@@ -80,6 +67,6 @@ for (const file of changedFiles) {
 // JSON 报告（reports/mutation/mutation.json）与存活明细仍由 stryker.config.json 的 reporters 产出。
 const strykerArgs = ['run', '--mutate', changedFiles.join(','), ...passthroughArgs];
 const result = spawnSync(resolve('node_modules/.bin/stryker'), strykerArgs, {
-  stdio: 'inherit'
+  stdio: 'inherit',
 });
 process.exit(result.status ?? 1);

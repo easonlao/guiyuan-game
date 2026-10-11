@@ -18,24 +18,28 @@ import {
   DEFAULT_STRATEGY_VARIANTS,
   DEFAULT_SCORE_CONFIG_VARIANTS,
   DEFAULT_RULE_MODES,
-  DEFAULT_MATCHES_PER_CELL
+  DEFAULT_MATCHES_PER_CELL,
 } from '../../src/core/headless/ExperimentRunner.js';
 import type {
   HeadToHeadMatchup,
   HeadToHeadReport,
-  RuleMode
+  RuleMode,
 } from '../../src/core/headless/ExperimentRunner.js';
 import {
   balancedStrategy,
   aggressiveStrategy,
   pureRushStrategy,
   pureSuppressStrategy,
-  scoreStrippedStrategy
+  scoreStrippedStrategy,
 } from '../../src/core/ai/Strategy.js';
 import { HeadlessBenchmark } from '../../src/core/headless/HeadlessBenchmark.js';
 import { HeadlessMatch, defaultBaselineStrategy } from '../../src/core/headless/HeadlessMatch.js';
 import { isDirectRun } from '../../src/core/headless/cli.js';
-import { countBoardDamage, countBoardGuiYi, countUnlightedSides } from '../../src/core/logic/State.js';
+import {
+  countBoardDamage,
+  countBoardGuiYi,
+  countUnlightedSides,
+} from '../../src/core/logic/State.js';
 import { pathToFileURL } from 'node:url';
 
 const MAX_ROUNDS = 30;
@@ -59,13 +63,13 @@ function syntheticMatchup(strategyA: string, strategyB: string, rate: number): H
     avgRounds: 20,
     p1WinRate: 0.5,
     p2WinRate: 0.5,
-    opponentResidualDamage: 0
+    opponentResidualDamage: 0,
   };
 }
 
 function syntheticReport(
   mode: RuleMode,
-  pairs: readonly (readonly [string, string, number])[]
+  pairs: readonly (readonly [string, string, number])[],
 ): HeadToHeadReport {
   const strategies = [...new Set(pairs.flatMap(([a, b]) => [a, b]))];
   return {
@@ -75,20 +79,20 @@ function syntheticReport(
     baseSeed: 1,
     maxRounds: MAX_ROUNDS,
     mode,
-    scoreConfigName: 'default'
+    scoreConfigName: 'default',
   };
 }
 
 describe('Ticket 06 - 策略族 (strategy family)', () => {
   it('把四个权重预设、纯推进、纯压制与剥离计分并列为七个一等策略', () => {
-    expect(DEFAULT_STRATEGY_VARIANTS.map(variant => variant.name)).toEqual([
+    expect(DEFAULT_STRATEGY_VARIANTS.map((variant) => variant.name)).toEqual([
       '平衡',
       '归元冲刺',
       '激进压制',
       '保守自保',
       '纯推进',
       '纯压制',
-      '剥离计分'
+      '剥离计分',
     ]);
     for (const strategy of [pureRushStrategy, pureSuppressStrategy, scoreStrippedStrategy]) {
       expect(typeof strategy).toBe('function');
@@ -96,19 +100,19 @@ describe('Ticket 06 - 策略族 (strategy family)', () => {
   });
 
   it('纯压制自对弈的压制度量显著高于纯推进 (两个极端确实作用在相反的轴上)', () => {
-    const rush = DEFAULT_STRATEGY_VARIANTS.find(variant => variant.name === '纯推进')!;
-    const suppress = DEFAULT_STRATEGY_VARIANTS.find(variant => variant.name === '纯压制')!;
+    const rush = DEFAULT_STRATEGY_VARIANTS.find((variant) => variant.name === '纯推进')!;
+    const suppress = DEFAULT_STRATEGY_VARIANTS.find((variant) => variant.name === '纯压制')!;
     const report = runExperimentMatrix({
       modes: ['scoring'],
       scoreConfigs: [DEFAULT_SCORE_CONFIG_VARIANTS[0]],
       strategies: [rush, suppress],
       matches: 200,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
 
-    const rushCell = report.cells.find(cell => cell.strategyName === '纯推进')!;
-    const suppressCell = report.cells.find(cell => cell.strategyName === '纯压制')!;
+    const rushCell = report.cells.find((cell) => cell.strategyName === '纯推进')!;
+    const suppressCell = report.cells.find((cell) => cell.strategyName === '纯压制')!;
 
     expect(suppressCell.suppressionLevels).toBeGreaterThan(rushCell.suppressionLevels);
     expect(rushCell.guiYuanRate).toBeGreaterThan(suppressCell.guiYuanRate);
@@ -118,11 +122,11 @@ describe('Ticket 06 - 策略族 (strategy family)', () => {
     const match = new HeadlessMatch();
     const scored = match.run(balancedStrategy, balancedStrategy, {
       seed: 4242,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
     const stripped = match.run(scoreStrippedStrategy, scoreStrippedStrategy, {
       seed: 4242,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
 
     expect(stripped.record).not.toEqual(scored.record);
@@ -140,7 +144,7 @@ describe('Ticket 06 - 声明式矩阵 (strategy × scoreConfig × rule mode)', (
       strategies,
       matches: 5,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
 
     expect(report.cells).toHaveLength(modes.length * configs.length * strategies.length);
@@ -155,12 +159,12 @@ describe('Ticket 06 - 声明式矩阵 (strategy × scoreConfig × rule mode)', (
 
   it('计分配置轴是活的：攻击净收益归零后归元率明显偏离现状', () => {
     const defaultConfig = DEFAULT_SCORE_CONFIG_VARIANTS.find(
-      variant => variant.name === 'default'
+      (variant) => variant.name === 'default',
     )!;
     const attackZero = DEFAULT_SCORE_CONFIG_VARIANTS.find(
-      variant => variant.name === 'attack-zero'
+      (variant) => variant.name === 'attack-zero',
     )!;
-    const balanced = DEFAULT_STRATEGY_VARIANTS.find(variant => variant.name === '平衡')!;
+    const balanced = DEFAULT_STRATEGY_VARIANTS.find((variant) => variant.name === '平衡')!;
 
     const report = runExperimentMatrix({
       modes: ['scoring'],
@@ -168,17 +172,17 @@ describe('Ticket 06 - 声明式矩阵 (strategy × scoreConfig × rule mode)', (
       strategies: [balanced],
       matches: 200,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
 
-    const baseline = report.cells.find(cell => cell.scoreConfigName === 'default')!;
-    const zeroed = report.cells.find(cell => cell.scoreConfigName === 'attack-zero')!;
+    const baseline = report.cells.find((cell) => cell.scoreConfigName === 'default')!;
+    const zeroed = report.cells.find((cell) => cell.scoreConfigName === 'attack-zero')!;
 
     expect(Math.abs(zeroed.guiYuanRate - baseline.guiYuanRate)).toBeGreaterThan(0.01);
   });
 
   it('规则模式轴是活的：board-only 改变平衡策略的指标', () => {
-    const balanced = DEFAULT_STRATEGY_VARIANTS.find(variant => variant.name === '平衡')!;
+    const balanced = DEFAULT_STRATEGY_VARIANTS.find((variant) => variant.name === '平衡')!;
     const defaultConfig = DEFAULT_SCORE_CONFIG_VARIANTS[0];
 
     const report = runExperimentMatrix({
@@ -187,11 +191,11 @@ describe('Ticket 06 - 声明式矩阵 (strategy × scoreConfig × rule mode)', (
       strategies: [balanced],
       matches: 100,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
 
-    const scored = report.cells.find(cell => cell.mode === 'scoring')!;
-    const boardOnly = report.cells.find(cell => cell.mode === 'board-only')!;
+    const scored = report.cells.find((cell) => cell.mode === 'scoring')!;
+    const boardOnly = report.cells.find((cell) => cell.mode === 'board-only')!;
 
     expect(ruleSwitchesFor('board-only')).toEqual({ isBoardOnly: true });
     expect(ruleSwitchesFor('scoring')).toEqual({ isBoardOnly: false });
@@ -199,8 +203,7 @@ describe('Ticket 06 - 声明式矩阵 (strategy × scoreConfig × rule mode)', (
     expect(isBoardSettlementFor('board-only')).toBe(true);
     expect(isBoardSettlementFor('scoring')).toBe(false);
     expect(
-      scored.guiYuanRate !== boardOnly.guiYuanRate ||
-        scored.avgRounds !== boardOnly.avgRounds
+      scored.guiYuanRate !== boardOnly.guiYuanRate || scored.avgRounds !== boardOnly.avgRounds,
     ).toBe(true);
   });
 
@@ -211,7 +214,7 @@ describe('Ticket 06 - 声明式矩阵 (strategy × scoreConfig × rule mode)', (
       strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 2),
       matches: 10,
       baseSeed: 4242,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     } as const;
     expect(runExperimentMatrix(options).cells).toEqual(runExperimentMatrix(options).cells);
   });
@@ -219,9 +222,9 @@ describe('Ticket 06 - 声明式矩阵 (strategy × scoreConfig × rule mode)', (
 
 describe('Ticket 06 - 基线复现 (self-distortion alarm)', () => {
   it('默认参数下复现 91.40% / 19.27 / 52.20%，容差 ≤1.5 个百分点', () => {
-    const balanced = DEFAULT_STRATEGY_VARIANTS.find(variant => variant.name === '平衡')!;
+    const balanced = DEFAULT_STRATEGY_VARIANTS.find((variant) => variant.name === '平衡')!;
     const defaultConfig = DEFAULT_SCORE_CONFIG_VARIANTS.find(
-      variant => variant.name === 'default'
+      (variant) => variant.name === 'default',
     )!;
     const report = runExperimentMatrix({
       modes: ['scoring'],
@@ -229,7 +232,7 @@ describe('Ticket 06 - 基线复现 (self-distortion alarm)', () => {
       strategies: [balanced],
       matches: 2000,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
 
     expect(report.cells).toHaveLength(1);
@@ -242,7 +245,7 @@ describe('Ticket 06 - 基线复现 (self-distortion alarm)', () => {
   });
 
   it('矩阵自对弈格与直接调用 HeadlessBenchmark 完全一致 (薄层不引入偏差)', () => {
-    const balanced = DEFAULT_STRATEGY_VARIANTS.find(variant => variant.name === '平衡')!;
+    const balanced = DEFAULT_STRATEGY_VARIANTS.find((variant) => variant.name === '平衡')!;
     const defaultConfig = DEFAULT_SCORE_CONFIG_VARIANTS[0];
     const options = { matches: 50, baseSeed: 4242, maxRounds: MAX_ROUNDS };
 
@@ -250,7 +253,7 @@ describe('Ticket 06 - 基线复现 (self-distortion alarm)', () => {
       modes: ['scoring'],
       scoreConfigs: [defaultConfig],
       strategies: [balanced],
-      ...options
+      ...options,
     }).cells[0];
 
     const direct = new HeadlessBenchmark().run({
@@ -258,7 +261,7 @@ describe('Ticket 06 - 基线复现 (self-distortion alarm)', () => {
       strategyP1: balancedStrategy,
       strategyP2: balancedStrategy,
       scoreConfig: defaultConfig.config,
-      rules: ruleSwitchesFor('scoring')
+      rules: ruleSwitchesFor('scoring'),
     });
 
     expect(cell.guiYuanRate).toBe(direct.guiYuanRate);
@@ -277,7 +280,7 @@ describe('Ticket 06 - 对拼矩阵座次平衡 (seat balancing)', () => {
       strategies,
       matches: 3,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
 
     const n = strategies.length;
@@ -294,7 +297,7 @@ describe('Ticket 06 - 对拼矩阵座次平衡 (seat balancing)', () => {
     const report = runHeadToHeadMatrix({
       matches: 50,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
 
     for (const a of report.strategies) {
@@ -312,14 +315,14 @@ describe('Ticket 06 - 对拼矩阵座次平衡 (seat balancing)', () => {
       strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 2),
       matches: 50,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
     const matchup = report.matchups[0];
 
     // 座次平衡胜率 = 两个座次胜率的平均 + 半场平局（保证互补）
     expect(matchup.seatBalancedWinRate).toBeCloseTo(
       (matchup.aWinRateAsP1 + matchup.aWinRateAsP2) / 2 + 0.5 * matchup.trueDrawRate,
-      10
+      10,
     );
   });
 
@@ -328,14 +331,14 @@ describe('Ticket 06 - 对拼矩阵座次平衡 (seat balancing)', () => {
       strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 3),
       matches: 100,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
 
     for (const matchup of report.matchups) {
       expect(matchup.drawRate).toBeCloseTo(1 - matchup.guiYuanRate, 10);
     }
     // 压制型对局存在回合上限结算，流局率必须非零（旧实现误报为 0）
-    expect(report.matchups.some(matchup => matchup.drawRate > 0)).toBe(true);
+    expect(report.matchups.some((matchup) => matchup.drawRate > 0)).toBe(true);
   });
 
   it('对拼矩阵可指定 board-only 规则模式', () => {
@@ -344,7 +347,7 @@ describe('Ticket 06 - 对拼矩阵座次平衡 (seat balancing)', () => {
       matches: 5,
       baseSeed: BASE_SEED,
       maxRounds: MAX_ROUNDS,
-      mode: 'board-only'
+      mode: 'board-only',
     });
     expect(report.mode).toBe('board-only');
   });
@@ -354,7 +357,7 @@ describe('Ticket 06 - 对拼矩阵座次平衡 (seat balancing)', () => {
       strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 3),
       matches: 3,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
     const matrix = toHeadToHeadMatrix(report);
 
@@ -371,11 +374,9 @@ describe('Ticket 06 - 对拼矩阵座次平衡 (seat balancing)', () => {
       strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 3),
       matches: 10,
       baseSeed: 4242,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     } as const;
-    expect(runHeadToHeadMatrix(options).matchups).toEqual(
-      runHeadToHeadMatrix(options).matchups
-    );
+    expect(runHeadToHeadMatrix(options).matchups).toEqual(runHeadToHeadMatrix(options).matchups);
   });
 });
 
@@ -387,7 +388,7 @@ describe('Ticket 06 - 报告输出 (paste-able markdown)', () => {
       strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 2),
       matches: 3,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
     const markdown = formatExperimentReport(report);
 
@@ -395,7 +396,7 @@ describe('Ticket 06 - 报告输出 (paste-able markdown)', () => {
     expect(markdown).toContain('平均大回合');
     expect(markdown).toContain('对手残留道损');
     // 每个数据行都同时携带流局率、先手胜率与后手胜率
-    const bodyRows = markdown.split('\n').filter(line => line.startsWith('| scoring '));
+    const bodyRows = markdown.split('\n').filter((line) => line.startsWith('| scoring '));
     expect(bodyRows.length).toBe(report.cells.length);
     for (const row of bodyRows) {
       expect(row).toContain('流局率');
@@ -409,7 +410,7 @@ describe('Ticket 06 - 报告输出 (paste-able markdown)', () => {
       strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 3),
       matches: 3,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
     const markdown = formatHeadToHeadReport(report);
 
@@ -430,13 +431,13 @@ describe('Ticket 06 - 报告输出 (paste-able markdown)', () => {
       strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 2),
       matches: 10,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
 
     const analysis = analyzeDominance(report);
-    expect(analysis.verdicts.every(verdict => verdict.dominates.length === 0)).toBe(true);
+    expect(analysis.verdicts.every((verdict) => verdict.dominates.length === 0)).toBe(true);
     expect(analysis.undecidable.length).toBeGreaterThan(0);
-    expect(analysis.undecidable.every(item => item.reason === 'insufficient')).toBe(true);
+    expect(analysis.undecidable.every((item) => item.reason === 'insufficient')).toBe(true);
 
     const section = formatDominanceSection(report);
     // 关键区分：不能把「无法判定」写成「未发现占优」。
@@ -452,13 +453,13 @@ describe('Ticket 06 - 报告输出 (paste-able markdown)', () => {
       strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 2),
       matches: 3,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
     const headToHead = runHeadToHeadMatrix({
       strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 2),
       matches: 3,
       baseSeed: BASE_SEED,
-      maxRounds: MAX_ROUNDS
+      maxRounds: MAX_ROUNDS,
     });
     const markdown = formatCombinedReport(experiment, headToHead);
 
@@ -473,17 +474,26 @@ describe('Ticket 06 - 报告输出 (paste-able markdown)', () => {
       mode: 'scoring',
       matches: undefined,
       baseSeed: undefined,
-      maxRounds: undefined
+      maxRounds: undefined,
     });
     expect(
-      parseExperimentArgs(['--scan', 'head-to-head', '--matches', '50', '--seed', '7', '--max-rounds', '30'])
+      parseExperimentArgs([
+        '--scan',
+        'head-to-head',
+        '--matches',
+        '50',
+        '--seed',
+        '7',
+        '--max-rounds',
+        '30',
+      ]),
     ).toEqual({
       isHelp: false,
       scan: 'head-to-head',
       mode: 'scoring',
       matches: 50,
       baseSeed: 7,
-      maxRounds: 30
+      maxRounds: 30,
     });
     expect(parseExperimentArgs(['--mode', 'board-only']).mode).toBe('board-only');
     expect(parseExperimentArgs(['--mode', 'both']).mode).toBe('both');
@@ -505,7 +515,7 @@ describe('Ticket 09 - 计分轴开启 vs 关闭 (board-only) 逐格对照', () =
     ['A', 'C', 0.5],
     ['C', 'A', 0.5],
     ['B', 'C', 0.7],
-    ['C', 'B', 0.3]
+    ['C', 'B', 0.3],
   ] as const;
   const boardPairs = [
     ['A', 'B', 0.4],
@@ -513,34 +523,34 @@ describe('Ticket 09 - 计分轴开启 vs 关闭 (board-only) 逐格对照', () =
     ['A', 'C', 0.5],
     ['C', 'A', 0.5],
     ['B', 'C', 0.7],
-    ['C', 'B', 0.3]
+    ['C', 'B', 0.3],
   ] as const;
 
   it('逐格对照识别强弱翻转，tie 保持不变，互补对同时翻转', () => {
     const comparison = compareHeadToHeadMatrices(
       syntheticReport('scoring', scoringPairs),
-      syntheticReport('board-only', boardPairs)
+      syntheticReport('board-only', boardPairs),
     );
 
     expect(comparison.matchups).toHaveLength(6);
-    expect(comparison.flips.map(flip => `${flip.strategyA}->${flip.strategyB}`)).toEqual([
+    expect(comparison.flips.map((flip) => `${flip.strategyA}->${flip.strategyB}`)).toEqual([
       'A->B',
-      'B->A'
+      'B->A',
     ]);
-    const ab = comparison.flips.find(flip => flip.strategyA === 'A')!;
+    const ab = comparison.flips.find((flip) => flip.strategyA === 'A')!;
     expect(ab.scoringRelation).toBe('strong');
     expect(ab.boardOnlyRelation).toBe('weak');
     expect(ab.delta).toBeCloseTo(-0.2, 10);
     // A 对 C 两模式都是 50%，不是翻转
-    expect(comparison.flips.some(flip => flip.strategyB === 'C')).toBe(false);
+    expect(comparison.flips.some((flip) => flip.strategyB === 'C')).toBe(false);
   });
 
   it('逐格对照的占优集合与矩阵一致，并由矩阵守卫支撑', () => {
     const comparison = compareHeadToHeadMatrices(
       syntheticReport('scoring', scoringPairs),
-      syntheticReport('board-only', boardPairs)
+      syntheticReport('board-only', boardPairs),
     );
-    const b = comparison.dominance.find(verdict => verdict.strategy === 'B')!;
+    const b = comparison.dominance.find((verdict) => verdict.strategy === 'B')!;
     expect(b.scoringDominates).toEqual(['C']);
     expect(b.boardOnlyDominates).toEqual(['A', 'C']);
     expect(b.scoringDominatesAll).toBe(false);
@@ -556,20 +566,24 @@ describe('Ticket 09 - 计分轴开启 vs 关闭 (board-only) 逐格对照', () =
   });
 
   it('computeDominanceVerdicts 为每个策略给出严格占优对象', () => {
-    const verdicts = computeDominanceVerdicts(
-      syntheticReport('scoring', scoringPairs)
-    );
-    expect(verdicts.map(verdict => verdict.strategy)).toEqual(['A', 'B', 'C']);
-    const c = verdicts.find(verdict => verdict.strategy === 'C')!;
+    const verdicts = computeDominanceVerdicts(syntheticReport('scoring', scoringPairs));
+    expect(verdicts.map((verdict) => verdict.strategy)).toEqual(['A', 'B', 'C']);
+    const c = verdicts.find((verdict) => verdict.strategy === 'C')!;
     expect(c.dominates).toEqual([]);
   });
 
   it('策略族不一致时拒绝逐格对照', () => {
     expect(() =>
       compareHeadToHeadMatrices(
-        syntheticReport('scoring', [['A', 'B', 0.6], ['B', 'A', 0.4]]),
-        syntheticReport('board-only', [['A', 'C', 0.4], ['C', 'A', 0.6]])
-      )
+        syntheticReport('scoring', [
+          ['A', 'B', 0.6],
+          ['B', 'A', 0.4],
+        ]),
+        syntheticReport('board-only', [
+          ['A', 'C', 0.4],
+          ['C', 'A', 0.6],
+        ]),
+      ),
     ).toThrow(/同一策略族/);
   });
 });
@@ -618,7 +632,7 @@ describe('Ticket 09 - board-only 终局结算按盘面进度（剥离计分）',
       const result = match.run(defaultBaselineStrategy, defaultBaselineStrategy, {
         seed,
         maxRounds: 1,
-        isBoardSettlement: true
+        isBoardSettlement: true,
       });
       expect(result.endReason).toBe('MAX_ROUNDS');
       maxRoundsGames++;
@@ -635,7 +649,7 @@ describe('Ticket 09 - board-only 终局结算按盘面进度（剥离计分）',
       maxRounds: MAX_ROUNDS,
       strategyP1: aggressiveStrategy,
       strategyP2: pureSuppressStrategy,
-      rules: { isBoardOnly: true }
+      rules: { isBoardOnly: true },
     };
     const scored = benchmark.run(base);
     const board = benchmark.run({ ...base, isBoardSettlement: true });
@@ -649,7 +663,7 @@ describe('Ticket 09 - board-only 终局结算按盘面进度（剥离计分）',
     const b = match.run(balancedStrategy, balancedStrategy, {
       seed: 4242,
       maxRounds: MAX_ROUNDS,
-      isBoardSettlement: false
+      isBoardSettlement: false,
     });
     expect(b.winner).toBe(a.winner);
     expect(b.record).toEqual(a.record);

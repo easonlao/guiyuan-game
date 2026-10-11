@@ -11,13 +11,7 @@
  * 既可从测试使用，也可从测量台/实验代码（`src/core/headless/`）使用。
  */
 
-import {
-  BoardState,
-  GameState,
-  NodeLevel,
-  PlayerId,
-  WuXing
-} from '../types/domain.js';
+import { BoardState, GameState, NodeLevel, PlayerId, WuXing } from '../types/domain.js';
 import { createInitialGameState } from '../logic/State.js';
 
 /** 单节点覆盖：只覆盖列出的侧，未列出的侧保持虚空 (0) */
@@ -51,7 +45,7 @@ export function boardWith(overrides: BoardOverrides = {}): BoardState {
     [WuXing.FIRE]: { yin: 0, yang: 0 },
     [WuXing.EARTH]: { yin: 0, yang: 0 },
     [WuXing.METAL]: { yin: 0, yang: 0 },
-    [WuXing.WATER]: { yin: 0, yang: 0 }
+    [WuXing.WATER]: { yin: 0, yang: 0 },
   };
 
   for (const element of Object.values(WuXing)) {
@@ -59,7 +53,7 @@ export function boardWith(overrides: BoardOverrides = {}): BoardState {
     if (!override) continue;
     board[element] = {
       yin: override.yin ?? board[element].yin,
-      yang: override.yang ?? board[element].yang
+      yang: override.yang ?? board[element].yang,
     };
   }
 
@@ -82,13 +76,13 @@ export function gameStateWith(options: GameStateFixtureOptions = {}): GameState 
       P1: {
         ...initial.players.P1,
         score: options.score?.P1 ?? initial.players.P1.score,
-        board: options.P1 ? boardWith(options.P1) : initial.players.P1.board
+        board: options.P1 ? boardWith(options.P1) : initial.players.P1.board,
       },
       P2: {
         ...initial.players.P2,
         score: options.score?.P2 ?? initial.players.P2.score,
-        board: options.P2 ? boardWith(options.P2) : initial.players.P2.board
-      }
-    }
+        board: options.P2 ? boardWith(options.P2) : initial.players.P2.board,
+      },
+    },
   };
 }

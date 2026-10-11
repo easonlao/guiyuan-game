@@ -24,7 +24,7 @@ import {
   readBaselineEntries,
   readConfigMutate,
   readReportEntriesStrict,
-  sortEntries
+  sortEntries,
 } from './lib/mutation-baseline-core.mjs';
 
 const reportPath = process.argv[2] ?? DEFAULT_REPORT;
@@ -37,7 +37,7 @@ function fail(message) {
 
 if (!existsSync(reportPath)) {
   fail(
-    `找不到报告 '${reportPath}'。请先跑 'npm run mutation'（全量）或 'npm run mutation:changed'。`
+    `找不到报告 '${reportPath}'。请先跑 'npm run mutation'（全量）或 'npm run mutation:changed'。`,
   );
 }
 if (!existsSync(baselinePath)) {
@@ -66,7 +66,7 @@ try {
   fail(
     `报告不是全量跑的结果：${error instanceof Error ? error.message : String(error)}。\n` +
       `棘轮只对全量跑有效（子集跑的覆盖集不同，会报出假的新增存活）。请先跑 'npm run mutation' 再做棘轮对比；` +
-      `'npm run mutation:changed' 仅用于 implement 收尾时查看存活、补断言，不做棘轮对比。`
+      `'npm run mutation:changed' 仅用于 implement 收尾时查看存活、补断言，不做棘轮对比。`,
   );
 }
 
@@ -86,26 +86,32 @@ for (const entry of baselineEntries) {
   disappearedLoose.set(signature, locations);
 }
 
-process.stdout.write(`mutation:check: 报告 ${reportPath}（存活/无覆盖 ${reportEntries.length} 条）\n`);
+process.stdout.write(
+  `mutation:check: 报告 ${reportPath}（存活/无覆盖 ${reportEntries.length} 条）\n`,
+);
 process.stdout.write(`mutation:check: 基线 ${baselinePath}（${baselineEntries.length} 条）\n`);
 
 if (newEntries.length === 0) {
   process.stdout.write(
-    `mutation:check: ✅ 没有新增存活/无覆盖突变体（报告内 ${reportEntries.length} 条存活/无覆盖均在基线内）。退出 0。\n`
+    `mutation:check: ✅ 没有新增存活/无覆盖突变体（报告内 ${reportEntries.length} 条存活/无覆盖均在基线内）。退出 0。\n`,
   );
   process.exit(0);
 }
 
-process.stdout.write(`\nmutation:check: ❌ 发现 ${newEntries.length} 个新增存活/无覆盖突变体：\n\n`);
+process.stdout.write(
+  `\nmutation:check: ❌ 发现 ${newEntries.length} 个新增存活/无覆盖突变体：\n\n`,
+);
 for (const entry of newEntries) {
   process.stdout.write(`  ${formatEntry(entry)}\n`);
   const previous = disappearedLoose.get(looseSignature(entry));
   if (previous) {
-    process.stdout.write(`      ⚠ 疑似只是移位：基线里同类型同替换已从 ${previous.join(', ')} 消失\n`);
+    process.stdout.write(
+      `      ⚠ 疑似只是移位：基线里同类型同替换已从 ${previous.join(', ')} 消失\n`,
+    );
   }
 }
 process.stdout.write(
   `\nmutation:check: 这些突变体不在基线里。要么补测试抓住它们，要么在确认等价后跑 ` +
-    `'npm run mutation:baseline' 接受为新基线（会在 diff 中体现）。退出 1。\n`
+    `'npm run mutation:baseline' 接受为新基线（会在 diff 中体现）。退出 1。\n`,
 );
 process.exit(1);

@@ -25,7 +25,7 @@ export const BALANCED_WEIGHTS: StrategyWeights = {
   suppressNode: 30,
   scoreDeltaWeight: 0.8,
   winReward: 10000,
-  baseActionBias: {}
+  baseActionBias: {},
 };
 
 /**
@@ -43,7 +43,7 @@ export const RUSH_GUIYUAN_WEIGHTS: StrategyWeights = {
   suppressNode: 10,
   scoreDeltaWeight: 0.8,
   winReward: 12000,
-  baseActionBias: {}
+  baseActionBias: {},
 };
 
 /**
@@ -61,7 +61,7 @@ export const AGGRESSIVE_WEIGHTS: StrategyWeights = {
   suppressNode: 90,
   scoreDeltaWeight: 0.8,
   winReward: 10000,
-  baseActionBias: {}
+  baseActionBias: {},
 };
 
 /**
@@ -79,7 +79,7 @@ export const DEFENSIVE_WEIGHTS: StrategyWeights = {
   suppressNode: 20,
   scoreDeltaWeight: 0.8,
   winReward: 10000,
-  baseActionBias: {}
+  baseActionBias: {},
 };
 
 /**
@@ -98,7 +98,7 @@ export const PURE_RUSH_WEIGHTS: StrategyWeights = {
   suppressNode: 0,
   scoreDeltaWeight: 0,
   winReward: 10000,
-  baseActionBias: {}
+  baseActionBias: {},
 };
 
 /**
@@ -117,7 +117,7 @@ export const PURE_SUPPRESS_WEIGHTS: StrategyWeights = {
   suppressNode: 100,
   scoreDeltaWeight: 0,
   winReward: 0,
-  baseActionBias: {}
+  baseActionBias: {},
 };
 
 /**
@@ -126,7 +126,7 @@ export const PURE_SUPPRESS_WEIGHTS: StrategyWeights = {
  */
 export const SCORE_STRIPPED_WEIGHTS: StrategyWeights = {
   ...BALANCED_WEIGHTS,
-  scoreDeltaWeight: 0
+  scoreDeltaWeight: 0,
 };
 
 export interface StrategyOptions {
@@ -141,18 +141,18 @@ export interface StrategyOptions {
  */
 export function createStrategy(
   weights?: Partial<StrategyWeights>,
-  options: StrategyOptions = {}
+  options: StrategyOptions = {},
 ): DecisionStrategy {
   const mergedWeights: StrategyWeights = {
     ...DEFAULT_STRATEGY_WEIGHTS,
-    ...weights
+    ...weights,
   };
   const evaluator = options.evaluator ?? new ActionEvaluator();
 
   return (
     state: GameState,
     tianGan: TianGanInfo,
-    availableActions?: ActionPayload[]
+    availableActions?: ActionPayload[],
   ): ActionPayload => {
     const actions =
       availableActions && availableActions.length > 0
@@ -165,7 +165,7 @@ export function createStrategy(
         actionType: ActionType.AUTO,
         player: state.currentPlayer,
         element: tianGan.element,
-        polarity: tianGan.polarity
+        polarity: tianGan.polarity,
       };
     }
 
@@ -180,7 +180,7 @@ export function createStrategy(
 
     if (options.tieBreaker) {
       const bestScore = scored[0].score;
-      const topCandidates = scored.filter(s => s.score === bestScore);
+      const topCandidates = scored.filter((s) => s.score === bestScore);
       if (topCandidates.length > 1) {
         return options.tieBreaker(topCandidates);
       }
@@ -200,11 +200,11 @@ export function createStrategy(
 export function createScoreBoundStrategy(
   weights: StrategyWeights,
   config: PointsConfig,
-  rules?: RuleSwitches
+  rules?: RuleSwitches,
 ): DecisionStrategy {
   return createStrategy(weights, {
     evaluator: new ActionEvaluator(new ActionResolver(new ScoreCalculator(config))),
-    rules
+    rules,
   });
 }
 
@@ -223,17 +223,17 @@ export const defensiveStrategy: DecisionStrategy = createStrategy(DEFENSIVE_WEIG
 /** 预设策略：纯推进（只最大化自身点亮/归一进度，压制轴与计分轴归零） */
 export const pureRushStrategy: DecisionStrategy = createScoreBoundStrategy(
   PURE_RUSH_WEIGHTS,
-  POINTS_CONFIG
+  POINTS_CONFIG,
 );
 
 /** 预设策略：纯压制（只最大化对对手的削弱，建设轴与计分轴归零） */
 export const pureSuppressStrategy: DecisionStrategy = createScoreBoundStrategy(
   PURE_SUPPRESS_WEIGHTS,
-  POINTS_CONFIG
+  POINTS_CONFIG,
 );
 
 /** 预设策略：剥离计分（盘面偏好同平衡策略，计分轴权重归零，只按盘面判优） */
 export const scoreStrippedStrategy: DecisionStrategy = createScoreBoundStrategy(
   SCORE_STRIPPED_WEIGHTS,
-  POINTS_CONFIG
+  POINTS_CONFIG,
 );

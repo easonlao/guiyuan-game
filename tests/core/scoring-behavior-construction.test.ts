@@ -1,15 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import {
-  ActionType,
-  WuXing,
-  Polarity
-} from '../../src/core/types/index.js';
+import { ActionType, WuXing, Polarity } from '../../src/core/types/index.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
-import {
-  ScoreCalculator,
-  POINTS_CONFIG
-} from '../../src/core/logic/ScoreCalculator.js';
+import { ScoreCalculator, POINTS_CONFIG } from '../../src/core/logic/ScoreCalculator.js';
 
 describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装', () => {
   const calculator = new ScoreCalculator();
@@ -29,12 +22,14 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
       expect(POINTS_CONFIG.STATE_CHANGE.LIGHT_UP).toBe(100);
       expect(POINTS_CONFIG.STATE_CHANGE.BLESSING).toBe(200);
       // REPAIR_DMG can be 200 or { yang: 200, yin: 200 }
-      const repairYang = typeof POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG === 'number'
-        ? POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG
-        : POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG.yang;
-      const repairYin = typeof POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG === 'number'
-        ? POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG
-        : POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG.yin;
+      const repairYang =
+        typeof POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG === 'number'
+          ? POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG
+          : POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG.yang;
+      const repairYin =
+        typeof POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG === 'number'
+          ? POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG
+          : POINTS_CONFIG.STATE_CHANGE.REPAIR_DMG.yin;
       expect(repairYang).toBe(200);
       expect(repairYin).toBe(200);
     });
@@ -71,7 +66,7 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(res.success).toBe(true);
@@ -89,17 +84,17 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
             ...baseState.players.P1,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: -1 as const, yang: 0 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: -1 as const, yang: 0 as const },
+            },
+          },
+        },
       };
 
       const res = resolver.resolve(stateWithDmg, {
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       });
 
       expect(res.success).toBe(true);
@@ -117,17 +112,17 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
             ...baseState.players.P1,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 0 as const, yang: 1 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 0 as const, yang: 1 as const },
+            },
+          },
+        },
       };
 
       const res = resolver.resolve(stateWithLit, {
         actionType: ActionType.AUTO,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(res.success).toBe(true);
@@ -141,7 +136,7 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
         actionType: ActionType.CONVERT,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YIN
+        polarity: Polarity.YIN,
       });
 
       expect(res.success).toBe(true);
@@ -155,7 +150,7 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
         actionType: ActionType.TRANS,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(res.success).toBe(true);
@@ -169,7 +164,7 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
         actionType: ActionType.ATK,
         player: 'P1',
         sourceElement: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(res.success).toBe(true);
@@ -186,10 +181,10 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
             ...baseState.players.P1,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const },
+            },
+          },
+        },
       };
 
       const res = resolver.resolve(stateGuiYi, {
@@ -197,7 +192,7 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YANG // Target FIRE yang 0 -> 1
+        polarity: Polarity.YANG, // Target FIRE yang 0 -> 1
       });
 
       expect(res.success).toBe(true);
@@ -215,10 +210,10 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
             ...baseState.players.P1,
             board: {
               ...baseState.players.P1.board,
-              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const }
-            }
-          }
-        }
+              [WuXing.WOOD]: { yin: 1 as const, yang: 1 as const },
+            },
+          },
+        },
       };
 
       const res = resolver.resolve(stateGuiYi, {
@@ -226,7 +221,7 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YANG,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       });
 
       expect(res.success).toBe(true);

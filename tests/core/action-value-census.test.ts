@@ -1,20 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import {
-  ActionType,
-  TIAN_GAN_LIST,
-  WuXing
-} from '../../src/core/types/domain.js';
+import { ActionType, TIAN_GAN_LIST, WuXing } from '../../src/core/types/domain.js';
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
-import {
-  ScoreCalculator,
-  type PointsConfig
-} from '../../src/core/logic/ScoreCalculator.js';
+import { ScoreCalculator, type PointsConfig } from '../../src/core/logic/ScoreCalculator.js';
 import { gameStateWith } from '../../src/core/headless/BoardFixture.js';
 import { atkTempoGain } from '../../src/core/headless/Metrics.js';
 import {
   evaluateActionValues,
   runActionValueCensus,
-  type ActionValue
+  type ActionValue,
 } from '../../src/core/headless/ActionValueCensus.js';
 
 /** 全零计分配置：证明价值函数可注入 PointsConfig，且 scoreDeltaPoints 归零。 */
@@ -25,7 +18,7 @@ const ZERO_POINTS_CONFIG: PointsConfig = {
     TRANS: 0,
     ATK: 0,
     BURST: 0,
-    BURST_ATK: 0
+    BURST_ATK: 0,
   },
   STATE_CHANGE: {
     REPAIR_DMG: { yang: 0, yin: 0 },
@@ -33,20 +26,20 @@ const ZERO_POINTS_CONFIG: PointsConfig = {
     BLESSING: 0,
     CAUSE_DMG: { yang: 0, yin: 0 },
     BREAK_LIGHT: { yang: 0, yin: 0 },
-    WEAKEN: 0
+    WEAKEN: 0,
   },
   GUI_YI_MILESTONE: 0,
-  DAMAGE_PENALTY: 0
+  DAMAGE_PENALTY: 0,
 };
 
 function tianGanNamed(name: string) {
-  const found = TIAN_GAN_LIST.find(gan => gan.name === name);
+  const found = TIAN_GAN_LIST.find((gan) => gan.name === name);
   if (!found) throw new Error(`未知天干: ${name}`);
   return found;
 }
 
 function byType(observations: readonly ActionValue[], actionType: ActionType): ActionValue {
-  const found = observations.find(observation => observation.actionType === actionType);
+  const found = observations.find((observation) => observation.actionType === actionType);
   if (!found) throw new Error(`盘面上没有可用动作: ${actionType}`);
   return found;
 }
@@ -58,12 +51,12 @@ describe('动作价值普查：盘面动作价值排序', () => {
     const state = gameStateWith({
       P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
       P2: { [WuXing.EARTH]: { yin: 0, yang: 0 } },
-      currentPlayer: 'P1'
+      currentPlayer: 'P1',
     });
     const observations = evaluateActionValues(state, tianGanNamed('甲'));
 
-    expect(observations.map(o => o.actionType).sort()).toEqual(
-      [ActionType.ATK, ActionType.BURST, ActionType.BURST_ATK].sort()
+    expect(observations.map((o) => o.actionType).sort()).toEqual(
+      [ActionType.ATK, ActionType.BURST, ActionType.BURST_ATK].sort(),
     );
 
     const ranked = [...observations].sort((a, b) => b.value - a.value);
@@ -74,7 +67,7 @@ describe('动作价值普查：盘面动作价值排序', () => {
     for (const observation of observations) {
       expect(observation.boardScore + observation.scoreDeltaPoints).toBeCloseTo(
         observation.value,
-        9
+        9,
       );
     }
     expect(byType(observations, ActionType.ATK).scoreDeltaPoints).toBeGreaterThan(0);
@@ -84,7 +77,7 @@ describe('动作价值普查：盘面动作价值排序', () => {
     const state = gameStateWith({
       P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
       P2: { [WuXing.EARTH]: { yin: 0, yang: 0 } },
-      currentPlayer: 'P1'
+      currentPlayer: 'P1',
     });
     const observations = evaluateActionValues(state, tianGanNamed('甲'));
 
@@ -104,7 +97,7 @@ describe('动作价值普查：盘面动作价值排序', () => {
     const state = gameStateWith({
       P1: { [WuXing.WOOD]: { yin: 0, yang: 0 } },
       P2: {},
-      currentPlayer: 'P1'
+      currentPlayer: 'P1',
     });
     const observations = evaluateActionValues(state, tianGanNamed('甲'));
 
@@ -119,14 +112,14 @@ describe('动作价值普查：盘面覆盖', () => {
   const report = runActionValueCensus();
 
   it('覆盖三个阶段：低位态期 / 中盘 / 残局', () => {
-    const phaseKeys = new Set(report.boards.map(board => board.phaseKey));
+    const phaseKeys = new Set(report.boards.map((board) => board.phaseKey));
     expect(phaseKeys).toContain('low-state');
     expect(phaseKeys).toContain('midgame');
     expect(phaseKeys).toContain('endgame');
   });
 
   it('覆盖两个阶跃条件：目标侧为加持 / 对手全道损，以及 plain 对照', () => {
-    const conditionKeys = new Set(report.boards.map(board => board.stepConditionKey));
+    const conditionKeys = new Set(report.boards.map((board) => board.stepConditionKey));
     expect(conditionKeys).toContain('plain');
     expect(conditionKeys).toContain('target-blessed');
     expect(conditionKeys).toContain('opponent-all-damaged');
@@ -147,16 +140,14 @@ describe('动作价值普查：盘面覆盖', () => {
   });
 
   it('报告列出全部动作类型，并指出哪些在所有被测状态下都被支配', () => {
-    expect(report.actions.map(action => action.actionType).sort()).toEqual(
-      Object.values(ActionType).sort()
+    expect(report.actions.map((action) => action.actionType).sort()).toEqual(
+      Object.values(ActionType).sort(),
     );
     expect(report.valueFunction.name).toContain('ActionEvaluator');
     expect(report.valueFunction.inputs.length).toBeGreaterThan(0);
     // 被支配动作列表与逐动作结论一致。
     for (const action of report.actions) {
-      expect(report.globallyDominated.includes(action.actionType)).toBe(
-        action.globallyDominated
-      );
+      expect(report.globallyDominated.includes(action.actionType)).toBe(action.globallyDominated);
     }
   });
 });
@@ -167,7 +158,7 @@ describe('口径锁：压制 = 等级下降量（measureBoardDiff.suppressionLev
     const state = gameStateWith({
       P1: { [WuXing.EARTH]: { yin: 1, yang: 1 } },
       P2: { [WuXing.WATER]: { yin: 2, yang: 2 } },
-      currentPlayer: 'P1'
+      currentPlayer: 'P1',
     });
     const observations = evaluateActionValues(state, tianGanNamed('戊'));
     const atk = byType(observations, ActionType.ATK);
@@ -177,8 +168,8 @@ describe('口径锁：压制 = 等级下降量（measureBoardDiff.suppressionLev
 
     // 旧口径（atkTempoGain，基于未点亮侧数）把 2 -> 1 记 0 —— 证明两者结论相反。
     const before = state.players.P2.board;
-    const after = new ActionResolver(new ScoreCalculator()).resolve(state, atk.action)
-      .nextState.players.P2.board;
+    const after = new ActionResolver(new ScoreCalculator()).resolve(state, atk.action).nextState
+      .players.P2.board;
     expect(atkTempoGain(before, after)).toBe(0);
     expect(atk.suppressionLevels).not.toBe(atkTempoGain(before, after));
   });

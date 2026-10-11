@@ -13,7 +13,7 @@ import {
   TianGanInfo,
   getOppositePolarity,
   GENERATION_CYCLE,
-  OVERCOMING_CYCLE
+  OVERCOMING_CYCLE,
 } from '../types/domain.js';
 import { isNodeGuiYi, isNodeKangJi } from './State.js';
 
@@ -73,7 +73,7 @@ export interface RuleSwitches {
 export function getAvailableActions(
   state: GameState,
   tianGan: TianGanInfo,
-  options?: ActionCandidatesOptions
+  options?: ActionCandidatesOptions,
 ): ActionPayload[] {
   if (state.isGameOver) {
     return [];
@@ -96,8 +96,8 @@ export function getAvailableActions(
         actionType: ActionType.AUTO,
         player: playerId,
         element: stemElement,
-        polarity: stemPolarity
-      }
+        polarity: stemPolarity,
+      },
     ];
   }
 
@@ -108,8 +108,8 @@ export function getAvailableActions(
         actionType: ActionType.DISSIPATE,
         player: playerId,
         element: stemElement,
-        polarity: stemPolarity
-      }
+        polarity: stemPolarity,
+      },
     ];
   }
 
@@ -124,7 +124,7 @@ export function getAvailableActions(
         actionType: ActionType.CONVERT,
         player: playerId,
         element: stemElement,
-        polarity: oppositePolarity
+        polarity: oppositePolarity,
       });
     }
 
@@ -137,7 +137,7 @@ export function getAvailableActions(
           actionType: ActionType.ATK,
           player: playerId,
           sourceElement: stemElement,
-          polarity: targetPolarity
+          polarity: targetPolarity,
         });
       }
     }
@@ -151,7 +151,7 @@ export function getAvailableActions(
           actionType: ActionType.TRANS,
           player: playerId,
           sourceElement: stemElement,
-          polarity: targetPolarity
+          polarity: targetPolarity,
         });
       }
     }
@@ -170,7 +170,7 @@ export function getAvailableActions(
         player: playerId,
         sourceElement: stemElement,
         consumePolarity: Polarity.YIN,
-        polarity: shengTargetPolarity
+        polarity: shengTargetPolarity,
       });
     }
 
@@ -183,7 +183,7 @@ export function getAvailableActions(
         player: playerId,
         sourceElement: stemElement,
         consumePolarity: Polarity.YANG,
-        polarity: keTargetPolarity
+        polarity: keTargetPolarity,
       });
     }
   }
@@ -194,7 +194,7 @@ export function getAvailableActions(
       actionType: ActionType.PASS,
       player: playerId,
       element: stemElement,
-      polarity: stemPolarity
+      polarity: stemPolarity,
     });
   }
 

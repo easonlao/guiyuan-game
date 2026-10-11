@@ -7,22 +7,19 @@ import {
   TIAN_GAN_LIST,
   WuXing,
   GENERATION_CYCLE,
-  OVERCOMING_CYCLE
+  OVERCOMING_CYCLE,
 } from '../../src/core/types/domain.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
 import { getAvailableActions } from '../../src/core/logic/ActionCandidates.js';
 import { ActionResolver } from '../../src/core/logic/ActionResolver.js';
 import { TurnManager } from '../../src/core/logic/TurnManager.js';
-import {
-  ActionEvaluator,
-  DEFAULT_STRATEGY_WEIGHTS
-} from '../../src/core/ai/ActionEvaluator.js';
+import { ActionEvaluator, DEFAULT_STRATEGY_WEIGHTS } from '../../src/core/ai/ActionEvaluator.js';
 import {
   createStrategy,
   balancedStrategy,
   rushGuiyuanStrategy,
   aggressiveStrategy,
-  defensiveStrategy
+  defensiveStrategy,
 } from '../../src/core/ai/Strategy.js';
 import { HeadlessMatch } from '../../src/core/headless/HeadlessMatch.js';
 
@@ -30,19 +27,13 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
   const resolver = new ActionResolver();
   const evaluator = new ActionEvaluator();
 
-  const ALL_ELEMENTS = [
-    WuXing.WOOD,
-    WuXing.FIRE,
-    WuXing.EARTH,
-    WuXing.METAL,
-    WuXing.WATER
-  ];
+  const ALL_ELEMENTS = [WuXing.WOOD, WuXing.FIRE, WuXing.EARTH, WuXing.METAL, WuXing.WATER];
 
   describe('1. Exhaustive Boundary Matrix: All 5 Elements & Both Polarities', () => {
     describe('1.1 Yang Stems: Drawn Yang side is 1 or 2', () => {
       for (const element of ALL_ELEMENTS) {
         const yangStem = TIAN_GAN_LIST.find(
-          (tg) => tg.element === element && tg.polarity === Polarity.YANG
+          (tg) => tg.element === element && tg.polarity === Polarity.YANG,
         )!;
 
         // Permutations where opposite side (YIN) <= 0: CONVERT MUST BE GENERATED
@@ -50,7 +41,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
           { yang: 1, yin: -1, label: '(1, -1)' },
           { yang: 1, yin: 0, label: '(1, 0)' },
           { yang: 2, yin: -1, label: '(2, -1)' },
-          { yang: 2, yin: 0, label: '(2, 0)' }
+          { yang: 2, yin: 0, label: '(2, 0)' },
         ];
 
         for (const combo of allowedCombinations) {
@@ -64,10 +55,10 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
                   ...state.players.P1,
                   board: {
                     ...state.players.P1.board,
-                    [element]: { yin: combo.yin, yang: combo.yang }
-                  }
-                }
-              }
+                    [element]: { yin: combo.yin, yang: combo.yang },
+                  },
+                },
+              },
             };
 
             const actions = getAvailableActions(state, yangStem);
@@ -78,7 +69,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
               actionType: ActionType.CONVERT,
               player: 'P1',
               element,
-              polarity: Polarity.YIN
+              polarity: Polarity.YIN,
             });
           });
         }
@@ -88,7 +79,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
           { yang: 1, yin: 1, label: '(1, 1)' },
           { yang: 1, yin: 2, label: '(1, 2)' },
           { yang: 2, yin: 1, label: '(2, 1)' },
-          { yang: 2, yin: 2, label: '(2, 2)' }
+          { yang: 2, yin: 2, label: '(2, 2)' },
         ];
 
         for (const combo of prohibitedCombinations) {
@@ -102,10 +93,10 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
                   ...state.players.P1,
                   board: {
                     ...state.players.P1.board,
-                    [element]: { yin: combo.yin, yang: combo.yang }
-                  }
-                }
-              }
+                    [element]: { yin: combo.yin, yang: combo.yang },
+                  },
+                },
+              },
             };
 
             const actions = getAvailableActions(state, yangStem);
@@ -119,7 +110,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
     describe('1.2 Yin Stems: Drawn Yin side is 1 or 2', () => {
       for (const element of ALL_ELEMENTS) {
         const yinStem = TIAN_GAN_LIST.find(
-          (tg) => tg.element === element && tg.polarity === Polarity.YIN
+          (tg) => tg.element === element && tg.polarity === Polarity.YIN,
         )!;
 
         // Permutations where opposite side (YANG) <= 0: CONVERT MUST BE GENERATED
@@ -127,7 +118,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
           { yin: 1, yang: -1, label: '(1, -1)' },
           { yin: 1, yang: 0, label: '(1, 0)' },
           { yin: 2, yang: -1, label: '(2, -1)' },
-          { yin: 2, yang: 0, label: '(2, 0)' }
+          { yin: 2, yang: 0, label: '(2, 0)' },
         ];
 
         for (const combo of allowedCombinations) {
@@ -141,10 +132,10 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
                   ...state.players.P1,
                   board: {
                     ...state.players.P1.board,
-                    [element]: { yin: combo.yin, yang: combo.yang }
-                  }
-                }
-              }
+                    [element]: { yin: combo.yin, yang: combo.yang },
+                  },
+                },
+              },
             };
 
             const actions = getAvailableActions(state, yinStem);
@@ -155,7 +146,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
               actionType: ActionType.CONVERT,
               player: 'P1',
               element,
-              polarity: Polarity.YANG
+              polarity: Polarity.YANG,
             });
           });
         }
@@ -165,7 +156,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
           { yin: 1, yang: 1, label: '(1, 1)' },
           { yin: 1, yang: 2, label: '(1, 2)' },
           { yin: 2, yang: 1, label: '(2, 1)' },
-          { yin: 2, yang: 2, label: '(2, 2)' }
+          { yin: 2, yang: 2, label: '(2, 2)' },
         ];
 
         for (const combo of prohibitedCombinations) {
@@ -179,10 +170,10 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
                   ...state.players.P1,
                   board: {
                     ...state.players.P1.board,
-                    [element]: { yin: combo.yin, yang: combo.yang }
-                  }
-                }
-              }
+                    [element]: { yin: combo.yin, yang: combo.yang },
+                  },
+                },
+              },
             };
 
             const actions = getAvailableActions(state, yinStem);
@@ -198,7 +189,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
     describe('2.1 Exhaustive 5-Element Mid-State Dead-Ends for Yang Stems', () => {
       for (const element of ALL_ELEMENTS) {
         const yangStem = TIAN_GAN_LIST.find(
-          (tg) => tg.element === element && tg.polarity === Polarity.YANG
+          (tg) => tg.element === element && tg.polarity === Polarity.YANG,
         )!;
         const keTarget = OVERCOMING_CYCLE[element];
         const shengTarget = GENERATION_CYCLE[element];
@@ -218,18 +209,18 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
                 board: {
                   ...state.players.P1.board,
                   [element]: { yin: 1, yang: 1 },
-                  [shengTarget]: { yin: 2, yang: 2 }
-                }
+                  [shengTarget]: { yin: 2, yang: 2 },
+                },
               },
               P2: {
                 ...state.players.P2,
                 score: 80,
                 board: {
                   ...state.players.P2.board,
-                  [keTarget]: { yin: -1, yang: -1 }
-                }
-              }
-            }
+                  [keTarget]: { yin: -1, yang: -1 },
+                },
+              },
+            },
           };
 
           const actions = getAvailableActions(state, yangStem);
@@ -239,7 +230,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
             actionType: ActionType.PASS,
             player: 'P1',
             element,
-            polarity: Polarity.YANG
+            polarity: Polarity.YANG,
           });
 
           // Resolve PASS
@@ -261,7 +252,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
     describe('2.2 Exhaustive 5-Element Mid-State Dead-Ends for Yin Stems', () => {
       for (const element of ALL_ELEMENTS) {
         const yinStem = TIAN_GAN_LIST.find(
-          (tg) => tg.element === element && tg.polarity === Polarity.YIN
+          (tg) => tg.element === element && tg.polarity === Polarity.YIN,
         )!;
         const shengTarget = GENERATION_CYCLE[element];
         const keTarget = OVERCOMING_CYCLE[element];
@@ -281,18 +272,18 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
                 board: {
                   ...state.players.P1.board,
                   [element]: { yin: 1, yang: 1 },
-                  [shengTarget]: { yin: 2, yang: 2 }
-                }
+                  [shengTarget]: { yin: 2, yang: 2 },
+                },
               },
               P2: {
                 ...state.players.P2,
                 score: 110,
                 board: {
                   ...state.players.P2.board,
-                  [keTarget]: { yin: -1, yang: -1 }
-                }
-              }
-            }
+                  [keTarget]: { yin: -1, yang: -1 },
+                },
+              },
+            },
           };
 
           const actions = getAvailableActions(state, yinStem);
@@ -302,7 +293,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
             actionType: ActionType.PASS,
             player: 'P1',
             element,
-            polarity: Polarity.YIN
+            polarity: Polarity.YIN,
           });
 
           // Resolve PASS
@@ -337,17 +328,17 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
               board: {
                 ...state.players.P1.board,
                 [WuXing.WOOD]: { yin: 2, yang: 1 },
-                [WuXing.FIRE]: { yin: 2, yang: 2 }
-              }
+                [WuXing.FIRE]: { yin: 2, yang: 2 },
+              },
             },
             P2: {
               ...state.players.P2,
               board: {
                 ...state.players.P2.board,
-                [WuXing.EARTH]: { yin: -1, yang: -1 }
-              }
-            }
-          }
+                [WuXing.EARTH]: { yin: -1, yang: -1 },
+              },
+            },
+          },
         };
 
         const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!;
@@ -370,17 +361,17 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
               board: {
                 ...state.players.P1.board,
                 [WuXing.FIRE]: { yin: 1, yang: 2 },
-                [WuXing.EARTH]: { yin: 2, yang: 2 }
-              }
+                [WuXing.EARTH]: { yin: 2, yang: 2 },
+              },
             },
             P2: {
               ...state.players.P2,
               board: {
                 ...state.players.P2.board,
-                [WuXing.METAL]: { yin: -1, yang: -1 }
-              }
-            }
-          }
+                [WuXing.METAL]: { yin: -1, yang: -1 },
+              },
+            },
+          },
         };
 
         const dingFire = TIAN_GAN_LIST.find((tg) => tg.name === '丁')!;
@@ -403,17 +394,17 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
               ...state.players.P1,
               board: {
                 ...state.players.P1.board,
-                [WuXing.WOOD]: { yin: 1, yang: 1 }
-              }
+                [WuXing.WOOD]: { yin: 1, yang: 1 },
+              },
             },
             P2: {
               ...state.players.P2,
               board: {
                 ...state.players.P2.board,
-                [WuXing.EARTH]: { yin: -1, yang: -1 }
-              }
-            }
-          }
+                [WuXing.EARTH]: { yin: -1, yang: -1 },
+              },
+            },
+          },
         };
 
         const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!;
@@ -443,18 +434,18 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
               board: {
                 ...state.players.P2.board,
                 [WuXing.WATER]: { yin: 1, yang: 1 },
-                [WuXing.WOOD]: { yin: 2, yang: 2 }
-              }
+                [WuXing.WOOD]: { yin: 2, yang: 2 },
+              },
             },
             P1: {
               ...state.players.P1,
               score: 75,
               board: {
                 ...state.players.P1.board,
-                [WuXing.FIRE]: { yin: -1, yang: -1 }
-              }
-            }
-          }
+                [WuXing.FIRE]: { yin: -1, yang: -1 },
+              },
+            },
+          },
         };
 
         const renWater = TIAN_GAN_LIST.find((tg) => tg.name === '壬')!;
@@ -480,7 +471,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
         actionType: ActionType.PASS,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
 
       const score = evaluator.evaluate(state, jiaWood, passAction);
@@ -501,12 +492,12 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
         actionType: ActionType.PASS,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
 
       const weights = {
         ...DEFAULT_STRATEGY_WEIGHTS,
-        baseActionBias: { [ActionType.PASS]: -15 }
+        baseActionBias: { [ActionType.PASS]: -15 },
       };
 
       const score = evaluator.evaluate(state, jiaWood, passAction, weights);
@@ -525,24 +516,24 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
             board: {
               ...deadEndState.players.P1.board,
               [WuXing.WOOD]: { yin: 1, yang: 1 },
-              [WuXing.FIRE]: { yin: 2, yang: 2 }
-            }
+              [WuXing.FIRE]: { yin: 2, yang: 2 },
+            },
           },
           P2: {
             ...deadEndState.players.P2,
             board: {
               ...deadEndState.players.P2.board,
-              [WuXing.EARTH]: { yin: -1, yang: -1 }
-            }
-          }
-        }
+              [WuXing.EARTH]: { yin: -1, yang: -1 },
+            },
+          },
+        },
       };
 
       const strategies = [
         { name: 'balancedStrategy', fn: balancedStrategy },
         { name: 'rushGuiyuanStrategy', fn: rushGuiyuanStrategy },
         { name: 'aggressiveStrategy', fn: aggressiveStrategy },
-        { name: 'defensiveStrategy', fn: defensiveStrategy }
+        { name: 'defensiveStrategy', fn: defensiveStrategy },
       ];
 
       for (const { name, fn } of strategies) {
@@ -555,14 +546,14 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
     it('custom strategy handles PASS candidates smoothly without error', () => {
       const customStrategy = createStrategy({
         scoreDeltaWeight: 1.5,
-        baseActionBias: { [ActionType.PASS]: 0 }
+        baseActionBias: { [ActionType.PASS]: 0 },
       });
 
       const passAction: ActionPayload = {
         actionType: ActionType.PASS,
         player: 'P1',
         element: WuXing.WOOD,
-        polarity: Polarity.YANG
+        polarity: Polarity.YANG,
       };
 
       const state = createInitialGameState();
@@ -583,30 +574,30 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
             board: {
               ...baseState.players.P1.board,
               [WuXing.WOOD]: { yin: 1, yang: 1 },
-              [WuXing.FIRE]: { yin: 2, yang: 2 }
-            }
+              [WuXing.FIRE]: { yin: 2, yang: 2 },
+            },
           },
           P2: {
             ...baseState.players.P2,
             score: 50,
             board: {
               ...baseState.players.P2.board,
-              [WuXing.EARTH]: { yin: -1, yang: -1 }
-            }
-          }
-        }
+              [WuXing.EARTH]: { yin: -1, yang: -1 },
+            },
+          },
+        },
       };
 
       // PRNG that consistently draws index 0: 甲木 (WOOD, YANG)
       const deterministicPrng = {
         next: () => 0,
         nextInt: () => 0,
-        getState: () => 0
+        getState: () => 0,
       };
 
       const turnManager = new TurnManager({
         initialState: deadEndState,
-        prng: deterministicPrng
+        prng: deterministicPrng,
       });
 
       // Execute turn with balancedStrategy: drawn stem 甲木 hits dead-end and PASS is selected!
@@ -630,7 +621,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
       for (const seed of testSeeds) {
         const result = match.run(balancedStrategy, balancedStrategy, {
           seed,
-          maxRounds: 30
+          maxRounds: 30,
         });
 
         expect(result.roundsPlayed).toBeGreaterThanOrEqual(1);
@@ -645,11 +636,11 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
       const match = new HeadlessMatch();
       const run1 = match.run(rushGuiyuanStrategy, aggressiveStrategy, {
         seed: 45678,
-        maxRounds: 25
+        maxRounds: 25,
       });
       const run2 = match.run(rushGuiyuanStrategy, aggressiveStrategy, {
         seed: 45678,
-        maxRounds: 25
+        maxRounds: 25,
       });
 
       expect(run1.roundsPlayed).toBe(run2.roundsPlayed);
