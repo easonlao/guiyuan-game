@@ -32,7 +32,7 @@
 
 ## 提交纪律
 
-提交信息禁止 `Co-Authored-By` trailer；门禁与安装见 `CONTRIBUTING.md` §3。
+提交信息门禁见 `CONTRIBUTING.md` §3。
 
 ## Agent skills
 
