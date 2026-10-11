@@ -71,4 +71,4 @@ status: accepted
 
 **本文「决定 2」（攻击压制状态分 2.5× 硬编码）仍然有效**：`CAUSE_DMG` 阳 300 / 阴 250、`BREAK_LIGHT` 阳 200 / 阴 150、`WEAKEN` 200 与生产 `POINTS_CONFIG` 一致（`src/core/logic/ScoreCalculator.ts:98-100`）。后续攻击进度定价（ADR 0011「决定 1」）在此基础上对攻击状态分做进度缩放。
 
-稀有度链的处置（接线或删除）由 ADR 0011「决策 3」定为「另立工单」；删除工单见本地 issue tracker `.scratch/dead-scoring-code-removal/`。逐参数证据见 `docs/headless/knob-census.md`。
+稀有度链的处置（接线或删除）由 ADR 0011「决策 3」定为「另立工单」；删除工单见本地 issue tracker `.scratch/archive/dead-scoring-code-removal/`。逐参数证据见 `docs/headless/knob-census.md`。
