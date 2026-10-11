@@ -7,12 +7,13 @@
  * 3. 命中：抵达时触发波纹扩散并让符文被吸收，**整段动效结束后**才回调 `onComplete`，
  *    调用方据此把回合控制权交回（`isAnimating` 为 false）。
  *
- * 目标坐标的唯一来源是 `BoardView.getSlot(element, polarity)` 的投影（不在这里重算法盘几何），
+ * 目标坐标的唯一来源是 `BoardView.getSlot(player, element, polarity)` 的投影（不在这里重算法盘几何），
+ * `player` 决定落点在内环（己方盘）还是外环（对方盘）；
  * 因此本视图与 `BoardView` 必须挂在同一父节点下、且两者之间没有额外位移。
  * 数据流与投影契约见 `docs/LLD.md` §4，模块职责见 `docs/HLD.md` §2 Layer 3。
  */
 
-import { Polarity, TianGanInfo, WuXing } from '../../core/types/domain.js';
+import { PlayerId, Polarity, TianGanInfo, WuXing } from '../../core/types/domain.js';
 import { BoardView } from './board-view.js';
 import { drawCenterTianGanRune, drawImpactEffect, WUXING_PALETTE } from '../pixel-art.js';
 import { Container } from '../scene/container.js';
@@ -185,14 +186,16 @@ export class RuneFlightView extends Container {
   }
 
   /**
-   * 动作选定：符文从当前位置飞向目标槽位（坐标取自 `BoardView.getSlot()`），
+   * 动作选定：符文从当前位置飞向目标槽位（坐标取自 `BoardView.getSlot(player, …)`），
    * 命中后触发波纹并让符文被吸收。**波纹也跑完**才回调 `onComplete`，
    * 此时 `isAnimating` 为 false，调用方可以交回回合控制权。
    *
+   * `player` 是被作用方的盘：攻击类（破 / 强破）传对方、其余传己方，落点随之落在对应环上。
    * 入场还没跑完就调用时，先把入场收尾再起飞（玩家点得比动画快也不会丢飞行）；
    * 从未 `playEntrance()` 或已在飞行中则直接报错。
    */
   public flyTo(
+    player: PlayerId,
     element: WuXing,
     polarity: Polarity,
     options: { onComplete?: () => void } = {},
@@ -206,7 +209,7 @@ export class RuneFlightView extends Container {
     if (this._phase !== 'ready' || tianGan === null) {
       throw new Error('符文不在待机态，无法起飞；请先 playEntrance() 并等它落地。');
     }
-    const target = this.board.getSlot(element, polarity);
+    const target = this.board.getSlot(player, element, polarity);
     const startX = this.rune.x;
     const startY = this.rune.y;
     const deltaX = target.x - startX;

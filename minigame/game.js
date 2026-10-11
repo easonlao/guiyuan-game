@@ -2371,14 +2371,20 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   }
   const WUXING_COUNT = 5;
   const RING_STEP = Math.PI * 2 / WUXING_COUNT;
-  const SEAL_RADIUS_RATIO = 0.26;
-  const SLOT_RADIUS_RATIO = 0.37;
+  const OWN_PLAYER = "P1";
+  const OPPONENT_PLAYER = "P2";
+  const BOARD_PLAYERS = [OWN_PLAYER, OPPONENT_PLAYER];
+  const OUTER_RING_OFFSET = 2;
+  const INNER_RADIUS_RATIO = 0.24;
+  const OUTER_RADIUS_RATIO = 0.4;
+  const SEAL_SIZE_RATIO = 0.06;
+  const SLOT_SIDE_RATIO = 0.7;
   const DEFAULT_BOARD_LAYOUT = {
     centerX: 0,
     centerY: 0,
-    sealRadius: 120,
-    slotRadius: 170,
-    slotSpread: 0.45,
+    innerRadius: 90,
+    outerRadius: 150,
+    sealSize: 22.5,
     startAngle: -Math.PI / 2
   };
   const VOID_LEVEL = 0;
@@ -2386,14 +2392,21 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const VOID_COLOR = "#374151";
   const BLESSED_COLOR = "#f6e05e";
   const GUI_YI_COLOR = "#ecc94b";
-  const SLOT_TEXT_COLOR = "#e2e8f0";
+  const OWN_RING_HALO = "rgba(183, 121, 31, 0.16)";
+  const OWN_RING_BADGE = "#b7791f";
+  const OPPONENT_RING_HALO = "rgba(43, 108, 176, 0.16)";
+  const OPPONENT_RING_BADGE = "#2b6cb0";
+  const BADGE_TEXT_COLOR = "#f7fafc";
+  const READOUT_COLOR = "#a0aec0";
+  const OWN_BADGE_ANGLE = Math.PI * 0.9;
+  const OPPONENT_BADGE_ANGLE = Math.PI * 0.1;
   const CONNECTION_IDLE = {
     generation: "#2f4f3f",
-    overcoming: "#4a2a2a"
+    attack: "#4a2a2a"
   };
   const CONNECTION_ACTIVE = {
     generation: "#48bb78",
-    overcoming: "#e53e3e"
+    attack: "#e53e3e"
   };
   class BoardView extends Container {
     constructor(layout = {}) {
@@ -2402,7 +2415,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "_elements", []);
       __publicField(this, "_slots", []);
       __publicField(this, "_connections", []);
-      __publicField(this, "_board", null);
+      __publicField(this, "_boards", { P1: null, P2: null });
       this._layout = { ...DEFAULT_BOARD_LAYOUT, ...layout };
       this._rebuild();
     }
@@ -2410,42 +2423,45 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     get layout() {
       return { ...this._layout };
     }
-    /** 按视口自适应：圆心取视口中心，环半径按短边等比缩放。 */
+    /** 按视口自适应：圆心取视口中心，内外环半径与主印半径按短边等比缩放。 */
     resize(width, height) {
       const span = Math.min(width, height);
       this._layout = {
         ...this._layout,
         centerX: width / 2,
         centerY: height / 2,
-        sealRadius: span * SEAL_RADIUS_RATIO,
-        slotRadius: span * SLOT_RADIUS_RATIO
+        innerRadius: span * INNER_RADIUS_RATIO,
+        outerRadius: span * OUTER_RADIUS_RATIO,
+        sealSize: span * SEAL_SIZE_RATIO
       };
       this._rebuild();
     }
-    /** 五个五行主印，按相生环顺序排列。 */
+    /** 十个五行主印：内环（己方）五个在前、外环（对方）五个在后，各按相生环顺序。 */
     get elements() {
       return this._elements;
     }
-    /** 十个阴阳槽位，按主印环顺序、每个主印先阴后阳排列。 */
+    /** 二十个阴阳槽位：十个主印各带阴/阳两个，按主印顺序排列（内环在前）。 */
     get slots() {
       return this._slots;
     }
-    /** 十条生克连线：五条相生环边 + 五条相克星弦。 */
+    /** 十条连线：五条内环相生边 + 五条跨环径向线。 */
     get connections() {
       return this._connections;
     }
-    /** 按主印与极性取一个槽位的投影视图。 */
-    getSlot(element, polarity) {
-      const elementIndex = this._elements.findIndex((entry) => entry.element === element);
-      const slot = this._slots[elementIndex * 2 + (polarity === Polarity.YIN ? 0 : 1)];
+    /** 按玩家、主印与极性取一个槽位的投影视图；未知玩家 / 元素 / 极性抛错。 */
+    getSlot(player, element, polarity) {
+      const slot = this._slots.find(
+        (entry) => entry.player === player && entry.element === element && entry.polarity === polarity
+      );
       if (slot === void 0) {
-        throw new Error(`法盘上不存在五行 ${element} 的 ${polarity} 槽位。`);
+        throw new Error(`法盘上不存在 ${player} 的五行 ${element} 的 ${polarity} 槽位。`);
       }
       return slot;
     }
-    /** 投影一份只读棋盘快照；只读不写回（LLD §4）。 */
-    update(board) {
-      this._board = board;
+    /** 一次投影双方只读棋盘快照；只读不写回（LLD §4.1）。 */
+    update(p1Board, p2Board) {
+      this._boards[OWN_PLAYER] = p1Board;
+      this._boards[OPPONENT_PLAYER] = p2Board;
       this._rebuild();
     }
     _rebuild() {
@@ -2453,53 +2469,69 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this._slots.length = 0;
       this._connections.length = 0;
       const ring = buildGenerationRing();
-      ring.forEach((element, index) => {
-        const angle = this._layout.startAngle + index * RING_STEP;
-        const node = this._board?.[element];
-        const yin = node?.yin ?? VOID_LEVEL;
-        const yang = node?.yang ?? VOID_LEVEL;
-        const isGuiYi = yin >= 1 && yang >= 1;
-        const isKangJi = yin === 2 && yang === 2;
-        this._elements.push({
-          element,
-          angle,
-          x: this._layout.centerX + this._layout.sealRadius * Math.cos(angle),
-          y: this._layout.centerY + this._layout.sealRadius * Math.sin(angle),
-          yin,
-          yang,
-          isGuiYi,
-          isKangJi
+      for (const player of BOARD_PLAYERS) {
+        const radius = player === OWN_PLAYER ? this._layout.innerRadius : this._layout.outerRadius;
+        ring.forEach((element, index) => {
+          const rayIndex = player === OWN_PLAYER ? index : (index - OUTER_RING_OFFSET + WUXING_COUNT) % WUXING_COUNT;
+          const angle = this._layout.startAngle + rayIndex * RING_STEP;
+          const node = this._boards[player]?.[element];
+          const yin = node?.yin ?? VOID_LEVEL;
+          const yang = node?.yang ?? VOID_LEVEL;
+          const isGuiYi = yin >= 1 && yang >= 1;
+          const isKangJi = yin === 2 && yang === 2;
+          const x = this._layout.centerX + radius * Math.cos(angle);
+          const y = this._layout.centerY + radius * Math.sin(angle);
+          this._elements.push({ player, element, angle, x, y, yin, yang, isGuiYi, isKangJi });
+          const sideOffset = this._layout.sealSize * SLOT_SIDE_RATIO;
+          this._slots.push(
+            this._projectSlot(
+              player,
+              element,
+              Polarity.YIN,
+              yin,
+              angle,
+              x - sideOffset,
+              y,
+              isGuiYi,
+              isKangJi
+            ),
+            this._projectSlot(
+              player,
+              element,
+              Polarity.YANG,
+              yang,
+              angle,
+              x + sideOffset,
+              y,
+              isGuiYi,
+              isKangJi
+            )
+          );
         });
-        this._slots.push(
-          this._projectSlot(
-            element,
-            Polarity.YIN,
-            yin,
-            angle - this._layout.slotSpread,
-            isGuiYi,
-            isKangJi
-          ),
-          this._projectSlot(
-            element,
-            Polarity.YANG,
-            yang,
-            angle + this._layout.slotSpread,
-            isGuiYi,
-            isKangJi
-          )
-        );
-      });
+      }
       for (const element of ring) {
         this._connections.push(
-          this._projectConnection("generation", element, GENERATION_CYCLE[element]),
-          this._projectConnection("overcoming", element, OVERCOMING_CYCLE[element])
+          this._projectConnection(
+            "generation",
+            OWN_PLAYER,
+            element,
+            OWN_PLAYER,
+            GENERATION_CYCLE[element]
+          ),
+          this._projectConnection(
+            "attack",
+            OWN_PLAYER,
+            element,
+            OPPONENT_PLAYER,
+            OVERCOMING_CYCLE[element]
+          )
         );
       }
     }
-    _projectConnection(kind, from, to) {
-      const source = this._elementView(from);
-      const target = this._elementView(to);
-      const node = this._board?.[from];
+    _projectConnection(kind, fromPlayer, from, toPlayer, to) {
+      const source = this._elementView(fromPlayer, from);
+      const target = this._elementView(toPlayer, to);
+      const node = this._boards[fromPlayer]?.[from];
       return {
         kind,
         from,
@@ -2511,32 +2543,68 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         active: node !== void 0 && (node.yin >= 1 || node.yang >= 1)
       };
     }
-    _elementView(element) {
-      const view = this._elements.find((entry) => entry.element === element);
+    _elementView(player, element) {
+      const view = this._elements.find(
+        (entry) => entry.player === player && entry.element === element
+      );
       if (view === void 0) {
-        throw new Error(`法盘上不存在五行 ${element}。`);
+        throw new Error(`法盘上不存在 ${player} 的五行 ${element}。`);
       }
       return view;
     }
-    _projectSlot(element, polarity, level, angle, isGuiYi, isKangJi) {
-      return {
-        element,
-        polarity,
-        level,
-        angle,
-        x: this._layout.centerX + this._layout.slotRadius * Math.cos(angle),
-        y: this._layout.centerY + this._layout.slotRadius * Math.sin(angle),
-        isGuiYi,
-        isKangJi
-      };
+    _projectSlot(player, element, polarity, level, angle, x, y, isGuiYi, isKangJi) {
+      return { player, element, polarity, level, angle, x, y, isGuiYi, isKangJi };
     }
-    /** 先画连线，再画槽位与主印（后者盖在前者之上）。 */
+    /** 先画环级底晕与连线，再画主印，最后叠加归元读数（读数压在最上层）。 */
     renderSelf(ctx) {
+      this._drawRingHalos(ctx);
       this._drawConnections(ctx);
-      this._drawSlots(ctx);
       this._drawSeals(ctx);
+      this._drawGuiYuanReadout(ctx);
     }
-    /** 外环相生环 + 内星相克弦；源主印任一侧点亮（≥1）时转为活动色。 */
+    /** 环级归属：内环暖色底晕 + 「己」徽记、外环冷色底晕 + 「敌」徽记；主印本体不在这里换色。 */
+    _drawRingHalos(ctx) {
+      const haloWidth = this._layout.sealSize * 1.9;
+      const halos = [
+        [this._layout.innerRadius, OWN_RING_HALO],
+        [this._layout.outerRadius, OPPONENT_RING_HALO]
+      ];
+      for (const [radius, color] of halos) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(this._layout.centerX, this._layout.centerY, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = haloWidth;
+        ctx.stroke();
+        ctx.restore();
+      }
+      this._drawRingBadge(ctx, this._layout.innerRadius, OWN_BADGE_ANGLE, "己", OWN_RING_BADGE);
+      this._drawRingBadge(
+        ctx,
+        this._layout.outerRadius,
+        OPPONENT_BADGE_ANGLE,
+        "敌",
+        OPPONENT_RING_BADGE
+      );
+    }
+    /** 环徽记：画在射线之间的空位上，给「这是谁的盘」一个不依赖颜色的读法。 */
+    _drawRingBadge(ctx, radius, angle, label, color) {
+      const x = this._layout.centerX + radius * Math.cos(angle);
+      const y = this._layout.centerY + radius * Math.sin(angle);
+      const badgeRadius = Math.max(10, this._layout.sealSize * 0.7);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, badgeRadius, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.fillStyle = BADGE_TEXT_COLOR;
+      ctx.font = `bold ${Math.round(badgeRadius * 1.15)}px monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, x, y);
+      ctx.restore();
+    }
+    /** 内环相生边（实线）+ 跨环径向线（虚线）；源主印任一侧点亮（≥1）时转为活动色。 */
     _drawConnections(ctx) {
       for (const line of this._connections) {
         ctx.save();
@@ -2546,44 +2614,17 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         ctx.strokeStyle = line.active ? CONNECTION_ACTIVE[line.kind] : CONNECTION_IDLE[line.kind];
         ctx.lineWidth = line.active ? 3 : 1.5;
         ctx.lineCap = "round";
-        if (line.kind === "overcoming") {
+        if (line.kind === "attack") {
           ctx.setLineDash([6, 5]);
         }
         ctx.stroke();
         ctx.restore();
       }
     }
-    /** 十个阴阳槽位：-1 道损 / 0 虚空 / 1 点亮 / 2 加持 四档着色，归一与亢极加金环。 */
-    _drawSlots(ctx) {
-      const radius = Math.max(8, this._layout.slotRadius * 0.07);
-      for (const slot of this._slots) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(slot.x, slot.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = BOARD_BG_COLOR;
-        ctx.fill();
-        ctx.lineWidth = slot.level === 2 ? 4 : 2;
-        ctx.strokeStyle = slotColor(slot.level, slot.element);
-        ctx.stroke();
-        ctx.fillStyle = slot.level >= 1 ? SLOT_TEXT_COLOR : VOID_COLOR;
-        ctx.font = `bold ${Math.round(radius)}px monospace`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(slot.polarity === Polarity.YIN ? "阴" : "阳", slot.x, slot.y);
-        if (slot.isGuiYi) {
-          ctx.beginPath();
-          ctx.arc(slot.x, slot.y, radius + 4, 0, Math.PI * 2);
-          ctx.strokeStyle = slot.isKangJi ? BLESSED_COLOR : GUI_YI_COLOR;
-          ctx.lineWidth = slot.isKangJi ? 3 : 1.5;
-          ctx.setLineDash(slot.isKangJi ? [] : [3, 3]);
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-    }
-    /** 五个五行主印：底盘 + 阴/阳半环 + 归一/亢极高亮 + 五行名。 */
+    /** 十个主印：底盘 + 阴/阳半环 + 归一/亢极高亮 + 五行名；内外环主印共用同一套画法。 */
     _drawSeals(ctx) {
-      const sealRadius = Math.max(14, this._layout.sealRadius * 0.22);
+      const sealRadius = this._layout.sealSize;
+      const halfRingRadius = sealRadius + Math.max(3, sealRadius * 0.16);
       for (const entry of this._elements) {
         const palette = WUXING_PALETTE[entry.element];
         ctx.save();
@@ -2594,28 +2635,47 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         ctx.lineWidth = 2;
         ctx.strokeStyle = entry.isKangJi ? BLESSED_COLOR : palette.dark;
         ctx.stroke();
-        drawHalfRing(ctx, entry.x, entry.y, sealRadius + 4, true, entry.yin, entry.element);
-        drawHalfRing(ctx, entry.x, entry.y, sealRadius + 4, false, entry.yang, entry.element);
+        drawHalfRing(ctx, entry.x, entry.y, halfRingRadius, true, entry.yin, entry.element);
+        drawHalfRing(ctx, entry.x, entry.y, halfRingRadius, false, entry.yang, entry.element);
         if (entry.isGuiYi) {
           ctx.beginPath();
-          ctx.arc(entry.x, entry.y, sealRadius + 9, 0, Math.PI * 2);
+          ctx.arc(entry.x, entry.y, halfRingRadius + 5, 0, Math.PI * 2);
           ctx.strokeStyle = entry.isKangJi ? BLESSED_COLOR : GUI_YI_COLOR;
           ctx.lineWidth = entry.isKangJi ? 3 : 1.5;
           ctx.setLineDash(entry.isKangJi ? [] : [4, 3]);
           ctx.stroke();
         }
         ctx.fillStyle = palette.light;
-        ctx.font = `bold ${Math.round(Math.max(10, sealRadius * 0.55))}px monospace`;
+        ctx.font = `bold ${Math.round(Math.max(11, sealRadius * 0.55))}px monospace`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(palette.name, entry.x, entry.y);
         if (entry.isGuiYi) {
           ctx.fillStyle = entry.isKangJi ? BLESSED_COLOR : GUI_YI_COLOR;
-          ctx.font = `${Math.round(Math.max(9, sealRadius * 0.45))}px monospace`;
-          ctx.fillText(entry.isKangJi ? "亢极" : "归一", entry.x, entry.y + sealRadius + 14);
+          ctx.font = `${Math.round(Math.max(9, sealRadius * 0.4))}px monospace`;
+          ctx.fillText(entry.isKangJi ? "亢极" : "归一", entry.x, entry.y + sealRadius + 13);
         }
         ctx.restore();
       }
+    }
+    /** 归元进度读数：统计内外环各自的归一节点数，补上「谁离归元更近」的数值口径。 */
+    _drawGuiYuanReadout(ctx) {
+      const own = this._countGuiYi(OWN_PLAYER);
+      const opponent = this._countGuiYi(OPPONENT_PLAYER);
+      const x = this._layout.centerX;
+      const y = this._layout.centerY + this._layout.outerRadius - this._layout.sealSize - 10;
+      ctx.save();
+      ctx.fillStyle = BOARD_BG_COLOR;
+      ctx.fillRect(x - 70, y - 10, 140, 20);
+      ctx.fillStyle = READOUT_COLOR;
+      ctx.font = `bold ${Math.round(Math.max(11, this._layout.sealSize * 0.55))}px monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`己 ${own}/${WUXING_COUNT} · 敌 ${opponent}/${WUXING_COUNT} 归一`, x, y);
+      ctx.restore();
+    }
+    _countGuiYi(player) {
+      return this._elements.filter((entry) => entry.player === player && entry.isGuiYi).length;
     }
   }
   function slotColor(level, element) {
@@ -2632,22 +2692,38 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
   }
   function drawHalfRing(ctx, x, y, radius, isYin, level, element) {
+    const start = isYin ? Math.PI * 0.5 : -Math.PI * 0.5;
+    const end = isYin ? Math.PI * 1.5 : Math.PI * 0.5;
     ctx.save();
     ctx.beginPath();
-    ctx.arc(
-      x,
-      y,
-      radius,
-      isYin ? Math.PI * 0.5 : -Math.PI * 0.5,
-      isYin ? Math.PI * 1.5 : Math.PI * 0.5
-    );
+    ctx.arc(x, y, radius, start, end);
     ctx.strokeStyle = slotColor(level, element);
-    ctx.lineWidth = level === 2 ? 6 : level === 0 ? 2 : 4;
+    ctx.lineWidth = level === 2 ? 6 : level === 1 ? 4.5 : level === -1 ? 3 : 1.5;
     ctx.lineCap = "round";
     if (level === -1) {
       ctx.setLineDash([4, 3]);
     }
     ctx.stroke();
+    if (level === 2) {
+      ctx.beginPath();
+      ctx.arc(x, y, radius + 4, start, end);
+      ctx.strokeStyle = BLESSED_COLOR;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      for (const ratio of [0.25, 0.75]) {
+        const angle = start + (end - start) * ratio;
+        ctx.beginPath();
+        ctx.arc(
+          x + Math.cos(angle) * (radius + 4),
+          y + Math.sin(angle) * (radius + 4),
+          2,
+          0,
+          Math.PI * 2
+        );
+        ctx.fillStyle = BLESSED_COLOR;
+        ctx.fill();
+      }
+    }
     ctx.restore();
   }
   function buildGenerationRing() {
@@ -3061,14 +3137,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.flight?.update(dt);
     }
     /**
-     * 动作选定：符文从当前位置飞向目标槽位（坐标取自 `BoardView.getSlot()`），
+     * 动作选定：符文从当前位置飞向目标槽位（坐标取自 `BoardView.getSlot(player, …)`），
      * 命中后触发波纹并让符文被吸收。**波纹也跑完**才回调 `onComplete`，
      * 此时 `isAnimating` 为 false，调用方可以交回回合控制权。
      *
+     * `player` 是被作用方的盘：攻击类（破 / 强破）传对方、其余传己方，落点随之落在对应环上。
      * 入场还没跑完就调用时，先把入场收尾再起飞（玩家点得比动画快也不会丢飞行）；
      * 从未 `playEntrance()` 或已在飞行中则直接报错。
      */
-    flyTo(element, polarity, options = {}) {
+    flyTo(player, element, polarity, options = {}) {
       if (this._phase === "entering") {
         this.finishEntrance();
         this.entranceOnComplete = void 0;
@@ -3077,7 +3154,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       if (this._phase !== "ready" || tianGan === null) {
         throw new Error("符文不在待机态，无法起飞；请先 playEntrance() 并等它落地。");
       }
-      const target = this.board.getSlot(element, polarity);
+      const target = this.board.getSlot(player, element, polarity);
       const startX = this.rune.x;
       const startY = this.rune.y;
       const deltaX = target.x - startX;
@@ -3318,8 +3395,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "pendingAction", null);
       /** `action:execute` 记录的完整载荷，供 `action:executed` 计算飞行落点。 */
       __publicField(this, "actionInFlight", null);
-      /** `action:execute` 时点的行动前快照（飞行期间显示它，落点后才投影结算结果）。 */
-      __publicField(this, "stateBeforeAction", null);
       __publicField(this, "lastShowdown", null);
       __publicField(this, "unsubscribes", []);
       /** 震屏：补间把幅度衰减到 0，`update` 按幅度换算节点偏移。 */
@@ -3401,7 +3476,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this._turnManager = new TurnManager({ prng });
       this.lastShowdown = null;
       this.actionInFlight = null;
-      this.stateBeforeAction = null;
       this.actionBar.dispose();
       this.actionBar.removeFromParent();
       this.actionBar = this.buildActionBar(this._turnManager);
@@ -3463,7 +3537,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         this.presentGameOver(before);
         return;
       }
-      this.projectBoard(state.currentPlayer, state);
+      this.projectBoards(state);
       this.hideActionBar();
       this.announceTurnStart(state, tianGan, actions);
       if (tianGan === null) {
@@ -3521,17 +3595,14 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       return this.strategy(state, tianGan, actions);
     }
-    /** `action:execute`：记录完整载荷与行动前快照（此时核心尚未结算）。 */
+    /** `action:execute`：记录完整载荷（此时核心尚未结算），供 `action:executed` 解析飞行落点。 */
     handleActionExecute(event) {
       this.actionInFlight = event.action;
-      this.stateBeforeAction = this._turnManager.getState();
     }
-    /** `action:executed`：动作已结算，播放符文飞行并把棋盘变更留到落点之后再投影。 */
+    /** `action:executed`：动作已结算，播放符文飞行；法盘已是行动前等级，落点后才投影结算结果。 */
     handleActionExecuted(event) {
       const action = this.actionInFlight;
-      const before = this.stateBeforeAction ?? this._turnManager.getState();
       this.actionInFlight = null;
-      this.stateBeforeAction = null;
       const state = this._turnManager.getState();
       const actor = event.player;
       const target = resolveActionTarget(action, event.actionType, actor, this._turnManager);
@@ -3546,16 +3617,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         this.characters.setExpression(opponentOf(actor), "hurt", this.expressionHold);
         this.shake(event.actionType === ActionType.BURST_ATK ? SHAKE_BURST : SHAKE_ATTACK);
       }
-      this.board.update(before.players[target.player].board);
       this._phase = "flying";
-      this.runeFlight.flyTo(target.element, target.polarity, {
-        onComplete: () => this.afterFlight(target.player)
+      this.runeFlight.flyTo(target.player, target.element, target.polarity, {
+        onComplete: () => this.afterFlight()
       });
     }
-    /** 飞行结束：投影结算后的棋盘，然后进入下一回合或终局。 */
-    afterFlight(targetPlayer) {
+    /** 飞行结束：投影结算后的双盘，然后进入下一回合或终局。 */
+    afterFlight() {
       const state = this._turnManager.getState();
-      this.projectBoard(targetPlayer, state);
+      this.projectBoards(state);
       this.characters.update(state, { isExtraTurn: this._turnManager.isExtraTurnActive() });
       if (state.isGameOver) {
         this.presentGameOver(null);
@@ -3587,13 +3657,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         if (showdown.success) {
           this.shake(SHAKE_SHOWDOWN);
         }
-        this.board.update(beforeShowdown.players.P2.board);
+        this.board.update(beforeShowdown.players.P1.board, beforeShowdown.players.P2.board);
         const { element, polarity } = showdown.tianGan;
         this.runeFlight.playEntrance(showdown.tianGan, {
           onComplete: () => {
-            this.runeFlight.flyTo(element, polarity, {
+            this.runeFlight.flyTo("P2", element, polarity, {
               onComplete: () => {
-                this.board.update(state.players.P2.board);
+                this.board.update(state.players.P1.board, state.players.P2.board);
               }
             });
           }
@@ -3604,7 +3674,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         state.winner === "P1" ? "★ 五行归元 ★ 玩家大胜！" : "天道通玄 · 遗憾惜败！",
         describeEndReason(state.endReason)
       );
-      this.board.update(state.players[state.winner === "P2" ? "P2" : "P1"].board);
+      this.projectBoards(state);
     }
     /** 回合开始的播报：连动标记、天干名与「势在必行」的自动流转提示。 */
     announceTurnStart(state, tianGan, actions) {
@@ -3624,9 +3694,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       this.characters.showBanner(main, sub);
     }
-    /** 把指定玩家的棋盘投影到法盘（只读快照，不写回）。 */
-    projectBoard(player, state) {
-      this.board.update(state.players[player].board);
+    /** 一次投影双方的棋盘到法盘双环（只读快照，不写回；ADR 0015）。 */
+    projectBoards(state) {
+      this.board.update(state.players.P1.board, state.players.P2.board);
     }
     hideActionBar() {
       this.actionBar.visible = false;
