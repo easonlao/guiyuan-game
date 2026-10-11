@@ -1048,7 +1048,9 @@ describe('GameScene：视口自适应', () => {
     expect(scene.runeFlight).not.toBe(before);
     expect(scene.board.layout.centerX).toBe(160);
     expect(scene.board.layout.centerY).toBe(284);
-    expect(scene.actionBar.y).toBe(568 - 8 - 130);
+    // 操作台底对齐到安全区：按钮实测多高就占多高（空闲态无按钮时贴在安全区底边）。
+    expect(scene.actionBar.y).toBe(568 - 8 - scene.actionBar.contentHeight);
+    expect(scene.actionBar.x).toBe(14);
     // 挂载顺序仍是：法盘 -> 符文 -> 角色卡 -> 操作台。
     expect(scene.children.length).toBe(4);
     expect(scene.children.indexOf(scene.runeFlight)).toBe(1);

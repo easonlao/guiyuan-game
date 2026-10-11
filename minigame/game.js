@@ -2379,6 +2379,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "buttonsByKey", /* @__PURE__ */ new Map());
       /** 当前排版顺序的按钮（与 `getAvailableActions()` 顺序一致）。 */
       __publicField(this, "buttons", []);
+      /** 最近一次排版的实测内容高度（按钮总高 + 行间距）；无按钮时为 0。 */
+      __publicField(this, "_contentHeight", 0);
       __publicField(this, "unsubscribes", []);
       this.turnManager = options.turnManager;
       this.availableWidth = options.width;
@@ -2394,6 +2396,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 当前排版的按钮，顺序与候选动作一致。 */
     getButtons() {
       return this.buttons;
+    }
+    /** 最近一次排版的实测内容高度：调用方据此把面板底对齐到安全区，不预留空高。 */
+    get contentHeight() {
+      return this._contentHeight;
     }
     /**
      * 按 `TurnManager` 的最新候选动作重新投影：
@@ -2463,6 +2469,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     layout() {
       const count = this.buttons.length;
       if (count === 0) {
+        this._contentHeight = 0;
         return;
       }
       const columns = Math.max(1, Math.min(this.maxColumns, count));
@@ -2487,6 +2494,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         }
         cursor += rowHeight + this.gapY;
       }
+      this._contentHeight = cursor - this.gapY;
     }
   }
   function actionKey(action) {
@@ -2507,17 +2515,16 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const OUTER_RING_OFFSET = 2;
   const INNER_RADIUS_RATIO = 0.24;
   const OUTER_RADIUS_RATIO = 0.4;
-  const SEAL_SIZE_RATIO = 0.06;
+  const SEAL_SIZE_RATIO = 0.062;
+  const OPPONENT_SEAL_SCALE = 0.82;
+  const OWN_SEAL_FILL_ALPHA = 0.16;
   const SLOT_SIDE_RATIO = 0.7;
-  const READOUT_PADDING_X = 12;
-  const READOUT_PADDING_Y = 8;
-  const READOUT_GAP = 6;
   const DEFAULT_BOARD_LAYOUT = {
     centerX: 0,
     centerY: 0,
     innerRadius: 90,
     outerRadius: 150,
-    sealSize: 22.5,
+    sealSize: 23.25,
     startAngle: -Math.PI / 2
   };
   const VOID_LEVEL = 0;
@@ -2526,14 +2533,17 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const VOID_COLOR = "#374151";
   const BLESSED_COLOR = "#f6e05e";
   const GUI_YI_COLOR = "#ecc94b";
-  const OWN_RING_HALO = "rgba(183, 121, 31, 0.16)";
-  const OWN_RING_BADGE = "#b7791f";
-  const OPPONENT_RING_HALO = "rgba(43, 108, 176, 0.16)";
-  const OPPONENT_RING_BADGE = "#2b6cb0";
-  const BADGE_TEXT_COLOR = "#f7fafc";
-  const READOUT_COLOR = "#a0aec0";
-  const OWN_BADGE_ANGLE = Math.PI * 0.9;
-  const OPPONENT_BADGE_ANGLE = Math.PI * 0.1;
+  const OWN_BAND_COLOR = "rgba(183, 121, 31, 0.34)";
+  const OWN_BAND_EDGE = "#b7791f";
+  const OWN_RING_COLOR = "#d69e2e";
+  const OPPONENT_BAND_COLOR = "rgba(43, 108, 176, 0.26)";
+  const OPPONENT_BAND_EDGE = "#2b6cb0";
+  const OPPONENT_RING_COLOR = "#4299e1";
+  const OWN_BAND_WIDTH_RATIO = 0.72;
+  const OPPONENT_BAND_WIDTH_RATIO = 0.62;
+  const RING_LABEL_ANGLE = Math.PI / 2;
+  const RING_LABEL_PADDING_X = 8;
+  const RING_LABEL_PADDING_Y = 4;
   const CONNECTION_IDLE = {
     generation: "#2f4f3f",
     // 径向线常驻但极淡：不误导，只在当前动作指向它时转亮。
@@ -2553,8 +2563,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "_boards", { P1: null, P2: null });
       /** 当前动作会走的连线（键为 `kind:from`）；高亮与盘面等级无关（票 02）。 */
       __publicField(this, "_activePaths", /* @__PURE__ */ new Set());
-      /** 最近一次 `resize` 的视口高度；未 resize 过时为 null（读数不做贴边兜底）。 */
-      __publicField(this, "_viewportHeight", null);
       this._layout = { ...DEFAULT_BOARD_LAYOUT, ...layout };
       this._rebuild();
     }
@@ -2565,7 +2573,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 按视口自适应：圆心取视口中心，内外环半径与主印半径按短边等比缩放。 */
     resize(width, height) {
       const span = Math.min(width, height);
-      this._viewportHeight = height;
       this._layout = {
         ...this._layout,
         centerX: width / 2,
@@ -2587,18 +2594,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 十条连线：五条内环相生边 + 五条跨环径向线。 */
     get connections() {
       return this._connections;
-    }
-    /**
-     * 归元进度读数（「己 x/5 · 敌 y/5 归一」）的版面投影：底板宽度由文案与字号推出，
-     * 位置排在对方盘外侧，与任何主印圆（含半环与归一外环）都不相交。
-     */
-    get readout() {
-      return projectReadout(
-        this._layout,
-        this._viewportHeight,
-        this._countGuiYi(OWN_PLAYER),
-        this._countGuiYi(OPPONENT_PLAYER)
-      );
     }
     /** 按玩家、主印与极性取一个槽位的投影视图；未知玩家 / 元素 / 极性抛错。 */
     getSlot(player, element, polarity) {
@@ -2631,6 +2626,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const ring = buildGenerationRing();
       for (const player of BOARD_PLAYERS) {
         const radius = player === OWN_PLAYER ? this._layout.innerRadius : this._layout.outerRadius;
+        const sealSize = player === OWN_PLAYER ? this._layout.sealSize : this._layout.sealSize * OPPONENT_SEAL_SCALE;
         ring.forEach((element, index) => {
           const rayIndex = player === OWN_PLAYER ? index : (index - OUTER_RING_OFFSET + WUXING_COUNT) % WUXING_COUNT;
           const angle = this._layout.startAngle + rayIndex * RING_STEP;
@@ -2643,6 +2639,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
             angle,
             x,
             y,
+            sealSize,
             yin: node.yin,
             yang: node.yang,
             // 归一 / 亢极的真源在核心层（`src/core/logic/State.ts`），这里不再各推一份。
@@ -2701,7 +2698,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 槽位投影：只收主印视图与极性，落点由主印中心向阴 / 阳一侧偏移推出。 */
     _projectSlot(element, polarity) {
       const isYin = polarity === Polarity.YIN;
-      const sideOffset = this._layout.sealSize * SLOT_SIDE_RATIO;
+      const sideOffset = element.sealSize * SLOT_SIDE_RATIO;
       return {
         player: element.player,
         element: element.element,
@@ -2714,54 +2711,49 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         isKangJi: element.isKangJi
       };
     }
-    /** 先画环级底晕与连线，再画主印，最后叠加归元读数（读数压在最上层）。 */
+    /** 先画环带与连线，再画主印，最后叠加环归属标签（标签压在最上层）。 */
     renderSelf(ctx) {
-      this._drawRingHalos(ctx);
+      this._drawRingBands(ctx);
       this._drawConnections(ctx);
       this._drawSeals(ctx);
-      this._drawGuiYuanReadout(ctx);
+      this._drawRingLabels(ctx);
     }
-    /** 环级归属：内环暖色底晕 + 「己」徽记、外环冷色底晕 + 「敌」徽记；主印本体不在这里换色。 */
-    _drawRingHalos(ctx) {
-      const haloWidth = this._layout.sealSize * 1.9;
-      const halos = [
-        [this._layout.innerRadius, OWN_RING_HALO],
-        [this._layout.outerRadius, OPPONENT_RING_HALO]
+    /**
+     * 环带：内环暖色实线带（己方盘）、外环冷色虚线带（对方盘）。
+     * 两条带各自细而清晰、互不重叠，让「哪一圈是谁的」在颜色之外还有「实线 / 虚线」这条不依赖颜色的读法。
+     */
+    _drawRingBands(ctx) {
+      const bands = [
+        [
+          this._layout.innerRadius,
+          OWN_BAND_COLOR,
+          OWN_BAND_EDGE,
+          this._layout.sealSize * OWN_BAND_WIDTH_RATIO,
+          []
+        ],
+        [
+          this._layout.outerRadius,
+          OPPONENT_BAND_COLOR,
+          OPPONENT_BAND_EDGE,
+          this._layout.sealSize * OPPONENT_BAND_WIDTH_RATIO,
+          [7, 6]
+        ]
       ];
-      for (const [radius, color] of halos) {
+      for (const [radius, fill, edge, width, dash] of bands) {
         ctx.save();
         ctx.beginPath();
         ctx.arc(this._layout.centerX, this._layout.centerY, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = haloWidth;
+        ctx.strokeStyle = fill;
+        ctx.lineWidth = width;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(this._layout.centerX, this._layout.centerY, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = edge;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash(dash);
         ctx.stroke();
         ctx.restore();
       }
-      this._drawRingBadge(ctx, this._layout.innerRadius, OWN_BADGE_ANGLE, "己", OWN_RING_BADGE);
-      this._drawRingBadge(
-        ctx,
-        this._layout.outerRadius,
-        OPPONENT_BADGE_ANGLE,
-        "敌",
-        OPPONENT_RING_BADGE
-      );
-    }
-    /** 环徽记：画在射线之间的空位上，给「这是谁的盘」一个不依赖颜色的读法。 */
-    _drawRingBadge(ctx, radius, angle, label, color) {
-      const x = this._layout.centerX + radius * Math.cos(angle);
-      const y = this._layout.centerY + radius * Math.sin(angle);
-      const badgeRadius = Math.max(10, this._layout.sealSize * 0.7);
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(x, y, badgeRadius, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-      ctx.fillStyle = BADGE_TEXT_COLOR;
-      ctx.font = `bold ${Math.round(badgeRadius * 1.15)}px monospace`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(label, x, y);
-      ctx.restore();
     }
     /** 内环相生边（实线）+ 跨环径向线（虚线）；只有当前动作会走的那条转活动色。 */
     _drawConnections(ctx) {
@@ -2780,19 +2772,23 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         ctx.restore();
       }
     }
-    /** 十个主印：底盘 + 阴/阳半环 + 归一/亢极高亮 + 五行名；内外环主印共用同一套画法。 */
+    /**
+     * 十个主印。内外环用**尺寸 + 填充 + 描边亮度**拉开层级（主印本体仍是五行本色，不换色）：
+     * 己方盘主印更大、填五行暗色、亮色描边；对方盘主印更小、填底色、暗色描边。
+     */
     _drawSeals(ctx) {
-      const sealRadius = this._layout.sealSize;
-      const ringRadius = halfRingRadius(sealRadius);
       for (const entry of this._elements) {
+        const isOwn = entry.player === OWN_PLAYER;
         const palette = WUXING_PALETTE[entry.element];
+        const sealRadius = entry.sealSize;
+        const ringRadius = halfRingRadius(sealRadius);
         ctx.save();
         ctx.beginPath();
         ctx.arc(entry.x, entry.y, sealRadius, 0, Math.PI * 2);
-        ctx.fillStyle = BOARD_BG_COLOR;
+        ctx.fillStyle = isOwn ? withAlpha(palette.main, OWN_SEAL_FILL_ALPHA) : "rgba(10, 13, 20, 0.92)";
         ctx.fill();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = entry.isKangJi ? BLESSED_COLOR : palette.dark;
+        ctx.lineWidth = isOwn ? 2.5 : 2;
+        ctx.strokeStyle = isOwn ? palette.main : withAlpha(palette.main, 0.55);
         ctx.stroke();
         drawHalfRing(ctx, entry.x, entry.y, ringRadius, true, entry.yin, entry.element);
         drawHalfRing(ctx, entry.x, entry.y, ringRadius, false, entry.yang, entry.element);
@@ -2800,39 +2796,104 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           ctx.beginPath();
           ctx.arc(entry.x, entry.y, ringRadius + 5, 0, Math.PI * 2);
           ctx.strokeStyle = entry.isKangJi ? BLESSED_COLOR : GUI_YI_COLOR;
-          ctx.lineWidth = entry.isKangJi ? 3 : 1.5;
-          ctx.setLineDash(entry.isKangJi ? [] : [4, 3]);
+          ctx.lineWidth = entry.isKangJi ? 3 : 2;
           ctx.stroke();
         }
-        ctx.fillStyle = palette.light;
-        ctx.font = `bold ${Math.round(Math.max(11, sealRadius * 0.55))}px monospace`;
+        ctx.fillStyle = isOwn ? palette.light : withAlpha(palette.light, 0.72);
+        ctx.font = `bold ${String(Math.round(Math.max(11, sealRadius * 0.62)))}px monospace`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(palette.name, entry.x, entry.y);
-        if (entry.isGuiYi) {
-          ctx.fillStyle = entry.isKangJi ? BLESSED_COLOR : GUI_YI_COLOR;
-          ctx.font = `${Math.round(Math.max(9, sealRadius * 0.4))}px monospace`;
-          ctx.fillText(entry.isKangJi ? "亢极" : "归一", entry.x, entry.y + sealRadius + 13);
+        if (entry.isKangJi) {
+          ctx.fillStyle = BLESSED_COLOR;
+          ctx.font = `bold ${String(Math.round(Math.max(9, sealRadius * 0.42)))}px monospace`;
+          ctx.fillText("亢", entry.x, entry.y - ringRadius - 13);
         }
         ctx.restore();
       }
     }
-    /** 归元进度读数：统计内外环各自的归一节点数，补上「谁离归元更近」的数值口径。 */
-    _drawGuiYuanReadout(ctx) {
-      const readout = this.readout;
+    /** 环归属标签：把「己」「敌」钉在各自的环带上（主印之间的正下方空位）。 */
+    _drawRingLabels(ctx) {
+      this._drawRingLabel(ctx, this._layout.innerRadius, "己", OWN_BAND_EDGE, OWN_RING_COLOR, 0.55);
+      this._drawRingLabel(
+        ctx,
+        this._layout.outerRadius,
+        "敌",
+        OPPONENT_BAND_EDGE,
+        OPPONENT_RING_COLOR,
+        0.55
+      );
+      this._drawGuiYuanLegend(ctx);
+    }
+    /**
+     * 归元进度图例：盘下方一行「己 x/5」「敌 y/5」，颜色与各自环带对应。
+     * 不放环带上：内环主印之间的空位只有 ~44px，放得下「己」一个字却放不下带数量的胶囊。
+     */
+    _drawGuiYuanLegend(ctx) {
+      const fontSize = Math.round(Math.max(11, this._layout.sealSize * 0.55));
+      const y = this._layout.centerY + this._layout.outerRadius + this._layout.sealSize * 1.9;
+      const gap = this._layout.sealSize * 2.6;
       ctx.save();
-      ctx.fillStyle = BOARD_BG_COLOR;
-      ctx.fillRect(readout.x, readout.y, readout.width, readout.height);
-      ctx.fillStyle = READOUT_COLOR;
-      ctx.font = `bold ${String(readout.fontSize)}px monospace`;
+      ctx.font = `bold ${String(fontSize)}px monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(readout.text, readout.x + readout.width / 2, readout.y + readout.height / 2);
+      ctx.fillStyle = OWN_RING_COLOR;
+      ctx.fillText(
+        `己 ${String(this._countGuiYi(OWN_PLAYER))}/${String(WUXING_COUNT)}`,
+        this._layout.centerX - gap,
+        y
+      );
+      ctx.fillStyle = OPPONENT_RING_COLOR;
+      ctx.fillText(
+        `敌 ${String(this._countGuiYi(OPPONENT_PLAYER))}/${String(WUXING_COUNT)}`,
+        this._layout.centerX + gap,
+        y
+      );
+      ctx.restore();
+    }
+    /** 一个环归属标签：实心胶囊 + 文案，压在环带上（环带本身是半透明，胶囊保证文字读得清）。 */
+    _drawRingLabel(ctx, radius, text, edge, textColor, fontRatio) {
+      const x = this._layout.centerX + radius * Math.cos(RING_LABEL_ANGLE);
+      const y = this._layout.centerY + radius * Math.sin(RING_LABEL_ANGLE);
+      const fontSize = Math.round(Math.max(9, this._layout.sealSize * fontRatio));
+      const width = Math.ceil(estimateTextWidth(text, fontSize)) + RING_LABEL_PADDING_X * 2;
+      const height = fontSize + RING_LABEL_PADDING_Y * 2;
+      ctx.save();
+      drawPill(ctx, x - width / 2, y - height / 2, width, height, height / 2, BOARD_BG_COLOR, edge);
+      ctx.fillStyle = textColor;
+      ctx.font = `bold ${String(fontSize)}px monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, x, y + 1);
       ctx.restore();
     }
     _countGuiYi(player) {
       return this._elements.filter((entry) => entry.player === player && entry.isGuiYi).length;
     }
+  }
+  function withAlpha(hex, alpha) {
+    const match = /^#([0-9a-f]{6})$/i.exec(hex);
+    if (match === null) {
+      return hex;
+    }
+    const value = Number.parseInt(match[1], 16);
+    const r = value >> 16 & 255;
+    const g = value >> 8 & 255;
+    const b = value & 255;
+    return `rgba(${String(r)}, ${String(g)}, ${String(b)}, ${String(alpha)})`;
+  }
+  function drawPill(ctx, x, y, width, height, radius, fill, stroke) {
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") {
+      ctx.roundRect(x, y, width, height, radius);
+    } else {
+      ctx.rect(x, y, width, height);
+    }
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
   }
   function slotColor(level, element) {
     const palette = WUXING_PALETTE[element];
@@ -2854,7 +2915,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     ctx.beginPath();
     ctx.arc(x, y, radius, start, end);
     ctx.strokeStyle = slotColor(level, element);
-    ctx.lineWidth = level === 2 ? 6 : level === 1 ? 4.5 : level === -1 ? 3 : 1.5;
+    ctx.lineWidth = level === 2 ? 5 : level === 1 ? 4 : level === -1 ? 3 : 1.5;
     ctx.lineCap = "round";
     if (level === -1) {
       ctx.setLineDash([4, 3]);
@@ -2883,25 +2944,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     ctx.restore();
   }
   function halfRingRadius(sealRadius) {
-    return sealRadius + Math.max(3, sealRadius * 0.16);
-  }
-  function sealOuterRadius(sealRadius) {
-    return halfRingRadius(sealRadius) + 5 + 1.5;
-  }
-  function projectReadout(layout, viewportHeight, own, opponent) {
-    const fontSize = Math.round(Math.max(11, layout.sealSize * 0.55));
-    const text = `己 ${own}/${WUXING_COUNT} · 敌 ${opponent}/${WUXING_COUNT} 归一`;
-    const width = Math.ceil(estimateTextWidth(text, fontSize)) + READOUT_PADDING_X;
-    const height = fontSize + READOUT_PADDING_Y;
-    const clearance = sealOuterRadius(layout.sealSize) + READOUT_GAP;
-    let y = layout.centerY - layout.outerRadius - clearance - height;
-    if (viewportHeight !== null) {
-      if (y < 0) {
-        y = layout.centerY + layout.outerRadius + clearance;
-      }
-      y = Math.min(Math.max(y, 0), Math.max(0, viewportHeight - height));
-    }
-    return { x: layout.centerX - width / 2, y, width, height, text, fontSize };
+    return sealRadius + Math.max(5, sealRadius * 0.24);
   }
   function buildGenerationRing() {
     const ring = [];
@@ -3205,11 +3248,11 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     const lines = [];
     let current = "";
-    for (const char of text) {
-      const next = current + char;
+    for (const unit of textUnits(text)) {
+      const next = current + unit;
       if (current !== "" && estimateTextWidth(next, fontSize) > maxWidth) {
         lines.push(current);
-        current = char;
+        current = unit;
         if (lines.length === maxLines) {
           break;
         }
@@ -3225,6 +3268,29 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       lines[lines.length - 1] = `${truncateToWidth(last, maxWidth, fontSize)}…`;
     }
     return lines;
+  }
+  function textUnits(text) {
+    const units = [];
+    let bracket = "";
+    for (const char of text) {
+      if (bracket !== "") {
+        bracket += char;
+        if (char === "】") {
+          units.push(bracket);
+          bracket = "";
+        }
+        continue;
+      }
+      if (char === "【") {
+        bracket = char;
+        continue;
+      }
+      units.push(char);
+    }
+    if (bracket !== "") {
+      units.push(bracket);
+    }
+    return units;
   }
   function truncateToWidth(text, maxWidth, fontSize) {
     if (estimateTextWidth(text, fontSize) <= maxWidth) {
@@ -3546,7 +3612,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const DEFAULT_AI_THINK_DELAY = 0.55;
   const DEFAULT_EXPRESSION_HOLD = 0.6;
   const DEFAULT_CELEBRATE_HOLD = 1.2;
-  const ACTION_BAR_HEIGHT = 130;
   const ACTION_BAR_MARGIN = 14;
   const SHAKE_DURATION = 0.28;
   const SHAKE_BURST = 8;
@@ -3650,6 +3715,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       });
       this.actionBar = this.buildActionBar(this._turnManager);
       this.actionBar.visible = false;
+      this.placeActionBar();
       this.addChild(this.board);
       this.addChild(this.runeFlight);
       this.addChild(this.characters);
@@ -3701,8 +3767,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.safeBottom = safeBottom ?? this.safeBottom;
       this.board.resize(width, height);
       this.characters.resize(width, this.safeTop);
-      this.actionBar.x = ACTION_BAR_MARGIN;
-      this.actionBar.y = this.actionBarY();
+      this.placeActionBar();
       if (this._phase === "idle" || this._phase === "game-over") {
         this.replaceRuneFlight();
         this.runeFlightStale = false;
@@ -3728,6 +3793,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.actionBar.dispose();
       this.actionBar.removeFromParent();
       this.actionBar = this.buildActionBar(this._turnManager);
+      this.placeActionBar();
       this.addChild(this.actionBar);
       this.bindTurnManager(this._turnManager);
       this.setPhase("idle");
@@ -3815,6 +3881,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.actionBar.visible = true;
       this.actionBar.interactive = true;
       this.actionBar.refresh();
+      this.placeActionBar();
     }
     /** 缓冲结束（或被点击加速）：把待定动作交给核心层结算。 */
     commitPendingDecision() {
@@ -3975,14 +4042,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.actionBar.visible = false;
       this.actionBar.interactive = false;
     }
-    actionBarY() {
-      return this.height - this.safeBottom - ACTION_BAR_HEIGHT;
+    /** 把操作面板底对齐到安全区底部：按钮实测多高就占多高，不留空档。 */
+    placeActionBar() {
+      this.actionBar.x = ACTION_BAR_MARGIN;
+      this.actionBar.y = this.height - this.safeBottom - this.actionBar.contentHeight;
     }
     buildActionBar(turnManager) {
       return new ActionBarView({
         turnManager,
-        width: this.width - ACTION_BAR_MARGIN * 2,
-        y: this.actionBarY()
+        width: this.width - ACTION_BAR_MARGIN * 2
       });
     }
     buildRuneFlight() {

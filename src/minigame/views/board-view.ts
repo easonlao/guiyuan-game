@@ -36,7 +36,7 @@ export interface BoardViewLayout {
   innerRadius: number;
   /** 对方盘（外环）主印环的半径。 */
   outerRadius: number;
-  /** 主印圆的视觉半径。 */
+  /** 己方盘主印圆的视觉半径（对方盘按 `OPPONENT_SEAL_SCALE` 缩小）。 */
   sealSize: number;
   /** 首个方位（木）的角度，默认正上方。 */
   startAngle: number;
@@ -45,22 +45,23 @@ export interface BoardViewLayout {
 /** 视口自适应时，环半径与主印半径占视口短边的比例。 */
 const INNER_RADIUS_RATIO = 0.24;
 const OUTER_RADIUS_RATIO = 0.4;
-const SEAL_SIZE_RATIO = 0.06;
+const SEAL_SIZE_RATIO = 0.062;
+
+/** 对方盘主印相对己方盘主印的缩放：外环更小、更暗，一眼分出主次（ADR 0015 的「环级区分」）。 */
+const OPPONENT_SEAL_SCALE = 0.82;
+
+/** 己方盘主印的填充底色（五行本色的低透明度版，避免变成一坨高饱和「糖果」）。 */
+const OWN_SEAL_FILL_ALPHA = 0.16;
 
 /** 阴阳槽位相对主印中心在阴/阳一侧的横向偏移（占主印半径的比例）。 */
 const SLOT_SIDE_RATIO = 0.7;
-
-/** 读数底板的内边距（横 / 纵）、它到主印外沿的最小间距。 */
-const READOUT_PADDING_X = 12;
-const READOUT_PADDING_Y = 8;
-const READOUT_GAP = 6;
 
 export const DEFAULT_BOARD_LAYOUT: BoardViewLayout = {
   centerX: 0,
   centerY: 0,
   innerRadius: 90,
   outerRadius: 150,
-  sealSize: 22.5,
+  sealSize: 23.25,
   startAngle: -Math.PI / 2,
 };
 
@@ -72,6 +73,8 @@ export interface BoardElementView {
   readonly angle: number;
   readonly x: number;
   readonly y: number;
+  /** 主印圆的视觉半径（对方盘更小）。 */
+  readonly sealSize: number;
   readonly yin: NodeLevel;
   readonly yang: NodeLevel;
   /** 归一：阴侧与阳侧均已点亮（均 ≥ 1）。 */
@@ -102,16 +105,6 @@ const VOID_LEVEL: NodeLevel = 0;
 /** 虚空节点：未投影过该盘时，归一 / 亢极判定按它走（真源仍是核心层 `isNodeGuiYi`）。 */
 const VOID_NODE: NodeData = { yin: VOID_LEVEL, yang: VOID_LEVEL };
 
-/** 归元进度读数的投影视图（底板左上角在父坐标系里的 `x/y` + 文案与字号）。 */
-export interface BoardReadoutView {
-  readonly x: number;
-  readonly y: number;
-  readonly width: number;
-  readonly height: number;
-  readonly text: string;
-  readonly fontSize: number;
-}
-
 /** 连线类型：内环相生边（表「化 / 强化」）与跨环径向线（表「破 / 强破」）。 */
 export type BoardConnectionKind = 'generation' | 'attack';
 
@@ -129,16 +122,25 @@ const BOARD_BG_COLOR = '#111827';
 const VOID_COLOR = '#374151';
 const BLESSED_COLOR = '#f6e05e';
 const GUI_YI_COLOR = '#ecc94b';
-/** 环级归属：内环暖色底晕 + 「己」徽记，外环冷色底晕 + 「敌」徽记。 */
-const OWN_RING_HALO = 'rgba(183, 121, 31, 0.16)';
-const OWN_RING_BADGE = '#b7791f';
-const OPPONENT_RING_HALO = 'rgba(43, 108, 176, 0.16)';
-const OPPONENT_RING_BADGE = '#2b6cb0';
-const BADGE_TEXT_COLOR = '#f7fafc';
-const READOUT_COLOR = '#a0aec0';
-/** 环徽记与归元读数所在方位：避开五条射线上的主印。 */
-const OWN_BADGE_ANGLE = Math.PI * 0.9;
-const OPPONENT_BADGE_ANGLE = Math.PI * 0.1;
+
+/**
+ * 环带：内环暖色实线带（己方盘）、外环冷色虚线带（对方盘）。
+ * 环带本身承载「这块盘是谁的」，不再用两个大面积底晕——底晕会互相叠成一团浑色。
+ */
+const OWN_BAND_COLOR = 'rgba(183, 121, 31, 0.34)';
+const OWN_BAND_EDGE = '#b7791f';
+const OWN_RING_COLOR = '#d69e2e';
+const OPPONENT_BAND_COLOR = 'rgba(43, 108, 176, 0.26)';
+const OPPONENT_BAND_EDGE = '#2b6cb0';
+const OPPONENT_RING_COLOR = '#4299e1';
+/** 环带宽度占主印半径的比例。 */
+const OWN_BAND_WIDTH_RATIO = 0.72;
+const OPPONENT_BAND_WIDTH_RATIO = 0.62;
+/** 环归属标签画在两枚主印之间的空位上（正下方）。 */
+const RING_LABEL_ANGLE = Math.PI / 2;
+const RING_LABEL_PADDING_X = 8;
+const RING_LABEL_PADDING_Y = 4;
+
 const CONNECTION_IDLE: Record<BoardConnectionKind, string> = {
   generation: '#2f4f3f',
   // 径向线常驻但极淡：不误导，只在当前动作指向它时转亮。
@@ -175,8 +177,6 @@ export class BoardView extends Container {
   private readonly _boards: Record<PlayerId, BoardState | null> = { P1: null, P2: null };
   /** 当前动作会走的连线（键为 `kind:from`）；高亮与盘面等级无关（票 02）。 */
   private _activePaths = new Set<string>();
-  /** 最近一次 `resize` 的视口高度；未 resize 过时为 null（读数不做贴边兜底）。 */
-  private _viewportHeight: number | null = null;
 
   public constructor(layout: Partial<BoardViewLayout> = {}) {
     super();
@@ -192,7 +192,6 @@ export class BoardView extends Container {
   /** 按视口自适应：圆心取视口中心，内外环半径与主印半径按短边等比缩放。 */
   public resize(width: number, height: number): void {
     const span = Math.min(width, height);
-    this._viewportHeight = height;
     this._layout = {
       ...this._layout,
       centerX: width / 2,
@@ -217,19 +216,6 @@ export class BoardView extends Container {
   /** 十条连线：五条内环相生边 + 五条跨环径向线。 */
   public get connections(): readonly BoardConnectionView[] {
     return this._connections;
-  }
-
-  /**
-   * 归元进度读数（「己 x/5 · 敌 y/5 归一」）的版面投影：底板宽度由文案与字号推出，
-   * 位置排在对方盘外侧，与任何主印圆（含半环与归一外环）都不相交。
-   */
-  public get readout(): BoardReadoutView {
-    return projectReadout(
-      this._layout,
-      this._viewportHeight,
-      this._countGuiYi(OWN_PLAYER),
-      this._countGuiYi(OPPONENT_PLAYER),
-    );
   }
 
   /** 按玩家、主印与极性取一个槽位的投影视图；未知玩家 / 元素 / 极性抛错。 */
@@ -267,6 +253,8 @@ export class BoardView extends Container {
     const ring = buildGenerationRing();
     for (const player of BOARD_PLAYERS) {
       const radius = player === OWN_PLAYER ? this._layout.innerRadius : this._layout.outerRadius;
+      const sealSize =
+        player === OWN_PLAYER ? this._layout.sealSize : this._layout.sealSize * OPPONENT_SEAL_SCALE;
       ring.forEach((element, index) => {
         // 内环五行 ring[i] 落在射线 i；外环整体逆时针偏移 2 格，即 ring[j] 落在射线 (j-2)。
         const rayIndex =
@@ -281,6 +269,7 @@ export class BoardView extends Container {
           angle,
           x,
           y,
+          sealSize,
           yin: node.yin,
           yang: node.yang,
           // 归一 / 亢极的真源在核心层（`src/core/logic/State.ts`），这里不再各推一份。
@@ -350,7 +339,7 @@ export class BoardView extends Container {
   /** 槽位投影：只收主印视图与极性，落点由主印中心向阴 / 阳一侧偏移推出。 */
   private _projectSlot(element: BoardElementView, polarity: Polarity): BoardSlotView {
     const isYin = polarity === Polarity.YIN;
-    const sideOffset = this._layout.sealSize * SLOT_SIDE_RATIO;
+    const sideOffset = element.sealSize * SLOT_SIDE_RATIO;
     return {
       player: element.player,
       element: element.element,
@@ -364,62 +353,52 @@ export class BoardView extends Container {
     };
   }
 
-  /** 先画环级底晕与连线，再画主印，最后叠加归元读数（读数压在最上层）。 */
+  /** 先画环带与连线，再画主印，最后叠加环归属标签（标签压在最上层）。 */
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
-    this._drawRingHalos(ctx);
+    this._drawRingBands(ctx);
     this._drawConnections(ctx);
     this._drawSeals(ctx);
-    this._drawGuiYuanReadout(ctx);
+    this._drawRingLabels(ctx);
   }
 
-  /** 环级归属：内环暖色底晕 + 「己」徽记、外环冷色底晕 + 「敌」徽记；主印本体不在这里换色。 */
-  private _drawRingHalos(ctx: CanvasRenderingContext2D): void {
-    const haloWidth = this._layout.sealSize * 1.9;
-    const halos: readonly [number, string][] = [
-      [this._layout.innerRadius, OWN_RING_HALO],
-      [this._layout.outerRadius, OPPONENT_RING_HALO],
+  /**
+   * 环带：内环暖色实线带（己方盘）、外环冷色虚线带（对方盘）。
+   * 两条带各自细而清晰、互不重叠，让「哪一圈是谁的」在颜色之外还有「实线 / 虚线」这条不依赖颜色的读法。
+   */
+  private _drawRingBands(ctx: CanvasRenderingContext2D): void {
+    const bands: readonly [number, string, string, number, number[]][] = [
+      [
+        this._layout.innerRadius,
+        OWN_BAND_COLOR,
+        OWN_BAND_EDGE,
+        this._layout.sealSize * OWN_BAND_WIDTH_RATIO,
+        [],
+      ],
+      [
+        this._layout.outerRadius,
+        OPPONENT_BAND_COLOR,
+        OPPONENT_BAND_EDGE,
+        this._layout.sealSize * OPPONENT_BAND_WIDTH_RATIO,
+        [7, 6],
+      ],
     ];
-    for (const [radius, color] of halos) {
+    for (const [radius, fill, edge, width, dash] of bands) {
       ctx.save();
+      // 带体（半透明填充）
       ctx.beginPath();
       ctx.arc(this._layout.centerX, this._layout.centerY, radius, 0, Math.PI * 2);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = haloWidth;
+      ctx.strokeStyle = fill;
+      ctx.lineWidth = width;
+      ctx.stroke();
+      // 带沿（清晰描边，虚实区分内外环）
+      ctx.beginPath();
+      ctx.arc(this._layout.centerX, this._layout.centerY, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash(dash);
       ctx.stroke();
       ctx.restore();
     }
-    this._drawRingBadge(ctx, this._layout.innerRadius, OWN_BADGE_ANGLE, '己', OWN_RING_BADGE);
-    this._drawRingBadge(
-      ctx,
-      this._layout.outerRadius,
-      OPPONENT_BADGE_ANGLE,
-      '敌',
-      OPPONENT_RING_BADGE,
-    );
-  }
-
-  /** 环徽记：画在射线之间的空位上，给「这是谁的盘」一个不依赖颜色的读法。 */
-  private _drawRingBadge(
-    ctx: CanvasRenderingContext2D,
-    radius: number,
-    angle: number,
-    label: string,
-    color: string,
-  ): void {
-    const x = this._layout.centerX + radius * Math.cos(angle);
-    const y = this._layout.centerY + radius * Math.sin(angle);
-    const badgeRadius = Math.max(10, this._layout.sealSize * 0.7);
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x, y, badgeRadius, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.fillStyle = BADGE_TEXT_COLOR;
-    ctx.font = `bold ${Math.round(badgeRadius * 1.15)}px monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label, x, y);
-    ctx.restore();
   }
 
   /** 内环相生边（实线）+ 跨环径向线（虚线）；只有当前动作会走的那条转活动色。 */
@@ -440,65 +419,159 @@ export class BoardView extends Container {
     }
   }
 
-  /** 十个主印：底盘 + 阴/阳半环 + 归一/亢极高亮 + 五行名；内外环主印共用同一套画法。 */
+  /**
+   * 十个主印。内外环用**尺寸 + 填充 + 描边亮度**拉开层级（主印本体仍是五行本色，不换色）：
+   * 己方盘主印更大、填五行暗色、亮色描边；对方盘主印更小、填底色、暗色描边。
+   */
   private _drawSeals(ctx: CanvasRenderingContext2D): void {
-    const sealRadius = this._layout.sealSize;
-    const ringRadius = halfRingRadius(sealRadius);
     for (const entry of this._elements) {
+      const isOwn = entry.player === OWN_PLAYER;
       const palette = WUXING_PALETTE[entry.element];
+      const sealRadius = entry.sealSize;
+      const ringRadius = halfRingRadius(sealRadius);
       ctx.save();
       ctx.beginPath();
       ctx.arc(entry.x, entry.y, sealRadius, 0, Math.PI * 2);
-      ctx.fillStyle = BOARD_BG_COLOR;
+      ctx.fillStyle = isOwn
+        ? withAlpha(palette.main, OWN_SEAL_FILL_ALPHA)
+        : 'rgba(10, 13, 20, 0.92)';
       ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = entry.isKangJi ? BLESSED_COLOR : palette.dark;
+      ctx.lineWidth = isOwn ? 2.5 : 2;
+      ctx.strokeStyle = isOwn ? palette.main : withAlpha(palette.main, 0.55);
       ctx.stroke();
 
       drawHalfRing(ctx, entry.x, entry.y, ringRadius, true, entry.yin, entry.element);
       drawHalfRing(ctx, entry.x, entry.y, ringRadius, false, entry.yang, entry.element);
 
       if (entry.isGuiYi) {
+        // 归一：半环之外再套一圈实心金环（不占用主印描边——土 / 金的本色接近金色，占描边会分不出）。
         ctx.beginPath();
         ctx.arc(entry.x, entry.y, ringRadius + 5, 0, Math.PI * 2);
         ctx.strokeStyle = entry.isKangJi ? BLESSED_COLOR : GUI_YI_COLOR;
-        ctx.lineWidth = entry.isKangJi ? 3 : 1.5;
-        ctx.setLineDash(entry.isKangJi ? [] : [4, 3]);
+        ctx.lineWidth = entry.isKangJi ? 3 : 2;
         ctx.stroke();
       }
 
-      ctx.fillStyle = palette.light;
-      ctx.font = `bold ${Math.round(Math.max(11, sealRadius * 0.55))}px monospace`;
+      ctx.fillStyle = isOwn ? palette.light : withAlpha(palette.light, 0.72);
+      ctx.font = `bold ${String(Math.round(Math.max(11, sealRadius * 0.62)))}px monospace`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(palette.name, entry.x, entry.y);
 
-      if (entry.isGuiYi) {
-        ctx.fillStyle = entry.isKangJi ? BLESSED_COLOR : GUI_YI_COLOR;
-        ctx.font = `${Math.round(Math.max(9, sealRadius * 0.4))}px monospace`;
-        ctx.fillText(entry.isKangJi ? '亢极' : '归一', entry.x, entry.y + sealRadius + 13);
+      if (entry.isKangJi) {
+        ctx.fillStyle = BLESSED_COLOR;
+        ctx.font = `bold ${String(Math.round(Math.max(9, sealRadius * 0.42)))}px monospace`;
+        ctx.fillText('亢', entry.x, entry.y - ringRadius - 13);
       }
       ctx.restore();
     }
   }
 
-  /** 归元进度读数：统计内外环各自的归一节点数，补上「谁离归元更近」的数值口径。 */
-  private _drawGuiYuanReadout(ctx: CanvasRenderingContext2D): void {
-    const readout = this.readout;
+  /** 环归属标签：把「己」「敌」钉在各自的环带上（主印之间的正下方空位）。 */
+  private _drawRingLabels(ctx: CanvasRenderingContext2D): void {
+    this._drawRingLabel(ctx, this._layout.innerRadius, '己', OWN_BAND_EDGE, OWN_RING_COLOR, 0.55);
+    this._drawRingLabel(
+      ctx,
+      this._layout.outerRadius,
+      '敌',
+      OPPONENT_BAND_EDGE,
+      OPPONENT_RING_COLOR,
+      0.55,
+    );
+    this._drawGuiYuanLegend(ctx);
+  }
+
+  /**
+   * 归元进度图例：盘下方一行「己 x/5」「敌 y/5」，颜色与各自环带对应。
+   * 不放环带上：内环主印之间的空位只有 ~44px，放得下「己」一个字却放不下带数量的胶囊。
+   */
+  private _drawGuiYuanLegend(ctx: CanvasRenderingContext2D): void {
+    const fontSize = Math.round(Math.max(11, this._layout.sealSize * 0.55));
+    const y = this._layout.centerY + this._layout.outerRadius + this._layout.sealSize * 1.9;
+    const gap = this._layout.sealSize * 2.6;
     ctx.save();
-    ctx.fillStyle = BOARD_BG_COLOR;
-    ctx.fillRect(readout.x, readout.y, readout.width, readout.height);
-    ctx.fillStyle = READOUT_COLOR;
-    ctx.font = `bold ${String(readout.fontSize)}px monospace`;
+    ctx.font = `bold ${String(fontSize)}px monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(readout.text, readout.x + readout.width / 2, readout.y + readout.height / 2);
+    ctx.fillStyle = OWN_RING_COLOR;
+    ctx.fillText(
+      `己 ${String(this._countGuiYi(OWN_PLAYER))}/${String(WUXING_COUNT)}`,
+      this._layout.centerX - gap,
+      y,
+    );
+    ctx.fillStyle = OPPONENT_RING_COLOR;
+    ctx.fillText(
+      `敌 ${String(this._countGuiYi(OPPONENT_PLAYER))}/${String(WUXING_COUNT)}`,
+      this._layout.centerX + gap,
+      y,
+    );
+    ctx.restore();
+  }
+
+  /** 一个环归属标签：实心胶囊 + 文案，压在环带上（环带本身是半透明，胶囊保证文字读得清）。 */
+  private _drawRingLabel(
+    ctx: CanvasRenderingContext2D,
+    radius: number,
+    text: string,
+    edge: string,
+    textColor: string,
+    fontRatio: number,
+  ): void {
+    const x = this._layout.centerX + radius * Math.cos(RING_LABEL_ANGLE);
+    const y = this._layout.centerY + radius * Math.sin(RING_LABEL_ANGLE);
+    const fontSize = Math.round(Math.max(9, this._layout.sealSize * fontRatio));
+    const width = Math.ceil(estimateTextWidth(text, fontSize)) + RING_LABEL_PADDING_X * 2;
+    const height = fontSize + RING_LABEL_PADDING_Y * 2;
+    ctx.save();
+    drawPill(ctx, x - width / 2, y - height / 2, width, height, height / 2, BOARD_BG_COLOR, edge);
+    ctx.fillStyle = textColor;
+    ctx.font = `bold ${String(fontSize)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y + 1);
     ctx.restore();
   }
 
   private _countGuiYi(player: PlayerId): number {
     return this._elements.filter((entry) => entry.player === player && entry.isGuiYi).length;
   }
+}
+
+/** 把 `#rrggbb` 转成带透明度的 `rgba()`；非法输入原样返回。 */
+function withAlpha(hex: string, alpha: number): string {
+  const match = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (match === null) {
+    return hex;
+  }
+  const value = Number.parseInt(match[1], 16);
+  const r = (value >> 16) & 0xff;
+  const g = (value >> 8) & 0xff;
+  const b = value & 0xff;
+  return `rgba(${String(r)}, ${String(g)}, ${String(b)}, ${String(alpha)})`;
+}
+
+/** 圆角胶囊：底板 + 描边（`roundRect` 在部分环境缺失时退回矩形）。 */
+function drawPill(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+  fill: string,
+  stroke: string,
+): void {
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, width, height, radius);
+  } else {
+    ctx.rect(x, y, width, height);
+  }
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
 }
 
 /** 槽位与半环的笔触颜色：点亮取五行本色，道损取五行暗色。 */
@@ -536,7 +609,7 @@ function drawHalfRing(
   ctx.beginPath();
   ctx.arc(x, y, radius, start, end);
   ctx.strokeStyle = slotColor(level, element);
-  ctx.lineWidth = level === 2 ? 6 : level === 1 ? 4.5 : level === -1 ? 3 : 1.5;
+  ctx.lineWidth = level === 2 ? 5 : level === 1 ? 4 : level === -1 ? 3 : 1.5;
   ctx.lineCap = 'round';
   if (level === -1) {
     ctx.setLineDash([4, 3]);
@@ -567,44 +640,9 @@ function drawHalfRing(
   ctx.restore();
 }
 
-/** 主印半环相对主印半径的外扩量（内外环主印共用同一口径）。 */
+/** 主印半环相对主印半径的外扩量：给主印与半环之间留出看得见的缝（内外环共用同一口径）。 */
 function halfRingRadius(sealRadius: number): number {
-  return sealRadius + Math.max(3, sealRadius * 0.16);
-}
-
-/**
- * 主印连同半环、归一外环在内可能占据的最大视觉半径：主印半径 + 半环外扩 + 归一外环偏移 + 描边一半。
- * 归元读数底板按它避让，保证不遮住半环（半环是阴阳等级的唯一载体）。
- */
-function sealOuterRadius(sealRadius: number): number {
-  return halfRingRadius(sealRadius) + 5 + 1.5;
-}
-
-/**
- * 归元进度读数的版面投影。底板宽度由文案与字号推出（不写死像素宽），字号随主印半径缩放；
- * 位置优先排在对方盘**外侧**（下方留给操作台），与任何主印圆都不相交；视口放不下时贴边兜底。
- */
-function projectReadout(
-  layout: BoardViewLayout,
-  viewportHeight: number | null,
-  own: number,
-  opponent: number,
-): BoardReadoutView {
-  const fontSize = Math.round(Math.max(11, layout.sealSize * 0.55));
-  const text = `己 ${own}/${WUXING_COUNT} · 敌 ${opponent}/${WUXING_COUNT} 归一`;
-  const width = Math.ceil(estimateTextWidth(text, fontSize)) + READOUT_PADDING_X;
-  const height = fontSize + READOUT_PADDING_Y;
-  const clearance = sealOuterRadius(layout.sealSize) + READOUT_GAP;
-
-  let y = layout.centerY - layout.outerRadius - clearance - height;
-  if (viewportHeight !== null) {
-    if (y < 0) {
-      y = layout.centerY + layout.outerRadius + clearance;
-    }
-    // 极端扁视口兜底：宁可贴边也不出屏（此时无法再保证与主印不相交）。
-    y = Math.min(Math.max(y, 0), Math.max(0, viewportHeight - height));
-  }
-  return { x: layout.centerX - width / 2, y, width, height, text, fontSize };
+  return sealRadius + Math.max(5, sealRadius * 0.24);
 }
 
 /** 沿相生环从木出发遍历五行；环本身以 `GENERATION_CYCLE` 为唯一真源（LLD §2.3）。 */

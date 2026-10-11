@@ -1,12 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import {
-  BoardReadoutView,
-  BoardView,
-  resolveActionPath,
-} from '../../src/minigame/views/board-view.js';
+import { BoardView, resolveActionPath } from '../../src/minigame/views/board-view.js';
 import { ActionType, PlayerId, Polarity, WuXing } from '../../src/core/types/domain.js';
 import { WUXING_PALETTE } from '../../src/minigame/pixel-art.js';
-import { estimateTextWidth } from '../../src/minigame/text-metrics.js';
 import { boardWith } from '../../tools/BoardFixture.js';
 import { RecordingContext } from './helpers/recording-context.js';
 
@@ -138,12 +133,17 @@ describe('Minigame BoardView: 槽位投影与 getSlot', () => {
     expect(ownYin.angle).toBeCloseTo(START_ANGLE, 9);
     expect(ownYang.angle).toBeCloseTo(START_ANGLE, 9);
 
-    // 对方木：在射线 126°（= 内环木角 - 2 * 72°）的外环主印 (-88.167788, 121.352549) 上，
-    // 阴/阳偏移与内环同一个量。
+    // 对方木：在射线 126°（= 内环木角 - 2 * 72°）的外环主印 (-88.167788, 121.352549) 上。
+    // 阴阳偏移按各自主印半径等比：外环主印更小，偏移也按比例更小。
     const opponentYin = view.getSlot('P2', WuXing.WOOD, Polarity.YIN);
     const opponentYang = view.getSlot('P2', WuXing.WOOD, Polarity.YANG);
-    expect(opponentYin.x).toBeCloseTo(-88.167788 + ownYin.x, 5);
-    expect(opponentYang.x).toBeCloseTo(-88.167788 + ownYang.x, 5);
+    const opponentSeal = sealOf(view, 'P2', WuXing.WOOD);
+    const opponentCenterX = -88.167788;
+    const ownOffset = ownYang.x;
+    const opponentOffset = opponentYang.x - opponentCenterX;
+    expect(opponentYin.x).toBeCloseTo(opponentCenterX - opponentOffset, 5);
+    expect(opponentOffset).toBeGreaterThan(0);
+    expect(opponentOffset / opponentSeal.sealSize).toBeCloseTo(ownOffset / sealRadius, 7);
     expect(opponentYin.y).toBeCloseTo(121.352549, 5);
     expect(opponentYin.angle).toBeCloseTo(START_ANGLE + 3 * RING_STEP, 9);
   });
@@ -340,7 +340,8 @@ describe('Minigame BoardView: 归一分层与进度读数', () => {
 
     const ctx = new RecordingContext();
     view.render(ctx.asContext());
-    expect(ctx.texts.map((entry) => entry.text)).toContain('己 3/5 · 敌 1/5 归一');
+    expect(ctx.texts.map((entry) => entry.text)).toContain('己 3/5');
+    expect(ctx.texts.map((entry) => entry.text)).toContain('敌 1/5');
     // 环级归属徽记：己方盘与对方盘各一个（不是主印上的五行名）。
     expect(ctx.texts.map((entry) => entry.text)).toContain('己');
     expect(ctx.texts.map((entry) => entry.text)).toContain('敌');
@@ -424,7 +425,7 @@ describe('Minigame BoardView: 只读快照投影', () => {
   });
 });
 
-describe('Minigame BoardView: 归元读数版面', () => {
+describe('Minigame BoardView: 环带与归元图例版面', () => {
   /** 全归一 / 全亢极的盘面：半环与归一外环都画到最大，读数的避让按最坏情况算。 */
   const fullGuiYi = boardWith({
     [WuXing.WOOD]: { yin: 1, yang: 1 },
@@ -450,58 +451,81 @@ describe('Minigame BoardView: 归元读数版面', () => {
     [300, 900],
   ];
 
-  /** 点到矩形底板的最近距离（落在矩形内为 0）。 */
-  function distanceToReadout(x: number, y: number, readout: BoardReadoutView): number {
-    const dx = Math.max(readout.x - x, 0, x - (readout.x + readout.width));
-    const dy = Math.max(readout.y - y, 0, y - (readout.y + readout.height));
-    return Math.hypot(dx, dy);
+  /** 盘下方归元图例的两个文字锚点（「己 x/5」「敌 y/5」）。 */
+  function legendTexts(view: BoardView): { x: number; y: number; texts: string[] } {
+    const ctx = new RecordingContext();
+    view.render(ctx.asContext());
+    const own = ctx.texts.find((entry) => /^己 \d\/5$/.test(entry.text));
+    const opponent = ctx.texts.find((entry) => /^敌 \d\/5$/.test(entry.text));
+    expect(own).toBeDefined();
+    expect(opponent).toBeDefined();
+    return {
+      x: ((own?.x ?? 0) + (opponent?.x ?? 0)) / 2,
+      y: ((own?.y ?? 0) + (opponent?.y ?? 0)) / 2,
+      texts: [own?.text ?? '', opponent?.text ?? ''],
+    };
   }
 
-  it('底板宽度由文案推出：字号随主印半径变大，底板跟着变宽（不写死像素宽）', () => {
+  it('归元图例按各环归一个数分列，字号随主印半径变大', () => {
     const narrow = new BoardView();
     narrow.resize(375, 667);
     const wide = new BoardView();
     wide.resize(414, 896);
-
     expect(wide.layout.sealSize).toBeGreaterThan(narrow.layout.sealSize);
-    expect(wide.readout.fontSize).toBeGreaterThan(narrow.readout.fontSize);
-    expect(wide.readout.width).toBeGreaterThan(narrow.readout.width);
-    for (const view of [narrow, wide]) {
-      const { text, fontSize, width, height } = view.readout;
-      // 文案排得下：底板宽度不低于按同一字宽口径估出的文本宽度。
-      expect(width).toBeGreaterThanOrEqual(estimateTextWidth(text, fontSize));
-      expect(height).toBeGreaterThanOrEqual(fontSize);
-    }
+
+    narrow.update(fullGuiYi, fullKangJi);
+    const narrowCtx = new RecordingContext();
+    narrow.render(narrowCtx.asContext());
+    expect(narrowCtx.texts.map((entry) => entry.text)).toContain('己 5/5');
+    expect(narrowCtx.texts.map((entry) => entry.text)).toContain('敌 5/5');
+
+    wide.update(fullGuiYi, fullKangJi);
+    const wideCtx = new RecordingContext();
+    wide.render(wideCtx.asContext());
+    // 图例随视口整体缩放：宽屏的法盘更大，图例的 y（圆心 + 外环 + 主印）也更靠下。
+    // （不断言像素字号：RecordingContext 只能从非 bold 的 font 串里读出数字。）
+    const narrowOwn = narrowCtx.texts.find((entry) => entry.text === '己 5/5');
+    const wideOwn = wideCtx.texts.find((entry) => entry.text === '己 5/5');
+    expect(wideOwn?.y).toBeGreaterThan(narrowOwn?.y ?? 0);
   });
 
-  it('底板与任何主印圆（含半环外沿 sealSize + 4）不相交，且落在视口内', () => {
+  it('归元图例排在对方盘外侧（不压任何主印）且落在视口内', () => {
     for (const [width, height] of VIEWPORTS) {
       const view = new BoardView();
       view.resize(width, height);
       view.update(fullGuiYi, fullKangJi);
-      const readout = view.readout;
       const where = `${String(width)}x${String(height)}`;
       // 十个主印都真的在盘上：下面的不相交断言不是空循环。
       expect(view.elements).toHaveLength(10);
 
-      expect(readout.x, `${where} 左边界`).toBeGreaterThanOrEqual(0);
-      expect(readout.x + readout.width, `${where} 右边界`).toBeLessThanOrEqual(width);
-      expect(readout.y, `${where} 上边界`).toBeGreaterThanOrEqual(0);
-      expect(readout.y + readout.height, `${where} 下边界`).toBeLessThanOrEqual(height);
+      const legend = legendTexts(view);
+      expect(legend.y, `${where} 图例在对方盘外侧`).toBeGreaterThan(
+        view.layout.centerY + view.layout.outerRadius,
+      );
+      expect(legend.y, `${where} 图例上边界`).toBeGreaterThanOrEqual(0);
+      expect(legend.y, `${where} 图例下边界`).toBeLessThanOrEqual(height);
 
       const clearance = view.layout.sealSize + 4;
       for (const seal of view.elements) {
-        const distance = distanceToReadout(seal.x, seal.y, readout);
-        expect(distance, `${where} 的 ${seal.player} ${seal.element} 主印被遮住`).toBeGreaterThan(
-          clearance,
-        );
+        expect(
+          Math.hypot(seal.x - legend.x, seal.y - legend.y),
+          `${where} 的 ${seal.player} ${seal.element} 主印被图例压住`,
+        ).toBeGreaterThan(clearance);
       }
     }
+  });
+
+  it('环级区分落到主印本体：己方盘主印比对方盘大', () => {
+    const view = new BoardView();
+    const own = sealOf(view, 'P1', WuXing.WOOD);
+    const opponent = sealOf(view, 'P2', WuXing.WOOD);
+    expect(own.sealSize).toBeGreaterThan(opponent.sealSize);
+    expect(opponent.sealSize).toBeGreaterThan(0);
   });
 });
 
 describe('Minigame BoardView: 渲染', () => {
-  it('render 画出十个五行名与归元读数（未投影快照也不崩）', () => {
+  it('render 画出十个五行名、环归属徽记与归元图例（未投影快照也不崩）', () => {
     const view = new BoardView();
     const empty = new RecordingContext();
     expect(() => view.render(empty.asContext())).not.toThrow();
@@ -510,21 +534,21 @@ describe('Minigame BoardView: 渲染', () => {
     for (const element of RING_ORDER) {
       expect(texts).toContain(WUXING_PALETTE[element].name);
     }
-    expect(view.readout.text).toBe('己 0/5 · 敌 0/5 归一');
-    expect(texts).toContain(view.readout.text);
+    // 环归属徽记（各一个）与归元图例（各一个）。
+    expect(texts).toContain('己');
+    expect(texts).toContain('敌');
+    expect(texts).toContain('己 0/5');
+    expect(texts).toContain('敌 0/5');
 
-    // 投影后归元读数换文案，且确实画在投影出的底板上。
+    // 投影后图例换文案。
     const populated = new RecordingContext();
     view.update(
       boardWith({ [WuXing.WATER]: { yin: 2, yang: 2 } }),
       boardWith({ [WuXing.WOOD]: { yin: -1, yang: 1 } }),
     );
     expect(() => view.render(populated.asContext())).not.toThrow();
-    const readout = view.readout;
-    expect(readout.text).toBe('己 1/5 · 敌 0/5 归一');
-    const drawn = populated.texts.find((entry) => entry.text === readout.text);
-    expect(drawn).toBeDefined();
-    expect(drawn?.x).toBeCloseTo(readout.x + readout.width / 2, 5);
-    expect(drawn?.y).toBeCloseTo(readout.y + readout.height / 2, 5);
+    const populatedTexts = populated.texts.map((entry) => entry.text);
+    expect(populatedTexts).toContain('己 1/5');
+    expect(populatedTexts).toContain('敌 0/5');
   });
 });

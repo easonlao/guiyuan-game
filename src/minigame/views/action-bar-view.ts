@@ -50,6 +50,8 @@ export class ActionBarView extends Container {
   private readonly buttonsByKey = new Map<string, Button>();
   /** 当前排版顺序的按钮（与 `getAvailableActions()` 顺序一致）。 */
   private readonly buttons: Button[] = [];
+  /** 最近一次排版的实测内容高度（按钮总高 + 行间距）；无按钮时为 0。 */
+  private _contentHeight = 0;
   private readonly unsubscribes: (() => void)[] = [];
 
   public constructor(options: ActionBarViewOptions) {
@@ -70,6 +72,11 @@ export class ActionBarView extends Container {
   /** 当前排版的按钮，顺序与候选动作一致。 */
   public getButtons(): readonly Button[] {
     return this.buttons;
+  }
+
+  /** 最近一次排版的实测内容高度：调用方据此把面板底对齐到安全区，不预留空高。 */
+  public get contentHeight(): number {
+    return this._contentHeight;
   }
 
   /**
@@ -148,6 +155,7 @@ export class ActionBarView extends Container {
   private layout(): void {
     const count = this.buttons.length;
     if (count === 0) {
+      this._contentHeight = 0;
       return;
     }
     const columns = Math.max(1, Math.min(this.maxColumns, count));
@@ -173,6 +181,8 @@ export class ActionBarView extends Container {
       }
       cursor += rowHeight + this.gapY;
     }
+    // cursor 末尾多算了一行间距，扣回去得到实测内容高度。
+    this._contentHeight = cursor - this.gapY;
   }
 }
 

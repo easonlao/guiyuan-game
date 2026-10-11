@@ -26,3 +26,5 @@
 `tests/core/minigame-board-view.test.ts` 整片重写（手算坐标 + 双环几何 + `getSlot(player,…)` 抛错 + 删弦后只剩相生边 / 径向线）；`minigame-game-scene.test.ts` / `minigame-rune-flight-view.test.ts` 的 `getSlot` 调用点与 fixture 同步；新增场景级「双盘同投影」「攻击飞外环、养己飞内环」。
 
 提交 `20fb03f`；合并 `dbc83b5`；产物重建。code-review 后的修复（归元读数避让对方盘主印、`active`→`isActive`、LLD §4.1 补读数与揭牌契约）落在 `9908341`–`1889f15`。
+
+**后续返工**（用户反馈「界面不能看」）：盘上读数底板被盘下环级图例取代，主印本体按环区分尺寸/明暗，环带改为细实线/虚线；契约改动已回写 `docs/LLD.md` §4.1-6。
