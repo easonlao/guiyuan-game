@@ -70,3 +70,7 @@
 - **`.scratch/` 目录形状的历史偏离**（按票面「不重整目录结构」记录，不修）：`.scratch/mutation-honesty-audit.md` 是根下独立审计报告；`.scratch/dead-scoring-code-removal/` 只有 `issues/` 无 `spec.md`；`.scratch/mutation-testing/` 有文档未描述的 `reviews/` 与根下 `00-fix-vitest-runner-separator.md`。另：tracker 文档的 wayfinding 字段（`Type:` / `Status: claimed|resolved`）与现有票写法（`**Status:**` + triage 标签）不一致，属既有偏离，留给 09。
 - **`@supabase/supabase-js` 的遗留后果**：`legacy/src/network/supabaseClient.js:10` 仍 import 它。`legacy/` 被 `tsconfig.json` 排除、lint 也不覆盖，是联机协议参考而非可运行代码（spec 的 Out of Scope），故移除依赖不破坏任何受检路径；但 `legacy/` 从此不能独立运行，这是「废弃 web 路径」的应有结果。
 - **`dist/` 无当前写入者**：`scripts/build-minigame.mjs` 用 `configFile: false` + `outDir: 'minigame'`；`dist/` 条目作为通用构建产物兜底保留。
+
+## Comments
+
+- 2026-10（票 11 落地后）：本节里关于 `legacy/` 的三处描述已失效——票 11 把 `legacy/` 整体删除（`src` / `tests` / `scripts` 从无引用），并反转了 spec 的 Out of Scope。故「`legacy/src/network/supabaseClient.js` 仍 import supabase」「`legacy/` 被 `tsconfig.json` 排除」「`legacy/` 属 spec 的 Out of Scope」三句均不再成立。
