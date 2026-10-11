@@ -1,0 +1,28 @@
+# 01: 法盘同心双环
+
+**What to build:** 屏幕上同时显示己方盘和对方盘——一块法盘改成同心双环：内环恒为己方盘（P1，人类）、外环恒为对方盘（P2，AI），外环相对内环逆时针偏移 2 格，使每根射线上「己方克对方」。删除内环的相克星弦与外圈的阴阳槽位小圆（阴阳状态改由主印左右半环承载），玩家不再面对一块会随半回合静默换身份的盘。攻击动作（破/强破）的飞行落点指向对方环，养己动作（化/强化）落在己方环。
+
+**Blocked by:** None (can start immediately)
+
+**Status:** resolved
+
+几何与接口决策已固化在 `docs/adr/0015-board-dual-ring-inner-outer.md` 与 `docs/LLD.md` §4.1，术语「己方盘 / 对方盘」在 `GLOSSARY.md`。本票是原子契约变更：`getSlot` 加 `player`、`update` 吃双盘，所有调用点必须同票改完才编译绿。
+
+- [x] `BoardView.update` 同时接收己方盘与对方盘两块快照，一次投影双环；不再按当前行动方切换单一棋盘。
+- [x] `BoardView.getSlot(player, element, polarity)` 返回指定某一方、某元素、某极性槽位的投影视图（含父坐标系坐标与角度）；未知玩家/元素抛错。
+- [x] 内环恒为己方盘、外环恒为对方盘；外环逆时针偏移 2 格，每根射线上「己方克对方」且内外不同五行。
+- [x] 删除内环的相克星弦；保留内环相生边，新增跨环径向线（表破/强破的方向）。
+- [x] 删除外圈阴阳槽位小圆；阴阳状态由主印左右半环承载（左=阴、右=阳），等级用形状档位+面积+颜色三重冗余表达（虚空=极细暗弧、道损=断口弧、点亮=实心、加持=双线+圆点计数）。
+- [x] 内外环用环级手段区分（内环暖色底晕+「己」徽记、外环冷色底晕+「敌」徽记），主印本体保持五行本色；归一/亢极按半径分层，并叠加归元进度读数（「己 x/5 · 敌 y/5 归一」）。
+- [x] `RuneFlightView` 飞行目标带 `player`，落点取 `getSlot(player, …)`；攻击类动作飞向对方环，其余飞向己方环。
+- [x] `GameScene` 删除所有按行动方切盘的逻辑（含飞行期切盘），改为一次投影两块盘。
+- [x] 重写板盘测试：按环半径与角度手算坐标，断言双环几何、阴阳投影、归一分层、删弦后只剩相生边+径向线、`getSlot(player,…)` 签名与抛错；同步适配 `minigame-game-scene.test.ts` / `minigame-rune-flight-view.test.ts` 的 `getSlot` 调用点。
+- [x] 场景级测试断言「同一时刻两块盘都在投影」「攻击动作飞向对方环」。
+
+## Answer
+
+法盘已改为同心双环：内环恒为己方盘（P1）、外环恒为对方盘（P2），外环逆时针偏移 2 格（射线 `i` 内环 `ring[i]` / 外环 `ring[(i+2)%5]`，故每根射线内克外）。`BoardView.update(p1Board, p2Board)` 一次投影双盘，`getSlot(player, element, polarity)` 按 `player` 取环；`GameScene` 的「按行动方切盘」与飞行期切盘全部删除，`stateBeforeAction` 快照随之移除。删内环 5 条相克星弦与 10 个阴阳槽位小圆，阴阳改由主印左右半环承载（形状档位 + 面积 + 颜色三重冗余），连线剩 5 条内环相生边 + 5 条跨环径向线；环级徽记（己 / 敌）+ 归元进度读数区分内外环。
+
+`tests/core/minigame-board-view.test.ts` 整片重写（手算坐标 + 双环几何 + `getSlot(player,…)` 抛错 + 删弦后只剩相生边 / 径向线）；`minigame-game-scene.test.ts` / `minigame-rune-flight-view.test.ts` 的 `getSlot` 调用点与 fixture 同步；新增场景级「双盘同投影」「攻击飞外环、养己飞内环」。
+
+提交 `20fb03f`；合并 `dbc83b5`；产物重建。code-review 后的修复（归元读数避让对方盘主印、`active`→`isActive`、LLD §4.1 补读数与揭牌契约）落在 `9908341`–`1889f15`。

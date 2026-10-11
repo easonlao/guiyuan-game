@@ -1,6 +1,6 @@
 # Spec: 法盘同心双环与角色放大
 
-status: ready-for-agent
+status: resolved
 
 > 本 spec 是 `/to-spec` 从一轮 grilling 对话合成的产物。几何与接口决策已落 `docs/adr/0015-board-dual-ring-inner-outer.md` 与 `docs/LLD.md` §4.1，术语已落 `GLOSSARY.md`（己方盘 / 对方盘）。本 spec 不复述这些文档的正文，只固定范围、用户故事与测试口径。
 
