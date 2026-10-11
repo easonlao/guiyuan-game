@@ -16,7 +16,7 @@
 - **决定是「进库」，理由只有一条，而且比看起来弱**：`docs/DEVELOPMENT.md` 让人在微信开发者工具里导入 `minigame/` 目录，文件在库里就不用每次先构建。省下的是一次命令。
 - **不要借参考仓库那个类比。** 它的 `runtime.iife.js` 入库是因为那串字节是**第三方契约**（sha256 写进回放 meta，别人靠它复算历史对局，ADR-0007）。`game.js` 是微信小游戏的 UI 包，没有任何第三方依赖它的确切字节。这不是同一类决定。
 - 进库的风险是**源码改了忘了重新构建，工具里看到的还是旧的**。对账检查就是专门杀这个的。参考仓库 ADR-0007 的 Consequences 也说了「产物与源码可以分叉，因此必须有一道门禁盯着」。
-- **`dist/` 陷阱**：`.gitignore:5` 是无锚点的 `dist/`，产物落进**任何层级**的 `dist/` 都会静默消失。参考仓库的 ADR-0007 专门记过这个坑。落点判定要写死，不能只靠 `.gitignore`。
+- **`dist/` 陷阱**：`.gitignore` 里那条是无锚点的 `dist/`，产物落进**任何层级**的 `dist/` 都会静默消失。参考仓库的 ADR-0007 专门记过这个坑。落点判定要写死，不能只靠 `.gitignore`。
 - `scripts/build-minigame.mjs` 现在是 `outDir: 'minigame'`，构建产物可直接 diff（未压缩），这是对账可行的前提，别顺手打开压缩。
 
 **验证记录：**
@@ -29,6 +29,8 @@
 - **接进验收**：`package.json` 的 `verify` 追加为第四段（`check:quick` → `typecheck` → `test` → `check:artifact`）；`check:artifact` 单列为命名脚本。CI 快链跑 `npm run verify`，因此自动覆盖。
 - **产物不压缩**：构建配置保持 `minify: false`，入库的那份在 diff 里可读（ADR 0014 记为「入库这个决定能被人复核」的前提）。
 - **重建入库产物**：`minigame/game.js` 此前停在**旧源码**（07 票留的账，见 07 验证记录末条）。本次重建并入库，入库字节 = 现打字节。
+- **复核跟进（Standards 轴）**：落点这一个事实原先写在三处（`ARTIFACT_PATH`、产物文件名、`outDir: 'minigame'`）——把 `outDir` 改到 `dist/` 下时，落点判定仍只看常量、照样绿，正是本票要防的洞。现改为 `outDir: dirname(ARTIFACT_PATH)`、`fileName: () => basename(ARTIFACT_PATH)`，落点只有一个家。对账改为 `Buffer.equals` 真逐字节比（原先读 utf8 字符串再比）；`catch` 只吞 `ENOENT`，其余 fs 错误照抛。HLD §4.4「验收入口只有两条命名脚本」改为「验收分两档，每档一条命名脚本」，与新文档化的 `check:artifact` 对齐。
+- **复核跟进（Spec 轴）**：构建面重构确是本票的额外改动（票只写「别顺手打开压缩」）——理由记在 ADR 0014 后果（写回侧与核查侧必须共用同一次构建调用，否则两条构建命令会分叉）；重构引入的 `logLevel: 'silent'` 曾把 `dev:minigame` 的监听输出一起静音，现改为门禁侧传 `silent`、`dev:minigame` 保持 vite 默认 `info`。ADR 0014 里误抄的 `.gitignore:5` 行号改为不带行号（长期文档不钉行号）。
 
 红/绿实证：
 
