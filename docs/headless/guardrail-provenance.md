@@ -81,7 +81,7 @@
 
 - **冲突**：`docs/GDD.md` §2.1 旧表与 `src/core/logic/ScoreCalculator.ts` 相差 1.5×–10×，且遗漏稀有度加成与 ADR 0002 的 2.5× 攻击强化。
 - **处置**：**修文档**。GDD §2.1 已改为与 `POINTS_CONFIG` 一致，并补上稀有度加成（`RARITY_MULTIPLIER = 1.5`、`NO_RARITY_ACTIONS` 黑名单）与敌方状态破坏（`CAUSE_DMG` / `BREAK_LIGHT` / `WEAKEN`，ADR 0002）两套机制。详见 §3。
-- **残留（已由 ADR 0011 处置）**：`ScoreCalculator.ts` 仍存在第三份真相 `DEFAULT_SCORE_CONFIG`（旧简化接口，生产路径未用），且 `applyRarityBonus` 在 TS 核心定义了但**生产路径未调用**；另有 legacy JS 计分路径（`legacy/src/state/StateScoreRecorder.js`，含稀有度取整，见 `docs/archive/headless-rule-baseline.md`）。工单 05 的旋钮普查把稀有度整条链标为死参数；ADR 0011「决策 3」维持「接线或删除另立工单」，并已同步 `docs/GDD.md` §2.1 注明该机制未接线。
+- **残留（已由 ADR 0011 处置）**：`ScoreCalculator.ts` 仍存在第三份真相 `DEFAULT_SCORE_CONFIG`（旧简化接口，生产路径未用），且 `applyRarityBonus` 在 TS 核心定义了但**生产路径未调用**；另有 legacy JS 计分路径（`legacy/src/state/StateScoreRecorder.js`，含稀有度取整，见 `docs/archive/headless-rule-baseline.md`；该路径已随 `legacy/` 于 2026-10 删除）。工单 05 的旋钮普查把稀有度整条链标为死参数；ADR 0011「决策 3」维持「接线或删除另立工单」，并已同步 `docs/GDD.md` §2.1 注明该机制未接线。
 
 ### C5. 测试注释/标题与断言不符 — **已修测试（注释层）**
 
@@ -119,4 +119,4 @@
 
 > 上述护栏带描述的是**规则改动前的现状**，不是新游戏的目标值。ADR 0011 决定路线为「修规则」；规则改动落地后必须用测量台复跑并重设全部护栏带。
 
-> 计分模块死代码 / 第三份计分真相（`DEFAULT_SCORE_CONFIG`、未调用的 `applyRarityBonus`、legacy JS 路径）不在本溯源表处置范围；工单 05 旋钮普查已将其列为死参数，ADR 0011「决策 3」维持「接线或删除另立工单」。
+> 计分模块死代码 / 第三份计分真相（`DEFAULT_SCORE_CONFIG`、未调用的 `applyRarityBonus`、已删除的 legacy JS 路径）不在本溯源表处置范围；工单 05 旋钮普查已将其列为死参数，ADR 0011「决策 3」维持「接线或删除另立工单」。

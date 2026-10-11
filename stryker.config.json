@@ -10,7 +10,6 @@
     ".agents/**",
     ".scratch/**",
     ".pi/**",
-    "legacy/**",
     "dist/**"
   ],
   "reporters": ["progress", "clear-text", "json"],
