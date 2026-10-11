@@ -20,6 +20,7 @@ import {
   ActionPayload,
   ActionType,
   GameState,
+  NodeLevel,
   PlayerId,
   Polarity,
   TianGanInfo,
@@ -76,6 +77,8 @@ export interface GameSceneOptions {
   readonly aiThinkDelay?: number;
   /** 角色表情反馈的持续时间（秒），默认 0.6。 */
   readonly expressionHold?: number;
+  /** 归一庆祝的持续时间（秒），默认 1.2。 */
+  readonly celebrateHold?: number;
   /** 天干降临动效时长（秒），默认 0.44。 */
   readonly entranceDuration?: number;
   /** 符文飞行动效时长（秒），默认 0.55。 */
@@ -96,6 +99,7 @@ const DEFAULT_SAFE_BOTTOM = 12;
 const DEFAULT_AUTO_EXECUTE_DELAY = 0.75;
 const DEFAULT_AI_THINK_DELAY = 0.55;
 const DEFAULT_EXPRESSION_HOLD = 0.6;
+const DEFAULT_CELEBRATE_HOLD = 1.2;
 /** 底部操作台高度（含按钮最多两行）。 */
 const ACTION_BAR_HEIGHT = 130;
 const ACTION_BAR_MARGIN = 14;
@@ -162,6 +166,7 @@ export class GameScene extends Container {
   private readonly autoExecuteDelay: number;
   private readonly aiThinkDelay: number;
   private readonly expressionHold: number;
+  private readonly celebrateHold: number;
   private readonly entranceDuration: number;
   private readonly flightDuration: number;
   private readonly impactDuration: number;
@@ -198,6 +203,7 @@ export class GameScene extends Container {
     this.autoExecuteDelay = options.autoExecuteDelay ?? DEFAULT_AUTO_EXECUTE_DELAY;
     this.aiThinkDelay = options.aiThinkDelay ?? DEFAULT_AI_THINK_DELAY;
     this.expressionHold = options.expressionHold ?? DEFAULT_EXPRESSION_HOLD;
+    this.celebrateHold = options.celebrateHold ?? DEFAULT_CELEBRATE_HOLD;
     this.entranceDuration = options.entranceDuration ?? 0.44;
     this.flightDuration = options.flightDuration ?? 0.55;
     this.impactDuration = options.impactDuration ?? 0.35;
@@ -300,6 +306,8 @@ export class GameScene extends Container {
     this._turnManager = new TurnManager({ prng });
     this.lastShowdown = null;
     this.actionInFlight = null;
+    // 终局胜 / 负的持续姿势不跨局残留。
+    this.characters.resetFeedback();
     this.actionBar.dispose();
     this.actionBar.removeFromParent();
     this.actionBar = this.buildActionBar(this._turnManager);
@@ -466,6 +474,27 @@ export class GameScene extends Container {
     });
   }
 
+  /**
+   * `node:stateChanged`：某侧由 <1 变 ≥1 且同一节点对侧已 ≥1 时该节点达成归一——
+   * 按归属方在对应角色上播庆祝（票 03）。事件派发时 `turnManager.getState()` 已是新状态。
+   */
+  private handleNodeStateChanged(event: {
+    player: PlayerId;
+    element: WuXing;
+    polarity: Polarity;
+    prevLevel: NodeLevel;
+    newLevel: NodeLevel;
+  }): void {
+    if (event.prevLevel >= 1 || event.newLevel < 1) {
+      return;
+    }
+    const node = this._turnManager.getState().players[event.player].board[event.element];
+    const otherSide = event.polarity === Polarity.YIN ? node.yang : node.yin;
+    if (otherSide >= 1) {
+      this.characters.setExpression(event.player, 'celebrate', this.celebrateHold);
+    }
+  }
+
   /** 飞行结束：投影结算后的双盘，然后进入下一回合或终局。 */
   private afterFlight(): void {
     const state = this._turnManager.getState();
@@ -513,6 +542,8 @@ export class GameScene extends Container {
           this.runeFlight.flyTo('P2', element, polarity, {
             onComplete: () => {
               this.board.update(state.players.P1.board, state.players.P2.board);
+              // 落点后才定格终局姿势，揭牌期间保留施法 / 受击的揭牌动效。
+              this.showFinalPoses(state);
             },
           });
         },
@@ -524,7 +555,18 @@ export class GameScene extends Container {
       state.winner === 'P1' ? '★ 五行归元 ★ 玩家大胜！' : '天道通玄 · 遗憾惜败！',
       describeEndReason(state.endReason),
     );
+    this.showFinalPoses(state);
     this.projectBoards(state);
+  }
+
+  /** 终局姿势：胜方「胜」、负方「负」，持续到重开（`restart()` 清掉）；平局不摆姿势。 */
+  private showFinalPoses(state: GameState): void {
+    const winner = state.winner;
+    if (winner !== 'P1' && winner !== 'P2') {
+      return;
+    }
+    this.characters.setExpression(winner, 'win', 0);
+    this.characters.setExpression(opponentOf(winner), 'lose', 0);
   }
 
   /** 回合开始的播报：连动标记、天干名与「势在必行」的自动流转提示。 */
@@ -600,6 +642,7 @@ export class GameScene extends Container {
     this.unsubscribes.push(
       bus.on('action:execute', (event) => this.handleActionExecute(event)),
       bus.on('action:executed', (event) => this.handleActionExecuted(event)),
+      bus.on('node:stateChanged', (event) => this.handleNodeStateChanged(event)),
       bus.on('showdown:draw', (event) => {
         this.lastShowdown = { tianGan: event.tianGan, success: event.success };
       }),

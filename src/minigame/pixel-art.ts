@@ -46,8 +46,24 @@ export function drawPixelBox(
   drawPixelRect(ctx, x + w - pixelSize, y, pixelSize, h, borderColor);
 }
 
+/** 角色精灵的逻辑像素尺寸（屏幕像素 / 逻辑像素）：放大靠提高逻辑分辨率重画，不再由视图缩放。 */
+export const CHARACTER_PIXEL_SIZE = 4;
+
 /**
- * 绘制 16-bit 像素角色 (程序化网格渲染)
+ * 角色精灵的包围盒（相对绘制原点的逻辑像素，取全部姿势与呼吸 / 跳跃浮动的并集）。
+ * 屏幕尺寸 = 逻辑尺寸 × `CHARACTER_PIXEL_SIZE`；视图据此把角色在头像框内居中。
+ */
+export const CHARACTER_SPRITE_BOUNDS = {
+  left: -10.5,
+  right: 10.5,
+  top: -15,
+  bottom: 12,
+} as const;
+
+/**
+ * 绘制全身像素角色：原点在腰腹，以 `CHARACTER_PIXEL_SIZE` 为逻辑像素、约 26 逻辑像素高
+ * （屏幕上约 100–120px）。七个姿势各自摆姿：待机垂手呼吸、攻击出掌、结印合掌、受击护头，
+ * 以及归一庆祝举臂跳跃、终局胜单臂振臂、终局负垂首垂臂。己方朝右、对方朝左（不靠 `ctx.scale` 镜像）。
  */
 export function drawPixelCharacter(
   ctx: any,
@@ -57,72 +73,183 @@ export function drawPixelCharacter(
   state: CharacterActionState,
   animTick: number,
 ): void {
-  const p = 3; // 每个逻辑像素的屏幕像素大小
+  const p = CHARACTER_PIXEL_SIZE;
+  /** 面向：己方朝右（+1）、对方朝左（-1）。 */
+  const dir = isPlayer ? 1 : -1;
 
-  // 呼吸/微动偏移
-  let bobY = 0;
-  if (state === 'idle') {
-    bobY = Math.sin(animTick * 0.08) * 3;
-  } else if (state === 'attack') {
-    bobY = -2;
-  } else if (state === 'hurt') {
-    bobY = 4;
+  // 呼吸 / 动作浮动（屏幕像素），幅度计入 `CHARACTER_SPRITE_BOUNDS`。
+  let bobY: number;
+  switch (state) {
+    case 'attack':
+      bobY = -2;
+      break;
+    case 'hurt':
+      bobY = 2;
+      break;
+    case 'cast':
+      bobY = Math.sin(animTick * 0.06) * 1.5;
+      break;
+    case 'celebrate':
+      bobY = -Math.abs(Math.sin(animTick * 0.12)) * 3;
+      break;
+    case 'win':
+      bobY = Math.sin(animTick * 0.08) * 1.5;
+      break;
+    case 'lose':
+      bobY = 2;
+      break;
+    default:
+      bobY = Math.sin(animTick * 0.08) * 2;
+      break;
   }
 
   // 角色基础色彩
   const robeColor = isPlayer ? '#3182ce' : '#805ad5';
   const robeTrim = isPlayer ? '#63b3ed' : '#b794f4';
+  const robeShade = isPlayer ? '#2c5282' : '#553c9a';
   const skinColor = '#fed7aa';
+  const skinShade = '#f6ad55';
   const hairColor = isPlayer ? '#1a202c' : '#edf2f7';
+  const eyeColor = isPlayer ? '#2d3748' : '#e53e3e';
+  const mouthColor = '#c05621';
   const beltColor = isPlayer ? '#d69e2e' : '#e53e3e';
+  const shoeColor = '#1a202c';
+  const glowColor = isPlayer ? '#f6e05e' : '#e9d8fd';
+
+  /** 按逻辑像素落笔。 */
+  const px = (lx: number, ly: number, lw: number, lh: number, color: string): void => {
+    drawPixelRect(ctx, lx * p, ly * p, lw * p, lh * p, color);
+  };
+  /** 把横向坐标翻到面向的一侧：己方取原值、对方镜像。 */
+  const mx = (lx: number, lw: number): number => (dir > 0 ? lx : -lx - lw);
 
   ctx.save();
   ctx.translate(x, y + bobY);
-  if (!isPlayer) {
-    ctx.scale(-1, 1); // 敌方水平镜像朝左
+
+  // 1. 下装：道袍下摆 + 滚边 + 中缝 + 鞋履（庆祝时双足分开，跳起来）
+  px(-6.5, 3.5, 13, 6, robeColor);
+  px(-6.5, 8.5, 13, 1, robeTrim);
+  px(-1, 3.5, 2, 5, robeTrim);
+  if (state === 'celebrate') {
+    px(-5.5, 9.5, 3.5, 2, shoeColor);
+    px(2, 9.5, 3.5, 2, shoeColor);
+  } else {
+    px(-4.5, 9.5, 3.5, 2, shoeColor);
+    px(1, 9.5, 3.5, 2, shoeColor);
   }
 
-  // 1. 发髻 / 飘发
-  drawPixelRect(ctx, -p * 2, -p * 11, p * 4, p * 3, hairColor);
-  if (!isPlayer) {
-    // 敌方白发披肩
-    drawPixelRect(ctx, -p * 4, -p * 8, p * 2, p * 6, hairColor);
+  // 2. 腰带与绦结
+  px(-5.5, 2, 11, 2, beltColor);
+  px(-1.5, 2, 3, 2.5, robeShade);
+
+  // 3. 躯干道袍（肩线略宽）与交领
+  px(-5.5, -4.5, 11, 2, robeColor);
+  px(-5, -4.5, 10, 6.5, robeColor);
+  px(-2.5, -5, 5, 1.5, robeTrim);
+  px(-1, -4.5, 2, 5, robeTrim);
+
+  // 4. 脖颈与头部（垂首时整个头下沉）
+  const headDrop = state === 'lose' ? 1.5 : state === 'hurt' ? 0.5 : 0;
+  const headY = -13 + headDrop;
+  px(-1.5, -6.5, 3, 2, skinShade);
+  px(-4.5, headY, 9, 8, skinColor);
+
+  // 5. 发型：己方道髻发簪，对方白发披肩
+  px(-5, headY - 1, 10, 2.5, hairColor);
+  px(-5, headY + 1.5, 10, 1, hairColor);
+  if (isPlayer) {
+    px(mx(3, 3), headY + 0.5, 3, 0.75, '#d69e2e');
   } else {
-    // 玩家道士发簪
-    drawPixelRect(ctx, 0, -p * 12, p * 2, p * 2, '#d69e2e');
+    px(-6.5, headY + 1.5, 2, 9, hairColor);
+    px(4.5, headY + 1.5, 2, 9, hairColor);
   }
 
-  // 2. 脸部与眼睛
-  drawPixelRect(ctx, -p * 3, -p * 8, p * 6, p * 5, skinColor);
-  const eyeColor = isPlayer ? '#2d3748' : '#e53e3e';
-  drawPixelRect(ctx, p * 1, -p * 7, p * 1.5, p * 1.5, eyeColor);
-
-  // 3. 躯干道袍
-  drawPixelRect(ctx, -p * 4, -p * 3, p * 8, p * 7, robeColor);
-  drawPixelRect(ctx, -p * 1, -p * 3, p * 2, p * 7, robeTrim);
-
-  // 4. 腰带
-  drawPixelRect(ctx, -p * 4, p * 1, p * 8, p * 2, beltColor);
-
-  // 5. 飘拂下摆
-  drawPixelRect(ctx, -p * 5, p * 4, p * 10, p * 5, robeColor);
-  drawPixelRect(ctx, -p * 3, p * 9, p * 6, p * 2, '#1a202c'); // 鞋履
-
-  // 6. 手臂与动作
-  if (state === 'attack') {
-    // 出掌推拳向前
-    drawPixelRect(ctx, p * 3, -p * 2, p * 6, p * 3, robeColor);
-    drawPixelRect(ctx, p * 8, -p * 2, p * 3, p * 3, skinColor);
-  } else if (state === 'cast') {
-    // 举手结印
-    drawPixelRect(ctx, p * 2, -p * 6, p * 3, p * 5, robeColor);
-    drawPixelRect(ctx, p * 2, -p * 8, p * 3, p * 2, skinColor);
-  } else if (state === 'hurt') {
-    // 受击抱头/后退
-    drawPixelRect(ctx, -p * 3, -p * 5, p * 3, p * 4, robeColor);
+  // 6. 表情：笑眼（庆祝 / 胜）、闭目（受击 / 负）、常态圆眼
+  const eyeX = mx(1, 2);
+  if (state === 'celebrate' || state === 'win') {
+    px(eyeX - 0.5, headY + 3.5, 1, 0.75, eyeColor);
+    px(eyeX + 0.5, headY + 2.75, 1, 0.75, eyeColor);
+    px(eyeX + 1.5, headY + 3.5, 1, 0.75, eyeColor);
+  } else if (state === 'hurt' || state === 'lose') {
+    px(eyeX - 0.5, headY + 3.25, 3, 0.75, eyeColor);
   } else {
-    // 待机自然垂放
-    drawPixelRect(ctx, p * 2, -p * 1, p * 2.5, p * 4, robeColor);
+    px(eyeX, headY + 2.75, 2, 2, eyeColor);
+    px(eyeX + 0.5, headY + 3.25, 0.75, 0.75, '#ffffff');
+  }
+  if (state === 'celebrate' || state === 'win') {
+    px(mx(0, 2), headY + 5.5, 2, 1, mouthColor);
+  } else if (state === 'lose') {
+    px(mx(0.5, 1.5), headY + 6, 1.5, 0.5, mouthColor);
+  } else {
+    px(mx(0, 1.5), headY + 6, 1.5, 0.5, mouthColor);
+  }
+
+  // 7. 手臂与姿势
+  switch (state) {
+    case 'attack': {
+      // 出掌：前臂向前推出，后臂后摆
+      px(mx(4, 4.5), -2.5, 4.5, 3, robeColor);
+      px(mx(8.5, 2), -2.5, 2, 3, skinColor);
+      px(mx(-7.5, 3), -3.5, 3, 5, robeShade);
+      break;
+    }
+    case 'cast': {
+      // 结印：双手于胸前合拢，掌间透出印光
+      px(mx(1.5, 2.5), -5, 2.5, 5, robeColor);
+      px(mx(-4, 2.5), -5, 2.5, 5, robeShade);
+      px(mx(1.5, 2.5), -6.5, 2.5, 1.5, skinColor);
+      px(mx(-4, 2.5), -6.5, 2.5, 1.5, skinColor);
+      px(mx(-0.5, 1), -7.5, 1, 1, glowColor);
+      break;
+    }
+    case 'celebrate': {
+      // 归一庆祝：双臂高举、周身星光
+      px(mx(4, 2.5), -12.5, 2.5, 8.5, robeColor);
+      px(mx(-6.5, 2.5), -12.5, 2.5, 8.5, robeShade);
+      px(mx(4, 2.5), -14, 2.5, 1.5, skinColor);
+      px(mx(-6.5, 2.5), -14, 2.5, 1.5, skinColor);
+      px(mx(7, 1), -11, 1, 1, glowColor);
+      px(mx(-8, 1), -9, 1, 1, glowColor);
+      px(mx(6.5, 1), 0.5, 1, 1, glowColor);
+      break;
+    }
+    case 'win': {
+      // 终局胜：单臂高举振臂，另一手叉腰
+      px(mx(4, 2.5), -12.5, 2.5, 8.5, robeColor);
+      px(mx(4, 2.5), -14, 2.5, 1.5, skinColor);
+      px(mx(-6.5, 3), -1.5, 3, 4.5, robeColor);
+      px(mx(-6.5, 3), -3, 3, 1.5, skinColor);
+      break;
+    }
+    case 'hurt': {
+      // 受击：双手护头、身形下挫
+      px(mx(3, 3), -11, 3, 6, robeColor);
+      px(mx(-6, 3), -11, 3, 6, robeShade);
+      px(mx(3, 3), -12.5, 3, 1.5, skinColor);
+      px(mx(-6, 3), -12.5, 3, 1.5, skinColor);
+      break;
+    }
+    case 'lose': {
+      // 终局负：双臂垂落
+      px(mx(5, 2.5), -2, 2.5, 6.5, robeShade);
+      px(mx(-7.5, 2.5), -2, 2.5, 6.5, robeShade);
+      px(mx(5, 2.5), 4.5, 2.5, 1.5, skinColor);
+      px(mx(-7.5, 2.5), 4.5, 2.5, 1.5, skinColor);
+      break;
+    }
+    case 'idle': {
+      // 待机：双臂自然垂放
+      px(mx(5, 2.5), -4, 2.5, 7, robeColor);
+      px(mx(-7.5, 2.5), -4, 2.5, 7, robeShade);
+      px(mx(5, 2.5), 3, 2.5, 1.5, skinColor);
+      px(mx(-7.5, 2.5), 3, 2.5, 1.5, skinColor);
+      break;
+    }
+    default: {
+      // 类型穷举保护：新增姿势必须显式给画法，不许静默落回待机。
+      const unhandled: never = state;
+      throw new Error(`未处理的角色姿势：${String(unhandled)}`);
+    }
   }
 
   ctx.restore();
