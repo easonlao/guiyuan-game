@@ -42,3 +42,4 @@
 
 - `npm run setup:hooks` → `git config core.hooksPath` = `.githooks`。
 - 清空 `core.hooksPath` 后 `npm install` → `prepare` 自动把它设回 `.githooks`，`package-lock.json` 未被改动。
+- 干净克隆端到端（`git clone` 到 /tmp）：克隆后 `core.hooksPath` 为空 → `npm install` 后变 `.githooks`；在克隆里提交带 trailer 的信息被剥离、`COMMIT_MSG_MODE=fail` 判红退出 1。
