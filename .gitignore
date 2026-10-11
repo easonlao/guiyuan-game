@@ -1,49 +1,45 @@
-# Dependencies
-node_modules
+# 本文件是「什么不进版本库」的边界清单，不是分类清单。
+# 每条规则都要能回答「为什么不进库」；写不出理由的条目就该删。
+# 不进库的判据只有四类：可再生（构建产物 / 缓存 / 索引）、本机私有（编辑器 / 开发者工具）、
+# 会漂移或含凭证（环境变量）、会被工具覆盖（.pi/skills）。
+# `.scratch/` 为何反过来必须入库，见 docs/agents/issue-tracker.md。
 
-# Build outputs
+# 依赖：体积大、含平台相关二进制，由 package-lock.json + npm ci 重建
+node_modules/
+
+# 构建产物：打包生成，可由源码重建（当前小游戏构建输出到 minigame/，此条覆盖其他工具的默认输出）
 dist/
-dist-ssr/
-*.local
+
+# Vitest 运行缓存：每次测试重算
 .vitest/
 
-# Environment variables (sensitive)
+# 环境变量：可能含凭证，且按机器不同。本项目当前无环境变量，保留是为防止将来误提交
 .env
 .env.local
 .env.*.local
 
-# Project-Brain and Claude data (local only)
-.keeper/
-.claude/
-.scratch/
-.pi/
-.agents/
-.worktrees/
+# Stryker 沙箱与日志：变异体复制进沙箱后再插桩，不属于源码树
+.stryker-tmp/
+stryker.log
 
-# Regenerable codegraph index
-.codegraph/
-
-# Mutation testing reports (Stryker)
+# 变异/扫描报告：每次重算的落盘快照，可由 npm run mutation 重建
 reports/
 
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# codegraph 索引：由源码重建，且记录本机绝对路径
+.codegraph/
 
-# Editor directories and files
+# 编辑器本机设置：与项目内容无关
 .vscode/
 .idea/
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
 
-# OS
-Thumbs.db
+# 微信开发者工具的本机私有设置：记录开发者本机的 libVersion 与编译开关，因机器而异
+minigame/project.private.config.json
+
+# pi 技能：更新时会被覆盖，来源与 hash 由 skills-lock.json 记录
+.pi/skills/
+
+# 工具自动注册的插件元数据（含 codegraph 的 MCP 配置）：无仓库内引用，可由工具重建
+.agents/
+
+# 子代理工作树：临时检出，用完即删
+.worktrees/
