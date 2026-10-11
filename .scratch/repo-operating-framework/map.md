@@ -17,6 +17,7 @@
 ## Decisions so far
 
 - [01: 版本库边界与任务层规格](issues/01-version-control-boundary.md)：`.scratch/` 入库；`.gitignore` 重写为有理由的边界清单（`.pi/` 只排 `.pi/skills/`，`.agents/` 整目录排除）；三份 codegraph MCP 配置收敛到 `.pi/mcp.json`；五项废弃 web 残骸（`vite.config.js`、`@supabase/supabase-js`、`wrangler.toml`、`public/vite.svg`、`.env.example`）判定为删。已验证 `npm test` 39 文件 / 728 用例全绿。
+- [10: `.scratch/archive` 按 feature 目录归位](issues/10-archive-normalization.md)：7 个根下散文件收进 `headless-strategy-evaluation/`、`balance-diagnostics/`、`core-engine/wayfinder/`；archive 根下不再有游离文件。
 
 ## Tickets & Frontier
 
@@ -30,6 +31,7 @@
 - [ ] [07: 包边界——没声明就不能用](issues/07-package-boundary.md) (Blocked by: 06)
 - [ ] [08: 产物边界](issues/08-artifact-boundary.md) (Blocked by: 05)
 - [ ] [09: 目录约定与文档对账](issues/09-directory-convention-and-doc-reconciliation.md) (Blocked by: 04)
+- [x] [10: `.scratch/archive` 按 feature 目录归位](issues/10-archive-normalization.md)
 
 ## 依赖图
 
