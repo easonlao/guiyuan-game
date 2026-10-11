@@ -1,4 +1,6 @@
 import { GameManager } from './game-manager.js';
+import { Container } from './scene/container.js';
+import { InputManager, TouchEventLike } from './scene/input-manager.js';
 
 // 声明微信小游戏全局对象
 declare const wx: {
@@ -17,7 +19,8 @@ declare const wx: {
       height: number;
     };
   };
-  onTouchStart: (callback: (e: any) => void) => void;
+  onTouchStart: (callback: (e: TouchEventLike) => void) => void;
+  onTouchEnd: (callback: (e: TouchEventLike) => void) => void;
 };
 
 export function initMiniGame(): void {
@@ -41,12 +44,17 @@ export function initMiniGame(): void {
   const game = new GameManager();
   game.resize(windowWidth, windowHeight, pixelRatio, safeTop, safeBottom);
 
+  // 场景树根舞台：业务视图（BoardView / ActionBarView / …）由后续票挂载到它下面。
+  const stage = new Container();
+  const input = new InputManager(stage);
+  input.bindTouchEvents(wx);
+
   console.log('[Guiyuan] 左右对抗像素风对局初始化成功！');
 
-  // 绑定微信触摸输入
-  wx.onTouchStart((e: any) => {
-    if (e.touches && e.touches.length > 0) {
-      const touch = e.touches[0];
+  // 绑定微信触摸输入（旧命令式实现；随场景树接管逐步退场）
+  wx.onTouchStart((e: TouchEventLike) => {
+    const touch = e.touches?.[0];
+    if (touch) {
       game.handleTouch(touch.clientX, touch.clientY);
     }
   });
@@ -55,6 +63,7 @@ export function initMiniGame(): void {
   function loop(): void {
     game.update();
     game.render(ctx);
+    stage.render(ctx);
     if (typeof requestAnimationFrame !== 'undefined') {
       requestAnimationFrame(loop);
     }
