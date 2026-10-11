@@ -20,7 +20,7 @@
  * 相关既有测试（本文件建立在其上，不重复）：
  *   - tests/core/headless-config-injection.test.ts 已锁定「单一 scoreConfig 经权重模板同时到达解析器与 AI 估值器」
  *     与「显式传入已构造策略时配置不改写其估值器」两类行为；本文件的 disconnected 分支复用后者。
- *   - tests/core/headless-config-injection.test.ts 已确认 GameManager 的 isBoardOnly 会影响 AI 决策；
+ *   - tests/core/headless-config-injection.test.ts 已确认 GameScene 的 isBoardOnly 会影响 AI 决策；
  *     本文件在「两个入口」小节确认无头入口，并引用该用例覆盖游戏内入口。
  *
  * 转交 Ticket 05（死旋钮清单）：见文件末尾的 scoreConfig 子项普查。
@@ -490,7 +490,7 @@ describe('候选接缝选项：isExtraTurn 过滤爆发候选（连动锁）', (
 });
 
 // ---------------------------------------------------------------------------
-// 两个入口：游戏内 (GameManager / TurnManager) 与无头
+// 两个入口：游戏内 (GameScene / TurnManager) 与无头
 // ---------------------------------------------------------------------------
 
 describe('注入同时覆盖游戏内回合管理与无头推演两个入口', () => {
