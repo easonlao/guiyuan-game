@@ -965,6 +965,14 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     return actions;
   }
+  var TurnPhase = /* @__PURE__ */ ((TurnPhase2) => {
+    TurnPhase2["START_TURN"] = "START_TURN";
+    TurnPhase2["EXECUTE_ACTION"] = "EXECUTE_ACTION";
+    TurnPhase2["RESOLVE_BURST"] = "RESOLVE_BURST";
+    TurnPhase2["END_TURN"] = "END_TURN";
+    TurnPhase2["GAME_OVER"] = "GAME_OVER";
+    return TurnPhase2;
+  })(TurnPhase || {});
   class TurnManager {
     constructor(options = {}) {
       __publicField(this, "state");
@@ -1696,73 +1704,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     ctx.restore();
   }
-  function drawWuXingSeal(ctx, x, y, radius, element, yinLevel, yangLevel, isGuiYi, animTick) {
-    const cfg = WUXING_PALETTE[element];
-    ctx.fillStyle = "#111827";
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-    const drawHalfArc = (isLeft, level) => {
-      ctx.save();
-      ctx.beginPath();
-      const startAngle = isLeft ? Math.PI * 0.5 : -Math.PI * 0.5;
-      const endAngle = isLeft ? Math.PI * 1.5 : Math.PI * 0.5;
-      ctx.arc(x, y, radius - 2, startAngle, endAngle);
-      if (level === -1) {
-        ctx.strokeStyle = "#742a2a";
-        ctx.lineWidth = 4;
-        ctx.stroke();
-      } else if (level === 0) {
-        ctx.strokeStyle = "#374151";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      } else if (level === 1) {
-        ctx.strokeStyle = cfg.main;
-        ctx.lineWidth = 4;
-        ctx.stroke();
-      } else if (level === 2) {
-        ctx.strokeStyle = "#f6e05e";
-        ctx.lineWidth = 6;
-        ctx.stroke();
-      }
-      ctx.restore();
-    };
-    drawHalfArc(true, yinLevel);
-    drawHalfArc(false, yangLevel);
-    if (isGuiYi) {
-      ctx.save();
-      const rot = animTick * 0.05;
-      ctx.translate(x, y);
-      ctx.rotate(rot);
-      ctx.strokeStyle = "#ecc94b";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(-radius * 0.4, -radius * 0.4, radius * 0.8, radius * 0.8);
-      ctx.restore();
-    }
-    ctx.fillStyle = cfg.light;
-    ctx.font = "bold 12px monospace";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(cfg.name, x, y);
-    ctx.font = "8px monospace";
-    ctx.fillStyle = yinLevel > 0 ? "#9ae6b4" : yinLevel === -1 ? "#feb2b2" : "#6b7280";
-    ctx.fillText("阴", x - radius - 5, y);
-    ctx.fillStyle = yangLevel > 0 ? "#9ae6b4" : yangLevel === -1 ? "#feb2b2" : "#6b7280";
-    ctx.fillText("阳", x + radius + 5, y);
-  }
-  function drawTouchButton(ctx, btn, isSelected) {
-    const borderColor = btn.isBurst ? "#f6e05e" : "#4b5563";
-    const bgColor = "#1a202c";
-    drawPixelBox(ctx, btn.x, btn.y, btn.width, btn.height, bgColor, borderColor, 2);
-    ctx.fillStyle = btn.color;
-    ctx.font = "bold 14px monospace";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillText(btn.label, btn.x + btn.width / 2, btn.y + 20);
-    ctx.fillStyle = "#9ca3af";
-    ctx.font = "10px monospace";
-    ctx.fillText(btn.subLabel, btn.x + btn.width / 2, btn.y + 36);
-  }
   function drawCenterTianGanRune(ctx, centerX, centerY, tg, mode, animTick) {
     const elemCfg = WUXING_PALETTE[tg.element] ?? WUXING_PALETTE[WuXing.WOOD];
     const polarityName = tg.polarity === Polarity.YANG ? "阳" : "阴";
@@ -1874,52 +1815,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     ctx.restore();
   }
-  function drawFlyingEnergy(ctx, flyer) {
-    ctx.save();
-    const { currentX, currentY, color, lightColor, mode, trail } = flyer;
-    if (mode === "pixel") {
-      trail.forEach((t) => {
-        ctx.globalAlpha = Math.max(0, t.alpha);
-        const s = t.size || 3;
-        drawPixelRect(ctx, t.x - s / 2, t.y - s / 2, s, s, color);
-      });
-      ctx.globalAlpha = 1;
-      const cx = Math.floor(currentX);
-      const cy = Math.floor(currentY);
-      drawPixelRect(ctx, cx - 4, cy - 2, 8, 4, color);
-      drawPixelRect(ctx, cx - 2, cy - 4, 4, 8, color);
-      drawPixelRect(ctx, cx - 2, cy - 2, 4, 4, lightColor);
-      drawPixelRect(ctx, cx - 1, cy - 1, 2, 2, "#ffffff");
-    } else {
-      if (trail.length > 1) {
-        for (let i = 0; i < trail.length - 1; i++) {
-          const p1 = trail[i];
-          const p2 = trail[i + 1];
-          const progressRatio = i / trail.length;
-          const lineWidth = 2 + progressRatio * 7;
-          ctx.strokeStyle = color;
-          ctx.globalAlpha = p1.alpha * 0.7;
-          ctx.lineWidth = lineWidth;
-          ctx.lineCap = "round";
-          ctx.beginPath();
-          ctx.moveTo(p1.x, p1.y);
-          ctx.lineTo(p2.x, p2.y);
-          ctx.stroke();
-        }
-      }
-      ctx.globalAlpha = 1;
-      const grad = ctx.createRadialGradient(currentX, currentY, 2, currentX, currentY, 14);
-      grad.addColorStop(0, "#ffffff");
-      grad.addColorStop(0.4, lightColor);
-      grad.addColorStop(0.8, color + "88");
-      grad.addColorStop(1, "transparent");
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(currentX, currentY, 14, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
   function drawImpactEffect(ctx, impact) {
     ctx.save();
     const { x, y, radius, maxRadius, color, lightColor, alpha, mode } = impact;
@@ -1951,25 +1846,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.fill();
     }
     ctx.restore();
-  }
-  function drawModeToggleBar(ctx, x, y, w, h, mode) {
-    const isPixel = mode === "pixel";
-    const borderColor = isPixel ? "#f6e05e" : "#4fd1c5";
-    const activeColor = isPixel ? "#f6e05e" : "#38b2ac";
-    drawPixelBox(ctx, x, y, w, h, "#1a202c", borderColor, 2);
-    ctx.fillStyle = "#a0aec0";
-    ctx.font = "bold 11px monospace";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillText("动效对比: ", x + 12, y + h / 2);
-    ctx.fillStyle = activeColor;
-    ctx.font = "bold 12px monospace";
-    const label = isPixel ? "【 方案 A: 16-bit 像素粒子轨 】" : "【 方案 B: 柔光气劲流线轨 】";
-    ctx.fillText(label, x + 72, y + h / 2);
-    ctx.fillStyle = "#63b3ed";
-    ctx.textAlign = "right";
-    ctx.font = "10px monospace";
-    ctx.fillText("⇄ 点此切换", x + w - 12, y + h / 2);
   }
   function getActionTargetElement(act, fallbackElement) {
     const srcElem = act.sourceElement ?? act.element ?? fallbackElement ?? WuXing.WOOD;
@@ -2054,638 +1930,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       color,
       isBurst
     };
-  }
-  const ELEMENTS_ORDER = [
-    WuXing.WOOD,
-    WuXing.FIRE,
-    WuXing.EARTH,
-    WuXing.METAL,
-    WuXing.WATER
-  ];
-  class GameManager {
-    constructor(seedOrOptions = Date.now()) {
-      __publicField(this, "turnManager");
-      __publicField(this, "rules");
-      __publicField(this, "aiStrategy");
-      __publicField(this, "currentTianGan", null);
-      __publicField(this, "availableButtons", []);
-      // 动效与方案对比
-      __publicField(this, "animMode", "pixel");
-      __publicField(this, "flyingProjectiles", []);
-      __publicField(this, "impactEffects", []);
-      __publicField(this, "isAnimating", false);
-      // 画面尺寸与状态
-      __publicField(this, "width", 375);
-      __publicField(this, "height", 667);
-      __publicField(this, "pixelRatio", 2);
-      __publicField(this, "animTick", 0);
-      __publicField(this, "screenShake", 0);
-      // 角色状态
-      __publicField(this, "p1State", "idle");
-      __publicField(this, "p2State", "idle");
-      __publicField(this, "p1ActionTimer", 0);
-      __publicField(this, "p2ActionTimer", 0);
-      // 战斗播报
-      __publicField(this, "bannerText", "对局开始 · 双方对峙");
-      __publicField(this, "bannerSubText", "追求五行归元，调和阴阳");
-      // 天命揭牌事件记录
-      __publicField(this, "lastShowdownInfo", null);
-      // AI 思考调度与 P1 自动吸纳调度
-      __publicField(this, "aiThinkingTimer", 0);
-      __publicField(this, "p1AutoAbsorbTimer", 0);
-      __publicField(this, "safeTop", 44);
-      __publicField(this, "safeBottom", 16);
-      let prng;
-      let initialState;
-      if (typeof seedOrOptions === "number") {
-        prng = createPRNG(seedOrOptions);
-        this.rules = {};
-      } else {
-        prng = seedOrOptions.prng ?? createPRNG(seedOrOptions.seed ?? Date.now());
-        initialState = seedOrOptions.initialState;
-        this.rules = seedOrOptions.rules ?? {};
-      }
-      this.aiStrategy = createStrategy(BALANCED_WEIGHTS, { rules: this.rules });
-      this.initTurnManager(prng, initialState);
-      this.startNewTurn();
-    }
-    initTurnManager(prng, initialState) {
-      this.turnManager = new TurnManager({ prng, initialState });
-      this.lastShowdownInfo = null;
-      this.turnManager.getEventBus().on("showdown:draw", (data) => {
-        this.lastShowdownInfo = data;
-      });
-    }
-    resize(width, height, pixelRatio, safeTop = 44, safeBottom = 16) {
-      this.width = width;
-      this.height = height;
-      this.pixelRatio = pixelRatio;
-      this.safeTop = Math.max(safeTop, 24);
-      this.safeBottom = Math.max(safeBottom, 12);
-      this.updateButtons();
-    }
-    /** 开始新回合 */
-    startNewTurn() {
-      this.turnManager.startTurn();
-      this.currentTianGan = this.turnManager.getCurrentTianGan();
-      const state = this.turnManager.getState();
-      if (state.isGameOver) {
-        this.availableButtons = [];
-        this.p1AutoAbsorbTimer = 0;
-        this.aiThinkingTimer = 0;
-        if (this.lastShowdownInfo) {
-          const info = this.lastShowdownInfo;
-          const elemName = WUXING_PALETTE[info.tianGan.element]?.name ?? "";
-          const tgLabel = `${info.tianGan.name}${elemName}`;
-          this.bannerText = "【终轮绝杀·天命抽牌】";
-          if (info.success) {
-            this.bannerSubText = `【天命逆转】五行归元·后发制人！(抽中【${tgLabel}】)`;
-            const elemCfg = WUXING_PALETTE[info.tianGan.element] ?? WUXING_PALETTE[WuXing.WOOD];
-            const sealPos = this.getSealPosition(false, info.tianGan.element);
-            this.impactEffects.push({
-              x: sealPos.x,
-              y: sealPos.y,
-              radius: 8,
-              maxRadius: 36,
-              color: elemCfg.main,
-              lightColor: elemCfg.light,
-              alpha: 1,
-              life: 24,
-              maxLife: 24,
-              mode: this.animMode
-            });
-            this.screenShake = 6;
-          } else {
-            this.bannerSubText = `【天命难违】差之一线·先手锁定胜局！(抽中【${tgLabel}】)`;
-            const centerPos = this.getCenterPosition();
-            this.impactEffects.push({
-              x: centerPos.x,
-              y: centerPos.y,
-              radius: 4,
-              maxRadius: 20,
-              color: "#718096",
-              lightColor: "#a0aec0",
-              alpha: 0.8,
-              life: 18,
-              maxLife: 18,
-              mode: this.animMode
-            });
-          }
-        } else {
-          this.bannerText = state.winner === "P1" ? "★ 五行归元 ★ 玩家大胜！" : "天道通玄 · 遗憾惜败！";
-          this.bannerSubText = state.endReason ?? "对局结束";
-        }
-        return;
-      }
-      const currentPlayer = state.currentPlayer;
-      const tg = this.currentTianGan;
-      const isExtra = this.turnManager.isExtraTurnActive();
-      if (currentPlayer === "P1") {
-        const actions = this.turnManager.getAvailableActions();
-        if (actions.length === 1) {
-          this.p1AutoAbsorbTimer = 45;
-          this.bannerText = isExtra ? "【连动回合】玩家额外行动！" : `玩家回合 · 天干【${tg?.name ?? ""}】降临`;
-          const actType = actions[0].actionType;
-          switch (actType) {
-            case ActionType.AUTO:
-              this.bannerSubText = "自动吸纳中";
-              break;
-            case ActionType.DISSIPATE:
-              this.bannerSubText = "亢极满溢·散气回落中";
-              break;
-            case ActionType.PASS:
-              this.bannerSubText = "道法受阻·消散过牌中";
-              break;
-            case ActionType.ATK:
-              this.bannerSubText = "唯一机缘·破";
-              break;
-            case ActionType.TRANS:
-              this.bannerSubText = "唯一机缘·化";
-              break;
-            case ActionType.CONVERT:
-              this.bannerSubText = "势在必行·调息";
-              break;
-            case ActionType.BURST:
-              this.bannerSubText = "势在必行·强化";
-              break;
-            case ActionType.BURST_ATK:
-              this.bannerSubText = "势在必行·强破";
-              break;
-          }
-        } else {
-          this.p1AutoAbsorbTimer = 0;
-          this.bannerText = isExtra ? "【连动回合】玩家额外行动！" : `玩家回合 · 天干【${tg?.name ?? ""}】降临`;
-          this.bannerSubText = `属性: ${tg?.element ?? ""} (${tg?.polarity === Polarity.YANG ? "阳" : "阴"})`;
-        }
-        this.updateButtons();
-      } else {
-        this.p1AutoAbsorbTimer = 0;
-        this.bannerText = isExtra ? "【连动回合】天道施展额外行动！" : `天道回合 · 天干【${tg?.name ?? ""}】降临`;
-        this.bannerSubText = "天道推演生克中...";
-        this.availableButtons = [];
-        this.aiThinkingTimer = 55;
-      }
-    }
-    /** 将合法动作映射为触摸按钮 */
-    updateButtons() {
-      const actions = this.turnManager.getAvailableActions();
-      const state = this.turnManager.getState();
-      if (state.isGameOver || state.currentPlayer !== "P1") {
-        this.availableButtons = [];
-        return;
-      }
-      if (actions.length !== 1) {
-        this.p1AutoAbsorbTimer = 0;
-      }
-      const isAutoAbsorb = this.p1AutoAbsorbTimer > 0;
-      const effectiveTop = this.safeTop + 8;
-      const effectiveBottom = this.height - this.safeBottom;
-      const playableHeight = effectiveBottom - effectiveTop;
-      const topBarH = 38;
-      const consoleY = effectiveTop + topBarH + Math.floor((playableHeight - topBarH) * 0.58);
-      const startY = consoleY + 36;
-      const count = actions.length;
-      const buttons = [];
-      const containerW = this.width - 56;
-      actions.forEach((act, idx) => {
-        const formatted = formatActionButton(act, isAutoAbsorb);
-        let btnX = 0;
-        let btnY = 0;
-        let btnW = 0;
-        let btnH = 50;
-        if (count <= 2) {
-          btnW = Math.floor((containerW - (count - 1) * 12) / count);
-          btnX = 28 + idx * (btnW + 12);
-          btnY = startY + 10;
-          btnH = 56;
-        } else if (count === 3) {
-          btnW = Math.floor((containerW - 16) / 3);
-          btnX = 28 + idx * (btnW + 8);
-          btnY = startY + 10;
-          btnH = 54;
-        } else {
-          const cols = 2;
-          const col = idx % cols;
-          const row = Math.floor(idx / cols);
-          btnW = Math.floor((containerW - 12) / cols);
-          btnX = 28 + col * (btnW + 12);
-          btnY = startY + row * (btnH + 10);
-        }
-        buttons.push({
-          id: `btn_${idx}`,
-          label: formatted.label,
-          subLabel: formatted.subLabel,
-          action: act,
-          x: btnX,
-          y: btnY,
-          width: btnW,
-          height: btnH,
-          color: formatted.color,
-          isBurst: formatted.isBurst
-        });
-      });
-      this.availableButtons = buttons;
-    }
-    /** 获取道场中心高度 */
-    getArenaY() {
-      const effectiveTop = this.safeTop + 8;
-      const effectiveBottom = this.height - this.safeBottom;
-      const playableHeight = effectiveBottom - effectiveTop;
-      const topBarH = 38;
-      return effectiveTop + topBarH + Math.floor((playableHeight - topBarH) * 0.26);
-    }
-    /** 获取五行节点的屏幕坐标 */
-    getSealPosition(isP1, elem) {
-      const arenaY = this.getArenaY();
-      const p1X = 55;
-      const p2X = this.width - 55;
-      const baseX = isP1 ? p1X + 48 : p2X - 48;
-      const arcOffsets = [
-        { dy: -56, dx: 0 },
-        { dy: -28, dx: isP1 ? 16 : -16 },
-        { dy: 0, dx: isP1 ? 24 : -24 },
-        { dy: 28, dx: isP1 ? 16 : -16 },
-        { dy: 56, dx: 0 }
-      ];
-      const idx = ELEMENTS_ORDER.indexOf(elem);
-      const pos = idx >= 0 ? arcOffsets[idx] : { dx: 0, dy: 0 };
-      return { x: baseX + pos.dx, y: arenaY + pos.dy };
-    }
-    /** 获取中央天元区坐标 */
-    getCenterPosition() {
-      return { x: this.width / 2, y: this.getArenaY() };
-    }
-    /** 随时触发测试天干吸收动效（供对比体验） */
-    triggerPreviewAbsorption() {
-      if (!this.currentTianGan || this.isAnimating) return;
-      const tg = this.currentTianGan;
-      const elemCfg = WUXING_PALETTE[tg.element] ?? WUXING_PALETTE[WuXing.WOOD];
-      const start = this.getCenterPosition();
-      const target = this.getSealPosition(true, tg.element);
-      this.isAnimating = true;
-      this.flyingProjectiles.push({
-        startX: start.x,
-        startY: start.y,
-        currentX: start.x,
-        currentY: start.y,
-        targetX: target.x,
-        targetY: target.y,
-        progress: 0,
-        duration: 22,
-        frame: 0,
-        color: elemCfg.main,
-        lightColor: elemCfg.light,
-        mode: this.animMode,
-        trail: [],
-        onComplete: () => {
-          this.impactEffects.push({
-            x: target.x,
-            y: target.y,
-            radius: 4,
-            maxRadius: 28,
-            color: elemCfg.main,
-            lightColor: elemCfg.light,
-            alpha: 1,
-            life: 16,
-            maxLife: 16,
-            mode: this.animMode
-          });
-          this.isAnimating = false;
-        }
-      });
-    }
-    /** 执行触摸输入 */
-    handleTouch(touchX, touchY) {
-      const state = this.turnManager.getState();
-      if (state.isGameOver) {
-        const prng = createPRNG(Date.now());
-        this.initTurnManager(prng);
-        this.startNewTurn();
-        return;
-      }
-      const effectiveTop = this.safeTop + 8;
-      const topBarH = 38;
-      const toggleY = effectiveTop + topBarH + 6;
-      const toggleH = 26;
-      if (touchX >= 16 && touchX <= this.width - 16 && touchY >= toggleY && touchY <= toggleY + toggleH) {
-        this.animMode = this.animMode === "pixel" ? "flow" : "pixel";
-        return;
-      }
-      if (this.p1AutoAbsorbTimer > 0) {
-        this.p1AutoAbsorbTimer = 0;
-        if (this.availableButtons.length > 0) {
-          this.executePlayerAction(this.availableButtons[0].action);
-        }
-        return;
-      }
-      const centerPos = this.getCenterPosition();
-      const distSq = (touchX - centerPos.x) ** 2 + (touchY - centerPos.y) ** 2;
-      if (distSq <= 30 * 30 && !this.isAnimating) {
-        this.triggerPreviewAbsorption();
-        return;
-      }
-      if (this.isAnimating) return;
-      if (state.currentPlayer !== "P1") return;
-      for (const btn of this.availableButtons) {
-        if (touchX >= btn.x && touchX <= btn.x + btn.width && touchY >= btn.y && touchY <= btn.y + btn.height) {
-          this.executePlayerAction(btn.action);
-          break;
-        }
-      }
-    }
-    executePlayerAction(action) {
-      this.p1AutoAbsorbTimer = 0;
-      this.dispatchAction(action, true);
-    }
-    /** 帧更新 (逻辑时钟) */
-    update() {
-      this.animTick++;
-      if (this.screenShake > 0) this.screenShake--;
-      if (this.p1ActionTimer > 0) {
-        this.p1ActionTimer--;
-        if (this.p1ActionTimer === 0) this.p1State = "idle";
-      }
-      if (this.p2ActionTimer > 0) {
-        this.p2ActionTimer--;
-        if (this.p2ActionTimer === 0) this.p2State = "idle";
-      }
-      for (let i = this.flyingProjectiles.length - 1; i >= 0; i--) {
-        const p = this.flyingProjectiles[i];
-        p.frame++;
-        const t = Math.min(1, p.frame / p.duration);
-        const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-        p.progress = ease;
-        const heightOffset = -Math.sin(t * Math.PI) * 35;
-        p.currentX = p.startX + (p.targetX - p.startX) * ease;
-        p.currentY = p.startY + (p.targetY - p.startY) * ease + heightOffset;
-        p.trail.unshift({
-          x: p.currentX,
-          y: p.currentY,
-          alpha: 0.9,
-          size: p.mode === "pixel" ? Math.random() > 0.5 ? 4 : 2 : 6
-        });
-        if (p.trail.length > 8) p.trail.pop();
-        p.trail.forEach((tr) => tr.alpha *= 0.8);
-        if (p.frame >= p.duration) {
-          const onComplete = p.onComplete;
-          this.flyingProjectiles.splice(i, 1);
-          if (onComplete) onComplete();
-        }
-      }
-      for (let i = this.impactEffects.length - 1; i >= 0; i--) {
-        const eff = this.impactEffects[i];
-        eff.life--;
-        const progress = 1 - eff.life / eff.maxLife;
-        eff.radius = 4 + progress * (eff.maxRadius - 4);
-        eff.alpha = 1 - progress;
-        if (eff.life <= 0) {
-          this.impactEffects.splice(i, 1);
-        }
-      }
-      const state = this.turnManager.getState();
-      if (!state.isGameOver && state.currentPlayer === "P2" && !this.isAnimating) {
-        if (this.aiThinkingTimer > 0) {
-          this.aiThinkingTimer--;
-          if (this.aiThinkingTimer === 0) {
-            this.executeAIAction();
-          }
-        }
-      }
-      if (!state.isGameOver && state.currentPlayer === "P1" && !this.isAnimating) {
-        if (this.p1AutoAbsorbTimer > 0) {
-          this.p1AutoAbsorbTimer--;
-          if (this.p1AutoAbsorbTimer === 0) {
-            if (this.availableButtons.length > 0) {
-              this.executePlayerAction(this.availableButtons[0].action);
-            }
-          }
-        }
-      }
-    }
-    executeAIAction() {
-      const state = this.turnManager.getState();
-      const tg = this.turnManager.getCurrentTianGan();
-      const available = this.turnManager.getAvailableActions();
-      const action = this.aiStrategy(state, tg, available);
-      this.dispatchAction(action, false);
-    }
-    dispatchAction(action, isP1) {
-      const targetElem = getActionTargetElement(action, this.currentTianGan?.element);
-      const elemCfg = WUXING_PALETTE[targetElem] ?? WUXING_PALETTE[WuXing.WOOD];
-      const isAttack = action.actionType === ActionType.ATK || action.actionType === ActionType.BURST_ATK;
-      if (isP1) {
-        this.p1State = isAttack ? "attack" : "cast";
-        this.p1ActionTimer = 30;
-      } else {
-        this.p2State = isAttack ? "attack" : "cast";
-        this.p2ActionTimer = 30;
-      }
-      let startPos = this.getCenterPosition();
-      let targetPos = this.getSealPosition(isP1, targetElem);
-      if (isAttack) {
-        if (isP1) {
-          this.p2State = "hurt";
-          this.p2ActionTimer = 25;
-        } else {
-          this.p1State = "hurt";
-          this.p1ActionTimer = 25;
-        }
-        this.screenShake = action.actionType === ActionType.BURST_ATK ? 8 : 4;
-        const srcElem = action.sourceElement ?? targetElem;
-        startPos = this.getSealPosition(isP1, srcElem);
-        targetPos = this.getSealPosition(!isP1, targetElem);
-      }
-      this.isAnimating = true;
-      this.flyingProjectiles.push({
-        startX: startPos.x,
-        startY: startPos.y,
-        currentX: startPos.x,
-        currentY: startPos.y,
-        targetX: targetPos.x,
-        targetY: targetPos.y,
-        progress: 0,
-        duration: 22,
-        frame: 0,
-        color: elemCfg.main,
-        lightColor: elemCfg.light,
-        mode: this.animMode,
-        trail: [],
-        onComplete: () => {
-          this.impactEffects.push({
-            x: targetPos.x,
-            y: targetPos.y,
-            radius: 4,
-            maxRadius: 28,
-            color: elemCfg.main,
-            lightColor: elemCfg.light,
-            alpha: 1,
-            life: 16,
-            maxLife: 16,
-            mode: this.animMode
-          });
-          this.turnManager.executeAction(action);
-          this.isAnimating = false;
-          this.startNewTurn();
-        }
-      });
-    }
-    /** 渲染主循环 */
-    render(ctx) {
-      ctx.save();
-      if (this.screenShake > 0) {
-        const shakeX = (Math.random() - 0.5) * this.screenShake * 2;
-        const shakeY = (Math.random() - 0.5) * this.screenShake * 2;
-        ctx.translate(shakeX, shakeY);
-      }
-      drawPixelRect(ctx, 0, 0, this.width, this.height, "#0a0d14");
-      const effectiveTop = this.safeTop + 8;
-      const effectiveBottom = this.height - this.safeBottom;
-      const playableHeight = effectiveBottom - effectiveTop;
-      const topBarH = 38;
-      const state = this.turnManager.getState();
-      drawPixelBox(ctx, 16, effectiveTop, this.width - 32, topBarH, "#111827", "#374151", 2);
-      ctx.fillStyle = "#f6e05e";
-      ctx.font = "bold 13px monospace";
-      ctx.textAlign = "left";
-      ctx.fillText(`回合: ${state.round}/60`, 28, effectiveTop + 24);
-      ctx.fillStyle = "#63b3ed";
-      ctx.fillText(`玩家(P1): ${state.players.P1.score}分`, 130, effectiveTop + 24);
-      ctx.fillStyle = "#b794f4";
-      ctx.textAlign = "right";
-      ctx.fillText(`天道(P2): ${state.players.P2.score}分`, this.width - 28, effectiveTop + 24);
-      drawModeToggleBar(ctx, 16, effectiveTop + topBarH + 6, this.width - 32, 26, this.animMode);
-      const arenaY = effectiveTop + topBarH + Math.floor((playableHeight - topBarH) * 0.26);
-      const p1X = 55;
-      const p2X = this.width - 55;
-      ctx.fillStyle = "#1f2937";
-      ctx.beginPath();
-      ctx.ellipse(p1X, arenaY + 45, 36, 10, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(p2X, arenaY + 45, 36, 10, 0, 0, Math.PI * 2);
-      ctx.fill();
-      drawPixelCharacter(ctx, p1X, arenaY, true, this.p1State, this.animTick);
-      drawPixelCharacter(ctx, p2X, arenaY, false, this.p2State, this.animTick);
-      this.renderSeals(ctx, p1X + 48, arenaY, true, state.players.P1.board);
-      this.renderSeals(ctx, p2X - 48, arenaY, false, state.players.P2.board);
-      if (this.currentTianGan) {
-        drawCenterTianGanRune(
-          ctx,
-          this.width / 2,
-          arenaY,
-          this.currentTianGan,
-          this.animMode,
-          this.animTick
-        );
-      }
-      for (const flyer of this.flyingProjectiles) {
-        drawFlyingEnergy(ctx, flyer);
-      }
-      for (const impact of this.impactEffects) {
-        drawImpactEffect(ctx, impact);
-      }
-      const bannerY = effectiveTop + topBarH + Math.floor((playableHeight - topBarH) * 0.44);
-      const bannerH = 64;
-      drawPixelBox(ctx, 16, bannerY, this.width - 32, bannerH, "#171e2e", "#4b5563", 2);
-      ctx.fillStyle = "#f7fafc";
-      ctx.font = "bold 14px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText(this.bannerText, this.width / 2, bannerY + 24);
-      ctx.fillStyle = "#a0aec0";
-      ctx.font = "11px monospace";
-      ctx.fillText(this.bannerSubText, this.width / 2, bannerY + 46);
-      const consoleY = effectiveTop + topBarH + Math.floor((playableHeight - topBarH) * 0.58);
-      const consoleH = effectiveBottom - consoleY - 8;
-      drawPixelBox(ctx, 14, consoleY, this.width - 28, consoleH, "#111827", "#374151", 2);
-      ctx.fillStyle = "#9ca3af";
-      ctx.font = "bold 12px monospace";
-      ctx.textAlign = "left";
-      ctx.fillText("【 战术决策 】", 28, consoleY + 22);
-      for (const btn of this.availableButtons) {
-        drawTouchButton(ctx, btn);
-      }
-      if (state.currentPlayer === "P2" && !state.isGameOver) {
-        ctx.fillStyle = "#b794f4";
-        ctx.font = "bold 14px monospace";
-        ctx.textAlign = "center";
-        ctx.fillText("● 天道推演决策中...", this.width / 2, consoleY + 68);
-        ctx.fillStyle = "#718096";
-        ctx.font = "11px monospace";
-        ctx.fillText("正在权衡五行生克与阴阳两仪", this.width / 2, consoleY + 92);
-      }
-      if (state.isGameOver) {
-        ctx.fillStyle = "#f6e05e";
-        ctx.font = "bold 15px monospace";
-        ctx.textAlign = "center";
-        if (this.lastShowdownInfo) {
-          ctx.fillText(
-            this.lastShowdownInfo.success ? "★【天命逆转】五行归元·后发制人！★" : "★【天命难违】差之一线·先手锁定胜局！★",
-            this.width / 2,
-            consoleY + 68
-          );
-        } else {
-          ctx.fillText(
-            state.winner === "P1" ? "★ 恭喜！五行圆满大获全胜 ★" : "天道终局 · 比分结算完毕",
-            this.width / 2,
-            consoleY + 68
-          );
-        }
-        ctx.fillStyle = "#63b3ed";
-        ctx.font = "12px monospace";
-        ctx.fillText("【 点击屏幕任意区域 重新开局 】", this.width / 2, consoleY + 95);
-      }
-      ctx.restore();
-    }
-    /** 绘制一侧角色的五行护体灵核 */
-    renderSeals(ctx, baseX, baseY, isLeft, board) {
-      const radius = 15;
-      const arcOffsets = [
-        { dy: -56, dx: 0 },
-        { dy: -28, dx: isLeft ? 16 : -16 },
-        { dy: 0, dx: isLeft ? 24 : -24 },
-        { dy: 28, dx: isLeft ? 16 : -16 },
-        { dy: 56, dx: 0 }
-      ];
-      ELEMENTS_ORDER.forEach((elem, idx) => {
-        const node = board[elem];
-        const pos = arcOffsets[idx];
-        const x = baseX + pos.dx;
-        const y = baseY + pos.dy;
-        const isGuiYi = node.yin >= 1 && node.yang >= 1;
-        drawWuXingSeal(ctx, x, y, radius, elem, node.yin, node.yang, isGuiYi, this.animTick);
-      });
-    }
-    // --- 测试与状态观察助手方法 ---
-    getState() {
-      return this.turnManager.getState();
-    }
-    getTurnManager() {
-      return this.turnManager;
-    }
-    getAvailableActions() {
-      return this.turnManager.getAvailableActions();
-    }
-    getAvailableButtons() {
-      return this.availableButtons;
-    }
-    getP1AutoTimer() {
-      return this.p1AutoAbsorbTimer;
-    }
-    isAutoAbsorbing() {
-      return this.p1AutoAbsorbTimer > 0;
-    }
-    isAnimatingState() {
-      return this.isAnimating;
-    }
-    getBannerText() {
-      return this.bannerText;
-    }
-    getBannerSubText() {
-      return this.bannerSubText;
-    }
-    getLastShowdownInfo() {
-      return this.lastShowdownInfo;
-    }
   }
   class Node {
     constructor() {
@@ -2787,6 +2031,1793 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   }
   class Container extends Node {
   }
+  const EASINGS = {
+    /** 线性：进度即比例。 */
+    linear: (t) => t,
+    /** 先快后慢（二次）。 */
+    outQuad: (t) => 1 - (1 - t) * (1 - t),
+    /** 先快后慢（三次）：入场与飞行的默认手感。 */
+    outCubic: (t) => 1 - (1 - t) ** 3
+  };
+  class Tween {
+    constructor(target, to, options) {
+      __publicField(this, "target");
+      /** 补间开始（构造）时的起点值：插值始终相对它计算，多次步进不会累积漂移。 */
+      __publicField(this, "from", /* @__PURE__ */ new Map());
+      __publicField(this, "to");
+      __publicField(this, "duration");
+      __publicField(this, "easing");
+      __publicField(this, "onUpdate");
+      __publicField(this, "onComplete");
+      __publicField(this, "elapsed", 0);
+      __publicField(this, "done", false);
+      this.target = target;
+      this.to = to;
+      if (!(options.duration > 0)) {
+        throw new Error(`补间时长必须是正数（秒），收到 ${options.duration}。`);
+      }
+      this.duration = options.duration;
+      this.easing = options.easing ?? EASINGS.linear;
+      this.onUpdate = options.onUpdate;
+      this.onComplete = options.onComplete;
+      const bag = target;
+      for (const key of Object.keys(to)) {
+        const start = bag[key];
+        if (typeof start !== "number") {
+          throw new Error(`补间目标上没有数值属性 ${key}。`);
+        }
+        this.from.set(key, start);
+      }
+    }
+    /** 补间是否还在推进（未完成）。 */
+    get isRunning() {
+      return !this.done;
+    }
+    /** 补间是否已抵达终值。 */
+    get isComplete() {
+      return this.done;
+    }
+    /** 距终值还差多少秒（已完成为 0）。序列据此把多余的 dt 结转给下一条。 */
+    get remaining() {
+      return this.done ? 0 : this.duration - this.elapsed;
+    }
+    /** 用 `dt` 秒推进补间；超出时长的部分会被丢弃（不越过终值）。 */
+    update(dt) {
+      if (this.done) {
+        return;
+      }
+      this.elapsed = Math.min(this.duration, this.elapsed + dt);
+      const progress = this.easing(this.elapsed / this.duration);
+      this.apply(progress);
+      this.onUpdate?.(progress);
+      if (this.elapsed >= this.duration) {
+        this.done = true;
+        this.onComplete?.();
+      }
+    }
+    apply(progress) {
+      const bag = this.target;
+      for (const [key, start] of this.from) {
+        const end = this.to[key];
+        if (end === void 0) {
+          continue;
+        }
+        bag[key] = start + (end - start) * progress;
+      }
+    }
+  }
+  class TweenSequence {
+    constructor(tweens, onComplete) {
+      __publicField(this, "tweens");
+      __publicField(this, "onComplete");
+      __publicField(this, "index", 0);
+      __publicField(this, "done", false);
+      this.tweens = tweens;
+      this.onComplete = onComplete;
+    }
+    /** 序列是否已跑完（空序列在第一次 `update` 时即算完成）。 */
+    get isComplete() {
+      return this.done;
+    }
+    get isRunning() {
+      return !this.done;
+    }
+    /** 用 `dt` 秒推进：时间依次流过序列里的各条补间，多余的 dt 不会丢弃。 */
+    update(dt) {
+      let remaining = dt;
+      while (!this.done) {
+        const current = this.tweens[this.index];
+        if (current === void 0) {
+          this.done = true;
+          this.onComplete?.();
+          return;
+        }
+        if (current.isComplete) {
+          this.index += 1;
+          continue;
+        }
+        if (remaining <= 0) {
+          return;
+        }
+        const step = Math.min(remaining, current.remaining);
+        current.update(step);
+        remaining -= step;
+      }
+    }
+  }
+  const PADDING_X = 12;
+  const PADDING_Y = 8;
+  const LABEL_FONT_SIZE = 14;
+  const SUB_LABEL_FONT_SIZE = 10;
+  const LABEL_LINE_HEIGHT = 20;
+  const SUB_LABEL_LINE_HEIGHT = 14;
+  const MIN_WIDTH = 72;
+  const DEFAULT_PRESS_SCALE = 0.92;
+  const DEFAULT_COLOR = "#63b3ed";
+  const BACKGROUND_COLOR$1 = "#1a202c";
+  const SUB_LABEL_COLOR = "#9ca3af";
+  const DISABLED_COLOR = "#6b7280";
+  class Button extends Node {
+    constructor(options) {
+      super();
+      __publicField(this, "label");
+      __publicField(this, "subLabel");
+      __publicField(this, "color");
+      /** 按下时的缩放系数。 */
+      __publicField(this, "pressScale");
+      __publicField(this, "tapHandler");
+      __publicField(this, "_disabled");
+      __publicField(this, "_width");
+      __publicField(this, "_height");
+      this.label = options.label;
+      this.subLabel = options.subLabel ?? "";
+      this.color = options.color ?? DEFAULT_COLOR;
+      this.tapHandler = options.onTap;
+      this.pressScale = options.pressScale ?? DEFAULT_PRESS_SCALE;
+      this._disabled = options.disabled ?? false;
+      this._width = options.width ?? autoWidth(this.label, this.subLabel);
+      this._height = options.height ?? autoHeight(this.subLabel);
+      this.applySize();
+      this.onTouchStart = () => this.press();
+      this.onTouchEnd = () => this.release();
+      this.onTap = () => {
+        if (!this._disabled) {
+          this.tapHandler?.(this);
+        }
+      };
+    }
+    /** 禁用态：置灰、不响应按压、不派发 `onTap`。 */
+    get disabled() {
+      return this._disabled;
+    }
+    set disabled(value) {
+      this._disabled = value;
+      if (value) {
+        this.release();
+      }
+    }
+    get width() {
+      return this._width;
+    }
+    /** 改尺寸时同步把命中区重新居中到原点。 */
+    set width(value) {
+      this._width = value;
+      this.applySize();
+    }
+    get height() {
+      return this._height;
+    }
+    set height(value) {
+      this._height = value;
+      this.applySize();
+    }
+    getSize() {
+      return { width: this._width, height: this._height };
+    }
+    /** 按下：进入缩放反馈态（禁用时忽略）。 */
+    press() {
+      if (this._disabled) {
+        return;
+      }
+      this.scaleX = this.pressScale;
+      this.scaleY = this.pressScale;
+    }
+    /** 抬起（或取消）：恢复常态缩放。 */
+    release() {
+      this.scaleX = 1;
+      this.scaleY = 1;
+    }
+    /** 画一个底色方块 + 描边 + 标题/副标题；变换与透明度已由 `Node.render` 就位。 */
+    renderSelf(ctx) {
+      const left = -this._width / 2;
+      const top = -this._height / 2;
+      const accent = this._disabled ? DISABLED_COLOR : this.color;
+      ctx.fillStyle = BACKGROUND_COLOR$1;
+      ctx.fillRect(left, top, this._width, this._height);
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(left, top, this._width, this._height);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = accent;
+      ctx.font = `bold ${LABEL_FONT_SIZE}px monospace`;
+      ctx.fillText(this.label, 0, top + PADDING_Y + LABEL_LINE_HEIGHT / 2);
+      if (this.subLabel !== "") {
+        ctx.fillStyle = this._disabled ? DISABLED_COLOR : SUB_LABEL_COLOR;
+        ctx.font = `${SUB_LABEL_FONT_SIZE}px monospace`;
+        ctx.fillText(
+          this.subLabel,
+          0,
+          top + PADDING_Y + LABEL_LINE_HEIGHT + SUB_LABEL_LINE_HEIGHT / 2
+        );
+      }
+    }
+    /** 把命中区重新居中到原点。 */
+    applySize() {
+      this.hitArea = {
+        x: -this._width / 2,
+        y: -this._height / 2,
+        width: this._width,
+        height: this._height
+      };
+    }
+  }
+  function autoWidth(label, subLabel) {
+    const contentWidth = Math.max(
+      measureText(label, LABEL_FONT_SIZE),
+      measureText(subLabel, SUB_LABEL_FONT_SIZE)
+    );
+    return Math.max(MIN_WIDTH, PADDING_X * 2 + contentWidth);
+  }
+  function autoHeight(subLabel) {
+    const lines = subLabel === "" ? LABEL_LINE_HEIGHT : LABEL_LINE_HEIGHT + SUB_LABEL_LINE_HEIGHT;
+    return PADDING_Y * 2 + lines;
+  }
+  function measureText(text, fontSize) {
+    let width = 0;
+    for (const char of text) {
+      width += isFullWidth$1(char) ? fontSize : fontSize / 2;
+    }
+    return width;
+  }
+  function isFullWidth$1(char) {
+    return (char.codePointAt(0) ?? 0) >= 11904;
+  }
+  const DEFAULT_MAX_COLUMNS = 2;
+  const DEFAULT_GAP_X = 12;
+  const DEFAULT_GAP_Y = 10;
+  class ActionBarView extends Container {
+    constructor(options) {
+      super();
+      /** 面板是否允许玩家操作；改完需调用 `refresh()` 重新投影。 */
+      __publicField(this, "interactive");
+      __publicField(this, "turnManager");
+      __publicField(this, "availableWidth");
+      __publicField(this, "maxColumns");
+      __publicField(this, "gapX");
+      __publicField(this, "gapY");
+      /** 按动作键复用按钮，避免每次重排都重建节点（保住按压反馈与节点身份）。 */
+      __publicField(this, "buttonsByKey", /* @__PURE__ */ new Map());
+      /** 当前排版顺序的按钮（与 `getAvailableActions()` 顺序一致）。 */
+      __publicField(this, "buttons", []);
+      __publicField(this, "unsubscribes", []);
+      this.turnManager = options.turnManager;
+      this.availableWidth = options.width;
+      this.maxColumns = options.maxColumns ?? DEFAULT_MAX_COLUMNS;
+      this.gapX = options.gapX ?? DEFAULT_GAP_X;
+      this.gapY = options.gapY ?? DEFAULT_GAP_Y;
+      this.interactive = options.interactive ?? true;
+      this.y = options.y ?? 0;
+      this.unsubscribes.push(
+        this.turnManager.getEventBus().on("action:executed", () => this.refresh())
+      );
+    }
+    /** 当前排版的按钮，顺序与候选动作一致。 */
+    getButtons() {
+      return this.buttons;
+    }
+    /**
+     * 按 `TurnManager` 的最新候选动作重新投影：
+     * 新候选补按钮、消失的候选摘按钮、当前不可执行的候选一律置灰。
+     */
+    refresh() {
+      const actions = this.turnManager.getAvailableActions();
+      const enabled = this.canExecuteNow();
+      const liveKeys = new Set(actions.map(actionKey));
+      for (const [key, button] of this.buttonsByKey) {
+        if (!liveKeys.has(key)) {
+          this.removeChild(button);
+          this.buttonsByKey.delete(key);
+        }
+      }
+      this.buttons.length = 0;
+      for (const action of actions) {
+        const key = actionKey(action);
+        let button = this.buttonsByKey.get(key);
+        if (button === void 0) {
+          button = this.createButton(action);
+          this.buttonsByKey.set(key, button);
+          this.addChild(button);
+        }
+        button.disabled = !enabled;
+        this.buttons.push(button);
+      }
+      this.layout();
+    }
+    /** 退订核心事件（场景销毁时调用）。 */
+    dispose() {
+      for (const unsubscribe of this.unsubscribes) {
+        unsubscribe();
+      }
+      this.unsubscribes.length = 0;
+    }
+    createButton(action) {
+      const formatted = formatActionButton(action);
+      return new Button({
+        label: formatted.label,
+        subLabel: formatted.subLabel,
+        color: formatted.color,
+        onTap: () => this.dispatch(action)
+      });
+    }
+    /** 派发前再校验一次：只有仍处于可执行阶段、且仍是候选的动作才会提交给核心。 */
+    dispatch(action) {
+      if (!this.canExecuteNow()) {
+        return;
+      }
+      if (!this.turnManager.getAvailableActions().some((c) => actionKey(c) === actionKey(action))) {
+        return;
+      }
+      this.turnManager.executeAction(action);
+    }
+    /** 核心当前是否接受动作提交：面板可交互、非终局，且处于动作执行阶段。 */
+    canExecuteNow() {
+      if (!this.interactive) {
+        return false;
+      }
+      if (this.turnManager.getState().isGameOver) {
+        return false;
+      }
+      return this.turnManager.getCurrentPhase() === TurnPhase.EXECUTE_ACTION;
+    }
+    /** 等宽网格排版：`columns` 列、行内垂直居中，行高取该行最高的按钮。 */
+    layout() {
+      const count = this.buttons.length;
+      if (count === 0) {
+        return;
+      }
+      const columns = Math.max(1, Math.min(this.maxColumns, count));
+      const cellWidth = Math.floor((this.availableWidth - (columns - 1) * this.gapX) / columns);
+      const rowHeights = [];
+      for (let index = 0; index < count; index += 1) {
+        const row = Math.floor(index / columns);
+        rowHeights[row] = Math.max(rowHeights[row] ?? 0, this.buttons[index].height);
+      }
+      let cursor = 0;
+      for (let row = 0; row < rowHeights.length; row += 1) {
+        const rowHeight = rowHeights[row];
+        for (let column = 0; column < columns; column += 1) {
+          const index = row * columns + column;
+          if (index >= count) {
+            break;
+          }
+          const button = this.buttons[index];
+          button.width = cellWidth;
+          button.x = column * (cellWidth + this.gapX) + cellWidth / 2;
+          button.y = cursor + rowHeight / 2;
+        }
+        cursor += rowHeight + this.gapY;
+      }
+    }
+  }
+  function actionKey(action) {
+    return [
+      action.actionType,
+      action.player,
+      action.element ?? "",
+      action.sourceElement ?? "",
+      action.polarity ?? "",
+      action.consumePolarity ?? ""
+    ].join("|");
+  }
+  const WUXING_COUNT = 5;
+  const RING_STEP = Math.PI * 2 / WUXING_COUNT;
+  const SEAL_RADIUS_RATIO = 0.26;
+  const SLOT_RADIUS_RATIO = 0.37;
+  const DEFAULT_BOARD_LAYOUT = {
+    centerX: 0,
+    centerY: 0,
+    sealRadius: 120,
+    slotRadius: 170,
+    slotSpread: 0.45,
+    startAngle: -Math.PI / 2
+  };
+  const VOID_LEVEL = 0;
+  const BOARD_BG_COLOR = "#111827";
+  const VOID_COLOR = "#374151";
+  const BLESSED_COLOR = "#f6e05e";
+  const GUI_YI_COLOR = "#ecc94b";
+  const SLOT_TEXT_COLOR = "#e2e8f0";
+  const CONNECTION_IDLE = {
+    generation: "#2f4f3f",
+    overcoming: "#4a2a2a"
+  };
+  const CONNECTION_ACTIVE = {
+    generation: "#48bb78",
+    overcoming: "#e53e3e"
+  };
+  class BoardView extends Container {
+    constructor(layout = {}) {
+      super();
+      __publicField(this, "_layout");
+      __publicField(this, "_elements", []);
+      __publicField(this, "_slots", []);
+      __publicField(this, "_connections", []);
+      __publicField(this, "_board", null);
+      this._layout = { ...DEFAULT_BOARD_LAYOUT, ...layout };
+      this._rebuild();
+    }
+    /** 当前生效的极坐标布局参数（快照副本）。 */
+    get layout() {
+      return { ...this._layout };
+    }
+    /** 按视口自适应：圆心取视口中心，环半径按短边等比缩放。 */
+    resize(width, height) {
+      const span = Math.min(width, height);
+      this._layout = {
+        ...this._layout,
+        centerX: width / 2,
+        centerY: height / 2,
+        sealRadius: span * SEAL_RADIUS_RATIO,
+        slotRadius: span * SLOT_RADIUS_RATIO
+      };
+      this._rebuild();
+    }
+    /** 五个五行主印，按相生环顺序排列。 */
+    get elements() {
+      return this._elements;
+    }
+    /** 十个阴阳槽位，按主印环顺序、每个主印先阴后阳排列。 */
+    get slots() {
+      return this._slots;
+    }
+    /** 十条生克连线：五条相生环边 + 五条相克星弦。 */
+    get connections() {
+      return this._connections;
+    }
+    /** 按主印与极性取一个槽位的投影视图。 */
+    getSlot(element, polarity) {
+      const elementIndex = this._elements.findIndex((entry) => entry.element === element);
+      const slot = this._slots[elementIndex * 2 + (polarity === Polarity.YIN ? 0 : 1)];
+      if (slot === void 0) {
+        throw new Error(`法盘上不存在五行 ${element} 的 ${polarity} 槽位。`);
+      }
+      return slot;
+    }
+    /** 投影一份只读棋盘快照；只读不写回（LLD §4）。 */
+    update(board) {
+      this._board = board;
+      this._rebuild();
+    }
+    /** 从只读 `GameState` 快照中取指定玩家的棋盘并投影。 */
+    updateFromState(state, player) {
+      this.update(state.players[player].board);
+    }
+    _rebuild() {
+      this._elements.length = 0;
+      this._slots.length = 0;
+      this._connections.length = 0;
+      const ring = buildGenerationRing();
+      ring.forEach((element, index) => {
+        const angle = this._layout.startAngle + index * RING_STEP;
+        const node = this._board?.[element];
+        const yin = node?.yin ?? VOID_LEVEL;
+        const yang = node?.yang ?? VOID_LEVEL;
+        const isGuiYi = yin >= 1 && yang >= 1;
+        const isKangJi = yin === 2 && yang === 2;
+        this._elements.push({
+          element,
+          angle,
+          x: this._layout.centerX + this._layout.sealRadius * Math.cos(angle),
+          y: this._layout.centerY + this._layout.sealRadius * Math.sin(angle),
+          yin,
+          yang,
+          isGuiYi,
+          isKangJi
+        });
+        this._slots.push(
+          this._projectSlot(
+            element,
+            Polarity.YIN,
+            yin,
+            angle - this._layout.slotSpread,
+            isGuiYi,
+            isKangJi
+          ),
+          this._projectSlot(
+            element,
+            Polarity.YANG,
+            yang,
+            angle + this._layout.slotSpread,
+            isGuiYi,
+            isKangJi
+          )
+        );
+      });
+      for (const element of ring) {
+        this._connections.push(
+          this._projectConnection("generation", element, GENERATION_CYCLE[element]),
+          this._projectConnection("overcoming", element, OVERCOMING_CYCLE[element])
+        );
+      }
+    }
+    _projectConnection(kind, from, to) {
+      const source = this._elementView(from);
+      const target = this._elementView(to);
+      const node = this._board?.[from];
+      return {
+        kind,
+        from,
+        to,
+        x1: source.x,
+        y1: source.y,
+        x2: target.x,
+        y2: target.y,
+        active: node !== void 0 && (node.yin >= 1 || node.yang >= 1)
+      };
+    }
+    _elementView(element) {
+      const view = this._elements.find((entry) => entry.element === element);
+      if (view === void 0) {
+        throw new Error(`法盘上不存在五行 ${element}。`);
+      }
+      return view;
+    }
+    _projectSlot(element, polarity, level, angle, isGuiYi, isKangJi) {
+      return {
+        element,
+        polarity,
+        level,
+        angle,
+        x: this._layout.centerX + this._layout.slotRadius * Math.cos(angle),
+        y: this._layout.centerY + this._layout.slotRadius * Math.sin(angle),
+        isGuiYi,
+        isKangJi
+      };
+    }
+    /** 先画连线，再画槽位与主印（后者盖在前者之上）。 */
+    renderSelf(ctx) {
+      this._drawConnections(ctx);
+      this._drawSlots(ctx);
+      this._drawSeals(ctx);
+    }
+    /** 外环相生环 + 内星相克弦；源主印任一侧点亮（≥1）时转为活动色。 */
+    _drawConnections(ctx) {
+      for (const line of this._connections) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(line.x1, line.y1);
+        ctx.lineTo(line.x2, line.y2);
+        ctx.strokeStyle = line.active ? CONNECTION_ACTIVE[line.kind] : CONNECTION_IDLE[line.kind];
+        ctx.lineWidth = line.active ? 3 : 1.5;
+        ctx.lineCap = "round";
+        if (line.kind === "overcoming") {
+          ctx.setLineDash([6, 5]);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+    /** 十个阴阳槽位：-1 道损 / 0 虚空 / 1 点亮 / 2 加持 四档着色，归一与亢极加金环。 */
+    _drawSlots(ctx) {
+      const radius = Math.max(8, this._layout.slotRadius * 0.07);
+      for (const slot of this._slots) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(slot.x, slot.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = BOARD_BG_COLOR;
+        ctx.fill();
+        ctx.lineWidth = slot.level === 2 ? 4 : 2;
+        ctx.strokeStyle = slotColor(slot.level, slot.element);
+        ctx.stroke();
+        ctx.fillStyle = slot.level >= 1 ? SLOT_TEXT_COLOR : VOID_COLOR;
+        ctx.font = `bold ${Math.round(radius)}px monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(slot.polarity === Polarity.YIN ? "阴" : "阳", slot.x, slot.y);
+        if (slot.isGuiYi) {
+          ctx.beginPath();
+          ctx.arc(slot.x, slot.y, radius + 4, 0, Math.PI * 2);
+          ctx.strokeStyle = slot.isKangJi ? BLESSED_COLOR : GUI_YI_COLOR;
+          ctx.lineWidth = slot.isKangJi ? 3 : 1.5;
+          ctx.setLineDash(slot.isKangJi ? [] : [3, 3]);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+    /** 五个五行主印：底盘 + 阴/阳半环 + 归一/亢极高亮 + 五行名。 */
+    _drawSeals(ctx) {
+      const sealRadius = Math.max(14, this._layout.sealRadius * 0.22);
+      for (const entry of this._elements) {
+        const palette = WUXING_PALETTE[entry.element];
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(entry.x, entry.y, sealRadius, 0, Math.PI * 2);
+        ctx.fillStyle = BOARD_BG_COLOR;
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = entry.isKangJi ? BLESSED_COLOR : palette.dark;
+        ctx.stroke();
+        drawHalfRing(ctx, entry.x, entry.y, sealRadius + 4, true, entry.yin, entry.element);
+        drawHalfRing(ctx, entry.x, entry.y, sealRadius + 4, false, entry.yang, entry.element);
+        if (entry.isGuiYi) {
+          ctx.beginPath();
+          ctx.arc(entry.x, entry.y, sealRadius + 9, 0, Math.PI * 2);
+          ctx.strokeStyle = entry.isKangJi ? BLESSED_COLOR : GUI_YI_COLOR;
+          ctx.lineWidth = entry.isKangJi ? 3 : 1.5;
+          ctx.setLineDash(entry.isKangJi ? [] : [4, 3]);
+          ctx.stroke();
+        }
+        ctx.fillStyle = palette.light;
+        ctx.font = `bold ${Math.round(Math.max(10, sealRadius * 0.55))}px monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(palette.name, entry.x, entry.y);
+        if (entry.isGuiYi) {
+          ctx.fillStyle = entry.isKangJi ? BLESSED_COLOR : GUI_YI_COLOR;
+          ctx.font = `${Math.round(Math.max(9, sealRadius * 0.45))}px monospace`;
+          ctx.fillText(entry.isKangJi ? "亢极" : "归一", entry.x, entry.y + sealRadius + 14);
+        }
+        ctx.restore();
+      }
+    }
+  }
+  function slotColor(level, element) {
+    const palette = WUXING_PALETTE[element];
+    switch (level) {
+      case -1:
+        return palette.dark;
+      case 0:
+        return VOID_COLOR;
+      case 1:
+        return palette.main;
+      case 2:
+        return BLESSED_COLOR;
+    }
+  }
+  function drawHalfRing(ctx, x, y, radius, isYin, level, element) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(
+      x,
+      y,
+      radius,
+      isYin ? Math.PI * 0.5 : -Math.PI * 0.5,
+      isYin ? Math.PI * 1.5 : Math.PI * 0.5
+    );
+    ctx.strokeStyle = slotColor(level, element);
+    ctx.lineWidth = level === 2 ? 6 : level === 0 ? 2 : 4;
+    ctx.lineCap = "round";
+    if (level === -1) {
+      ctx.setLineDash([4, 3]);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+  function buildGenerationRing() {
+    const ring = [];
+    let current = WuXing.WOOD;
+    for (let index = 0; index < WUXING_COUNT; index += 1) {
+      ring.push(current);
+      current = GENERATION_CYCLE[current];
+    }
+    return ring;
+  }
+  const AVATAR_SIZE = 54;
+  const SIDE_MARGIN = 10;
+  const TOP_BAR_HEIGHT = 26;
+  const BANNER_GAP = 10;
+  const BANNER_HEIGHT = 68;
+  const PANEL_COLOR = "#111827";
+  const PANEL_BORDER = "#374151";
+  const ACTIVE_COLOR = "#f6e05e";
+  const EXTRA_TURN_COLOR = "#4fd1c5";
+  const TEXT_COLOR = "#e2e8f0";
+  const MUTED_COLOR = "#9ca3af";
+  const P1_COLOR = "#63b3ed";
+  const P2_COLOR = "#b794f4";
+  const HURT_COLOR = "#fc8181";
+  const EXPRESSION_COLOR = {
+    idle: null,
+    attack: "#f6e05e",
+    hurt: HURT_COLOR,
+    cast: "#4fd1c5"
+  };
+  const PLAYER_LABEL = { P1: "玩家 P1", P2: "天道 P2" };
+  const PLAYER_COLOR = { P1: P1_COLOR, P2: P2_COLOR };
+  class CharacterView extends Container {
+    constructor(options) {
+      super();
+      __publicField(this, "_width");
+      __publicField(this, "_height");
+      __publicField(this, "_safeTop");
+      __publicField(this, "_round", 0);
+      __publicField(this, "_maxRounds", 0);
+      __publicField(this, "_currentPlayer", null);
+      __publicField(this, "_isExtraTurn", false);
+      __publicField(this, "_scores", { P1: 0, P2: 0 });
+      __publicField(this, "_expressions", { P1: "idle", P2: "idle" });
+      __publicField(this, "_expressionTimers", { P1: 0, P2: 0 });
+      __publicField(this, "_bubbles", {
+        P1: null,
+        P2: null
+      });
+      __publicField(this, "_bannerText", "");
+      __publicField(this, "_bannerSubText", "");
+      /** 头像呼吸动画的累积时间（秒）。 */
+      __publicField(this, "_tick", 0);
+      this._width = options.width;
+      this._height = options.height;
+      this._safeTop = options.safeTop ?? 24;
+    }
+    /** 当前视口尺寸（投影与安全区自适应的入参）。 */
+    get viewport() {
+      return { width: this._width, height: this._height };
+    }
+    /** 回合数（未投影时为 0）。 */
+    get round() {
+      return this._round;
+    }
+    /** 回合上限（未投影时为 0）。 */
+    get maxRounds() {
+      return this._maxRounds;
+    }
+    /** 当前行动方（未投影时为 null）。 */
+    get currentPlayer() {
+      return this._currentPlayer;
+    }
+    /** 当前是否处于连动额外行动。 */
+    get isExtraTurn() {
+      return this._isExtraTurn;
+    }
+    /** 指定玩家的比分。 */
+    scoreOf(player) {
+      return this._scores[player];
+    }
+    /** 当前横幅主文案。 */
+    get bannerText() {
+      return this._bannerText;
+    }
+    /** 当前横幅副文案。 */
+    get bannerSubText() {
+      return this._bannerSubText;
+    }
+    /** 按只读快照投影回合、比分与当前行动方。 */
+    update(state, options = {}) {
+      this._round = state.round;
+      this._maxRounds = state.maxRounds;
+      this._currentPlayer = state.currentPlayer;
+      this._isExtraTurn = options.isExtraTurn ?? false;
+      this._scores = { P1: state.players.P1.score, P2: state.players.P2.score };
+    }
+    /** 视口自适应（安全区与宽度变化时调用）。 */
+    resize(width, height, safeTop) {
+      this._width = width;
+      this._height = height;
+      this._safeTop = safeTop ?? this._safeTop;
+    }
+    /** 表情反馈：`holdSeconds` 秒后自动回落待机；重复触发会重新计时。 */
+    setExpression(player, expression, holdSeconds = 0.6) {
+      this._expressions[player] = expression;
+      this._expressionTimers[player] = expression === "idle" ? 0 : Math.max(0, holdSeconds);
+    }
+    /** 指定玩家当前的表情。 */
+    getExpression(player) {
+      return this._expressions[player];
+    }
+    /** 气泡播报：`holdSeconds` 秒后消散。 */
+    announce(player, text, holdSeconds = 1.6) {
+      this._bubbles[player] = { text, timer: Math.max(0, holdSeconds) };
+    }
+    /** 指定玩家当前的气泡文案（无气泡时为 null）。 */
+    getBubble(player) {
+      return this._bubbles[player]?.text ?? null;
+    }
+    /** 横幅播报：主文案 + 可选副文案，常驻直到下一次播报。 */
+    showBanner(mainText, subText = "") {
+      this._bannerText = mainText;
+      this._bannerSubText = subText;
+    }
+    /** 由调用方每帧驱动（秒）：推进呼吸动画与表情/气泡的衰减。 */
+    updateTimers(dt) {
+      this._tick += dt;
+      for (const player of PLAYER_IDS) {
+        if (this._expressionTimers[player] > 0) {
+          this._expressionTimers[player] -= dt;
+          if (this._expressionTimers[player] <= 0) {
+            this._expressionTimers[player] = 0;
+            this._expressions[player] = "idle";
+          }
+        }
+        const bubble = this._bubbles[player];
+        if (bubble !== null) {
+          bubble.timer -= dt;
+          if (bubble.timer <= 0) {
+            this._bubbles[player] = null;
+          }
+        }
+      }
+    }
+    /** 先画横幅与头像，再画回合信息条（后者盖在上层）。 */
+    renderSelf(ctx) {
+      this.drawBanner(ctx);
+      for (const player of PLAYER_IDS) {
+        this.drawAvatar(ctx, player);
+      }
+      this.drawTurnStrip(ctx);
+    }
+    drawTurnStrip(ctx) {
+      ctx.save();
+      ctx.fillStyle = MUTED_COLOR;
+      ctx.font = "bold 12px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(
+        `回合 ${this._round}/${this._maxRounds}`,
+        this._width / 2,
+        this._safeTop + TOP_BAR_HEIGHT / 2
+      );
+      if (this._isExtraTurn) {
+        ctx.fillStyle = EXTRA_TURN_COLOR;
+        ctx.font = "bold 11px monospace";
+        ctx.textAlign = "left";
+        ctx.fillText("连动", SIDE_MARGIN, this._safeTop + TOP_BAR_HEIGHT / 2);
+      }
+      ctx.restore();
+    }
+    drawAvatar(ctx, player) {
+      const isPlayer = player === "P1";
+      const frameX = isPlayer ? SIDE_MARGIN : this._width - SIDE_MARGIN - AVATAR_SIZE;
+      const frameY = this._safeTop + TOP_BAR_HEIGHT + 4;
+      const isCurrent = this._currentPlayer === player;
+      const expression = this._expressions[player];
+      const border = EXPRESSION_COLOR[expression] ?? (isCurrent ? ACTIVE_COLOR : isPlayer ? P1_COLOR : P2_COLOR);
+      ctx.save();
+      drawPixelBox(ctx, frameX, frameY, AVATAR_SIZE, AVATAR_SIZE, PANEL_COLOR, border, 2);
+      ctx.save();
+      ctx.translate(frameX + AVATAR_SIZE / 2, frameY + AVATAR_SIZE / 2 + 6);
+      ctx.scale(0.66, 0.66);
+      drawPixelCharacter(ctx, 0, 0, isPlayer, expression, this._tick * 60);
+      ctx.restore();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = PLAYER_COLOR[player];
+      ctx.font = "bold 11px monospace";
+      ctx.fillText(PLAYER_LABEL[player], frameX + AVATAR_SIZE / 2, frameY + AVATAR_SIZE + 12);
+      ctx.fillStyle = TEXT_COLOR;
+      ctx.font = "bold 12px monospace";
+      ctx.fillText(`${this._scores[player]} 分`, frameX + AVATAR_SIZE / 2, frameY + AVATAR_SIZE + 26);
+      if (isCurrent) {
+        ctx.fillStyle = this._isExtraTurn ? EXTRA_TURN_COLOR : ACTIVE_COLOR;
+        ctx.font = "bold 10px monospace";
+        ctx.fillText(
+          this._isExtraTurn ? "连动行动中" : "行动中",
+          frameX + AVATAR_SIZE / 2,
+          frameY + AVATAR_SIZE + 40
+        );
+      }
+      const bubble = this._bubbles[player];
+      if (bubble !== null) {
+        this.drawBubble(ctx, player, frameX, frameY, bubble.text);
+      }
+      ctx.restore();
+    }
+    /** 气泡：挂在头像上方，宽度按头像列夹紧，文本超宽时截断。 */
+    drawBubble(ctx, player, frameX, frameY, text) {
+      const isPlayer = player === "P1";
+      const maxWidth = this._width / 2 - SIDE_MARGIN * 2;
+      const fontSize = 10;
+      const label = truncateToWidth(text, maxWidth - 12, fontSize);
+      const width = estimateTextWidth(label, fontSize) + 12;
+      const height = 20;
+      const x = isPlayer ? Math.min(frameX, Math.max(SIDE_MARGIN, frameX + AVATAR_SIZE - width)) : Math.max(frameX + AVATAR_SIZE - width, this._width - SIDE_MARGIN - width);
+      const y = frameY - height - 4;
+      drawPixelRect(ctx, x, y, width, height, "#1a202c");
+      drawPixelRect(ctx, x, y, width, 2, EXTRA_TURN_COLOR);
+      ctx.fillStyle = TEXT_COLOR;
+      ctx.font = `${fontSize}px monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, x + width / 2, y + height / 2 + 1);
+    }
+    /** 横幅：主文案（12px，最多两行）+ 副文案（9px，最多两行）。 */
+    drawBanner(ctx) {
+      if (this._bannerText === "" && this._bannerSubText === "") {
+        return;
+      }
+      const x = SIDE_MARGIN + AVATAR_SIZE + BANNER_GAP;
+      const width = Math.max(80, this._width - 2 * x);
+      const y = this._safeTop + TOP_BAR_HEIGHT + 4;
+      ctx.save();
+      drawPixelBox(ctx, x, y, width, BANNER_HEIGHT, "#171e2e", PANEL_BORDER, 2);
+      const textWidth = width - 16;
+      const mainLines = wrapText(this._bannerText, textWidth, 12, 2);
+      const subLines = wrapText(this._bannerSubText, textWidth, 9, 2);
+      const mainLineHeight = 16;
+      const subLineHeight = 12;
+      const blockHeight = mainLines.length * mainLineHeight + subLines.length * subLineHeight;
+      let cursor = y + (BANNER_HEIGHT - blockHeight) / 2 + mainLineHeight / 2;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = TEXT_COLOR;
+      ctx.font = "bold 12px monospace";
+      for (const line of mainLines) {
+        ctx.fillText(line, x + width / 2, cursor);
+        cursor += mainLineHeight;
+      }
+      ctx.fillStyle = MUTED_COLOR;
+      ctx.font = "9px monospace";
+      for (const line of subLines) {
+        ctx.fillText(line, x + width / 2, cursor);
+        cursor += subLineHeight;
+      }
+      ctx.restore();
+    }
+  }
+  const PLAYER_IDS = ["P1", "P2"];
+  function estimateTextWidth(text, fontSize) {
+    let width = 0;
+    for (const char of text) {
+      width += isFullWidth(char) ? fontSize * 1.2 : fontSize * 0.6;
+    }
+    return width;
+  }
+  function wrapText(text, maxWidth, fontSize, maxLines) {
+    if (text === "") {
+      return [];
+    }
+    const lines = [];
+    let current = "";
+    for (const char of text) {
+      const next = current + char;
+      if (current !== "" && estimateTextWidth(next, fontSize) > maxWidth) {
+        lines.push(current);
+        current = char;
+        if (lines.length === maxLines) {
+          break;
+        }
+      } else {
+        current = next;
+      }
+    }
+    if (lines.length < maxLines && current !== "") {
+      lines.push(current);
+    }
+    if ([...lines.join("")].length < [...text].length) {
+      const last = lines[lines.length - 1] ?? "";
+      lines[lines.length - 1] = `${truncateToWidth(last, maxWidth, fontSize)}…`;
+    }
+    return lines;
+  }
+  function truncateToWidth(text, maxWidth, fontSize) {
+    if (estimateTextWidth(text, fontSize) <= maxWidth) {
+      return text;
+    }
+    const chars = [...text];
+    while (chars.length > 1 && estimateTextWidth(`${chars.join("")}…`, fontSize) > maxWidth) {
+      chars.pop();
+    }
+    return `${chars.join("")}…`;
+  }
+  function isFullWidth(char) {
+    return (char.codePointAt(0) ?? 0) >= 11904;
+  }
+  const DEFAULT_ENTRANCE_DURATION = 0.44;
+  const DEFAULT_FLIGHT_DURATION = 0.55;
+  const DEFAULT_IMPACT_DURATION = 0.35;
+  const ENTRANCE_START_SCALE = 0.55;
+  const TICK_RATE = 60;
+  const METEOR_ARC = 34;
+  const SERPENTINE_AMPLITUDE = 16;
+  const SERPENTINE_WAVES = 3;
+  const IMPACT_MAX_RADIUS = 46;
+  const ABSORB_SHRINK = 0.45;
+  const CORONA_COLOR = "#f6e05e";
+  const CORONA_RAY_COUNT = 12;
+  const CORONA_RADIUS = 54;
+  const MOONLIGHT_COLOR = "#c3dafe";
+  const MOON_RADIUS = 48;
+  class RuneFlightView extends Container {
+    constructor(options) {
+      super();
+      __publicField(this, "board");
+      __publicField(this, "centerX");
+      __publicField(this, "centerY");
+      __publicField(this, "entranceDuration");
+      __publicField(this, "flightDuration");
+      __publicField(this, "impactDuration");
+      __publicField(this, "rune");
+      __publicField(this, "ripple");
+      /** 入场补间写入的进度（0~1），符文透明度与缩放是它的纯投影。 */
+      __publicField(this, "entranceState", { progress: 0 });
+      /** 飞行补间写入的进度（0~1），符文位置是它的纯投影。 */
+      __publicField(this, "flightState", { progress: 0 });
+      /** 波纹补间写入的进度（0~1），扩散半径与符文吸收是它的纯投影。 */
+      __publicField(this, "impactState", { progress: 0 });
+      __publicField(this, "_phase", "hidden");
+      __publicField(this, "_tianGan", null);
+      __publicField(this, "_haloStyle", "corona");
+      __publicField(this, "tick", 0);
+      __publicField(this, "entrance", null);
+      __publicField(this, "entranceOnComplete");
+      __publicField(this, "flight", null);
+      __publicField(this, "flightOnComplete");
+      this.board = options.board;
+      this.centerX = options.centerX ?? 0;
+      this.centerY = options.centerY ?? 0;
+      this.entranceDuration = options.entranceDuration ?? DEFAULT_ENTRANCE_DURATION;
+      this.flightDuration = options.flightDuration ?? DEFAULT_FLIGHT_DURATION;
+      this.impactDuration = options.impactDuration ?? DEFAULT_IMPACT_DURATION;
+      const mode = options.mode ?? "flow";
+      this.rune = new RuneNode(mode);
+      this.rune.x = this.centerX;
+      this.rune.y = this.centerY;
+      this.rune.visible = false;
+      this.addChild(this.rune);
+      this.ripple = new ImpactNode(mode);
+      this.ripple.visible = false;
+      this.addChild(this.ripple);
+    }
+    /** 当前动效阶段。 */
+    get phase() {
+      return this._phase;
+    }
+    /** 入场 / 飞行 / 波纹是否仍在播放；为 false 时调用方可交回回合控制权。 */
+    get isAnimating() {
+      return this._phase === "entering" || this._phase === "flying" || this._phase === "impact";
+    }
+    /** 当前天干（未入场时为 null）。 */
+    get tianGan() {
+      return this._tianGan;
+    }
+    /** 入场光晕样式（阳：金乌日冕，阴：玄阴幽光）。 */
+    get haloStyle() {
+      return this._haloStyle;
+    }
+    /** 符文锚点在父坐标系里的位置（浮空摆动是绘制内部的视觉偏移，不体现在这里）。 */
+    get position() {
+      return { x: this.rune.x, y: this.rune.y };
+    }
+    /**
+     * 回合启动：设定本回合天干并从屏幕中央浮空降临。
+     * 入场结束后回调 `onComplete`，此时阶段回到 `ready`（可以接受 `flyTo`）。
+     */
+    playEntrance(tianGan, options = {}) {
+      this.flight = null;
+      this.flightOnComplete = void 0;
+      this._tianGan = tianGan;
+      this._haloStyle = tianGan.polarity === Polarity.YANG ? "corona" : "moonlight";
+      this.rune.tianGan = tianGan;
+      this.rune.haloStyle = this._haloStyle;
+      this.rune.x = this.centerX;
+      this.rune.y = this.centerY;
+      this.rune.alpha = 0;
+      this.rune.scaleX = ENTRANCE_START_SCALE;
+      this.rune.scaleY = ENTRANCE_START_SCALE;
+      this.rune.visible = true;
+      this.ripple.visible = false;
+      this.entranceState.progress = 0;
+      this.entranceOnComplete = options.onComplete;
+      this._phase = "entering";
+      this.entrance = new Tween(
+        this.entranceState,
+        { progress: 1 },
+        {
+          duration: this.entranceDuration,
+          easing: EASINGS.outCubic,
+          onUpdate: (progress) => this.applyEntrance(progress),
+          onComplete: () => {
+            this.finishEntrance();
+            const onComplete = this.entranceOnComplete;
+            this.entranceOnComplete = void 0;
+            onComplete?.();
+          }
+        }
+      );
+    }
+    /** 由调用方每帧驱动；`dt` 单位为秒。 */
+    update(dt) {
+      this.tick += dt * TICK_RATE;
+      this.rune.tick = this.tick;
+      this.entrance?.update(dt);
+      this.flight?.update(dt);
+    }
+    /**
+     * 动作选定：符文从当前位置飞向目标槽位（坐标取自 `BoardView.getSlot()`），
+     * 命中后触发波纹并让符文被吸收。**波纹也跑完**才回调 `onComplete`，
+     * 此时 `isAnimating` 为 false，调用方可以交回回合控制权。
+     *
+     * 入场还没跑完就调用时，先把入场收尾再起飞（玩家点得比动画快也不会丢飞行）；
+     * 从未 `playEntrance()` 或已在飞行中则直接报错。
+     */
+    flyTo(element, polarity, options = {}) {
+      if (this._phase === "entering") {
+        this.finishEntrance();
+        this.entranceOnComplete = void 0;
+      }
+      const tianGan = this._tianGan;
+      if (this._phase !== "ready" || tianGan === null) {
+        throw new Error("符文不在待机态，无法起飞；请先 playEntrance() 并等它落地。");
+      }
+      const target = this.board.getSlot(element, polarity);
+      const startX = this.rune.x;
+      const startY = this.rune.y;
+      const deltaX = target.x - startX;
+      const deltaY = target.y - startY;
+      const length = Math.hypot(deltaX, deltaY) || 1;
+      const normalX = -deltaY / length;
+      const normalY = deltaX / length;
+      const isYang = tianGan.polarity === Polarity.YANG;
+      this.flightState.progress = 0;
+      this._phase = "flying";
+      this.flightOnComplete = options.onComplete;
+      const flightTween = new Tween(
+        this.flightState,
+        { progress: 1 },
+        {
+          duration: this.flightDuration,
+          easing: EASINGS.outCubic,
+          onUpdate: (progress) => {
+            const curve = isYang ? -Math.sin(progress * Math.PI) * METEOR_ARC : Math.sin(progress * Math.PI * SERPENTINE_WAVES) * SERPENTINE_AMPLITUDE;
+            this.rune.x = startX + deltaX * progress + normalX * curve;
+            this.rune.y = startY + deltaY * progress + normalY * curve;
+          },
+          onComplete: () => {
+            this.rune.x = target.x;
+            this.rune.y = target.y;
+            this._phase = "impact";
+          }
+        }
+      );
+      this.flight = new TweenSequence(
+        [flightTween, this.buildImpactTween(target.x, target.y, tianGan.element)],
+        () => {
+          this.flight = null;
+          this.ripple.visible = false;
+          this._phase = "absorbed";
+          const onComplete = this.flightOnComplete;
+          this.flightOnComplete = void 0;
+          onComplete?.();
+        }
+      );
+    }
+    /** 命中波纹：以目标槽位为圆心扩散，同时符文被吸收（缩小 + 淡出）。 */
+    buildImpactTween(targetX, targetY, element) {
+      const palette = WUXING_PALETTE[element];
+      this.impactState.progress = 0;
+      this.ripple.x = targetX;
+      this.ripple.y = targetY;
+      this.ripple.maxRadius = IMPACT_MAX_RADIUS;
+      this.ripple.color = palette.main;
+      this.ripple.lightColor = palette.light;
+      this.ripple.visible = true;
+      return new Tween(
+        this.impactState,
+        { progress: 1 },
+        {
+          duration: this.impactDuration,
+          easing: EASINGS.outQuad,
+          onUpdate: (progress) => this.applyImpact(progress)
+        }
+      );
+    }
+    /** 结束入场：符文落到待机态（补间正常跑完与被动作抢跑两条路径共用）。 */
+    finishEntrance() {
+      this.entrance = null;
+      this.applyEntrance(1);
+      this._phase = "ready";
+    }
+    /** 入场进度的投影：透明度与缩放。 */
+    applyEntrance(progress) {
+      this.rune.alpha = progress;
+      const scale = ENTRANCE_START_SCALE + (1 - ENTRANCE_START_SCALE) * progress;
+      this.rune.scaleX = scale;
+      this.rune.scaleY = scale;
+    }
+    /** 命中进度的投影：波纹半径 + 符文被吸收。 */
+    applyImpact(progress) {
+      this.ripple.radius = IMPACT_MAX_RADIUS * progress;
+      this.ripple.alpha = 1 - progress;
+      this.rune.alpha = 1 - progress;
+      const scale = 1 - ABSORB_SHRINK * progress;
+      this.rune.scaleX = scale;
+      this.rune.scaleY = scale;
+    }
+  }
+  class RuneNode extends Node {
+    constructor(mode) {
+      super();
+      __publicField(this, "tianGan", null);
+      __publicField(this, "haloStyle", "corona");
+      /** 动画帧计数，交给 `drawCenterTianGanRune` 驱动呼吸与旋转。 */
+      __publicField(this, "tick", 0);
+      __publicField(this, "mode");
+      this.mode = mode;
+    }
+    renderSelf(ctx) {
+      const tianGan = this.tianGan;
+      if (tianGan === null) {
+        return;
+      }
+      const palette = WUXING_PALETTE[tianGan.element];
+      if (this.haloStyle === "corona") {
+        this.drawCorona(ctx, palette.light);
+      } else {
+        this.drawMoonlight(ctx, palette.light);
+      }
+      drawCenterTianGanRune(ctx, 0, 0, tianGan, this.mode, this.tick);
+    }
+    /** 金乌日冕：暖金色放射日珥 + 随呼吸胀缩的光晕。 */
+    drawCorona(ctx, elementLight) {
+      const radius = CORONA_RADIUS * (1 + Math.sin(this.tick * 0.08) * 0.06);
+      const grad = ctx.createRadialGradient(0, 0, 4, 0, 0, radius);
+      grad.addColorStop(0, `${CORONA_COLOR}55`);
+      grad.addColorStop(0.55, `${elementLight}33`);
+      grad.addColorStop(1, "transparent");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `${CORONA_COLOR}aa`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let index = 0; index < CORONA_RAY_COUNT; index += 1) {
+        const angle = index * Math.PI * 2 / CORONA_RAY_COUNT + this.tick * 0.01;
+        ctx.moveTo(Math.cos(angle) * radius * 0.74, Math.sin(angle) * radius * 0.74);
+        ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+      }
+      ctx.stroke();
+    }
+    /** 玄阴幽光：冷月色光晕 + 缓转的弦月弧。 */
+    drawMoonlight(ctx, elementLight) {
+      const radius = MOON_RADIUS * (1 + Math.sin(this.tick * 0.05) * 0.05);
+      const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, radius);
+      grad.addColorStop(0, `${MOONLIGHT_COLOR}44`);
+      grad.addColorStop(0.6, `${elementLight}22`);
+      grad.addColorStop(1, "transparent");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.fill();
+      const phase = this.tick * 0.012;
+      ctx.strokeStyle = `${MOONLIGHT_COLOR}cc`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.84, phase, phase + Math.PI * 0.9);
+      ctx.stroke();
+    }
+  }
+  class ImpactNode extends Node {
+    constructor(mode) {
+      super();
+      __publicField(this, "radius", 0);
+      __publicField(this, "maxRadius", IMPACT_MAX_RADIUS);
+      __publicField(this, "color", "#ffffff");
+      __publicField(this, "lightColor", "#ffffff");
+      __publicField(this, "mode");
+      this.mode = mode;
+    }
+    renderSelf(ctx) {
+      if (this.radius <= 0) {
+        return;
+      }
+      drawImpactEffect(ctx, {
+        x: 0,
+        y: 0,
+        radius: this.radius,
+        maxRadius: this.maxRadius,
+        color: this.color,
+        lightColor: this.lightColor,
+        // 绘制例程直接赋值 `globalAlpha`，这里把节点自身的淡出值传进去。
+        alpha: this.alpha,
+        mode: this.mode
+      });
+    }
+  }
+  const DEFAULT_SAFE_TOP = 24;
+  const DEFAULT_SAFE_BOTTOM = 12;
+  const DEFAULT_AUTO_EXECUTE_DELAY = 0.75;
+  const DEFAULT_AI_THINK_DELAY = 0.55;
+  const DEFAULT_EXPRESSION_HOLD = 0.6;
+  const ACTION_BAR_HEIGHT = 130;
+  const ACTION_BAR_MARGIN = 14;
+  const SHAKE_DURATION = 0.28;
+  const SHAKE_BURST = 8;
+  const SHAKE_ATTACK = 4;
+  const SHAKE_SHOWDOWN = 6;
+  const BACKGROUND_COLOR = "#0a0d14";
+  const ARENA_GLOW_COLOR = "#1f2937";
+  function describeAutoFlow(actionType) {
+    switch (actionType) {
+      case ActionType.AUTO:
+        return "自动吸纳中";
+      case ActionType.DISSIPATE:
+        return "亢极满溢·散气回落中";
+      case ActionType.PASS:
+        return "道法受阻·消散过牌中";
+      case ActionType.ATK:
+        return "唯一机缘·破";
+      case ActionType.TRANS:
+        return "唯一机缘·化";
+      case ActionType.CONVERT:
+        return "势在必行·调息";
+      case ActionType.BURST:
+        return "势在必行·强化";
+      case ActionType.BURST_ATK:
+        return "势在必行·强破";
+    }
+  }
+  function describeEndReason(endReason) {
+    switch (endReason) {
+      case "GUI_YUAN":
+        return "五行归元";
+      case "MAX_ROUNDS":
+        return "终局回合结算";
+      default:
+        return "对局结束";
+    }
+  }
+  class GameScene extends Container {
+    constructor(options) {
+      super();
+      /** 五行法盘视图（与符文层同一父节点、零位移，见 RuneFlightView 的挂载前提）。 */
+      __publicField(this, "board");
+      /** 天干降临与飞行动效视图；视口变化时会被重建（见 `resize`）。 */
+      __publicField(this, "runeFlight");
+      /** 双方角色卡视图。 */
+      __publicField(this, "characters");
+      /** 操作面板视图；唯一候选时整体隐藏（ADR 0008）。 */
+      __publicField(this, "actionBar");
+      __publicField(this, "_turnManager");
+      __publicField(this, "strategy");
+      __publicField(this, "rules");
+      __publicField(this, "animationMode");
+      __publicField(this, "autoExecuteDelay");
+      __publicField(this, "aiThinkDelay");
+      __publicField(this, "expressionHold");
+      __publicField(this, "entranceDuration");
+      __publicField(this, "flightDuration");
+      __publicField(this, "impactDuration");
+      __publicField(this, "_phase", "idle");
+      __publicField(this, "width");
+      __publicField(this, "height");
+      __publicField(this, "safeTop");
+      __publicField(this, "safeBottom");
+      /** 缓冲倒计时剩余秒数（`auto-pending` / `ai-thinking`）。 */
+      __publicField(this, "timer", 0);
+      /** 缓冲期结束后要提交的动作（唯一候选或 AI 决策）。 */
+      __publicField(this, "pendingAction", null);
+      /** `action:execute` 记录的完整载荷，供 `action:executed` 计算飞行落点。 */
+      __publicField(this, "actionInFlight", null);
+      /** `action:execute` 时点的行动前快照（飞行期间显示它，落点后才投影结算结果）。 */
+      __publicField(this, "stateBeforeAction", null);
+      __publicField(this, "lastShowdown", null);
+      __publicField(this, "unsubscribes", []);
+      /** 震屏：补间把幅度衰减到 0，`update` 按幅度换算节点偏移。 */
+      __publicField(this, "shakeState", { amount: 0 });
+      __publicField(this, "shakeTween", null);
+      __publicField(this, "elapsed", 0);
+      /** 视口在对局中变化时，符文层延到下一个回合开始前重建（不打断当前动效）。 */
+      __publicField(this, "runeFlightStale", false);
+      this.width = options.width;
+      this.height = options.height;
+      this.safeTop = options.safeTop ?? DEFAULT_SAFE_TOP;
+      this.safeBottom = options.safeBottom ?? DEFAULT_SAFE_BOTTOM;
+      this.rules = options.rules ?? {};
+      this.animationMode = options.animationMode ?? "flow";
+      this.autoExecuteDelay = options.autoExecuteDelay ?? DEFAULT_AUTO_EXECUTE_DELAY;
+      this.aiThinkDelay = options.aiThinkDelay ?? DEFAULT_AI_THINK_DELAY;
+      this.expressionHold = options.expressionHold ?? DEFAULT_EXPRESSION_HOLD;
+      this.entranceDuration = options.entranceDuration ?? 0.44;
+      this.flightDuration = options.flightDuration ?? 0.55;
+      this.impactDuration = options.impactDuration ?? 0.35;
+      this.strategy = createStrategy(BALANCED_WEIGHTS, { rules: this.rules });
+      this._turnManager = options.turnManager ?? new TurnManager({
+        prng: options.prng ?? createPRNG(options.seed ?? Date.now()),
+        initialState: options.initialState
+      });
+      this.board = new BoardView();
+      this.board.resize(this.width, this.height);
+      this.runeFlight = this.buildRuneFlight();
+      this.characters = new CharacterView({
+        width: this.width,
+        height: this.height,
+        safeTop: this.safeTop
+      });
+      this.actionBar = this.buildActionBar(this._turnManager);
+      this.actionBar.visible = false;
+      this.addChild(this.board);
+      this.addChild(this.runeFlight);
+      this.addChild(this.characters);
+      this.addChild(this.actionBar);
+      this.bindTurnManager(this._turnManager);
+    }
+    /** 核心状态机（只读；`restart()` 会换成新实例）。 */
+    get turnManager() {
+      return this._turnManager;
+    }
+    /** 当前表现阶段。 */
+    get phase() {
+      return this._phase;
+    }
+    /**
+     * 视口自适应：法盘、角色卡与操作台重新排布。
+     * 符文层的入场锚点是构造期常量，只能重建；空闲 / 终局时立即重建，对局中则延到下一回合开始前。
+     */
+    resize(width, height, safeTop, safeBottom) {
+      this.width = width;
+      this.height = height;
+      this.safeTop = safeTop ?? this.safeTop;
+      this.safeBottom = safeBottom ?? this.safeBottom;
+      this.board.resize(width, height);
+      this.characters.resize(width, height, this.safeTop);
+      this.actionBar.x = ACTION_BAR_MARGIN;
+      this.actionBar.y = this.actionBarY();
+      if (this._phase === "idle" || this._phase === "game-over") {
+        this.replaceRuneFlight();
+        this.runeFlightStale = false;
+      } else {
+        this.runeFlightStale = true;
+      }
+    }
+    /** 开局：抽第一个天干并播放降临。重复调用无副作用。 */
+    start() {
+      if (this._phase !== "idle") {
+        return;
+      }
+      this.beginTurn();
+    }
+    /** 终局后重新开局：换一颗随机源、重置表现态，从第 1 回合重来。 */
+    restart(seedOrPrng = Date.now()) {
+      this.unbindTurnManager();
+      const prng = typeof seedOrPrng === "number" ? createPRNG(seedOrPrng) : seedOrPrng;
+      this._turnManager = new TurnManager({ prng });
+      this.lastShowdown = null;
+      this.actionInFlight = null;
+      this.stateBeforeAction = null;
+      this.actionBar.dispose();
+      this.actionBar.removeFromParent();
+      this.actionBar = this.buildActionBar(this._turnManager);
+      this.addChild(this.actionBar);
+      this.bindTurnManager(this._turnManager);
+      this._phase = "idle";
+      this.beginTurn();
+    }
+    /** 退订核心事件（销毁场景时调用）。 */
+    dispose() {
+      this.unbindTurnManager();
+      this.actionBar.dispose();
+    }
+    /**
+     * 主循环步进（秒）：推进动效与缓冲倒计时。
+     * `Tween` 不掌握帧循环，时钟完全由这里注入。
+     */
+    update(dt) {
+      this.elapsed += dt;
+      this.runeFlight.update(dt);
+      this.characters.updateTimers(dt);
+      this.updateShake(dt);
+      if (this._phase !== "auto-pending" && this._phase !== "ai-thinking") {
+        return;
+      }
+      this.timer -= dt;
+      if (this.timer <= 0) {
+        this.commitPendingDecision();
+      }
+    }
+    /**
+     * 「点击屏幕任意处」的统一入口：
+     * - 唯一候选的缓冲期内：立即加速结算（GDD §2.4「允许随时加速」）；
+     * - 终局展示：重新开局。
+     */
+    handleTap() {
+      if (this._phase === "auto-pending") {
+        this.commitPendingDecision();
+        return;
+      }
+      if (this._phase === "game-over") {
+        this.restart();
+      }
+    }
+    /** 抽天干并开始一个回合（连动回合由核心层决定仍是同一行动方）。 */
+    beginTurn() {
+      if (this.runeFlightStale) {
+        this.replaceRuneFlight();
+        this.runeFlightStale = false;
+      }
+      const before = this._turnManager.getState();
+      const actions = this._turnManager.startTurn();
+      const state = this._turnManager.getState();
+      const tianGan = this._turnManager.getCurrentTianGan();
+      this.pendingAction = null;
+      this.timer = 0;
+      this.characters.update(state, { isExtraTurn: this._turnManager.isExtraTurnActive() });
+      if (state.isGameOver) {
+        this.presentGameOver(before);
+        return;
+      }
+      this.projectBoard(state.currentPlayer, state);
+      this.hideActionBar();
+      this.announceTurnStart(state, tianGan, actions);
+      if (tianGan === null) {
+        this.afterEntrance();
+        return;
+      }
+      this._phase = "entrance";
+      this.runeFlight.playEntrance(tianGan, { onComplete: () => this.afterEntrance() });
+    }
+    /** 降临结束：进入玩家抉择 / 自动流转 / 天道推演三者之一。 */
+    afterEntrance() {
+      const state = this._turnManager.getState();
+      const actions = this._turnManager.getAvailableActions();
+      if (state.currentPlayer === "P2") {
+        this._phase = "ai-thinking";
+        this.timer = this.aiThinkDelay;
+        return;
+      }
+      if (actions.length === 1) {
+        this._phase = "auto-pending";
+        this.timer = this.autoExecuteDelay;
+        this.pendingAction = actions[0];
+        return;
+      }
+      this._phase = "awaiting-player";
+      this.actionBar.visible = true;
+      this.actionBar.interactive = true;
+      this.actionBar.refresh();
+    }
+    /** 缓冲结束（或被点击加速）：把待定动作交给核心层结算。 */
+    commitPendingDecision() {
+      let action = this.pendingAction;
+      if (this._phase === "ai-thinking") {
+        action = this.decideAiAction();
+      }
+      this.pendingAction = null;
+      this.timer = 0;
+      if (action === null) {
+        this.afterEntrance();
+        return;
+      }
+      const result = this._turnManager.executeAction(action);
+      if (!result.success) {
+        console.warn(`[Guiyuan] 动作提交被核心拒绝：${result.message ?? ""}`);
+        this.afterEntrance();
+      }
+    }
+    /** 天道决策：把只读快照与候选交给注入的策略函数。 */
+    decideAiAction() {
+      const state = this._turnManager.getState();
+      const tianGan = this._turnManager.getCurrentTianGan();
+      const actions = this._turnManager.getAvailableActions();
+      if (tianGan === null || actions.length === 0) {
+        return null;
+      }
+      return this.strategy(state, tianGan, actions);
+    }
+    /** `action:execute`：记录完整载荷与行动前快照（此时核心尚未结算）。 */
+    handleActionExecute(event) {
+      this.actionInFlight = event.action;
+      this.stateBeforeAction = this._turnManager.getState();
+    }
+    /** `action:executed`：动作已结算，播放符文飞行并把棋盘变更留到落点之后再投影。 */
+    handleActionExecuted(event) {
+      const action = this.actionInFlight;
+      const before = this.stateBeforeAction ?? this._turnManager.getState();
+      this.actionInFlight = null;
+      this.stateBeforeAction = null;
+      const state = this._turnManager.getState();
+      const actor = event.player;
+      const target = resolveActionTarget(action, event.actionType, actor, this._turnManager);
+      const isAttack = event.actionType === ActionType.ATK || event.actionType === ActionType.BURST_ATK;
+      this.hideActionBar();
+      this.characters.update(state, { isExtraTurn: this._turnManager.isExtraTurnActive() });
+      this.characters.setExpression(actor, isAttack ? "attack" : "cast", this.expressionHold);
+      if (action !== null) {
+        this.characters.announce(actor, formatActionButton(action).label, this.expressionHold * 2);
+      }
+      if (isAttack) {
+        this.characters.setExpression(opponentOf(actor), "hurt", this.expressionHold);
+        this.shake(event.actionType === ActionType.BURST_ATK ? SHAKE_BURST : SHAKE_ATTACK);
+      }
+      this.board.update(before.players[target.player].board);
+      this._phase = "flying";
+      this.runeFlight.flyTo(target.element, target.polarity, {
+        onComplete: () => this.afterFlight(target.player)
+      });
+    }
+    /** 飞行结束：投影结算后的棋盘，然后进入下一回合或终局。 */
+    afterFlight(targetPlayer) {
+      const state = this._turnManager.getState();
+      this.projectBoard(targetPlayer, state);
+      this.characters.update(state, { isExtraTurn: this._turnManager.isExtraTurnActive() });
+      if (state.isGameOver) {
+        this.presentGameOver(null);
+        return;
+      }
+      this.beginTurn();
+    }
+    /**
+     * 终局展示：天命揭牌保留抽牌横幅与符文揭示动效，常规终局用胜负横幅。
+     * `beforeShowdown` 是天命揭牌抽牌前的快照（只有揭牌路径传入），用于「落点才点亮」的定格。
+     */
+    presentGameOver(beforeShowdown) {
+      const state = this._turnManager.getState();
+      this._phase = "game-over";
+      this.pendingAction = null;
+      this.timer = 0;
+      this.hideActionBar();
+      this.characters.update(state, { isExtraTurn: false });
+      const showdown = this.lastShowdown;
+      if (showdown !== null && beforeShowdown !== null) {
+        const elementName = WUXING_PALETTE[showdown.tianGan.element].name;
+        const label = `${showdown.tianGan.name}${elementName}`;
+        this.characters.showBanner(
+          "【终轮绝杀·天命抽牌】",
+          showdown.success ? `【天命逆转】五行归元·后发制人！(抽中【${label}】)` : `【天命难违】差之一线·先手锁定胜局！(抽中【${label}】)`
+        );
+        this.characters.setExpression(showdown.success ? "P2" : "P1", "cast", this.expressionHold);
+        this.characters.setExpression(showdown.success ? "P1" : "P2", "hurt", this.expressionHold);
+        if (showdown.success) {
+          this.shake(SHAKE_SHOWDOWN);
+        }
+        this.board.update(beforeShowdown.players.P2.board);
+        const { element, polarity } = showdown.tianGan;
+        this.runeFlight.playEntrance(showdown.tianGan, {
+          onComplete: () => {
+            this.runeFlight.flyTo(element, polarity, {
+              onComplete: () => {
+                this.board.update(state.players.P2.board);
+              }
+            });
+          }
+        });
+        return;
+      }
+      this.characters.showBanner(
+        state.winner === "P1" ? "★ 五行归元 ★ 玩家大胜！" : "天道通玄 · 遗憾惜败！",
+        describeEndReason(state.endReason)
+      );
+      this.board.update(state.players[state.winner === "P2" ? "P2" : "P1"].board);
+    }
+    /** 回合开始的播报：连动标记、天干名与「势在必行」的自动流转提示。 */
+    announceTurnStart(state, tianGan, actions) {
+      const isExtraTurn = this._turnManager.isExtraTurnActive();
+      const isPlayer = state.currentPlayer === "P1";
+      const who = isPlayer ? "玩家" : "天道";
+      const main = isExtraTurn ? `【连动回合】${who}额外行动！` : `${who}回合 · 天干【${tianGan?.name ?? ""}】降临`;
+      let sub;
+      if (!isPlayer) {
+        sub = "天道推演生克决策中...";
+      } else if (actions.length === 1) {
+        sub = describeAutoFlow(actions[0].actionType);
+      } else {
+        const elementName = tianGan === null ? "" : WUXING_PALETTE[tianGan.element].name;
+        const polarity = tianGan?.polarity === Polarity.YANG ? "阳" : "阴";
+        sub = `属性: ${elementName} (${polarity})`;
+      }
+      this.characters.showBanner(main, sub);
+    }
+    /** 把指定玩家的棋盘投影到法盘（只读快照，不写回）。 */
+    projectBoard(player, state) {
+      this.board.update(state.players[player].board);
+    }
+    hideActionBar() {
+      this.actionBar.visible = false;
+      this.actionBar.interactive = false;
+    }
+    actionBarY() {
+      return this.height - this.safeBottom - ACTION_BAR_HEIGHT;
+    }
+    buildActionBar(turnManager) {
+      return new ActionBarView({
+        turnManager,
+        width: this.width - ACTION_BAR_MARGIN * 2,
+        y: this.actionBarY()
+      });
+    }
+    buildRuneFlight() {
+      return new RuneFlightView({
+        board: this.board,
+        centerX: this.width / 2,
+        centerY: this.height / 2,
+        mode: this.animationMode,
+        entranceDuration: this.entranceDuration,
+        flightDuration: this.flightDuration,
+        impactDuration: this.impactDuration
+      });
+    }
+    /** 重建符文层（视口变化时），保持挂载顺序：法盘 -> 符文 -> 角色卡 -> 操作台。 */
+    replaceRuneFlight() {
+      this.runeFlight.removeFromParent();
+      this.runeFlight = this.buildRuneFlight();
+      this.addChild(this.runeFlight);
+      this.addChild(this.characters);
+      this.addChild(this.actionBar);
+    }
+    bindTurnManager(turnManager) {
+      const bus = turnManager.getEventBus();
+      this.unsubscribes.push(
+        bus.on("action:execute", (event) => this.handleActionExecute(event)),
+        bus.on("action:executed", (event) => this.handleActionExecuted(event)),
+        bus.on("showdown:draw", (event) => {
+          this.lastShowdown = { tianGan: event.tianGan, success: event.success };
+        })
+      );
+    }
+    unbindTurnManager() {
+      for (const unsubscribe of this.unsubscribes) {
+        unsubscribe();
+      }
+      this.unsubscribes.length = 0;
+    }
+    /** 触发震屏（幅度补间衰减到 0）。 */
+    shake(magnitude) {
+      this.shakeState.amount = magnitude;
+      this.shakeTween = new Tween(
+        this.shakeState,
+        { amount: 0 },
+        {
+          duration: SHAKE_DURATION,
+          easing: EASINGS.outQuad
+        }
+      );
+    }
+    updateShake(dt) {
+      if (this.shakeTween === null) {
+        return;
+      }
+      this.shakeTween.update(dt);
+      const amount = this.shakeState.amount;
+      if (amount <= 0.01) {
+        this.shakeTween = null;
+        this.x = 0;
+        this.y = 0;
+        return;
+      }
+      this.x = Math.sin(this.elapsed * 62) * amount;
+      this.y = Math.cos(this.elapsed * 74) * amount;
+    }
+    /** 底色与中央道场光晕（各视图画在其上）。 */
+    renderSelf(ctx) {
+      drawPixelRect(ctx, 0, 0, this.width, this.height, BACKGROUND_COLOR);
+      const radius = Math.min(this.width, this.height) * 0.45;
+      const gradient = ctx.createRadialGradient(
+        this.width / 2,
+        this.height / 2,
+        0,
+        this.width / 2,
+        this.height / 2,
+        radius
+      );
+      gradient.addColorStop(0, ARENA_GLOW_COLOR);
+      gradient.addColorStop(1, "transparent");
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(this.width / 2, this.height / 2, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  function opponentOf(player) {
+    return player === "P1" ? "P2" : "P1";
+  }
+  function resolveActionTarget(action, actionType, actor, turnManager) {
+    const tianGan = turnManager.getCurrentTianGan();
+    const element = action === null ? tianGan?.element ?? WuXing.WOOD : getActionTargetElement(action, tianGan?.element);
+    const polarity = action?.polarity ?? tianGan?.polarity ?? Polarity.YANG;
+    const isAttack = actionType === ActionType.ATK || actionType === ActionType.BURST_ATK;
+    return { player: isAttack ? opponentOf(actor) : actor, element, polarity };
+  }
   class InputManager {
     constructor(stage) {
       __publicField(this, "stage");
@@ -2830,6 +3861,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     const touch = primary?.[0] ?? fallback?.[0];
     return touch === void 0 ? null : { x: touch.clientX, y: touch.clientY };
   }
+  const MAX_FRAME_DELTA = 1 / 20;
   function initMiniGame() {
     if (typeof wx === "undefined") {
       console.log("[Guiyuan] 非微信小游戏环境，跳过 Canvas 初始化");
@@ -2844,27 +3876,32 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     canvas.height = windowHeight * pixelRatio;
     const ctx = canvas.getContext("2d");
     ctx.scale(pixelRatio, pixelRatio);
-    const game = new GameManager();
-    game.resize(windowWidth, windowHeight, pixelRatio, safeTop, safeBottom);
     const stage = new Container();
+    stage.hitArea = { x: 0, y: 0, width: windowWidth, height: windowHeight };
+    const scene = new GameScene({
+      width: windowWidth,
+      height: windowHeight,
+      safeTop,
+      safeBottom
+    });
+    stage.onTap = () => scene.handleTap();
+    stage.addChild(scene);
     const input = new InputManager(stage);
     input.bindTouchEvents(wx);
-    console.log("[Guiyuan] 左右对抗像素风对局初始化成功！");
-    wx.onTouchStart((e) => {
-      const touch = e.touches?.[0];
-      if (touch) {
-        game.handleTouch(touch.clientX, touch.clientY);
-      }
-    });
-    function loop() {
-      game.update();
-      game.render(ctx);
-      stage.render(ctx);
+    scene.start();
+    let lastTimestamp = null;
+    function loop(timestamp) {
+      const now = typeof timestamp === "number" ? timestamp : Date.now();
+      const dt = lastTimestamp === null ? 0 : Math.min(MAX_FRAME_DELTA, Math.max(0, (now - lastTimestamp) / 1e3));
+      lastTimestamp = now;
+      scene.update(dt);
+      scene.render(ctx);
       if (typeof requestAnimationFrame !== "undefined") {
         requestAnimationFrame(loop);
       }
     }
     loop();
+    console.log("[Guiyuan] 场景树对局初始化成功！");
   }
   initMiniGame();
   exports.initMiniGame = initMiniGame;
