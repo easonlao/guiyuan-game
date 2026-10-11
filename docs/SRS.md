@@ -1,7 +1,7 @@
 # 归元弈 (Guiyuan) - 软件需求规格说明书 (SRS)
 
 **项目状态：** 核心规则、无头仿真引擎与微信小游戏单机版均已实现；联机对战为远期规划
-**基准实现：** `src/core/`（TS 确定性规则库 + 无头诊断平台）、`src/minigame/`（微信小游戏表现层）；旧 Web JS 原型与 Supabase 网络层已归档于 `legacy/`（ADR 0003）
+**基准实现：** `src/core/`（TS 确定性规则库 + 无头诊断平台）、`src/minigame/`（微信小游戏表现层）；旧 Web JS 原型与 Supabase 网络层已删除（ADR 0003 及其勘误）
 
 ---
 
@@ -21,7 +21,7 @@
 系统支持三种不同运行形态（前两种已实现，第三种为远期规划）：
 1.  **无头仿真与诊断平台 (Headless Engine)**：运行于 Node.js 环境，用于批量对战、AI 算法博弈、数值平衡测试与突变测试。已实现于 `src/core/headless/`。
 2.  **轻量单机小游戏端 (Standalone Mini-game MVP)**：已实现的首发形态，纯 TypeScript + Canvas 2D 直出微信小游戏（ADR 0004），零服务器成本，纯本地运行。
-3.  **多玩家联机对弈端 (Online Multiplayer Platform)**：远期规划，**尚未实现**。旧版 Supabase 实时房间与 PVP 原型已归档至 `legacy/src/network/`（ADR 0003），联机形态复用其协议设计。
+3.  **多玩家联机对弈端 (Online Multiplayer Platform)**：远期规划，**尚未实现**。旧版 Supabase 实时房间与 PVP 原型已删除（ADR 0003 及其勘误）；联机形态届时重新设计。
 
 ---
 
@@ -51,7 +51,7 @@
 ### 3.3 分层 AI 决策系统 (FR-3: AI Decision)
 系统必须提供开销可控的本地启发式 AI，不依赖网络（实现与模块见 `docs/HLD.md` §2）：
 *   **FR-3.1 启发式多维度评估 (Decision Tree)**：AI 必须按多维权重评估动作收益（修复道损、点亮、推进归元、压制对手等），并能在激进（攻击对手）、防守（修复自愈）、求圆（抢占归元）等预设策略模板间选择。权重维度与模板取值见 `src/core/ai/types.ts`。
-*   **FR-3.2 离线自学习与权重自适应 (Learning & Optimization)**：**规划项，尚未实现**。当前权重为人工预设，无自动调参。旧 JS 原型的 `GameRecorder` / `StatsCollector` / `WeightOptimizer` 已归档于 `legacy/src/logic/ai/learning/`。
+*   **FR-3.2 离线自学习与权重自适应 (Learning & Optimization)**：**规划项，尚未实现**。当前权重为人工预设，无自动调参。
 
 ### 3.4 无头对弈与数值诊断平台 (FR-4: Headless Simulation Platform)
 系统必须原生支持脱离任何 UI 渲染的纯逻辑批处理对战环境：
@@ -60,7 +60,7 @@
 *   **FR-4.3 批量实验与平衡性诊断**：支持批量对战、对拼矩阵、策略对比、参数敏感性扫描与候选搜索/护栏校验。实验工具清单见 `docs/HLD.md` §2 与 `docs/headless/`。
 
 ### 3.5 多人联机与网络对战 (FR-5: Multiplayer & Networking)
-针对完整版联网场景，系统**规划**提供网络对弈能力。当前 `src/` 中**尚未实现**任何联机模块；旧 JS 原型（`RoomManager`、`SimplifiedPVPManager`、`ReconnectionManager`、`LeaderboardManager`）已归档于 `legacy/src/network/`，作为协议与交互设计的参考：
+针对完整版联网场景，系统**规划**提供网络对弈能力。当前 `src/` 中**尚未实现**任何联机模块：
 *   **FR-5.1 房间与对局匹配 (`RoomManager`)**：支持创建对战房间、房间邀请与加入。
 *   **FR-5.2 状态同步与断线重连 (`SimplifiedPVPManager`, `ReconnectionManager`)**：支持回合指令与棋盘状态的可靠广播，并在断线后通过历史动作日志恢复棋盘。
 *   **FR-5.3 全局排行榜 (`LeaderboardManager`)**：支持玩家胜率、胜场与最高积分的持久化排行榜。
@@ -98,7 +98,7 @@
 
 | 阶段 | 交付目标 | 核心范围 | 验收标准 |
 | :--- | :--- | :--- | :--- |
-| **阶段 1 (已完成，已归档)** | Web 原型与无头诊断平台 | 原生 JS + Vite + DOM UI + Headless 模拟器 + Supabase 网络层（现归档于 `legacy/`） | 成功完成多轮数值调优与机制验证，跑通几千场批处理实验 |
+| **阶段 1 (已完成)** | Web 原型与无头诊断平台 | 原生 JS + Vite + DOM UI + Headless 模拟器 + Supabase 网络层（资产已删除） | 成功完成多轮数值调优与机制验证，跑通几千场批处理实验 |
 | **阶段 2 (已完成)** | 逻辑脱水与 TS 强类型重构 | 剥离 DOM 依赖，全面 TS 化，完善 Vitest / oxlint / Stryker 工具链 | `npm test` 100% 通过（693 用例），无头对战脱机运行零错误 |
 | **阶段 3 (进行中)** | 纯 TS Canvas 微信小游戏 MVP（ADR 0004） | 纯本地单机版，Canvas 2D 直出，本地存档；表现层轻量化场景树重构见 `.scratch/minigame-view-upgrade` | 微信开发者工具首包 < 4MB，真机流畅运行 |
 | **阶段 4 (远期规划)** | 跨端联机与商业化版本 | 恢复并强化 Supabase 联机对战，引入社交排行榜与跨平台互通 | 支持实时 PvP 匹配与断线重连 |

@@ -73,4 +73,3 @@ tracker 协议里 `Resolve` 一步要往 `map.md` 追加决定（`.pi/skills/set
 - 切 `src/minigame` 第三块。
 - 上 monorepo 的完整形态（项目引用 / `tsc -b` / 六包拓扑）。
 - 游戏规则、数值、`docs/GDD.md` 任何内容。
-- 把 `legacy/`（132 文件 / 25.5k 行旧 JS）移出仓库——它被 5 处文档引用为联机协议参考，删不得；是否加 `linguist-vendored` 标记留待后续。

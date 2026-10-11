@@ -18,6 +18,7 @@
 
 - [01: 版本库边界与任务层规格](issues/01-version-control-boundary.md)：`.scratch/` 入库；`.gitignore` 重写为有理由的边界清单（`.pi/` 只排 `.pi/skills/`，`.agents/` 整目录排除）；三份 codegraph MCP 配置收敛到 `.pi/mcp.json`；五项废弃 web 残骸（`vite.config.js`、`@supabase/supabase-js`、`wrangler.toml`、`public/vite.svg`、`.env.example`）判定为删。已验证 `npm test` 39 文件 / 728 用例全绿。
 - [10: `.scratch/archive` 按 feature 目录归位](issues/10-archive-normalization.md)：7 个根下散文件收进 `headless-strategy-evaluation/`、`balance-diagnostics/`、`core-engine/wayfinder/`；archive 根下不再有游离文件。
+- [11: 删除 `legacy/`](issues/11-legacy-removal.md)：反转 spec 的 Out of Scope（原写「删不得」）。旧 Web JS 资产无代码引用、联机届时重做，故整体删除并修掉 18 处文档引用；ADR 0003 文末追加勘误。
 
 ## Tickets & Frontier
 
@@ -32,6 +33,7 @@
 - [ ] [08: 产物边界](issues/08-artifact-boundary.md) (Blocked by: 05)
 - [ ] [09: 目录约定与文档对账](issues/09-directory-convention-and-doc-reconciliation.md) (Blocked by: 04)
 - [x] [10: `.scratch/archive` 按 feature 目录归位](issues/10-archive-normalization.md)
+- [x] [11: 删除 `legacy/`](issues/11-legacy-removal.md)
 
 ## 依赖图
 
@@ -49,7 +51,6 @@
 - 切 `src/minigame` 第三块
 - monorepo 的完整形态（项目引用 / `tsc -b` / 六包拓扑）
 - 游戏规则与数值
-- `legacy/` 的处置
 
 ## 注意
 
