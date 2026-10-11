@@ -1,5 +1,5 @@
 import { Polarity, TianGanInfo, WuXing } from '../core/types/domain.js';
-import { AnimationMode, CharacterActionState, ImpactEffect } from './types.js';
+import { CharacterActionState, ImpactEffect } from './types.js';
 
 export const WUXING_PALETTE: Record<
   WuXing,
@@ -128,13 +128,12 @@ export function drawPixelCharacter(
   ctx.restore();
 }
 
-/** 绘制中央天元区天干符文 (支持方案A像素与方案B流光) */
+/** 绘制中央天元区天干符文（柔和流光气劲风格） */
 export function drawCenterTianGanRune(
   ctx: any,
   centerX: number,
   centerY: number,
   tg: TianGanInfo,
-  mode: AnimationMode,
   animTick: number,
 ): void {
   const elemCfg = WUXING_PALETTE[tg.element] ?? WUXING_PALETTE[WuXing.WOOD];
@@ -144,171 +143,96 @@ export function drawCenterTianGanRune(
 
   ctx.save();
 
-  if (mode === 'pixel') {
-    // 方案 A: 16-bit 像素风格
-    // 1. 八角像素法阵轮廓
-    const ringRadius = 38;
-    ctx.strokeStyle = '#2d3748';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(centerX - ringRadius, boxY - ringRadius, ringRadius * 2, ringRadius * 2);
+  // 1. 径向发光光晕 (柔和呼吸)
+  const glowRadius = 46 + Math.sin(animTick * 0.08) * 5;
+  const grad = ctx.createRadialGradient(centerX, boxY, 8, centerX, boxY, glowRadius);
+  grad.addColorStop(0, elemCfg.light + '66');
+  grad.addColorStop(0.6, elemCfg.main + '22');
+  grad.addColorStop(1, 'transparent');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(centerX, boxY, glowRadius, 0, Math.PI * 2);
+  ctx.fill();
 
-    // 2. 悬浮像素灵气微粒 (4 颗环绕转动)
-    for (let i = 0; i < 4; i++) {
-      const angle = animTick * 0.06 + (i * Math.PI) / 2;
-      const px = centerX + Math.cos(angle) * 32;
-      const py = boxY + Math.sin(angle) * 32;
-      drawPixelRect(ctx, px - 2, py - 2, 4, 4, elemCfg.light);
-    }
+  // 2. 旋转太极两仪外环
+  ctx.save();
+  ctx.translate(centerX, boxY);
+  ctx.rotate(animTick * 0.02);
+  ctx.strokeStyle = elemCfg.main + '99';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, 36, 0, Math.PI * 1.5);
+  ctx.stroke();
+  ctx.strokeStyle = elemCfg.light + 'cc';
+  ctx.beginPath();
+  ctx.arc(0, 0, 30, Math.PI, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
 
-    // 3. 符石像素双层框
-    const boxSize = 50;
-    drawPixelBox(
-      ctx,
-      centerX - boxSize / 2,
-      boxY - boxSize / 2,
-      boxSize,
-      boxSize,
-      '#171e2e',
-      elemCfg.main,
-      2,
-    );
-    // 内衬高光边框
-    drawPixelRect(
-      ctx,
-      centerX - boxSize / 2 + 4,
-      boxY - boxSize / 2 + 4,
-      boxSize - 8,
-      2,
-      elemCfg.light,
-    );
+  // 3. 灵玉法印主体 (圆盘玉牌)
+  ctx.fillStyle = '#162032';
+  ctx.beginPath();
+  ctx.arc(centerX, boxY, 24, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = elemCfg.light;
+  ctx.lineWidth = 2;
+  ctx.stroke();
 
-    // 4. 天干文字 (像素粗体与硬阴影)
-    ctx.fillStyle = '#0a0d14';
-    ctx.font = 'bold 24px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(tg.name, centerX + 1, boxY + 1);
+  // 4. 文字光芒
+  ctx.save();
+  ctx.shadowColor = elemCfg.light;
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(tg.name, centerX, boxY);
+  ctx.restore();
 
-    ctx.fillStyle = elemCfg.light;
-    ctx.fillText(tg.name, centerX, boxY);
-
-    // 5. 底部像素属性微标
-    const tagW = 46;
-    const tagH = 16;
-    const tagY = boxY + boxSize / 2 + 4;
-    drawPixelBox(ctx, centerX - tagW / 2, tagY, tagW, tagH, '#111827', elemCfg.dark, 1);
-    ctx.fillStyle = elemCfg.light;
-    ctx.font = 'bold 10px monospace';
-    ctx.fillText(`${elemCfg.name}·${polarityName}`, centerX, tagY + tagH / 2);
+  // 5. 底部微标胶囊
+  const tagW = 48;
+  const tagH = 18;
+  const tagY = boxY + 28;
+  ctx.fillStyle = '#111827dd';
+  ctx.strokeStyle = elemCfg.main;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(centerX - tagW / 2, tagY, tagW, tagH, 9);
   } else {
-    // 方案 B: 柔和流光气劲风格
-    // 1. 径向发光光晕 (柔和呼吸)
-    const glowRadius = 46 + Math.sin(animTick * 0.08) * 5;
-    const grad = ctx.createRadialGradient(centerX, boxY, 8, centerX, boxY, glowRadius);
-    grad.addColorStop(0, elemCfg.light + '66');
-    grad.addColorStop(0.6, elemCfg.main + '22');
-    grad.addColorStop(1, 'transparent');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(centerX, boxY, glowRadius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 2. 旋转太极两仪外环
-    ctx.save();
-    ctx.translate(centerX, boxY);
-    ctx.rotate(animTick * 0.02);
-    ctx.strokeStyle = elemCfg.main + '99';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(0, 0, 36, 0, Math.PI * 1.5);
-    ctx.stroke();
-    ctx.strokeStyle = elemCfg.light + 'cc';
-    ctx.beginPath();
-    ctx.arc(0, 0, 30, Math.PI, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-
-    // 3. 灵玉法印主体 (圆盘玉牌)
-    ctx.fillStyle = '#162032';
-    ctx.beginPath();
-    ctx.arc(centerX, boxY, 24, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = elemCfg.light;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // 4. 文字光芒
-    ctx.save();
-    ctx.shadowColor = elemCfg.light;
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 22px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(tg.name, centerX, boxY);
-    ctx.restore();
-
-    // 5. 底部微标胶囊
-    const tagW = 48;
-    const tagH = 18;
-    const tagY = boxY + 28;
-    ctx.fillStyle = '#111827dd';
-    ctx.strokeStyle = elemCfg.main;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    if (ctx.roundRect) {
-      ctx.roundRect(centerX - tagW / 2, tagY, tagW, tagH, 9);
-    } else {
-      ctx.rect(centerX - tagW / 2, tagY, tagW, tagH);
-    }
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = elemCfg.light;
-    ctx.font = 'bold 10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`${elemCfg.name}·${polarityName}`, centerX, tagY + tagH / 2);
+    ctx.rect(centerX - tagW / 2, tagY, tagW, tagH);
   }
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = elemCfg.light;
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`${elemCfg.name}·${polarityName}`, centerX, tagY + tagH / 2);
 
   ctx.restore();
 }
 
-/** 绘制受击/吸收到达冲击效果 */
+/** 绘制受击/吸收到达冲击效果（柔和冲击波涟漪扩散） */
 export function drawImpactEffect(ctx: any, impact: ImpactEffect): void {
   ctx.save();
-  const { x, y, radius, maxRadius, color, lightColor, alpha, mode } = impact;
+  const { x, y, radius, maxRadius, lightColor, alpha } = impact;
   ctx.globalAlpha = Math.max(0, alpha);
 
-  if (mode === 'pixel') {
-    // 方案 A: 八方向像素爆裂火花
-    const sparkCount = 8;
-    const sparkDist = radius;
-    for (let i = 0; i < sparkCount; i++) {
-      const angle = (i * Math.PI * 2) / sparkCount;
-      const sx = x + Math.cos(angle) * sparkDist;
-      const sy = y + Math.sin(angle) * sparkDist;
-      drawPixelRect(ctx, sx - 2, sy - 2, 4, 4, i % 2 === 0 ? lightColor : color);
-    }
-    if (radius < maxRadius * 0.4) {
-      drawPixelRect(ctx, x - 5, y - 5, 10, 10, '#ffffff');
-    }
-  } else {
-    // 方案 B: 柔和冲击波涟漪扩散
-    ctx.strokeStyle = lightColor;
-    ctx.lineWidth = 3 * (1 - radius / maxRadius) + 1;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.stroke();
+  ctx.strokeStyle = lightColor;
+  ctx.lineWidth = 3 * (1 - radius / maxRadius) + 1;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.stroke();
 
-    const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
-    grad.addColorStop(0, lightColor + '44');
-    grad.addColorStop(1, 'transparent');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+  grad.addColorStop(0, lightColor + '44');
+  grad.addColorStop(1, 'transparent');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.restore();
 }

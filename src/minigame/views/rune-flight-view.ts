@@ -18,7 +18,6 @@ import { drawCenterTianGanRune, drawImpactEffect, WUXING_PALETTE } from '../pixe
 import { Container } from '../scene/container.js';
 import { Node } from '../scene/node.js';
 import { EASINGS, Tween, TweenSequence } from '../scene/tween.js';
-import { AnimationMode } from '../types.js';
 
 /** 动效阶段：未开始 / 入场 / 待机浮空 / 飞行 / 命中波纹 / 已被吸收。 */
 export type RuneFlightPhase = 'hidden' | 'entering' | 'ready' | 'flying' | 'impact' | 'absorbed';
@@ -38,8 +37,6 @@ export interface RuneFlightViewOptions {
   readonly flightDuration?: number;
   /** 命中波纹时长（秒），默认 0.35。 */
   readonly impactDuration?: number;
-  /** 绘制方案（像素 / 流光），默认流光。 */
-  readonly mode?: AnimationMode;
 }
 
 const DEFAULT_ENTRANCE_DURATION = 0.44;
@@ -104,14 +101,13 @@ export class RuneFlightView extends Container {
     this.entranceDuration = options.entranceDuration ?? DEFAULT_ENTRANCE_DURATION;
     this.flightDuration = options.flightDuration ?? DEFAULT_FLIGHT_DURATION;
     this.impactDuration = options.impactDuration ?? DEFAULT_IMPACT_DURATION;
-    const mode = options.mode ?? 'flow';
-    this.rune = new RuneNode(mode);
+    this.rune = new RuneNode();
     this.rune.x = this.centerX;
     this.rune.y = this.centerY;
     this.rune.visible = false;
     this.addChild(this.rune);
     // 波纹是独立子节点：飞行的符文缩放进节点里，波纹得留在命中点扩散。
-    this.ripple = new ImpactNode(mode);
+    this.ripple = new ImpactNode();
     this.ripple.visible = false;
     this.addChild(this.ripple);
   }
@@ -270,7 +266,6 @@ export class RuneFlightView extends Container {
     this.ripple.x = targetX;
     this.ripple.y = targetY;
     this.ripple.maxRadius = IMPACT_MAX_RADIUS;
-    this.ripple.color = palette.main;
     this.ripple.lightColor = palette.light;
     this.ripple.visible = true;
     return new Tween(
@@ -317,13 +312,6 @@ class RuneNode extends Node {
   /** 动画帧计数，交给 `drawCenterTianGanRune` 驱动呼吸与旋转。 */
   public tick = 0;
 
-  private readonly mode: AnimationMode;
-
-  public constructor(mode: AnimationMode) {
-    super();
-    this.mode = mode;
-  }
-
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
     const tianGan = this.tianGan;
     if (tianGan === null) {
@@ -336,7 +324,7 @@ class RuneNode extends Node {
       this.drawMoonlight(ctx, palette.light);
     }
     // 符文主体（天干文字、五行色彩、两仪外环）复用既有绘制例程，坐标归到节点原点。
-    drawCenterTianGanRune(ctx, 0, 0, tianGan, this.mode, this.tick);
+    drawCenterTianGanRune(ctx, 0, 0, tianGan, this.tick);
   }
 
   /** 金乌日冕：暖金色放射日珥 + 随呼吸胀缩的光晕。 */
@@ -387,15 +375,7 @@ class RuneNode extends Node {
 class ImpactNode extends Node {
   public radius = 0;
   public maxRadius = IMPACT_MAX_RADIUS;
-  public color = '#ffffff';
   public lightColor = '#ffffff';
-
-  private readonly mode: AnimationMode;
-
-  public constructor(mode: AnimationMode) {
-    super();
-    this.mode = mode;
-  }
 
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
     if (this.radius <= 0) {
@@ -406,13 +386,9 @@ class ImpactNode extends Node {
       y: 0,
       radius: this.radius,
       maxRadius: this.maxRadius,
-      color: this.color,
       lightColor: this.lightColor,
       // 绘制例程直接赋值 `globalAlpha`，这里把节点自身的淡出值传进去。
       alpha: this.alpha,
-      life: 1,
-      maxLife: 1,
-      mode: this.mode,
     });
   }
 }
