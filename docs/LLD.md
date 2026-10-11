@@ -60,3 +60,12 @@
 3. **动作提交**：表现层把用户意图包装成 `ActionPayload`，经 `turnManager.executeAction(action)` 提交，核心层返回 `ActionResult`（见 §3.1）。
 4. **单向数据流**：状态变更只能由核心层发起并回传新状态，表现层按新快照重新投影，禁止反向写入。
 5. **事件通知**：核心层的非状态通知（如 `showdown:draw`）经 `turnManager.getEventBus()` 订阅，表现层只消费、不发布。
+
+### 4.1 表现层内部接口契约（法盘双环，ADR 0015）
+
+以下签名是表现层**内部**模块间的契约，与核心层无关；类型真源仍是 `src/minigame/` 下对应文件，此处只固定签名语义。
+
+1. **双盘投影**：`BoardView.update(p1Board: BoardState, p2Board: BoardState)`——同时接收己方盘与对方盘两块快照，一次投影；表现层**不再**按当前行动方切换单一棋盘（ADR 0015 的动机）。
+2. **槽位定位**：`BoardView.getSlot(player: PlayerId, element: WuXing, polarity: Polarity): BoardSlotView`——返回指定**某一方**、某元素、某极性槽位的投影视图（含父坐标系下的 `x/y` 与角度），供 `RuneFlightView` 取飞行落点。`player` 决定取内环（己方）还是外环（对方）。
+3. **飞行落点**：`RuneFlightView` 的飞行目标坐标**唯一来源**是 `BoardView.getSlot(player, …)`；调用方必须传入被作用方的 `player`（`ATK`/`BURST_ATK` 为对方，其余为己方）。
+4. **同心双环语义**：内环恒为己方盘、外环恒为对方盘；外环相对内环逆时针偏移 2 格，每根射线满足「己方克对方」。该几何是契约而非样式（板盘测试按坐标断言）。
