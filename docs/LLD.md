@@ -69,3 +69,4 @@
 2. **槽位定位**：`BoardView.getSlot(player: PlayerId, element: WuXing, polarity: Polarity): BoardSlotView`——返回指定**某一方**、某元素、某极性槽位的投影视图（含父坐标系下的 `x/y` 与角度），供 `RuneFlightView` 取飞行落点。`player` 决定取内环（己方）还是外环（对方）。
 3. **飞行落点**：`RuneFlightView` 的飞行目标坐标**唯一来源**是 `BoardView.getSlot(player, …)`；调用方必须传入被作用方的 `player`（`ATK`/`BURST_ATK` 为对方，其余为己方）。
 4. **同心双环语义**：内环恒为己方盘、外环恒为对方盘；外环相对内环逆时针偏移 2 格，每根射线满足「己方克对方」。该几何是契约而非样式（板盘测试按坐标断言）。
+5. **动作路径高亮**：`BoardView.setActivePaths(paths: readonly BoardActivePath[])` 按 `(kind, from)` 点亮「当前动作会走」的连线（`BoardActivePath = { kind: 'generation' | 'attack'; from: WuXing }`）；`resolveActionPath(actionType, element)` 是动作到路径的纯映射（`TRANS`/`BURST` → 相生边，`ATK`/`BURST_ATK` → 径向线，其余动作 `null`）。高亮只由 `GameScene` 在 `awaiting-player` 阶段按当前天干与候选动作驱动，其余阶段清空；不再由主印等级驱动。

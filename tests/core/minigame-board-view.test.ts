@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { BoardView } from '../../src/minigame/views/board-view.js';
-import { PlayerId, Polarity, WuXing } from '../../src/core/types/domain.js';
+import { BoardView, resolveActionPath } from '../../src/minigame/views/board-view.js';
+import { ActionType, PlayerId, Polarity, WuXing } from '../../src/core/types/domain.js';
 import { boardWith } from '../../tools/BoardFixture.js';
 import { RecordingContext } from './helpers/recording-context.js';
 
@@ -241,23 +241,74 @@ describe('Minigame BoardView: 相生边与跨环径向线', () => {
     }
   });
 
-  it('active 由源主印（内环）任一侧点亮驱动', () => {
+  it('连线高亮不再由盘面等级驱动：源主印全亮也不点亮任何连线', () => {
     const view = new BoardView();
-    expect(view.connections.every((line) => !line.active)).toBe(true);
+    view.update(
+      boardWith({ [WuXing.WOOD]: { yin: 1, yang: 1 } }),
+      boardWith({ [WuXing.EARTH]: { yin: 1, yang: 1 } }),
+    );
 
-    // 己方木点亮：木生火（内环相生边）与木→土（径向线）转为活动，其余八条静默。
-    view.update(boardWith({ [WuXing.WOOD]: { yin: 1, yang: 0 } }), boardWith());
+    expect(view.connections.every((line) => !line.active)).toBe(true);
+  });
+
+  it('setActivePaths 只点亮给定的 (kind, from)，其余九条静默', () => {
+    const view = new BoardView();
+
+    view.setActivePaths([
+      { kind: 'generation', from: WuXing.WOOD },
+      { kind: 'attack', from: WuXing.WATER },
+    ]);
 
     expect(
       view.connections.filter((line) => line.active).map((line) => [line.kind, line.from, line.to]),
     ).toEqual([
       ['generation', WuXing.WOOD, WuXing.FIRE],
-      ['attack', WuXing.WOOD, WuXing.EARTH],
+      ['attack', WuXing.WATER, WuXing.FIRE],
     ]);
+  });
 
-    // 对方盘点亮不驱动连线高亮（源主印恒在内环）。
-    view.update(boardWith(), boardWith({ [WuXing.WOOD]: { yin: 1, yang: 1 } }));
+  it('setActivePaths([]) 清空高亮；换盘面快照不清除已设置的高亮', () => {
+    const view = new BoardView();
+    view.setActivePaths([{ kind: 'attack', from: WuXing.WOOD }]);
+    expect(view.connections.filter((line) => line.active)).toHaveLength(1);
+
+    // 高亮由动作驱动、与盘面等级解耦：投影新快照只换数据，不换高亮。
+    view.update(boardWith(), boardWith());
+    expect(view.connections.filter((line) => line.active)).toHaveLength(1);
+
+    view.setActivePaths([]);
     expect(view.connections.every((line) => !line.active)).toBe(true);
+  });
+});
+
+describe('Minigame BoardView: 动作到连线路径的映射（票 02）', () => {
+  it('化 / 强化走相生边，破 / 强破走径向线，其余动作不指向任何连线', () => {
+    // 映射表来自票面契约：路径类型由动作决定，起点是当前天干的五行。
+    expect(resolveActionPath(ActionType.TRANS, WuXing.WOOD)).toEqual({
+      kind: 'generation',
+      from: WuXing.WOOD,
+    });
+    expect(resolveActionPath(ActionType.BURST, WuXing.FIRE)).toEqual({
+      kind: 'generation',
+      from: WuXing.FIRE,
+    });
+    expect(resolveActionPath(ActionType.ATK, WuXing.EARTH)).toEqual({
+      kind: 'attack',
+      from: WuXing.EARTH,
+    });
+    expect(resolveActionPath(ActionType.BURST_ATK, WuXing.WATER)).toEqual({
+      kind: 'attack',
+      from: WuXing.WATER,
+    });
+
+    for (const actionType of [
+      ActionType.AUTO,
+      ActionType.CONVERT,
+      ActionType.DISSIPATE,
+      ActionType.PASS,
+    ]) {
+      expect(resolveActionPath(actionType, WuXing.WOOD)).toBeNull();
+    }
   });
 });
 
