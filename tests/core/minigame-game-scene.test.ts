@@ -409,12 +409,13 @@ describe('GameScene：回合生命周期与交互契约', () => {
     const atk = scene.actionBar.getButtons()[0];
     tapButton(input, atk);
     expect(scene.phase).toBe('flying');
-    // 飞行期间法盘切到受击方（P2）的棋盘，并保持行动前的等级。
-    expect(scene.board.getSlot(WuXing.EARTH, Polarity.YIN).level).toBe(0);
+    // 飞行期间法盘不再换盘：双环保持行动前的等级（对方土阴仍为虚空）。
+    expect(scene.board.getSlot('P2', WuXing.EARTH, Polarity.YIN).level).toBe(0);
+    expect(scene.board.getSlot('P1', WuXing.WOOD, Polarity.YIN).level).toBe(1);
 
     advance(scene, 0.35);
     // 落点后投影结算结果：P2 土阴侧 0 -> -1，且行动权已交给天道。
-    expect(scene.board.getSlot(WuXing.EARTH, Polarity.YIN).level).toBe(-1);
+    expect(scene.board.getSlot('P2', WuXing.EARTH, Polarity.YIN).level).toBe(-1);
     expect(scene.characters.currentPlayer).toBe('P2');
   });
 
@@ -457,6 +458,114 @@ describe('GameScene：回合生命周期与交互契约', () => {
 
     advance(scene, 0.6);
     expect(scene.turnManager.isExtraTurnActive()).toBe(false);
+  });
+});
+
+/**
+ * 法盘双环的场景级契约（ADR 0015）：同一时刻两块盘都在投影，攻击飞向外环、养己飞向内环。
+ */
+describe('GameScene：法盘双环投影', () => {
+  /** 某个主印到盘心的距离：内环应等于 innerRadius、外环应等于 outerRadius。 */
+  function sealDistance(scene: GameScene, player: 'P1' | 'P2', element: WuXing): number {
+    const seal = scene.board.elements.find(
+      (entry) => entry.player === player && entry.element === element,
+    );
+    if (seal === undefined) {
+      throw new Error(`法盘上找不到 ${player} 的 ${element} 主印。`);
+    }
+    return Math.hypot(seal.x - scene.board.layout.centerX, seal.y - scene.board.layout.centerY);
+  }
+
+  it('同一时刻两块盘都在投影：内环是己方、外环是对方，等级互不串台', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yang: 1 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+
+    scene.start();
+
+    // 开局投影即同时包含两块盘：己方木归一在内环、对方土阳点亮在外环。
+    expect(scene.board.getSlot('P1', WuXing.WOOD, Polarity.YIN).level).toBe(1);
+    expect(scene.board.getSlot('P2', WuXing.EARTH, Polarity.YANG).level).toBe(1);
+    // 两块盘不是同一份快照投影两次：同一五行在对方盘上仍是虚空。
+    expect(scene.board.getSlot('P2', WuXing.WOOD, Polarity.YIN).level).toBe(0);
+    expect(scene.board.getSlot('P1', WuXing.EARTH, Polarity.YANG).level).toBe(0);
+    expect(sealDistance(scene, 'P1', WuXing.WOOD)).toBeCloseTo(scene.board.layout.innerRadius, 5);
+    expect(sealDistance(scene, 'P2', WuXing.EARTH)).toBeCloseTo(scene.board.layout.outerRadius, 5);
+  });
+
+  it('攻击动作（破）飞向对方环，飞行期间法盘保持行动前等级', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: {
+          [WuXing.WOOD]: { yin: 1, yang: 1 },
+          [WuXing.FIRE]: { yin: 2, yang: 2 },
+          [WuXing.EARTH]: { yin: 1 },
+        },
+        P2: { [WuXing.EARTH]: { yin: 0 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    const input = new InputManager(scene);
+    scene.start();
+    advance(scene, 0.15);
+    expect(scene.actionBar.getButtons().map((button) => button.label)).toEqual([
+      '【破】',
+      '【强破】',
+    ]);
+
+    tapButton(input, scene.actionBar.getButtons()[0]);
+    // 飞行期间不再换盘：对方土阴仍是行动前的虚空，己方盘也还在。
+    expect(scene.board.getSlot('P2', WuXing.EARTH, Polarity.YIN).level).toBe(0);
+    expect(scene.board.getSlot('P1', WuXing.WOOD, Polarity.YIN).level).toBe(1);
+
+    advanceUntil(scene, () => scene.runeFlight.phase === 'impact');
+    const target = scene.board.getSlot('P2', WuXing.EARTH, Polarity.YIN);
+    expect(scene.runeFlight.position.x).toBeCloseTo(target.x, 5);
+    expect(scene.runeFlight.position.y).toBeCloseTo(target.y, 5);
+    // 落点在对方环上：到盘心的距离大于己方环半径。
+    const distance = Math.hypot(
+      scene.runeFlight.position.x - scene.board.layout.centerX,
+      scene.runeFlight.position.y - scene.board.layout.centerY,
+    );
+    expect(distance).toBeGreaterThan(scene.board.layout.innerRadius);
+  });
+
+  it('养己动作（化）飞向己方环', () => {
+    // 乙木（木·阴）：木已归一 -> 【化】【强化】；P2 土双道损把【强破】封死，化的目标是己方相生节点火。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: -1, yang: -1 } },
+      }),
+      prng: scriptedPrng([1]),
+    });
+    const input = new InputManager(scene);
+    scene.start();
+    advance(scene, 0.15);
+    expect(scene.actionBar.getButtons().map((button) => button.label)).toEqual([
+      '【化】',
+      '【强化】',
+    ]);
+
+    tapButton(input, scene.actionBar.getButtons()[0]);
+    advanceUntil(scene, () => scene.runeFlight.phase === 'impact');
+
+    const target = scene.board.getSlot('P1', WuXing.FIRE, Polarity.YIN);
+    expect(scene.runeFlight.position.x).toBeCloseTo(target.x, 5);
+    expect(scene.runeFlight.position.y).toBeCloseTo(target.y, 5);
+    // 落点在己方环一侧：到盘心的距离小于外环半径。
+    const distance = Math.hypot(
+      scene.runeFlight.position.x - scene.board.layout.centerX,
+      scene.runeFlight.position.y - scene.board.layout.centerY,
+    );
+    expect(distance).toBeLessThan(scene.board.layout.outerRadius);
   });
 });
 
@@ -514,7 +623,7 @@ describe('GameScene：终轮天命揭牌与终局', () => {
     advance(scene, 0.15);
     expect(scene.runeFlight.phase).toBe('flying');
     advance(scene, 0.35);
-    expect(scene.board.getSlot(WuXing.WATER, Polarity.YANG).level).toBe(1);
+    expect(scene.board.getSlot('P2', WuXing.WATER, Polarity.YANG).level).toBe(1);
   });
 
   it('天命揭牌落空：横幅播报【天命难违】并定格 P1 获胜', () => {

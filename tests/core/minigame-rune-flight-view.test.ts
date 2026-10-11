@@ -15,9 +15,9 @@ function makeBoardView(): BoardView {
   return new BoardView({
     centerX: 0,
     centerY: 0,
-    sealRadius: 100,
-    slotRadius: 200,
-    slotSpread: 0.4,
+    innerRadius: 100,
+    outerRadius: 200,
+    sealSize: 24,
     startAngle: -Math.PI / 2,
   });
 }
@@ -108,7 +108,7 @@ describe('Minigame RuneFlightView: 渲染', () => {
     // 命中波纹扩散中也要能落笔（复用 pixel-art 的冲击效果例程）。
     const impact = new RecordingContext();
     view.update(0.24);
-    view.flyTo(WuXing.WOOD, Polarity.YIN);
+    view.flyTo('P1', WuXing.WOOD, Polarity.YIN);
     view.update(0.55);
     expect(view.phase).toBe('impact');
     view.update(0.15);
@@ -133,10 +133,10 @@ describe('Minigame RuneFlightView: 符文飞行与命中', () => {
     view.update(0.4);
 
     const start = view.position;
-    const target = board.getSlot(WuXing.WOOD, Polarity.YIN);
+    const target = board.getSlot('P1', WuXing.WOOD, Polarity.YIN);
     expect(start).toEqual({ x: 150, y: 320 });
 
-    view.flyTo(WuXing.WOOD, Polarity.YIN, { onComplete: () => completions.push('flight') });
+    view.flyTo('P1', WuXing.WOOD, Polarity.YIN, { onComplete: () => completions.push('flight') });
     expect(view.phase).toBe('flying');
     expect(view.isAnimating).toBe(true);
     // 未步进时仍停在起点，不会瞬间吸过去。
@@ -175,8 +175,8 @@ describe('Minigame RuneFlightView: 符文飞行与命中', () => {
     view.update(0.4);
 
     const start = view.position;
-    const target = board.getSlot(WuXing.FIRE, Polarity.YANG);
-    view.flyTo(WuXing.FIRE, Polarity.YANG);
+    const target = board.getSlot('P1', WuXing.FIRE, Polarity.YANG);
+    view.flyTo('P1', WuXing.FIRE, Polarity.YANG);
 
     const offsets = sampleFlight(view, 0.5, 10).map((point) =>
       signedDistanceFromLine(point, start, target),
@@ -194,8 +194,8 @@ describe('Minigame RuneFlightView: 符文飞行与命中', () => {
     view.update(0.4);
 
     const start = view.position;
-    const target = board.getSlot(WuXing.FIRE, Polarity.YIN);
-    view.flyTo(WuXing.FIRE, Polarity.YIN);
+    const target = board.getSlot('P1', WuXing.FIRE, Polarity.YIN);
+    view.flyTo('P1', WuXing.FIRE, Polarity.YIN);
 
     const offsets = sampleFlight(view, 0.5, 10).map((point) =>
       signedDistanceFromLine(point, start, target),
@@ -206,11 +206,38 @@ describe('Minigame RuneFlightView: 符文飞行与命中', () => {
     expect(Math.abs(offsets[offsets.length - 1])).toBeCloseTo(0, 6);
   });
 
+  it('player 决定落点所在环：同一五行飞对方盘时落在更外一圈', () => {
+    const board = makeBoardView();
+    const view = new RuneFlightView({
+      board,
+      centerX: 0,
+      centerY: 0,
+      entranceDuration: 0.4,
+      flightDuration: 0.5,
+      impactDuration: 0.3,
+    });
+    view.playEntrance(TIAN_GAN_JIA);
+    view.update(0.4);
+
+    view.flyTo('P2', WuXing.WOOD, Polarity.YIN);
+    view.update(0.5);
+
+    const ownTarget = board.getSlot('P1', WuXing.WOOD, Polarity.YIN);
+    const opponentTarget = board.getSlot('P2', WuXing.WOOD, Polarity.YIN);
+    expect(view.position.x).toBeCloseTo(opponentTarget.x, 6);
+    expect(view.position.y).toBeCloseTo(opponentTarget.y, 6);
+    // 对方盘槽位比己方盘槽位离盘心更远：落点确实在外环上。
+    expect(Math.hypot(view.position.x, view.position.y)).toBeGreaterThan(
+      Math.hypot(ownTarget.x, ownTarget.y),
+    );
+    expect(Math.hypot(view.position.x, view.position.y)).toBeGreaterThan(board.layout.innerRadius);
+  });
+
   it('未入场就起飞会直接报错，不会静默吞掉', () => {
     const board = makeBoardView();
     const view = new RuneFlightView({ board });
 
-    expect(() => view.flyTo(WuXing.WOOD, Polarity.YIN)).toThrow();
+    expect(() => view.flyTo('P1', WuXing.WOOD, Polarity.YIN)).toThrow();
   });
 
   it('入场还没跑完就派发动作：符文直接落到待机态并起飞，不丢飞行', () => {
@@ -227,11 +254,11 @@ describe('Minigame RuneFlightView: 符文飞行与命中', () => {
     view.playEntrance(TIAN_GAN_JIA);
     view.update(0.1);
 
-    view.flyTo(WuXing.WOOD, Polarity.YIN, { onComplete: () => completions.push('flight') });
+    view.flyTo('P1', WuXing.WOOD, Polarity.YIN, { onComplete: () => completions.push('flight') });
     expect(view.phase).toBe('flying');
 
     view.update(0.5);
-    const target = board.getSlot(WuXing.WOOD, Polarity.YIN);
+    const target = board.getSlot('P1', WuXing.WOOD, Polarity.YIN);
     expect(view.position.x).toBeCloseTo(target.x, 6);
     expect(view.position.y).toBeCloseTo(target.y, 6);
 
@@ -253,7 +280,7 @@ describe('Minigame RuneFlightView: 符文飞行与命中', () => {
     view.playEntrance(TIAN_GAN_JIA);
     view.update(0.4);
     const completions: string[] = [];
-    view.flyTo(WuXing.WOOD, Polarity.YIN, { onComplete: () => completions.push('flight') });
+    view.flyTo('P1', WuXing.WOOD, Polarity.YIN, { onComplete: () => completions.push('flight') });
     view.update(0.25);
 
     view.playEntrance(TIAN_GAN_YI);
