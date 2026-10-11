@@ -56,6 +56,8 @@ Single-context. See `docs/agents/domain.md`.
 
 门禁与做法见 `docs/MUTATION-TESTING.md`。
 
+全量变异 + 棘轮对比（`npm run mutation:milestone`）不挂 CI 定时、需求方不会去按按钮，**由 agent 在每个 spec 收尾时跑**（也用于发版 / 提审前）。改动处变异（`npm run mutation:changed`）由 CI 快链自动跑，只是观察项、不做门禁。
+
 ### Subagents
 
 The main thread dispatches and aggregates; code questions go to `Explore`.
