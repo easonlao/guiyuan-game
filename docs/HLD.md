@@ -77,7 +77,7 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 ### 4.1 代码标准化与极速静态检查 (oxc)
 *   **工具集**：[oxlint](https://oxc.rs/)（静态检查）与 [oxfmt](https://oxc.rs/docs/guide/usage/formatter)（格式化）；格式化配置见根目录 `.oxfmtrc.json`。
 *   **用途**：Rust-based 工具链，承担极速的静态代码分析与统一格式化，把风格漂移挡在 diff 之外。
-*   **流程定位**：`npm run lint`（oxlint）与 `npm run fmt:check`（oxfmt）是命名门禁脚本，AI 在提交前跑这两条，把无用变量、隐式声明与未格式化的代码挡在门外；`npm run fmt` 就地修复。
+*   **流程定位**：`npm run lint`（oxlint）与 `npm run fmt:check`（oxfmt）是命名门禁脚本，由 `npm run check:quick` 串进 AI 内循环（见 §4.4），把无用变量、隐式声明与未格式化的代码挡在门外；`npm run fmt` 就地修复。
 
 ### 4.2 架构可视化与依赖防腐 (dependency-cruiser)
 *   **工具集**：[dependency-cruiser](https://github.com/sverweij/dependency-cruiser)
@@ -88,3 +88,12 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 *   **工具集**：[Stryker.js](https://stryker-mutator.io/)
 *   **用途**：在业务逻辑中注入突变（Mutations，如把 `+` 变 `-`，把 `true` 变 `false`），检验现有的 Vitest 单元测试是否能精准捕捉到这些错误（杀死突变体）。
 *   **流程定位**：定位于**发布前（Pre-release）**的深度健康体检。它不介入高频的日常开发循环，而是在关键里程碑（如核心重构完成、小游戏打包发版前）作为最后一道防线运行，确保测试用例的真实有效性，严防业务漏洞逃逸。
+
+### 4.4 验收命令分档 (Verification Tiers)
+
+验收入口只有两条命名脚本，按「快到慢」排序，前一条挂了就不跑后一条。**命令清单以 `package.json` 为真源，本文不复制**（复制就会漂）：
+
+*   **`npm run check:quick`（快速检查）**：给 AI 内循环用，秒级返回，只做静态检查；**不含**测试与构建——含测试与构建的命令贴不住每轮编辑循环。
+*   **`npm run verify`（验收）**：收尾时跑这一条，就知道算不算做完了；产物对账落地后并入此档。
+
+变异测试**不在任何一档**：全量实测 33 分钟，是独立的手动里程碑命令（见 §4.3 与 `docs/MUTATION-TESTING.md`）。

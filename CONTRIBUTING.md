@@ -72,6 +72,7 @@
 0. **环境**：Node 用 `.nvmrc` 的版本（`nvm use`），npm 版本见 `package.json#packageManager`。`npm install` 在 Node 版本不符时判红（`engines` + `.npmrc` 的 `engine-strict`）。
 1. **领取任务**：阅读对应的 Issue 或 `.scratch/` 里的 Markdown 规范。
 2. **脱水开发**：在纯 TS 环境下实现功能并跑通 `npm test`（内部调用 Vitest）。
-3. **静态体检**：运行 `npm run lint`（oxlint）、`npm run fmt:check`（oxfmt）与 `npm run check:deps`（dependency-cruiser）。
-4. **提交代码**：按照上述 Git 规范 `git commit`。
-5. **表现层打包**：`npm run build:minigame`（`scripts/build-minigame.mjs`）把 `src/minigame/` 打成 IIFE 产物 `minigame/game.js`；在微信开发者工具中导入 `minigame/` 目录做真机预览。
+3. **内循环检查**：`npm run check:quick`——改一处跑一次，秒级返回，不含测试与构建。
+4. **收尾验收**：`npm run verify`——收尾时跑这一条，绿了才算做完。
+5. **提交代码**：按照上述 Git 规范 `git commit`。
+6. **表现层打包**：`npm run build:minigame`（`scripts/build-minigame.mjs`）把 `src/minigame/` 打成 IIFE 产物 `minigame/game.js`；在微信开发者工具中导入 `minigame/` 目录做真机预览。

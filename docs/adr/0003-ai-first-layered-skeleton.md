@@ -43,3 +43,9 @@ status: accepted
 本节只记录现状，不改变上述决策本身。
 
 上述「决定 1」把旧 Web 与网络资产归档至 `legacy/`。该目录已整体删除（132 文件 / 27470 行）：`src` / `tests` / `scripts` 从无引用，联机规划改为届时重做，旧协议代码不作为参考。需要旧实现时见 git 历史（删除前最后一个提交 `ca2bdde`）。
+
+## 勘误：静态检查脚本名收敛为 `npm run lint`（2026-10）
+
+本节只记录现状，不改变上述决策本身。
+
+上述「决定 3」写的是 `npm run oxlint`。为消除重复别名，该脚本已删除，静态检查统一走 `npm run lint`（覆盖范围见 `package.json`）；AI 内循环与收尾验收的两个入口见 `docs/HLD.md` §4.4 与 `CONTRIBUTING.md` §5。

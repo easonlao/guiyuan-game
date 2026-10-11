@@ -21,6 +21,7 @@
 - [11: 删除 `legacy/`](issues/11-legacy-removal.md)：反转 spec 的 Out of Scope（原写「删不得」）。旧 Web JS 资产无代码引用、联机届时重做，故整体删除并修掉 18 处文档引用；ADR 0003 文末追加勘误。
 - [02: 提交纪律](issues/02-commit-discipline.md)：`.githooks/commit-msg` 拦 `Co-Authored-By`，默认剥离放行、`COMMIT_MSG_MODE=fail` 判红；`prepare` 与 `npm run setup:hooks` 两道安装。
 - [03: 环境固化](issues/03-environment-pinning.md)：`engines` + `packageManager` 声明 Node/npm 版本（`.npmrc(engine-strict)` 强制 Node，npm 版本仅声明）；装 oxfmt 并全仓格式化，`npm run fmt:check` 当门禁（格式化会把 Stryker `next-line` 目标行拆行，11 处用 `// oxfmt-ignore` 钉住，并刷新 `mutation-baseline.jsonl` 行号）；删 `scripts/run-tests.mjs`（`/tmp` 符号链接机制随之删除），`npm test` = `vitest run` 直读 `vitest.config.ts`。
+- [04: 验收命令分档](issues/04-verify-command-tiers.md)：验收入口收敛为两条命名脚本——`check:quick`（快速检查，实测 1.1s，不含测试与构建）与 `verify`（验收，实测 12s）；构成以 `package.json` 为真源。`lint` 目录清单补上 `src/minigame`、`scripts`；删重复别名 `check:lint` / `oxlint` / `stryker`。产物对账留位给 08，追加为 `verify` 第四段。
 
 ## Tickets & Frontier
 
@@ -28,8 +29,8 @@
 - [x] [01: 版本库边界与任务层规格](issues/01-version-control-boundary.md)
 - [x] [02: 提交纪律](issues/02-commit-discipline.md)
 - [x] [03: 环境固化](issues/03-environment-pinning.md)
-- [ ] [04: 验收命令分档](issues/04-verify-command-tiers.md) `[FRONTIER]`
-- [ ] [05: CI 快链与手动里程碑](issues/05-ci-pipelines.md) (Blocked by: 04)
+- [x] [04: 验收命令分档](issues/04-verify-command-tiers.md)
+- [ ] [05: CI 快链与手动里程碑](issues/05-ci-pipelines.md) `[FRONTIER]` (Blocked by: 04)
 - [ ] [06: 分区——无头推演搬出核心](issues/06-partition-core-vs-tools.md) (Blocked by: 04)
 - [ ] [07: 包边界——没声明就不能用](issues/07-package-boundary.md) (Blocked by: 06)
 - [ ] [08: 产物边界](issues/08-artifact-boundary.md) (Blocked by: 05)
