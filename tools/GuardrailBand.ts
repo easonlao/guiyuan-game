@@ -14,23 +14,25 @@
  * `tests/core/guardrail-band-single-source.test.ts` 是防再漂移的守卫（行为层，不是源码文本 grep）。
  *
  * 锚点（唯一口径）：500 局平衡自对弈、`baseSeed` 10000、`maxRounds` 30
- *   → 归元率 **90.40%** / 先手胜率 **50.40%**（后手 49.60%，流局率 9.60%）。
- *   出处见 `docs/adr/0011-balance-route-fix-rules.md`「采纳记录」与
- *   `docs/headless/candidate-search.md` §4.3。
+ *   → 归元率 **92.00%** / 先手胜率 **49.20%**（后手 50.80%，流局率 8.00%）。
+ *   工单 05 平衡重调（化 30→160，burst-plus-two 后）后按实测重录；重调前
+ *   （burst-plus-two 落地时）为 90.20% / 54.40%，再往前（工单 06）为 90.40% / 50.40%。
+ *   出处见 `docs/adr/0011-balance-route-fix-rules.md`「采纳记录」、
+ *   `docs/headless/candidate-search.md` §4.3 与 `docs/headless/burst-plus-two-balance.md`。
  *
  * 回退（本带存在的理由）：关闭生产「攻击进度定价」（`ATTACK_PROGRESS_SCALE: undefined`，
  * 即工单 06 采纳前的计分）后，同一口径实测
- *   → 归元率 **88.40%** / 先手胜率 **51.20%**。
+ *   → 归元率 **75.80%** / 先手胜率 **58.60%**（工单 05 重调后）。
  * 四个界都必须把这次回退挡在带外，否则「护栏带」只是装饰。
  */
 
-/** 护栏：归元率下界。锚点 90.40% − 1.4pp；要拦住的回退是 88.40%（0.884 < 0.89）。 */
+/** 护栏：归元率下界。锚点 92.00% − 3.0pp；要拦住的回退是 75.80%（0.758 < 0.89）。 */
 export const GUARDRAIL_GUIYUAN_MIN = 0.89;
-/** 护栏：归元率上界。锚点 90.40% + 4.6pp；仍拒绝 ADR 0010 的极端候选（attack-zero ≈99.9%）。 */
+/** 护栏：归元率上界。锚点 92.00% + 3.0pp；仍拒绝 ADR 0010 的极端候选（attack-zero ≈99.9%）。 */
 export const GUARDRAIL_GUIYUAN_MAX = 0.95;
-/** 护栏：先手胜率下界。锚点 50.40% − 3.4pp（噪声下界；回退值 51.20% 落在上界一侧）。 */
+/** 护栏：先手胜率下界。锚点 49.20% − 2.2pp（噪声下界）。 */
 export const GUARDRAIL_P1_WIN_MIN = 0.47;
-/** 护栏：先手胜率上界。锚点 50.40% + 0.6pp；要拦住的回退是 51.20%（0.512 > 0.51）。 */
+/** 护栏：先手胜率上界。锚点 49.20% + 1.8pp；要拦住的回退是 58.60%（0.586 > 0.51）。 */
 export const GUARDRAIL_P1_WIN_MAX = 0.51;
 /** 护栏：500 局堆内存增量上界（MB）。工程护栏，非平衡护栏。 */
 export const GUARDRAIL_HEAP_MAX_MB = 15;

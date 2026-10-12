@@ -86,6 +86,29 @@ describe('ActionCandidates (Legal Action Generator)', () => {
     });
   });
 
+  it('3b. 先手为 P2 时，破候选读的是对手 P1 的盘面（不是 P2 自己）', () => {
+    // currentPlayer = P2，抽中阳干甲（木）。木克土：候选应读 **P1** 的土（yin=1，可破阴侧）。
+    // P2 自己的土故意置为双道损 (-1,-1)：若候选生成把「对手」误算成 P2 自己，破会被错误地封死。
+    const state = gameStateWith({
+      currentPlayer: 'P2',
+      P2: {
+        [WuXing.WOOD]: { yin: 0, yang: 1 },
+        [WuXing.EARTH]: { yin: -1, yang: -1 },
+      },
+      P1: { [WuXing.EARTH]: { yin: 1, yang: 0 } },
+    });
+    const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
+
+    const actions = getAvailableActions(state, jiaWood);
+
+    expect(actions).toContainEqual({
+      actionType: ActionType.ATK,
+      player: 'P2',
+      sourceElement: WuXing.WOOD,
+      polarity: Polarity.YIN,
+    });
+  });
+
   it('4. When stem node is LIT (1) with YIN stem (乙 WOOD YIN), should propose CONVERT and TRANS (WOOD -> FIRE)', () => {
     let state = createInitialGameState();
     state = {

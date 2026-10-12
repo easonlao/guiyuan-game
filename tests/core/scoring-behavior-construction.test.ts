@@ -12,7 +12,8 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
     it('defines accurate ACTION base points', () => {
       expect(POINTS_CONFIG.ACTION.AUTO).toBe(0);
       expect(POINTS_CONFIG.ACTION.CONVERT).toBe(50);
-      expect(POINTS_CONFIG.ACTION.TRANS).toBe(30);
+      // 平衡重调（burst-plus-two 后）：化 30 → 160，见 docs/headless/burst-plus-two-balance.md。
+      expect(POINTS_CONFIG.ACTION.TRANS).toBe(160);
       expect(POINTS_CONFIG.ACTION.ATK).toBe(40);
       expect(POINTS_CONFIG.ACTION.BURST).toBe(100);
       expect(POINTS_CONFIG.ACTION.BURST_ATK).toBe(80);
@@ -39,7 +40,7 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
     it('calculates action base points correctly for all 6 actions', () => {
       expect(calculator.calculateActionPoints(ActionType.AUTO)).toBe(0);
       expect(calculator.calculateActionPoints(ActionType.CONVERT)).toBe(50);
-      expect(calculator.calculateActionPoints(ActionType.TRANS)).toBe(30);
+      expect(calculator.calculateActionPoints(ActionType.TRANS)).toBe(160);
       expect(calculator.calculateActionPoints(ActionType.ATK)).toBe(40);
       expect(calculator.calculateActionPoints(ActionType.BURST)).toBe(100);
       expect(calculator.calculateActionPoints(ActionType.BURST_ATK)).toBe(80);
@@ -144,7 +145,7 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
       expect(res.nextState.players.P1.score).toBe(150);
     });
 
-    it('TRANS: adds 30 behavior points + 100 light_up points = 130 points', () => {
+    it('TRANS: adds 160 behavior points + 100 light_up points = 260 points', () => {
       const state = createInitialGameState();
       const res = resolver.resolve(state, {
         actionType: ActionType.TRANS,
@@ -154,8 +155,8 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
       });
 
       expect(res.success).toBe(true);
-      expect(res.scoreDelta).toBe(130); // 30 action + 100 light_up
-      expect(res.nextState.players.P1.score).toBe(130);
+      expect(res.scoreDelta).toBe(260); // 160 action + 100 light_up
+      expect(res.nextState.players.P1.score).toBe(260);
     });
 
     it('ATK: awards 40 behavior points', () => {

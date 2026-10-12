@@ -38,13 +38,41 @@
 
 **Blocked by:**
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 复核 `docs/headless/burst-plus-two-balance.md` 的三条数与带的关系，确认先手胜率带外的成因（爆发收益抬高？连动频率上升？）
-- [ ] 给出调参方向与候选方案（`POINTS_CONFIG` / 满溢则亏那级计分 / 估值权重 / 其它），说明被否决的方案与理由
-- [ ] 先手胜率回到 `[0.47, 0.51]`，归元率仍在 `[0.89, 0.95]`，堆增量仍 `< 15MB`
-- [ ] 占优格局重新落定：`tests/core/dominance-regression-guard.test.ts` 的严格占优断言与关键翻转格钉值更新到实测
-- [ ] `tests/core/candidate-validation.test.ts` 的两条红灯按新格局校正（生产标准 3 转绿；标准 1 用例按实测重写）
-- [ ] `tests/core/ai-evaluator-benchmark-guardrails.test.ts` 全绿
-- [ ] 若带值本身需要移动，改动落在 `tools/GuardrailBand.ts` 并在本票记录理由与新旧锚点
-- [ ] `npm run verify` 全绿
+- [x] 复核 `docs/headless/burst-plus-two-balance.md` 的三条数与带的关系，确认先手胜率带外的成因（爆发收益抬高？连动频率上升？）
+- [x] 给出调参方向与候选方案（`POINTS_CONFIG` / 满溢则亏那级计分 / 估值权重 / 其它），说明被否决的方案与理由
+- [x] 先手胜率回到 `[0.47, 0.51]`，归元率仍在 `[0.89, 0.95]`，堆增量仍 `< 15MB`
+- [x] 占优格局重新落定：`tests/core/dominance-regression-guard.test.ts` 的严格占优断言与关键翻转格钉值更新到实测
+- [x] `tests/core/candidate-validation.test.ts` 的两条红灯按新格局校正（生产标准 3 转绿；标准 1 用例按实测重写）
+- [x] `tests/core/ai-evaluator-benchmark-guardrails.test.ts` 全绿
+- [x] 若带值本身需要移动，改动落在 `tools/GuardrailBand.ts` 并在本票记录理由与新旧锚点
+- [x] `npm run verify` 全绿
+
+## Comments
+
+**决定（2026-10-12，分支 `burst-plus-two`）**：抬高【化】的行为分，`POINTS_CONFIG.ACTION.TRANS`
+30 → 160。决策与理由归 `docs/adr/0017-balance-retune-trans-after-burst-plus-two.md`；
+测量证据与复跑口径见 `docs/headless/burst-plus-two-balance.md` §7。
+
+- **成因**：对比 `1b58360`（前）与 `eca971d`（后）的终局形态，双级爆发把「同轮双归元」（后手胜）
+  从 10.00% 压到 4.00%，把「常规秒结」（先手胜）从 22.80% 推到 33.00%——先手能用一次强化把最后一格
+  从「差 2 级」直接推到归元，而后手还没听牌。先手胜率 +4pp 由此而来。
+- **调参**：抬高【化】把节奏拉回。重调后（500 局、种子 10000）归元率 0.902 → **0.920**、
+  先手胜率 0.544 → **0.492**，三条护栏全绿；严格占优消失，`平衡 对 激进压制` 从 40.2% 回到 54.0%。
+- **被否决**：只降爆发行为分（归元率跌破下界 + 与 ADR 0002 冲突）、给满溢则亏那级计分（实测几乎无效果）、
+  只降 `burstExtraTurn`（不足以拉回）、只降 `ATTACK_PROGRESS_SCALE.span`（归元率破上界）、改激进权重
+  （要么破坏护栏要么对占优无感，且 ADR 0011 已定「修计分，不修 AI」）。逐条数字见报告 §7.3。
+- **护栏带**：带值未动，只按重调后实测重录了锚点注释（新锚点 92.00% / 49.20%；回退值 75.80% / 58.60%）。
+- **已按实测重录的钉**：`dominance-regression-guard`（两格）、`experiment-runner`（基线复现）、
+  `scoring-behavior-construction`、`scoring-guiyi-and-damage-penalty`、`minigame-game-scene`（种子 2 轨迹）；
+  `candidate-validation` 的「标准 1 独立失败」样本改为回退【化】（关闭进度定价在重调后不再造出占优）。
+- **遗留局限（已知，未修）**：护栏带只在种子 10000 的 500 局口径下定义，而先手胜率的标准误约 2.2pp、
+  带宽仅 4pp。跨 8 种子复测，重调前均值 ≈0.539、重调后 ≈0.527（旧基线自身跨种子为 0.446–0.544）。
+  「回到 [0.47, 0.51]」是在带定义口径下成立，不是对全部种子的断言；是否扩大护栏样本量或加宽带，
+  留给后续决定（证据见报告 §7.4）。
+
+**验收**：`npm run verify` 全绿（49 个测试文件 / 896 个用例），`minigame/game.js` 重新构建并逐字节对账通过；
+全量变异 + 棘轮对比 `npm run mutation:check` 退出 0（998 个计分突变体、34 条存活/无覆盖全部在基线内）。
+全量跑新暴露的 `ActionCandidates.ts:83` 反向样本突变体已用新增断言（P2 回合的破候选读 P1 盘面）击杀，未靠刷基线掩盖；
+`ScoreCalculator.ts` 基线行号随注释插入 +3 重钉（162 → 165）。

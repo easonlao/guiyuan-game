@@ -127,9 +127,9 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
       });
 
       expect(result.success).toBe(true);
-      // TRANS (30) + LIGHT_UP (100) + GUI_YI_MILESTONE (60) = 190
-      expect(result.scoreDelta).toBe(190);
-      expect(result.nextState.players.P1.score).toBe(190);
+      // TRANS (160) + LIGHT_UP (100) + GUI_YI_MILESTONE (60) = 320
+      expect(result.scoreDelta).toBe(320);
+      expect(result.nextState.players.P1.score).toBe(320);
       expect(result.nextState.players.P1.board[WuXing.FIRE].yang).toBe(1);
     });
 

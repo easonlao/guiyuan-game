@@ -59,7 +59,10 @@ export const POINTS_CONFIG: PointsConfig = {
   ACTION: {
     AUTO: 0,
     CONVERT: 50,
-    TRANS: 30,
+    // burst-plus-two 后【强化】单次作用两级并给连动，【化】成了唯一安全的单级相生建设路径。
+    // 平衡重调把【化】的行为分从 30 抬到 160，缓和 AI 对爆发的过度偏好，
+    // 并让【平衡】对【激进压制】重新持平（理由与证据见 docs/headless/burst-plus-two-balance.md）。
+    TRANS: 160,
     ATK: 40,
     BURST: 100,
     BURST_ATK: 80,

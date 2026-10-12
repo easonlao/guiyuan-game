@@ -869,10 +869,11 @@ describe('GameScene：终轮天命揭牌与终局', () => {
     const state = scene.turnManager.getState();
     expect(state.isGameOver).toBe(true);
     expect(scene.phase).toBe('game-over');
-    // 爆发双级作用改变了种子 2 的推演轨迹：新局以「终局回合结算」收场，横幅与副文案都不是揭牌定格。
-    expect(state.endReason).toBe('MAX_ROUNDS');
+    // 爆发双级作用 + 平衡重调（化 30→160）改变了种子 2 的推演轨迹：
+    // 新局以「五行归元」收场（后手归元获胜），横幅与副文案都不是揭牌定格。
+    expect(state.endReason).toBe('GUI_YUAN');
     expect(scene.characters.bannerText).toBe('天道通玄 · 遗憾惜败！');
-    expect(scene.characters.bannerSubText).toBe('终局回合结算');
+    expect(scene.characters.bannerSubText).toBe('五行归元');
   });
 
   it('非揭牌的常规终局使用胜负横幅', () => {
