@@ -23,6 +23,11 @@ import type { HeadToHeadReport } from '../../tools/ExperimentRunner.js';
  *   - 绊线职责不变：若未来计分改动重新造出严格占优者（或把关键格推回旧关系），本文件
  *     变红，迫使改动人显式确认「旧占优是否消失、有没有换来新占优」。
  *
+ * burst-plus-two 后的平衡重调（工单 05，化 30→160）：双级爆发一度让「激进压制」重新
+ * 6/6 严格占优、平衡对激进压制跌到 40.2%。把【化】行为分从 30 抬到 160 后，
+ * 严格占优再次消失，平衡对激进压制回到 54.0%。本文件的两格钉值按重调后实测重录，
+ * 理由与证据见 `docs/headless/burst-plus-two-balance.md`。
+ *
  * 运行参数（生产默认计分配置）：
  *   - 规则模式 mode = 'scoring'（生产默认）
  *   - 计分配置 = DEFAULT_SCORE_CONFIG_VARIANTS[0]（名为 'default' 的 POINTS_CONFIG，
@@ -57,7 +62,8 @@ const STRATEGY_COUNT = DEFAULT_STRATEGY_VARIANTS.length;
 /**
  * 500 局/座次、种子 10000、scoring/default（含进度定价）下实测的关键格座次平衡胜率。
  * 两个格子取自候选搜索 `docs/headless/candidate-search.md` §4.1/§4.5 的核心翻转对，
- * 并在本文件相同样本量下重测。容差 2×SE ≈ 3.16pp。
+ * 并在本文件相同样本量下重测；burst-plus-two 平衡重调（工单 05）后按实测重录。
+ * 容差 2×SE ≈ 3.16pp。
  */
 const PINNED_CELLS: readonly {
   readonly strategyA: string;
@@ -68,14 +74,14 @@ const PINNED_CELLS: readonly {
   {
     strategyA: '平衡',
     strategyB: '激进压制',
-    expected: 0.528,
-    note: '工单 06 核心翻转：激进压制不再占优平衡（旧现状 57.80% 反转为平衡领先）',
+    expected: 0.54,
+    note: '工单 06 核心翻转：激进压制不再占优平衡；工单 05 重调后平衡仍以 54.0% 领先',
   },
   {
     strategyA: '剥离计分',
     strategyB: '平衡',
-    expected: 0.525,
-    note: '相对价值翻转旁证：压制计分被关掉的策略在采纳后能赢平衡（旧现状 46.52%）',
+    expected: 0.571,
+    note: '相对价值翻转旁证：压制计分被关掉的策略在采纳后能赢平衡（工单 05 重调后 57.1%）',
   },
 ];
 

@@ -20,7 +20,7 @@
 {"file":"src/core/logic/ActionResolver.ts","line":462,"column":15,"mutatorName":"ConditionalExpression","replacement":"false"}
 {"file":"src/core/logic/ActionResolver.ts","line":462,"column":15,"mutatorName":"EqualityOperator","replacement":"finalActiveScore >= finalOpponentScore"}
 {"file":"src/core/logic/EventBus.ts","line":79,"column":9,"mutatorName":"ConditionalExpression","replacement":"true"}
-{"file":"src/core/logic/ScoreCalculator.ts","line":162,"column":9,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ScoreCalculator.ts","line":165,"column":9,"mutatorName":"ConditionalExpression","replacement":"false"}
 {"file":"src/core/logic/State.ts","line":150,"column":44,"mutatorName":"ConditionalExpression","replacement":"true"}
 {"file":"src/core/logic/State.ts","line":173,"column":9,"mutatorName":"ConditionalExpression","replacement":"true"}
 {"file":"src/core/logic/State.ts","line":186,"column":7,"mutatorName":"EqualityOperator","replacement":"level < -1"}

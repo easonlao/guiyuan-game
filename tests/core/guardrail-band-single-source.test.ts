@@ -25,12 +25,12 @@ import {
  * 副本」这一漂移形态在结构上不可能再出现；上面第 2/3 层则保证谓词本身有牙齿（把界改松即红）。
  */
 
-/** 锚点：500 局平衡自对弈、baseSeed 10000、maxRounds 30（ADR 0011「采纳记录」）。 */
-const ANCHOR_GUIYUAN_RATE = 0.904;
-const ANCHOR_P1_WIN_RATE = 0.504;
-/** 回退：关闭生产「攻击进度定价」后同口径实测（工单 02 复现，ADR 0011）。 */
-const NO_PROGRESS_PRICING_GUIYUAN_RATE = 0.884;
-const NO_PROGRESS_PRICING_P1_WIN_RATE = 0.512;
+/** 锚点：500 局平衡自对弈、baseSeed 10000、maxRounds 30（工单 05 重调后实测）。 */
+const ANCHOR_GUIYUAN_RATE = 0.92;
+const ANCHOR_P1_WIN_RATE = 0.492;
+/** 回退：关闭生产「攻击进度定价」后同口径实测（工单 05 重调后复测）。 */
+const NO_PROGRESS_PRICING_GUIYUAN_RATE = 0.758;
+const NO_PROGRESS_PRICING_P1_WIN_RATE = 0.586;
 
 /** 堆内存增量与本次断言无关，取一个明确在带内的值。 */
 const IN_BAND_HEAP_MB = 1;
@@ -48,25 +48,25 @@ const ROLLBACK_METRICS: GuardrailMetrics = {
 };
 
 describe('护栏带唯一定义与防漂移守卫', () => {
-  it('带包含实测锚点（90.40% / 50.40%）', () => {
+  it('带包含实测锚点（92.00% / 49.20%）', () => {
     expect(ANCHOR_GUIYUAN_RATE).toBeGreaterThanOrEqual(GUARDRAIL_GUIYUAN_MIN);
     expect(ANCHOR_GUIYUAN_RATE).toBeLessThanOrEqual(GUARDRAIL_GUIYUAN_MAX);
     expect(ANCHOR_P1_WIN_RATE).toBeGreaterThanOrEqual(GUARDRAIL_P1_WIN_MIN);
     expect(ANCHOR_P1_WIN_RATE).toBeLessThanOrEqual(GUARDRAIL_P1_WIN_MAX);
   });
 
-  it('带把「无进度定价」的回退挡在带外（88.40% / 51.20%）', () => {
-    // 归元率下界必须 > 88.40%，否则回退（0.884）重新落进带内，带就拦不住它。
+  it('带把「无进度定价」的回退挡在带外（75.80% / 58.60%）', () => {
+    // 归元率下界必须 > 75.80%，否则回退（0.758）重新落进带内，带就拦不住它。
     expect(NO_PROGRESS_PRICING_GUIYUAN_RATE).toBeLessThan(GUARDRAIL_GUIYUAN_MIN);
-    // 先手胜率上界必须 < 51.20%，否则回退（0.512）重新落进带内。
+    // 先手胜率上界必须 < 58.60%，否则回退（0.586）重新落进带内。
     expect(NO_PROGRESS_PRICING_P1_WIN_RATE).toBeGreaterThan(GUARDRAIL_P1_WIN_MAX);
   });
 
-  it('checkGuardrailBand 对锚点指标（90.40% / 50.40%）零违规', () => {
+  it('checkGuardrailBand 对锚点指标（92.00% / 49.20%）零违规', () => {
     expect(checkGuardrailBand(ANCHOR_METRICS)).toEqual([]);
   });
 
-  it('checkGuardrailBand 对回退指标（88.40% / 51.20%）报出归元率下界与先手上界两处违规', () => {
+  it('checkGuardrailBand 对回退指标（75.80% / 58.60%）报出归元率下界与先手上界两处违规', () => {
     const violations = checkGuardrailBand(ROLLBACK_METRICS);
 
     // 违规集合精确等于这两条：把任一下界/上界改松，这里都会变红。

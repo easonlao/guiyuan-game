@@ -13,7 +13,7 @@ import {
   type CandidateSpec,
   type CandidateValidationReport,
 } from '../../tools/CandidateValidation.js';
-import { GUARDRAIL_GUIYUAN_MAX, GUARDRAIL_GUIYUAN_MIN } from '../../tools/GuardrailBand.js';
+import { GUARDRAIL_GUIYUAN_MAX, GUARDRAIL_P1_WIN_MAX } from '../../tools/GuardrailBand.js';
 import { parseCandidateArgs } from '../../tools/CandidateValidationCli.js';
 import { runActionValueCensus } from '../../tools/ActionValueCensus.js';
 import {
@@ -31,7 +31,8 @@ import {
  * 不用于给出生产级胜率数值。
  *
  * 护栏样本必须是 500 局：护栏带（`GuardrailBand.ts`）是按「500 局平衡自对弈、
- * 种子 10000」口径定的，先手胜率上界只比锚点高 0.6pp。120 局的噪声会让生产配置的
+ * 种子 10000」口径定的，先手胜率上界只比锚点高 1.8pp（工单 05 重调后锚点 49.20%）。
+ * 120 局的噪声会让生产配置的
  * 先手胜率（120 局实测 0.4667）落到 [0.47, 0.51] 下界外——那是口径不匹配，不是真实击穿。
  * 因此这里与 live 护栏测试保持同一口径。
  */
@@ -62,19 +63,23 @@ const ATTACK_ZERO_CANDIDATE: CandidateSpec = {
 };
 
 /**
- * 关闭进度定价（等价于工单 06 采纳前的生产计分）：重新造出「激进压制」严格占优。
- * 工单 06 采纳后，生产配置不再含严格占优，因此不能用生产配置当「标准 1 可独立失败」的样本；
- * 本候选保留该失败形态，维持测试强度。
+ * 回退【化】行为分到极低（工单 05 的平衡重调把生产值从 30 抬到 160）：重新造出
+ * 「激进压制」对全部对手严格占优。
+ *
+ * 为什么不用「关闭进度定价」：工单 05 重调前它确实能重新造出占优，但重调后不再能
+ * （实测 `strictDominators` 为空），因此不能再用它当「标准 1 可独立失败」的样本。
+ * 把【化】压到 0（远低于生产值 160）是本票改动的反向样本，在 50 局/座次的快样本下
+ * 仍能解析出严格占优。
  */
-const NO_PROGRESS_PRICING_CONFIG: PointsConfig = {
+const TRANS_ZERO_CONFIG: PointsConfig = {
   ...POINTS_CONFIG,
-  ATTACK_PROGRESS_SCALE: undefined,
+  ACTION: { ...POINTS_CONFIG.ACTION, TRANS: 0 },
 };
 
 const DOMINANCE_CANDIDATE: CandidateSpec = {
-  name: 'no-progress-pricing',
-  description: '关闭进度定价（等价于工单 06 采纳前），重新造出激进压制严格占优',
-  pointsConfig: NO_PROGRESS_PRICING_CONFIG,
+  name: 'trans-zero',
+  description: '回退【化】行为分到 0（工单 05 重调的反向样本），重新造出激进压制严格占优',
+  pointsConfig: TRANS_ZERO_CONFIG,
 };
 
 describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
@@ -144,18 +149,17 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
     expect(markdown).toContain('insufficient');
   });
 
-  it('标准 1 独立失败（关闭进度定价重新造出占优），不影响标准 2/3/4 的输出', () => {
+  it('标准 1 独立失败（回退【化】行为分重新造出占优），不影响标准 2/3/4 的输出', () => {
     expect(dominance.noStrictDominance.passed).toBe(false);
+    expect(dominance.noStrictDominance.verdict).toBe('fail');
     expect(dominance.noStrictDominance.strictDominators).toContain('激进压制');
     expect(dominance.everyActionHasValue.passed).toBe(true);
-    // 工单 02/03 收紧后的带把「无进度定价」的回退挡在带外：该候选的归元率 88.40%
-    // 低于下界 0.89，因此标准 3 也随之独立失败（这正是带的用意，不是回归）。
+    // 该候选（【化】= 0，比生产值 160 低很多）同时把先手胜率推出上界（实测 0.540），
+    // 因此标准 3 也随之独立失败（这正是带的用意，不是回归）。
     expect(dominance.guardrails.passed).toBe(false);
-    const dominanceGuiYuan = dominance.guardrails.checks.find(
-      (check) => check.key === 'guiYuanRate',
-    );
-    expect(dominanceGuiYuan?.passed).toBe(false);
-    expect(dominance.guardrails.guiYuanRate).toBeLessThan(GUARDRAIL_GUIYUAN_MIN);
+    const dominanceP1 = dominance.guardrails.checks.find((check) => check.key === 'p1WinRate');
+    expect(dominanceP1?.passed).toBe(false);
+    expect(dominance.guardrails.p1WinRate).toBeGreaterThan(GUARDRAIL_P1_WIN_MAX);
     expect(dominance.dynamicBeatsStatics.evidence.length).toBe(DEFAULT_STRATEGY_VARIANTS.length);
   });
 
