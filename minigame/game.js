@@ -3445,6 +3445,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
   }
   const CHARACTER_ATLAS_PATH = "assets/characters.png";
+  const CHARACTER_ATLAS_SIZE = { width: 1254, height: 1254 };
   const POSE_COLUMN = {
     idle: 0,
     attack: 1,
@@ -5077,6 +5078,16 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     const isAttack = isAttackAction(actionType);
     return { player: isAttack ? opponentOf(actor) : actor, element, polarity };
   }
+  function resolveLoadedCharacterDimensions(image) {
+    const valid = (value) => typeof value === "number" && Number.isFinite(value) && value > 0;
+    if (valid(image.naturalWidth) && valid(image.naturalHeight)) {
+      return { width: image.naturalWidth, height: image.naturalHeight, source: "natural" };
+    }
+    if (valid(image.width) && valid(image.height)) {
+      return { width: image.width, height: image.height, source: "reported" };
+    }
+    return { ...CHARACTER_ATLAS_SIZE, source: "packaged" };
+  }
   class InputManager {
     constructor(stage) {
       __publicField(this, "stage");
@@ -5146,13 +5157,31 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     stage.onTap = () => scene.handleTap();
     stage.addChild(scene);
     const characters = wx.createImage();
-    characters.onload = () => scene.characters.setSpriteAtlas({
-      image: characters,
-      width: characters.width,
-      height: characters.height,
-      frames: CHARACTER_ATLAS_FRAMES
-    });
-    characters.onerror = () => scene.characters.setSpriteAtlas(null);
+    characters.onload = () => {
+      const dimensions = resolveLoadedCharacterDimensions(characters);
+      if (dimensions.source === "packaged") {
+        console.warn("[Guiyuan] 人物图集 onload 未提供有效尺寸，采用已打包资源尺寸", {
+          path: CHARACTER_ATLAS_PATH,
+          width: characters.width,
+          height: characters.height,
+          naturalWidth: characters.naturalWidth,
+          naturalHeight: characters.naturalHeight
+        });
+      }
+      scene.characters.setSpriteAtlas({
+        image: characters,
+        width: dimensions.width,
+        height: dimensions.height,
+        frames: CHARACTER_ATLAS_FRAMES
+      });
+      console.log("[Guiyuan] 人物图集加载成功", { path: CHARACTER_ATLAS_PATH, ...dimensions });
+    };
+    characters.onerror = (error) => {
+      scene.characters.setSpriteAtlas(null);
+      const reason = typeof error === "string" ? error : error?.errMsg ?? error?.message ?? "宿主未提供错误详情";
+      console.error("[Guiyuan] 人物图集加载失败", { path: CHARACTER_ATLAS_PATH, reason });
+    };
+    console.log("[Guiyuan] 开始加载人物图集", CHARACTER_ATLAS_PATH);
     characters.src = CHARACTER_ATLAS_PATH;
     const input = new InputManager(stage);
     input.bindTouchEvents(wx);
