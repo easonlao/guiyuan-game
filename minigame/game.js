@@ -352,17 +352,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         sourceElement: stemElement,
         consumePolarity: Polarity.YIN
       });
-      const keEl = OVERCOMING_CYCLE[stemElement];
-      const keTargetPolarity = getMinusTargetPolarity(opponentBoard[keEl]);
-      if (keTargetPolarity !== null) {
-        actions.push({
-          actionType: ActionType.BURST_ATK,
-          player: playerId,
-          sourceElement: stemElement,
-          consumePolarity: Polarity.YANG,
-          polarity: keTargetPolarity
-        });
-      }
+      actions.push({
+        actionType: ActionType.BURST_ATK,
+        player: playerId,
+        sourceElement: stemElement,
+        consumePolarity: Polarity.YANG
+      });
     }
     if (actions.length === 0) {
       actions.push({
@@ -713,19 +708,24 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
             [consumePolarity]: clampNodeLevel(sourceNode[consumePolarity] - 1)
           });
           const targetElement = OVERCOMING_CYCLE[sourceElement];
-          const targetPolarity = payload.polarity || Polarity.YANG;
-          const targetNode = nextOpponentBoard[targetElement];
-          const prevLevel = targetNode[targetPolarity];
-          const newLevel = clampNodeLevel(prevLevel - 1);
-          patchOpponentNode(targetElement, {
-            [targetPolarity]: newLevel
-          });
-          scoreDelta += this.scaledAttackTransitionPoints(
-            prevLevel,
-            newLevel,
-            targetPolarity,
-            opponentPlayer.board
-          );
+          for (let pass = 0; pass < BURST_PASSES; pass++) {
+            const targetNode = nextOpponentBoard[targetElement];
+            const targetPolarity = getMinusTargetPolarity(targetNode);
+            if (targetPolarity === null) {
+              break;
+            }
+            const prevLevel = targetNode[targetPolarity];
+            const newLevel = clampNodeLevel(prevLevel - 1);
+            patchOpponentNode(targetElement, {
+              [targetPolarity]: newLevel
+            });
+            scoreDelta += this.scaledAttackTransitionPoints(
+              prevLevel,
+              newLevel,
+              targetPolarity,
+              opponentPlayer.board
+            );
+          }
           extraTurn = true;
           success = true;
           break;

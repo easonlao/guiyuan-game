@@ -145,8 +145,8 @@ describe('GameScene：唯一候选自动流转（场景级逐类覆盖）', () =
     });
   });
 
-  it('仅剩唯一【强化】：无按钮自动流转，消耗阴侧并抬升相生节点', () => {
-    // 甲木归一 (1,1)；P2 土双道损 -> 【破】【强破】双双封死；对侧已点亮 -> 禁调息。
+  it('候选并列【强化】【强破】：相克目标双道损不再封死强破，点按强化消耗阴侧并抬升相生节点', () => {
+    // 甲木归一 (1,1)；P2 土双道损 -> 【破】封死，但【强破】门槛放开后仍可选；对侧已点亮 -> 禁调息。
     const scene = new GameScene({
       ...FAST_TIMING,
       initialState: gameStateWith({
@@ -155,10 +155,20 @@ describe('GameScene：唯一候选自动流转（场景级逐类覆盖）', () =
       }),
       prng: scriptedPrng([0]),
     });
+    const input = new InputManager(scene);
     scene.start();
+    advance(scene, 0.15);
 
-    const before = expectSingleAutoFlow(scene, ActionType.BURST, '势在必行·强化');
-    expectAutoExecuted(scene, before);
+    expect(scene.phase).toBe('awaiting-player');
+    expect(scene.actionBar.getButtons().map((button) => button.label)).toEqual([
+      '【强化】',
+      '【强破】',
+    ]);
+
+    const burst = scene.actionBar.getButtons().find((button) => button.label === '【强化】');
+    expect(burst).toBeDefined();
+    tapButton(input, burst as Button);
+    advanceUntil(scene, () => scene.turnManager.isExtraTurnActive());
 
     // 强化：消耗木阴侧 (1 -> 0)，相生火连抬两级、阴优先到 (2, 0)。
     const board = scene.turnManager.getState().players.P1.board;
@@ -205,7 +215,7 @@ describe('GameScene：唯一候选自动流转（场景级逐类覆盖）', () =
 
   it('连动回合仅剩唯一【消散过牌】：无按钮自动流转，盘面不变但行动权交接', () => {
     // 强化门槛放开后，中位态总能给出合法动作，消散过牌只在连动额外行动中出现。
-    // 首回合：甲木归一 (2, 1) + P2 土双道损 -> 唯一【强化】，自动流转换取连动。
+    // 首回合：甲木归一 (2, 1) + P2 土双道损 -> 【强化】【强破】并列，点【强化】换取连动。
     // 连动再抽甲木：对侧已点亮禁调息、连动禁二次爆发 -> 只剩唯一【消散过牌】。
     const scene = new GameScene({
       ...FAST_TIMING,
@@ -215,11 +225,14 @@ describe('GameScene：唯一候选自动流转（场景级逐类覆盖）', () =
       }),
       prng: scriptedPrng([0, 0]),
     });
+    const input = new InputManager(scene);
     scene.start();
+    advance(scene, 0.15);
 
-    const first = expectSingleAutoFlow(scene, ActionType.BURST, '势在必行·强化');
-    expectAutoExecuted(scene, first);
-    expect(scene.turnManager.isExtraTurnActive()).toBe(true);
+    const burst = scene.actionBar.getButtons().find((button) => button.label === '【强化】');
+    expect(burst).toBeDefined();
+    tapButton(input, burst as Button);
+    advanceUntil(scene, () => scene.turnManager.isExtraTurnActive());
 
     const before = expectSingleAutoFlow(scene, ActionType.PASS, '道法受阻·消散过牌中');
     expectAutoExecuted(scene, before);
@@ -557,7 +570,7 @@ describe('GameScene：法盘双环投影', () => {
   });
 
   it('养己动作（化）飞向己方环', () => {
-    // 乙木（木·阴）：木已归一 -> 【化】【强化】；P2 土双道损把【强破】封死，化的目标是己方相生节点火。
+    // 乙木（木·阴）：木已归一 -> 【化】【强化】；P2 土双道损把【破】封死，但强破门槛放开后【强破】仍在候选集内；化的目标是己方相生节点火。
     const scene = new GameScene({
       ...FAST_TIMING,
       initialState: gameStateWith({
@@ -572,6 +585,7 @@ describe('GameScene：法盘双环投影', () => {
     expect(scene.actionBar.getButtons().map((button) => button.label)).toEqual([
       '【化】',
       '【强化】',
+      '【强破】',
     ]);
 
     tapButton(input, scene.actionBar.getButtons()[0]);
@@ -623,13 +637,12 @@ describe('GameScene：连线高亮 = 当前动作会走的路径（票 02）', (
     expect(activeLines(scene)).toEqual(['generation:WOOD->FIRE', 'attack:WOOD->EARTH']);
   });
 
-  it('候选动作都走同一条线时只点亮那一条，另一类线保持静默', () => {
-    // 乙木（木·阴）归一、相生火可养 -> 候选【化】【强化】都走「木→火」；对方土双道损封死强破。
+  it('候选里没有攻击动作时只点亮相生线，攻击线保持静默', () => {
+    // 乙木（木·阴）已点亮、对侧虚空、木未归一 -> 候选【调息】【化】都不指向攻击线。
     const scene = new GameScene({
       ...FAST_TIMING,
       initialState: gameStateWith({
-        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
-        P2: { [WuXing.EARTH]: { yin: -1, yang: -1 } },
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 0 } },
       }),
       prng: scriptedPrng([1]),
     });
@@ -638,8 +651,8 @@ describe('GameScene：连线高亮 = 当前动作会走的路径（票 02）', (
 
     expect(scene.phase).toBe('awaiting-player');
     expect(scene.turnManager.getAvailableActions().map((action) => action.actionType)).toEqual([
+      ActionType.CONVERT,
       ActionType.TRANS,
-      ActionType.BURST,
     ]);
     expect(activeLines(scene)).toEqual(['generation:WOOD->FIRE']);
   });
@@ -856,10 +869,10 @@ describe('GameScene：终轮天命揭牌与终局', () => {
     const state = scene.turnManager.getState();
     expect(state.isGameOver).toBe(true);
     expect(scene.phase).toBe('game-over');
-    // 种子 2 的新局以常规「归元结算」收场：横幅与副文案都不是揭牌定格。
-    expect(state.endReason).toBe('GUI_YUAN');
+    // 爆发双级作用改变了种子 2 的推演轨迹：新局以「终局回合结算」收场，横幅与副文案都不是揭牌定格。
+    expect(state.endReason).toBe('MAX_ROUNDS');
     expect(scene.characters.bannerText).toBe('天道通玄 · 遗憾惜败！');
-    expect(scene.characters.bannerSubText).toBe('五行归元');
+    expect(scene.characters.bannerSubText).toBe('终局回合结算');
   });
 
   it('非揭牌的常规终局使用胜负横幅', () => {
@@ -1004,8 +1017,8 @@ describe('GameScene：归一庆祝由 node:stateChanged 触发', () => {
   });
 
   it('已归一的节点再抬升一侧（1 -> 2）不重复庆祝', () => {
-    // 甲木（木·阳）与相生火都已归一 (1,1)：唯一候选【强化】——消耗木阴，
-    // 火先阴侧 1 -> 2、再阳侧 1 -> 2 到 (2, 2)。
+    // 甲木（木·阳）与相生火都已归一 (1,1)：P2 土双道损，【破】封死、【强破】净零但可选，
+    // 候选并列【强化】【强破】，点【强化】：消耗木阴，火先阴侧 1 -> 2、再阳侧 1 -> 2 到 (2, 2)。
     // 火节点早已归一，这一手不是「新达成归一」，不该再播庆祝。
     const scene = new GameScene({
       ...FAST_TIMING,
@@ -1018,8 +1031,14 @@ describe('GameScene：归一庆祝由 node:stateChanged 触发', () => {
       }),
       prng: scriptedPrng([0]),
     });
+    const input = new InputManager(scene);
     scene.start();
+    advance(scene, 0.15);
+
     const before = scene.turnManager.getState();
+    const burst = scene.actionBar.getButtons().find((button) => button.label === '【强化】');
+    expect(burst).toBeDefined();
+    tapButton(input, burst as Button);
     advanceUntil(scene, () => scene.turnManager.getState() !== before);
 
     // 强化：木阴被消耗 (1 -> 0)，相生火连抬两级到 (2, 2)（火两侧仍均 ≥ 1，但没有「新归一」）。

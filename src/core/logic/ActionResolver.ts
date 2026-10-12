@@ -26,10 +26,10 @@ import {
   countBoardGuiYi,
   isBoardTingPai,
 } from './State.js';
-import { getPlusTargetPolarity } from './ActionCandidates.js';
+import { getMinusTargetPolarity, getPlusTargetPolarity } from './ActionCandidates.js';
 import { ScoreCalculator } from './ScoreCalculator.js';
 
-/** 强化 (BURST) 的相生作用次数：两次独立的 +1，每次之前重新读盘面选侧 */
+/** 爆发动作 (BURST / BURST_ATK) 的作用次数：两次独立的 ±1，每次之前重新读盘面选侧 */
 const BURST_PASSES = 2;
 
 export class ActionResolver {
@@ -306,25 +306,32 @@ export class ActionResolver {
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '源节点未达成归一，无法强破' };
         }
         scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.BURST_ATK);
-        // 消耗源节点一侧
+        // 消耗源节点一侧（不计状态分；因此失去归一时也不扣分）
         patchActiveNode(sourceElement, {
           [consumePolarity]: clampNodeLevel(sourceNode[consumePolarity] - 1),
         });
-        // 削弱相克对手节点
+        // 强破对手相克节点：两次独立的 -1，每次之前重新读盘面并按阴优先选侧；
+        // 双侧均已到道损 -1 时即止（不反转、不溢出）。
+        // 两次转移的攻击状态分都按行动前对手盘面归一进度缩放。
         const targetElement = OVERCOMING_CYCLE[sourceElement];
-        const targetPolarity = payload.polarity || Polarity.YANG;
-        const targetNode = nextOpponentBoard[targetElement];
-        const prevLevel = targetNode[targetPolarity];
-        const newLevel = clampNodeLevel(prevLevel - 1);
-        patchOpponentNode(targetElement, {
-          [targetPolarity]: newLevel,
-        });
-        scoreDelta += this.scaledAttackTransitionPoints(
-          prevLevel,
-          newLevel,
-          targetPolarity,
-          opponentPlayer.board,
-        );
+        for (let pass = 0; pass < BURST_PASSES; pass++) {
+          const targetNode = nextOpponentBoard[targetElement];
+          const targetPolarity = getMinusTargetPolarity(targetNode);
+          if (targetPolarity === null) {
+            break;
+          }
+          const prevLevel = targetNode[targetPolarity];
+          const newLevel = clampNodeLevel(prevLevel - 1);
+          patchOpponentNode(targetElement, {
+            [targetPolarity]: newLevel,
+          });
+          scoreDelta += this.scaledAttackTransitionPoints(
+            prevLevel,
+            newLevel,
+            targetPolarity,
+            opponentPlayer.board,
+          );
+        }
         extraTurn = true;
         success = true;
         break;

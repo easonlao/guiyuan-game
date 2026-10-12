@@ -128,10 +128,10 @@ describe('Ticket 05 候选 A - 攻击进度定价 (ATTACK_PROGRESS_SCALE)', () =
       player: 'P1',
       sourceElement: WuXing.WOOD,
       consumePolarity: Polarity.YANG,
-      polarity: Polarity.YANG,
     });
-    // 行为分 BURST_ATK = 80；攻击状态分 round(300 × 0.66) = 198；总计 278
-    expect(result.scoreDelta).toBe(278);
+    // 行为分 BURST_ATK = 80；两次攻击转移都按行动前对手盘面（2 个归一 → ×0.66）缩放：
+    // 阴 0→-1（250 × 0.66 = 165）+ 阳 0→-1（300 × 0.66 = 198）；总计 80 + 363 = 443
+    expect(result.scoreDelta).toBe(443);
   });
 
   it('非攻击动作的 scoreDelta 不缩放', () => {

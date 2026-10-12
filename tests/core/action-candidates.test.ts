@@ -160,14 +160,64 @@ describe('ActionCandidates (Legal Action Generator)', () => {
       consumePolarity: Polarity.YIN,
     });
 
-    // Burst action: METAL GuiYi -> BURST_ATK (METAL克WOOD) consuming YANG
+    // Burst action: METAL GuiYi -> BURST_ATK (METAL克WOOD) consuming YANG；
+    // 目标侧在解析时逐次决定，候选不再预先钉死 polarity
     expect(actions).toContainEqual({
       actionType: ActionType.BURST_ATK,
       player: 'P1',
       sourceElement: WuXing.METAL,
       consumePolarity: Polarity.YANG,
-      polarity: Polarity.YIN,
     });
+  });
+
+  it('5b. 爆发候选不再携带目标侧字段，且相克目标 (-1, -1) 时强破仍在候选集内', () => {
+    // P1 METAL 归一 (1,1)；P2 WOOD 双道损 (-1,-1)。
+    // 门槛只看源节点归一：强破见底即止，但盘面净零仍换取连动与动作分，仍在候选集内。
+    let state = createInitialGameState();
+    state = {
+      ...state,
+      players: {
+        ...state.players,
+        P1: {
+          ...state.players.P1,
+          board: {
+            ...state.players.P1.board,
+            [WuXing.METAL]: { yin: 1, yang: 1 },
+          },
+        },
+        P2: {
+          ...state.players.P2,
+          board: {
+            ...state.players.P2.board,
+            [WuXing.WOOD]: { yin: -1, yang: -1 },
+          },
+        },
+      },
+    };
+
+    const gengMetal = TIAN_GAN_LIST.find((tg) => tg.name === '庚')!; // METAL, YANG
+    const actions = getAvailableActions(state, gengMetal);
+
+    // 相克目标双道损：破被 getMinusTargetPolarity 封死，但强破不封
+    expect(actions.some((a) => a.actionType === ActionType.ATK)).toBe(false);
+
+    const burst = actions.find((a) => a.actionType === ActionType.BURST)!;
+    expect(burst).toEqual({
+      actionType: ActionType.BURST,
+      player: 'P1',
+      sourceElement: WuXing.METAL,
+      consumePolarity: Polarity.YIN,
+    });
+    expect(burst).not.toHaveProperty('polarity');
+
+    const burstAtk = actions.find((a) => a.actionType === ActionType.BURST_ATK)!;
+    expect(burstAtk).toEqual({
+      actionType: ActionType.BURST_ATK,
+      player: 'P1',
+      sourceElement: WuXing.METAL,
+      consumePolarity: Polarity.YANG,
+    });
+    expect(burstAtk).not.toHaveProperty('polarity');
   });
 
   it('6. Priority selectors: getPlusTargetPolarity & getMinusTargetPolarity', () => {
