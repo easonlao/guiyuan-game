@@ -34,4 +34,4 @@
 
 **`npm run verify`：exit 1 —— `check:quick` / `typecheck` / `check:artifact` 全绿，`vitest` 874 通过 / 6 失败。** 6 条失败全是平衡绊线（护栏带先手胜率、占优格局重排、基线钉值），按 spec「不达标的处理属于平衡阶段」未改基线、未调参、未动 `GuardrailBand`。
 
-**收口（2026-10-12，code-review 后）**：全部工单并入集成分支 `burst-plus-two`（尖 `1c27a96`）。`verify` 余 5 条平衡红灯归 `.scratch/burst-plus-two/issues/05-balance-retune-after-burst-plus-two.md`。
+**收口（2026-10-12，code-review 后）**：全部工单并入集成分支 `burst-plus-two`（尖 `1c27a96`）。`verify` 余 5 条平衡红灯归 `.scratch/archive/burst-plus-two/issues/05-balance-retune-after-burst-plus-two.md`。

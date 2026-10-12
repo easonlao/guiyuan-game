@@ -49,4 +49,4 @@
 
 交接：ticket 03 的护栏复核拿到的是**带外**结论（归元率与先手胜率各越一条界），按 spec 需另开票处理。
 
-**收口（2026-10-12，code-review 后）**：全部工单并入集成分支 `burst-plus-two`（尖 `1c27a96`）。code-review 修正了两处与双级作用直接相关的缺陷——`tests/core/turn-manager-mutation-guards.test.ts` 的 consumePolarity 守卫用例原被残留 `polarity` 抢先拒绝而空转（已修，并证明非空转），以及 `ActionResolver.ts` 行号位移导致的 `mutation-baseline.jsonl` 失配（已重钉，34 条仅行号位移，`mutation:check` 退出 0；并击杀全量新暴露的 7 个存活）。本票的规则侧与表现侧全部落地；`verify` 余 5 条平衡红灯归后续票 `.scratch/burst-plus-two/issues/05-balance-retune-after-burst-plus-two.md`。
+**收口（2026-10-12，code-review 后）**：全部工单并入集成分支 `burst-plus-two`（尖 `1c27a96`）。code-review 修正了两处与双级作用直接相关的缺陷——`tests/core/turn-manager-mutation-guards.test.ts` 的 consumePolarity 守卫用例原被残留 `polarity` 抢先拒绝而空转（已修，并证明非空转），以及 `ActionResolver.ts` 行号位移导致的 `mutation-baseline.jsonl` 失配（已重钉，34 条仅行号位移，`mutation:check` 退出 0；并击杀全量新暴露的 7 个存活）。本票的规则侧与表现侧全部落地；`verify` 余 5 条平衡红灯归后续票 `.scratch/archive/burst-plus-two/issues/05-balance-retune-after-burst-plus-two.md`。

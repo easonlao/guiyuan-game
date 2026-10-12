@@ -36,5 +36,5 @@ status: accepted
 ## 后果
 
 - **爆发在亢极附近退化为廉价的节奏/刷分动作**：净零或近净零的盘面变化，仍换一次连动与动作分。这是被接受的代价；真实收益结构（含最低档分、源节点因消耗失去归一的拖慢）应在平衡基准里被观测，而不是被假设。
-- **平衡护栏必须重跑，不能沿用旧结论**：这次改动重新抬高了爆发的收益，ADR 0002 关于爆发刷分的结论只对旧幅度成立。实测数字与在带内/带外的结论见工单 03 的对账与基准记录（`.scratch/burst-plus-two/issues/03-evaluator-reconciliation-and-balance-guardrails.md` 的 Comments，或其在 `docs/headless/` 下落盘的报告）；本文不复述数字。
+- **平衡护栏必须重跑，不能沿用旧结论**：这次改动重新抬高了爆发的收益，ADR 0002 关于爆发刷分的结论只对旧幅度成立。实测数字与在带内/带外的结论见工单 03 的对账与基准记录（`.scratch/archive/burst-plus-two/issues/03-evaluator-reconciliation-and-balance-guardrails.md` 的 Comments，或其在 `docs/headless/` 下落盘的报告）；本文不复述数字。
 - **规则正文与契约各归其位**：GDD §2.3 已随实现回写，§2.4 的唯一候选枚举随之修订；载荷契约在 LLD §3.1。
