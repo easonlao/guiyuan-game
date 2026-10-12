@@ -47,7 +47,12 @@
   "simulatorPluginLibVersion": {},
   "packOptions": {
     "ignore": [],
-    "include": []
+    "include": [
+      {
+        "type": "file",
+        "value": "assets/characters.png"
+      }
+    ]
   },
   "isGameTourist": false,
   "editorSetting": {}

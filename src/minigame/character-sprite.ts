@@ -3,6 +3,8 @@ import { CharacterActionState } from './types.js';
 
 /** Both hosts load this packaged asset; rendering modules never construct host images. */
 export const CHARACTER_ATLAS_PATH = 'assets/characters.png';
+/** Measured PNG dimensions; onload-only fallback for hosts without image dimensions. */
+export const CHARACTER_ATLAS_SIZE = { width: 1254, height: 1254 } as const;
 
 export interface CharacterSpriteFrame {
   readonly x: number;
