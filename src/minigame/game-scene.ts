@@ -791,6 +791,10 @@ function opponentOf(player: PlayerId): PlayerId {
  * 把一个已结算动作解析成法盘上的落点：
  * 相克（破 / 强破）落到对手棋盘，其余动作落到行动方自己的棋盘；
  * 目标五行与极性优先取载荷字段，缺省时按相生/相克环与当前天干推导。
+ *
+ * 强化 (BURST) 不再携带目标侧：作用侧由解析器逐次按阴优先决定，
+ * 载荷缺省时取阴侧（阴优先的第一步），不跟随抽中天干的极性——
+ * 否则表现层会把规则已去除的天干耦合重新引入。
  */
 function resolveActionTarget(
   action: ActionPayload | null,
@@ -803,7 +807,10 @@ function resolveActionTarget(
     action === null
       ? (tianGan?.element ?? WuXing.WOOD)
       : getActionTargetElement(action, tianGan?.element);
-  const polarity = action?.polarity ?? tianGan?.polarity ?? Polarity.YANG;
+  const polarity =
+    action?.polarity ??
+    (actionType === ActionType.BURST ? Polarity.YIN : tianGan?.polarity) ??
+    Polarity.YANG;
   const isAttack = isAttackAction(actionType);
   return { player: isAttack ? opponentOf(actor) : actor, element, polarity };
 }

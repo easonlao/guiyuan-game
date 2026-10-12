@@ -259,6 +259,121 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     return count;
   }
+  function getPlusTargetPolarity(node) {
+    if (node.yin < 2) {
+      return Polarity.YIN;
+    }
+    if (node.yang < 2) {
+      return Polarity.YANG;
+    }
+    return null;
+  }
+  function getMinusTargetPolarity(node) {
+    if (node.yin > -1) {
+      return Polarity.YIN;
+    }
+    if (node.yang > -1) {
+      return Polarity.YANG;
+    }
+    return null;
+  }
+  function getAvailableActions(state, tianGan, options) {
+    if (state.isGameOver) {
+      return [];
+    }
+    const playerId = state.currentPlayer;
+    const opponentId = playerId === "P1" ? "P2" : "P1";
+    const playerBoard = state.players[playerId].board;
+    const opponentBoard = state.players[opponentId].board;
+    const stemElement = tianGan.element;
+    const stemPolarity = tianGan.polarity;
+    const stemNode = playerBoard[stemElement];
+    const stemLevel = stemNode[stemPolarity];
+    if (stemLevel <= 0) {
+      return [
+        {
+          actionType: ActionType.AUTO,
+          player: playerId,
+          element: stemElement,
+          polarity: stemPolarity
+        }
+      ];
+    }
+    if (isNodeKangJi(stemNode)) {
+      return [
+        {
+          actionType: ActionType.DISSIPATE,
+          player: playerId,
+          element: stemElement,
+          polarity: stemPolarity
+        }
+      ];
+    }
+    const actions = [];
+    if (stemLevel >= 1) {
+      const oppositePolarity = getOppositePolarity(stemPolarity);
+      if (stemNode[oppositePolarity] <= 0) {
+        actions.push({
+          actionType: ActionType.CONVERT,
+          player: playerId,
+          element: stemElement,
+          polarity: oppositePolarity
+        });
+      }
+      if (stemPolarity === Polarity.YANG) {
+        const keEl = OVERCOMING_CYCLE[stemElement];
+        const targetPolarity = getMinusTargetPolarity(opponentBoard[keEl]);
+        if (targetPolarity !== null) {
+          actions.push({
+            actionType: ActionType.ATK,
+            player: playerId,
+            sourceElement: stemElement,
+            polarity: targetPolarity
+          });
+        }
+      }
+      if (stemPolarity === Polarity.YIN) {
+        const shengEl = GENERATION_CYCLE[stemElement];
+        const targetPolarity = getPlusTargetPolarity(playerBoard[shengEl]);
+        if (targetPolarity !== null) {
+          actions.push({
+            actionType: ActionType.TRANS,
+            player: playerId,
+            sourceElement: stemElement,
+            polarity: targetPolarity
+          });
+        }
+      }
+    }
+    if (!options?.isExtraTurn && isNodeGuiYi(stemNode)) {
+      actions.push({
+        actionType: ActionType.BURST,
+        player: playerId,
+        sourceElement: stemElement,
+        consumePolarity: Polarity.YIN
+      });
+      const keEl = OVERCOMING_CYCLE[stemElement];
+      const keTargetPolarity = getMinusTargetPolarity(opponentBoard[keEl]);
+      if (keTargetPolarity !== null) {
+        actions.push({
+          actionType: ActionType.BURST_ATK,
+          player: playerId,
+          sourceElement: stemElement,
+          consumePolarity: Polarity.YANG,
+          polarity: keTargetPolarity
+        });
+      }
+    }
+    if (actions.length === 0) {
+      actions.push({
+        actionType: ActionType.PASS,
+        player: playerId,
+        element: stemElement,
+        polarity: stemPolarity
+      });
+    }
+    return actions;
+  }
   const GUI_YI_MILESTONE = 60;
   const DAMAGE_PENALTY = 50;
   const POINTS_CONFIG = {
@@ -380,6 +495,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   }
   __publicField(ScoreCalculator, "GUI_YI_MILESTONE", 60);
   __publicField(ScoreCalculator, "DAMAGE_PENALTY", 50);
+  const BURST_PASSES = 2;
   class ActionResolver {
     constructor(scoreCalculator = new ScoreCalculator()) {
       __publicField(this, "scoreCalculator");
@@ -561,19 +677,23 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
             [consumePolarity]: clampNodeLevel(sourceNode[consumePolarity] - 1)
           });
           const targetElement = GENERATION_CYCLE[sourceElement];
-          const targetPolarity = payload.polarity || Polarity.YANG;
-          const targetNode = nextActiveBoard[targetElement];
-          const prevLevel = targetNode[targetPolarity];
-          const newLevel = clampNodeLevel(prevLevel + 1);
-          patchActiveNode(targetElement, {
-            [targetPolarity]: newLevel
-          });
-          scoreDelta += this.scoreCalculator.calculateTransitionPoints(
-            prevLevel,
-            newLevel,
-            targetPolarity,
-            false
-          );
+          for (let pass = 0; pass < BURST_PASSES; pass++) {
+            const targetNode = nextActiveBoard[targetElement];
+            const boostPolarity = getPlusTargetPolarity(targetNode);
+            const targetPolarity = boostPolarity ?? Polarity.YIN;
+            const levelStep = boostPolarity === null ? -1 : 1;
+            const prevLevel = targetNode[targetPolarity];
+            const newLevel = clampNodeLevel(prevLevel + levelStep);
+            patchActiveNode(targetElement, {
+              [targetPolarity]: newLevel
+            });
+            scoreDelta += this.scoreCalculator.calculateTransitionPoints(
+              prevLevel,
+              newLevel,
+              targetPolarity,
+              false
+            );
+          }
           extraTurn = true;
           success = true;
           break;
@@ -844,126 +964,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   function drawTianGan(prng) {
     const index = prng.nextInt(0, TIAN_GAN_LIST.length - 1);
     return TIAN_GAN_LIST[index];
-  }
-  function getPlusTargetPolarity(node) {
-    if (node.yin < 2) {
-      return Polarity.YIN;
-    }
-    if (node.yang < 2) {
-      return Polarity.YANG;
-    }
-    return null;
-  }
-  function getMinusTargetPolarity(node) {
-    if (node.yin > -1) {
-      return Polarity.YIN;
-    }
-    if (node.yang > -1) {
-      return Polarity.YANG;
-    }
-    return null;
-  }
-  function getAvailableActions(state, tianGan, options) {
-    if (state.isGameOver) {
-      return [];
-    }
-    const playerId = state.currentPlayer;
-    const opponentId = playerId === "P1" ? "P2" : "P1";
-    const playerBoard = state.players[playerId].board;
-    const opponentBoard = state.players[opponentId].board;
-    const stemElement = tianGan.element;
-    const stemPolarity = tianGan.polarity;
-    const stemNode = playerBoard[stemElement];
-    const stemLevel = stemNode[stemPolarity];
-    if (stemLevel <= 0) {
-      return [
-        {
-          actionType: ActionType.AUTO,
-          player: playerId,
-          element: stemElement,
-          polarity: stemPolarity
-        }
-      ];
-    }
-    if (isNodeKangJi(stemNode)) {
-      return [
-        {
-          actionType: ActionType.DISSIPATE,
-          player: playerId,
-          element: stemElement,
-          polarity: stemPolarity
-        }
-      ];
-    }
-    const actions = [];
-    if (stemLevel >= 1) {
-      const oppositePolarity = getOppositePolarity(stemPolarity);
-      if (stemNode[oppositePolarity] <= 0) {
-        actions.push({
-          actionType: ActionType.CONVERT,
-          player: playerId,
-          element: stemElement,
-          polarity: oppositePolarity
-        });
-      }
-      if (stemPolarity === Polarity.YANG) {
-        const keEl = OVERCOMING_CYCLE[stemElement];
-        const targetPolarity = getMinusTargetPolarity(opponentBoard[keEl]);
-        if (targetPolarity !== null) {
-          actions.push({
-            actionType: ActionType.ATK,
-            player: playerId,
-            sourceElement: stemElement,
-            polarity: targetPolarity
-          });
-        }
-      }
-      if (stemPolarity === Polarity.YIN) {
-        const shengEl = GENERATION_CYCLE[stemElement];
-        const targetPolarity = getPlusTargetPolarity(playerBoard[shengEl]);
-        if (targetPolarity !== null) {
-          actions.push({
-            actionType: ActionType.TRANS,
-            player: playerId,
-            sourceElement: stemElement,
-            polarity: targetPolarity
-          });
-        }
-      }
-    }
-    if (!options?.isExtraTurn && isNodeGuiYi(stemNode)) {
-      const shengEl = GENERATION_CYCLE[stemElement];
-      const shengTargetPolarity = getPlusTargetPolarity(playerBoard[shengEl]);
-      if (shengTargetPolarity !== null) {
-        actions.push({
-          actionType: ActionType.BURST,
-          player: playerId,
-          sourceElement: stemElement,
-          consumePolarity: Polarity.YIN,
-          polarity: shengTargetPolarity
-        });
-      }
-      const keEl = OVERCOMING_CYCLE[stemElement];
-      const keTargetPolarity = getMinusTargetPolarity(opponentBoard[keEl]);
-      if (keTargetPolarity !== null) {
-        actions.push({
-          actionType: ActionType.BURST_ATK,
-          player: playerId,
-          sourceElement: stemElement,
-          consumePolarity: Polarity.YANG,
-          polarity: keTargetPolarity
-        });
-      }
-    }
-    if (actions.length === 0) {
-      actions.push({
-        actionType: ActionType.PASS,
-        player: playerId,
-        element: stemElement,
-        polarity: stemPolarity
-      });
-    }
-    return actions;
   }
   var TurnPhase = /* @__PURE__ */ ((TurnPhase2) => {
     TurnPhase2["START_TURN"] = "START_TURN";
@@ -4357,7 +4357,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   function resolveActionTarget(action, actionType, actor, turnManager) {
     const tianGan = turnManager.getCurrentTianGan();
     const element = action === null ? tianGan?.element ?? WuXing.WOOD : getActionTargetElement(action, tianGan?.element);
-    const polarity = action?.polarity ?? tianGan?.polarity ?? Polarity.YANG;
+    const polarity = action?.polarity ?? (actionType === ActionType.BURST ? Polarity.YIN : tianGan?.polarity) ?? Polarity.YANG;
     const isAttack = isAttackAction(actionType);
     return { player: isAttack ? opponentOf(actor) : actor, element, polarity };
   }

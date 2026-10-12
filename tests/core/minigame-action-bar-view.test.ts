@@ -143,13 +143,12 @@ describe('ActionBarView: 动作派发', () => {
       player: 'P1',
       sourceElement: WuXing.WOOD,
       consumePolarity: Polarity.YIN,
-      polarity: Polarity.YIN,
     });
 
-    // 强化：消耗归一源节点阴侧 1 级，相生节点（火）阴侧 +1，并换取一次连动
+    // 强化：消耗归一源节点阴侧 1 级，相生节点（火）阴优先连抬两级，并换取一次连动
     const state = manager.getState();
     expect(state.players.P1.board[WuXing.WOOD]).toEqual({ yin: 0, yang: 1 });
-    expect(state.players.P1.board[WuXing.FIRE].yin).toBe(1);
+    expect(state.players.P1.board[WuXing.FIRE]).toEqual({ yin: 2, yang: 0 });
     expect(manager.isExtraTurnActive()).toBe(true);
     expect(state.currentPlayer).toBe('P1');
     expect(manager.getCurrentPhase()).toBe(TurnPhase.END_TURN);

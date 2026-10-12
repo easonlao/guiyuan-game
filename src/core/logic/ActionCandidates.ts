@@ -161,18 +161,15 @@ export function getAvailableActions(
   // 仅当当前抽取的天干所属节点已经达成归一（阴阳两侧均 >= 1）时，才允许基于该天干节点发起强化 (BURST) 或强破 (BURST_ATK)
   // 连动限制：若当前处于 extraTurn，过滤掉 BURST/BURST_ATK，确保一次大回合内禁止二次爆发
   if (!options?.isExtraTurn && isNodeGuiYi(stemNode)) {
-    // 3.1 强化 (BURST): 消耗阴侧，强化相生节点
-    const shengEl = GENERATION_CYCLE[stemElement];
-    const shengTargetPolarity = getPlusTargetPolarity(playerBoard[shengEl]);
-    if (shengTargetPolarity !== null) {
-      actions.push({
-        actionType: ActionType.BURST,
-        player: playerId,
-        sourceElement: stemElement,
-        consumePolarity: Polarity.YIN,
-        polarity: shengTargetPolarity,
-      });
-    }
+    // 3.1 强化 (BURST): 消耗阴侧，强化相生节点。
+    // 门槛只看源节点归一：相生目标即使已是 (2, 2) 亢极也仍可发动（满溢则亏），
+    // 目标侧在解析时逐次决定，候选不再预先钉死 polarity。
+    actions.push({
+      actionType: ActionType.BURST,
+      player: playerId,
+      sourceElement: stemElement,
+      consumePolarity: Polarity.YIN,
+    });
 
     // 3.2 强破 (BURST_ATK): 消耗阳侧，削弱相克节点
     const keEl = OVERCOMING_CYCLE[stemElement];
