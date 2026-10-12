@@ -2,8 +2,8 @@
 
 > 工单 `.scratch/burst-plus-two/issues/03-evaluator-reconciliation-and-balance-guardrails.md`。
 > 本文是**报告类**：只做证据与导航，不定义规则。规则正文（真值表、门槛、满溢则亏）归
-> `.scratch/burst-plus-two/spec.md` 与 `docs/GDD.md` §2.3；护栏带的唯一定义在
-> `tools/GuardrailBand.ts`。本文的数字是**某次测量的快照**，不是契约。
+> `docs/GDD.md` §2.3；`.scratch/burst-plus-two/spec.md` 只是本票的任务出处，不是规则的家。
+> 护栏带的唯一定义在 `tools/GuardrailBand.ts`。本文的数字是**某次测量的快照**，不是契约。
 >
 > 测量对象：集成分支 `burst-plus-two` 的合并尖 `eca971d`（工单 01 强化双级 + 工单 02 强破双级
 > 均已并入），工作树 `/home/easonlao/projects/guiyuan-game-worktrees/ticket-03`。

@@ -67,7 +67,7 @@
 
 1. **双盘投影**：`BoardView.update(p1Board: BoardState, p2Board: BoardState)`——同时接收己方盘与对方盘两块快照，一次投影；表现层**不再**按当前行动方切换单一棋盘（ADR 0015 的动机）。
 2. **槽位定位**：`BoardView.getSlot(player: PlayerId, element: WuXing, polarity: Polarity): BoardSlotView`——返回指定**某一方**、某元素、某极性槽位的投影视图（含父坐标系下的 `x/y` 与角度），供 `RuneFlightView` 取飞行落点。`player` 决定取内环（己方）还是外环（对方）。
-3. **飞行落点**：`RuneFlightView` 的飞行目标坐标**唯一来源**是 `BoardView.getSlot(player, …)`；调用方必须传入被作用方的 `player`：`ATK`/`BURST_ATK` 为对方，其余为己方；**终轮天命揭牌是唯一的例外**——揭牌恒由天道 P2 抽牌并作用于对方盘（P2 盘），落点为抽中天干在 P2 盘上的槽位，与抽牌前的行动方无关（`flyTo('P2', …)`）。落点侧优先取载荷的 `polarity`；爆发候选不再携带该字段（见 §3.1），缺省时按动作兜底：`BURST` 取**阴侧**（与解析器阴优先的首步一致，不跟随抽中天干的极性），`BURST_ATK` 沿用其他动作的兜底——抽中天干的极性。
+3. **飞行落点**：`RuneFlightView` 的飞行目标坐标**唯一来源**是 `BoardView.getSlot(player, …)`；调用方必须传入被作用方的 `player`：`ATK`/`BURST_ATK` 为对方，其余为己方；**终轮天命揭牌是唯一的例外**——揭牌恒由天道 P2 抽牌并作用于对方盘（P2 盘），落点为抽中天干在 P2 盘上的槽位，与抽牌前的行动方无关（`flyTo('P2', …)`）。落点侧优先取载荷的 `polarity`；爆发候选不再携带该字段（见 §3.1），缺省时表现层按动作取一个**近似落点**：`BURST` 取**阴侧**，`BURST_ATK` 沿用其他动作的兜底——抽中天干的极性。该近似不保证等于解析器逐次按阴优先选出的实际作用侧（例如目标阴侧已满 2 时，解析器首步会改取阳侧），仅用于落点动画。
 4. **同心双环语义**：内环恒为己方盘、外环恒为对方盘；外环相对内环逆时针偏移 2 格，每根射线满足「己方克对方」。该几何是契约而非样式（板盘测试按坐标断言）。
 5. **动作路径高亮**：`BoardView.setActivePaths(paths: readonly BoardActivePath[])` 按 `(kind, from)` 点亮「当前动作会走」的连线（`BoardActivePath = { kind: 'generation' | 'attack'; from: WuXing }`）；`resolveActionPath(actionType, element)` 是动作到路径的纯映射（`TRANS`/`BURST` → 相生边，`ATK`/`BURST_ATK` → 径向线，其余动作 `null`）。高亮只由 `GameScene` 在 `awaiting-player` 阶段按当前天干与候选动作驱动，其余阶段清空；不再由主印等级驱动。
 6. **环级视觉层级与归元图例**：内环（己方）主印在**尺寸**上大于外环（对方）主印（`BoardElementView.sealSize` 按环给出）；环带内环暖色实线、外环冷色虚线——「哪一圈是谁的」不依赖颜色也能读（不靠大面积底晕，底晕会叠成一团浑色）。两环各在正下方主印之间的空位画「己」「敌」归属徽记；归元进度以盘下方一行图例「己 x/5」「敌 y/5」表达（颜色对应各环带）。图例位置在对方盘外侧、落在视口内，且不与任何主印圆（含半环与归一外环外沿）相交——半环是阴阳等级的唯一载体，不得被遮。
