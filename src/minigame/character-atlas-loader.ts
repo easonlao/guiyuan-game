@@ -74,82 +74,46 @@ function errorReason(error: unknown, depth = 0): string {
   return [...new Set(details)].join('；');
 }
 
-/** Try the packaged path, then one verified binary copy in WeChat's native writable directory. */
+/** Prefer the native cache path verified by WeChat; keep direct loading for other hosts. */
 export function loadWechatCharacterAtlas(
   host: WechatCharacterImageHost,
   setAtlas: (atlas: CharacterSpriteAtlas | null) => void,
 ): void {
-  let retryStarted = false;
-  const diagnostic = (stage: string, path: string, error: unknown): void => {
-    console.error(`[Guiyuan] 人物图集${stage}`, {
+  type Phase = 'reading' | 'writing' | 'cache-loading' | 'direct-loading' | 'done';
+  let phase: Phase = 'reading';
+  const diagnostic = (
+    level: 'warn' | 'error',
+    stage: string,
+    path: string,
+    error: unknown,
+  ): void => {
+    console[level](`[Guiyuan] 人物图集${stage}`, {
       path,
       reason: errorReason(error) || '宿主未提供错误详情',
     });
   };
-  const probeAndRetry = (): void => {
-    if (typeof host.getFileSystemManager !== 'function') {
-      diagnostic('无法自动读取', CHARACTER_ATLAS_PATH, '宿主未提供 wx.getFileSystemManager');
-      return;
-    }
-    try {
-      const fs = host.getFileSystemManager();
-      fs.readFile({
-        filePath: CHARACTER_ATLAS_PATH,
-        fail: (error) => diagnostic('文件读取失败', CHARACTER_ATLAS_PATH, error),
-        success: ({ data }) => {
-          try {
-            if (typeof data === 'string' || !data || typeof data.byteLength !== 'number') {
-              diagnostic('文件格式无效', CHARACTER_ATLAS_PATH, '读取结果不是二进制 ArrayBuffer');
-              return;
-            }
-            const bytes = new Uint8Array(data);
-            const magic = Array.from(bytes.subarray(0, 8))
-              .map((byte) => byte.toString(16).padStart(2, '0'))
-              .join('');
-            console.log('[Guiyuan] 人物图集文件读取成功', {
-              path: CHARACTER_ATLAS_PATH,
-              bytes: bytes.byteLength,
-              magic,
-            });
-            if (bytes.byteLength < 33 || magic !== '89504e470d0a1a0a') {
-              diagnostic('文件格式无效', CHARACTER_ATLAS_PATH, '文件不是完整的 PNG 图集');
-              return;
-            }
-            const directory = host.env?.USER_DATA_PATH;
-            if (!directory) {
-              diagnostic('无法缓存', CHARACTER_ATLAS_PATH, '宿主未提供 wx.env.USER_DATA_PATH');
-              return;
-            }
-            const cachedPath = `${directory.replace(/\/$/, '')}/guiyuan-characters.png`;
-            fs.writeFile({
-              filePath: cachedPath,
-              data,
-              fail: (error) => diagnostic('缓存写入失败', cachedPath, error),
-              success: () => {
-                console.log('[Guiyuan] 人物图集缓存写入成功', { path: cachedPath });
-                loadImage(cachedPath, true);
-              },
-            });
-          } catch (error) {
-            diagnostic('文件恢复失败', CHARACTER_ATLAS_PATH, error);
-          }
-        },
-      });
-    } catch (error) {
-      diagnostic('文件读取失败', CHARACTER_ATLAS_PATH, error);
-    }
+  const useDirect = (stage?: string, path = CHARACTER_ATLAS_PATH, error?: unknown): void => {
+    if (phase === 'direct-loading' || phase === 'done') return;
+    if (stage) diagnostic('warn', stage, path, error);
+    phase = 'direct-loading';
+    loadImage(CHARACTER_ATLAS_PATH, 'direct-loading');
   };
-  const loadImage = (path: string, isRetry: boolean): void => {
-    if (isRetry) {
-      if (retryStarted) return;
-      retryStarted = true;
-    }
+  const loadImage = (path: string, expectedPhase: 'cache-loading' | 'direct-loading'): void => {
+    const failed = (error: unknown): void => {
+      if (phase !== expectedPhase) return;
+      if (expectedPhase === 'cache-loading') {
+        useDirect('缓存解码失败，尝试包内路径', path, error);
+      } else {
+        phase = 'done';
+        setAtlas(null);
+        diagnostic('error', '加载失败', path, error);
+      }
+    };
     let image: WechatCharacterImage;
     try {
       image = host.createImage();
     } catch (error) {
-      diagnostic('加载失败', path, error);
-      if (!isRetry) probeAndRetry();
+      failed(error);
       return;
     }
     let settled = false;
@@ -159,17 +123,15 @@ export function loadWechatCharacterAtlas(
       pendingImages.delete(image);
       image.onload = null;
       image.onerror = null;
-      return true;
+      return phase === expectedPhase;
     };
     const fail = (error: unknown): void => {
-      if (!finish()) return;
-      setAtlas(null);
-      diagnostic(isRetry ? '缓存解码失败' : '加载失败', path, error);
-      if (!isRetry) probeAndRetry();
+      if (finish()) failed(error);
     };
     pendingImages.add(image);
     image.onload = () => {
       if (!finish()) return;
+      phase = 'done';
       const dimensions = resolveLoadedCharacterDimensions(image);
       if (dimensions.source === 'packaged') {
         console.warn('[Guiyuan] 人物图集 onload 未提供有效尺寸，采用已打包资源尺寸', {
@@ -196,5 +158,71 @@ export function loadWechatCharacterAtlas(
       fail(error);
     }
   };
-  loadImage(CHARACTER_ATLAS_PATH, false);
+
+  const directory = host.env?.USER_DATA_PATH;
+  if (typeof host.getFileSystemManager !== 'function' || !directory) {
+    useDirect();
+    return;
+  }
+  const cachedPath = `${directory.replace(/\/$/, '')}/guiyuan-characters.png`;
+  try {
+    const fs = host.getFileSystemManager();
+    console.log('[Guiyuan] 开始准备人物图集缓存', CHARACTER_ATLAS_PATH);
+    fs.readFile({
+      filePath: CHARACTER_ATLAS_PATH,
+      fail: (error) => {
+        if (phase === 'reading')
+          useDirect('文件读取失败，尝试包内路径', CHARACTER_ATLAS_PATH, error);
+      },
+      success: ({ data }) => {
+        if (phase !== 'reading') return;
+        try {
+          if (typeof data === 'string' || !data || typeof data.byteLength !== 'number') {
+            useDirect(
+              '文件格式无效，尝试包内路径',
+              CHARACTER_ATLAS_PATH,
+              '读取结果不是二进制 ArrayBuffer',
+            );
+            return;
+          }
+          const bytes = new Uint8Array(data);
+          const magic = Array.from(bytes.subarray(0, 8))
+            .map((byte) => byte.toString(16).padStart(2, '0'))
+            .join('');
+          console.log('[Guiyuan] 人物图集文件读取成功', {
+            path: CHARACTER_ATLAS_PATH,
+            bytes: bytes.byteLength,
+            magic,
+          });
+          if (bytes.byteLength < 33 || magic !== '89504e470d0a1a0a') {
+            useDirect(
+              '文件格式无效，尝试包内路径',
+              CHARACTER_ATLAS_PATH,
+              'PNG 签名或最小长度检查未通过',
+            );
+            return;
+          }
+          phase = 'writing';
+          fs.writeFile({
+            filePath: cachedPath,
+            data,
+            fail: (error) => {
+              if (phase === 'writing') useDirect('缓存写入失败，尝试包内路径', cachedPath, error);
+            },
+            success: () => {
+              if (phase !== 'writing') return;
+              phase = 'cache-loading';
+              console.log('[Guiyuan] 人物图集缓存写入成功', { path: cachedPath });
+              loadImage(cachedPath, 'cache-loading');
+            },
+          });
+        } catch (error) {
+          if (phase === 'reading' || phase === 'writing')
+            useDirect('缓存准备失败，尝试包内路径', CHARACTER_ATLAS_PATH, error);
+        }
+      },
+    });
+  } catch (error) {
+    if (phase === 'reading') useDirect('文件读取失败，尝试包内路径', CHARACTER_ATLAS_PATH, error);
+  }
 }
