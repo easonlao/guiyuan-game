@@ -8,7 +8,7 @@
 
 **Blocked by:** 01: 强化恢复双级作用、满溢则亏与门槛放开；02: 强破恢复双级作用与底部封顶
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 对账记录逐条列出估值器的形状类项与差分类项对双级跳跃的处理，且依据是**真实行为断言**，不是读代码的结论
 - [x] 对账记录明确写下净零爆发（目标 `(2,2)` / `(-1,-1)`）在估值器与计分器之间的差异
@@ -32,3 +32,7 @@
   （**带外**，上界 0.51，基线 0.504）、堆增量中位数 3.08MB（带内，基线 3.50MB）。
 - **遗留红灯**按 spec 范围留红，已开后续票 `05-balance-retune-after-burst-plus-two.md`；
   `experiment-runner.test.ts` 的基线复现钉值按实测重录（91.40/19.27/52.20 → 91.05/17.78/54.55）。
+
+**收口（2026-10-12，code-review 后）**：本票已并入集成分支 `burst-plus-two`（尖 `1c27a96`）。
+code-review 未发现对账结论有误；修正了本票重录钉值之外的其它问题（变异基线行号重钉、空转守卫用例、GDD §2.4/LLD 措辞）。
+余 5 条平衡红灯归 `05-balance-retune-after-burst-plus-two.md`；该票验收时建议重跑一次全量变异，因为本次全量为了过 Stryker 干跑临时 `it.skip` 过其中 3 条（guardrails 1 + dominance 2；另 2 条 candidate-validation 本就被 `vitest.stryker.config.ts` 排除，未提交）。
