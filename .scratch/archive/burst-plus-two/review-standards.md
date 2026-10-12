@@ -14,7 +14,7 @@ Diff: `git diff 1b58360...HEAD` (31 files, +1672/−424). Commits: 089efef, fe96
 
 ### H2. Ticket `Status:` lines left stale after the work landed
 
-- `.scratch/burst-plus-two/issues/02-strong-break-double-level-and-floor.md:11` and `04-docs-adr-gdd-lld-alignment.md:13` are still `Status: ready-for-agent` with every acceptance box unchecked, although 1a3d0bf and 00e38fd implemented them.
+- `.scratch/archive/burst-plus-two/issues/02-strong-break-double-level-and-floor.md:11` and `04-docs-adr-gdd-lld-alignment.md:13` are still `Status: ready-for-agent` with every acceptance box unchecked, although 1a3d0bf and 00e38fd implemented them.
 - `03-evaluator-reconciliation-and-balance-guardrails.md:11` is also still `ready-for-agent`, while this diff checked all of its boxes and appended `## Comments`.
 - `docs/agents/issue-tracker.md`: "Triage state is recorded as a `Status:` line near the top of each issue file". Ticket 01 on the same branch did flip to `ready-for-human` — the branch is internally inconsistent.
 
@@ -26,7 +26,7 @@ Diff: `git diff 1b58360...HEAD` (31 files, +1672/−424). Commits: 089efef, fe96
 4. **Tests assert observable behaviour, not internals.** Both truth tables drive `ActionResolver.resolve` and assert board / `scoreDelta` / `extraTurn` / reference equality of untouched nodes (immutability, CONTRIBUTING §4.2). `burst-evaluator-reconciliation.test.ts` drives the public `ActionEvaluator.evaluate` with weights zeroed and asserts the returned `breakdown` — behavioural. The "记录，不修" section `toEqual`s whole breakdown objects, i.e. a characterisation pin, but it is labelled as such in-file.
 5. **Baseline re-pin of `experiment-runner.test.ts`** (66a22be): the self-distortion alarm is re-recorded in the same branch that moves its numbers. Reason and deltas are in the case comment and handed to ticket 05; acceptable, but the alarm is now blind to this shift class.
 6. **Red `verify` on the integration branch** (7 balance tripwires) is explicitly spec-scoped and handed to ticket 05. Accepted by the spec, noted here as a merge-readiness risk.
-7. **Docs:** ADR 0008 appends an erratum (`0008-single-candidate-auto-execution.md:41`) instead of rewriting history — correct per root `AGENTS.md`; GDD §2.3/§2.4 and LLD §3.1 edits are rule-body rewrites in their rightful homes, not history rewrites. Two nits: (a) `docs/headless/burst-plus-two-balance.md:3` names `.scratch/burst-plus-two/spec.md` as a co-home of rule text — `AGENTS.md` gives rule text to GDD alone; (b) GDD §2.4 item 3 (untouched) still claims extra-turn candidates are "仅剩单一 `ATK` 或 `TRANS`", false when both targets are extreme (PASS is the only candidate) — pre-existing, but item 4's revision could have closed it.
+7. **Docs:** ADR 0008 appends an erratum (`0008-single-candidate-auto-execution.md:41`) instead of rewriting history — correct per root `AGENTS.md`; GDD §2.3/§2.4 and LLD §3.1 edits are rule-body rewrites in their rightful homes, not history rewrites. Two nits: (a) `docs/headless/burst-plus-two-balance.md:3` names `.scratch/archive/burst-plus-two/spec.md` as a co-home of rule text — `AGENTS.md` gives rule text to GDD alone; (b) GDD §2.4 item 3 (untouched) still claims extra-turn candidates are "仅剩单一 `ATK` 或 `TRANS`", false when both targets are extreme (PASS is the only candidate) — pre-existing, but item 4's revision could have closed it.
 
 ## Evidence run
 

@@ -1,6 +1,6 @@
 # Spec 轴复审 — 工单 05 工作区改动（对 `HEAD` = 458da3c）
 
-轴：Spec（是否忠实实现 `.scratch/burst-plus-two/issues/05-balance-retune-after-burst-plus-two.md`）。
+轴：Spec（是否忠实实现 `.scratch/archive/burst-plus-two/issues/05-balance-retune-after-burst-plus-two.md`）。
 Diff：`git diff HEAD`（11 文件，+178/−60）。Spec 轴与 Standards 轴分开报告，不合并、不重排。
 
 ## (a) 缺失 / 部分

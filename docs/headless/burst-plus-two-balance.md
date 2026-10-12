@@ -1,8 +1,8 @@
 # burst-plus-two：AI 估值器对账与平衡基准
 
-> 工单 `.scratch/burst-plus-two/issues/03-evaluator-reconciliation-and-balance-guardrails.md`。
+> 工单 `.scratch/archive/burst-plus-two/issues/03-evaluator-reconciliation-and-balance-guardrails.md`。
 > 本文是**报告类**：只做证据与导航，不定义规则。规则正文（真值表、门槛、满溢则亏）归
-> `docs/GDD.md` §2.3；`.scratch/burst-plus-two/spec.md` 只是本票的任务出处，不是规则的家。
+> `docs/GDD.md` §2.3；`.scratch/archive/burst-plus-two/spec.md` 只是本票的任务出处，不是规则的家。
 > 护栏带的唯一定义在 `tools/GuardrailBand.ts`。本文的数字是**某次测量的快照**，不是契约。
 >
 > 测量对象：集成分支 `burst-plus-two` 的合并尖 `eca971d`（工单 01 强化双级 + 工单 02 强破双级
@@ -120,7 +120,7 @@ npx vitest run tests/core/ai-evaluator-benchmark-guardrails.test.ts
 本票把 `tests/core/experiment-runner.test.ts` 的「基线复现」钉值按实测重录（归元率 91.40% → 91.05%、
 平均大回合 19.27 → 17.78、先手胜率 52.20% → 54.55%），它是表征钉，不是护栏。
 其余平衡红灯**按 spec 范围留红**，统一由后续票
-`.scratch/burst-plus-two/issues/05-balance-retune-after-burst-plus-two.md` 收口：
+`.scratch/archive/burst-plus-two/issues/05-balance-retune-after-burst-plus-two.md` 收口：
 
 | 红灯 | 实测 vs 带 / 期望 |
 | --- | --- |
@@ -136,7 +136,7 @@ npx vitest run tests/core/ai-evaluator-benchmark-guardrails.test.ts
 
 ## 7. 工单 05 平衡重调（本票的收口）
 
-> 本节是**工单 05**（`.scratch/burst-plus-two/issues/05-balance-retune-after-burst-plus-two.md`）
+> 本节是**工单 05**（`.scratch/archive/burst-plus-two/issues/05-balance-retune-after-burst-plus-two.md`）
 > 的证据。测量口径与 §5 完全一致（500 局、`baseSeed` 10000、`maxRounds` 30、`balancedStrategy`
 > 自对弈），数字是某次测量的快照。
 

@@ -42,7 +42,7 @@
 
 - [x] 复核 `docs/headless/burst-plus-two-balance.md` 的三条数与带的关系，确认先手胜率带外的成因（爆发收益抬高？连动频率上升？）
 - [x] 给出调参方向与候选方案（`POINTS_CONFIG` / 满溢则亏那级计分 / 估值权重 / 其它），说明被否决的方案与理由
-- [x] 先手胜率回到 `[0.47, 0.51]`，归元率仍在 `[0.89, 0.95]`，堆增量仍 `< 15MB`
+- [x] 先手胜率在带定义口径（500 局、种子 10000）下回到 `[0.47, 0.51]`（跨种子均值 0.527，不是对全部种子的断言，见 Comments「遗留局限」），归元率仍在 `[0.89, 0.95]`，堆增量仍 `< 15MB`
 - [x] 占优格局重新落定：`tests/core/dominance-regression-guard.test.ts` 的严格占优断言与关键翻转格钉值更新到实测
 - [x] `tests/core/candidate-validation.test.ts` 的两条红灯按新格局校正（生产标准 3 转绿；标准 1 用例按实测重写）
 - [x] `tests/core/ai-evaluator-benchmark-guardrails.test.ts` 全绿

@@ -1,5 +1,5 @@
 ---
-status: ready-for-agent
+status: resolved
 ---
 
 # Spec: 恢复爆发动作的双级作用与满溢则亏 (burst-plus-two)
