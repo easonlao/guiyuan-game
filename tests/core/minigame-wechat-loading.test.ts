@@ -16,7 +16,8 @@ function startWechat(
   options: {
     fs?: WechatCharacterFileSystem;
     userDataPath?: string;
-    autoRetryLoad?: boolean;
+    autoCacheLoad?: boolean;
+    throwAfterCacheLoad?: boolean;
   } = {},
 ) {
   const draws: unknown[][] = [];
@@ -40,7 +41,11 @@ function startWechat(
         callbacksBeforeSource.push(
           typeof image.onload === 'function' && typeof image.onerror === 'function',
         );
-        if (options.autoRetryLoad && value !== CHARACTER_ATLAS_PATH) image.onload?.();
+        if (options.autoCacheLoad && value !== CHARACTER_ATLAS_PATH) {
+          image.onload?.();
+          if (options.throwAfterCacheLoad)
+            throw new Error('source setter threw after successful decoding');
+        }
       },
     };
     images.push(image);
@@ -187,27 +192,34 @@ describe('Delivered WeChat character loading', () => {
   });
 });
 
-describe('Delivered WeChat image recovery', () => {
-  it('does not touch the filesystem when the packaged image loads normally', () => {
+describe('Delivered WeChat cache-first loading', () => {
+  it('prepares and decodes the cache first without a package image attempt or any errors', () => {
     const files = mockFileSystem();
-    const host = startWechat(CHARACTER_ATLAS_SIZE, { fs: files.fs, userDataPath: '/wx-data' });
-    host.image.onload?.();
-    host.renderNext();
-    expect(host.draws).toHaveLength(2);
-    expect(files.reads).toHaveLength(0);
-    expect(files.writes).toHaveLength(0);
-  });
-
-  it('asynchronously verifies, writes and decodes the same PNG from one native cache path', () => {
-    const files = mockFileSystem();
-    const host = startWechat(CHARACTER_ATLAS_SIZE, { fs: files.fs, userDataPath: '/wx-data/' });
-    host.image.onerror?.({ type: 'error', detail: { errMsg: 'native decoder failed' } });
+    const host = startWechat(CHARACTER_ATLAS_SIZE, { fs: files.fs, userDataPath: 'http://usr/' });
     expect(files.reads).toHaveLength(1);
     expect(files.reads[0].filePath).toBe(CHARACTER_ATLAS_PATH);
+    expect(host.images).toHaveLength(0);
     host.renderNext();
     expect(host.draws).toHaveLength(0);
-    const bytes = pngData();
-    files.reads[0].success({ data: bytes });
+    const data = pngData();
+    files.reads[0].success({ data });
+    files.reads[0].success({ data });
+    expect(files.writes).toHaveLength(1);
+    expect(files.writes[0].filePath).toBe('http://usr/guiyuan-characters.png');
+    expect(files.writes[0].data).toBe(data);
+    expect(host.images).toHaveLength(0);
+    files.writes[0].success();
+    files.writes[0].success();
+    expect(host.images.map((image) => image.src)).toEqual(['http://usr/guiyuan-characters.png']);
+    host.renderNext();
+    expect(host.draws).toHaveLength(0);
+    host.images[0].onload?.();
+    host.renderNext();
+    expect(host.draws).toHaveLength(2);
+    expect(host.draws.every((args) => args[0] === host.images[0])).toBe(true);
+    expect(host.logs.filter((log) => log.level === 'error')).toEqual([]);
+    expect(host.callbacksBeforeSource).toEqual([true]);
+    expect(host.images[0].onerror).toBeNull();
     expect(
       host.logs.find((log) => log.args[0] === '[Guiyuan] 人物图集文件读取成功')?.args[1],
     ).toEqual({
@@ -215,111 +227,162 @@ describe('Delivered WeChat image recovery', () => {
       bytes: png.byteLength,
       magic: '89504e470d0a1a0a',
     });
-    expect(files.writes).toHaveLength(1);
-    expect(files.writes[0].filePath).toBe('/wx-data/guiyuan-characters.png');
-    expect(files.writes[0].data).toBe(bytes);
-    expect(host.images).toHaveLength(1);
-    files.writes[0].success();
-    expect(host.images).toHaveLength(2);
-    host.renderNext();
-    expect(host.draws).toHaveLength(0);
-    host.images[1].onload?.();
-    host.renderNext();
-    expect(host.draws).toHaveLength(2);
-    expect(host.draws.every((args) => args[0] === host.images[1])).toBe(true);
-    expect(host.callbacksBeforeSource).toEqual([true, true]);
-    expect(host.image.onload).toBeNull();
-    expect(host.images[1].onerror).toBeNull();
   });
 
-  it('reports file-read errors without claiming that the file exists or retrying decoding', () => {
+  it('falls back once after a read failure and warns without reporting an error on eventual success', () => {
     const files = mockFileSystem();
-    const host = startWechat({}, { fs: files.fs, userDataPath: '/wx-data' });
-    host.image.onerror?.(undefined);
+    const host = startWechat(CHARACTER_ATLAS_SIZE, { fs: files.fs, userDataPath: '/wx-data' });
     files.reads[0].fail({ errMsg: 'readFile:fail no such file' });
-    host.renderNext();
-    expect(host.draws).toHaveLength(0);
+    files.reads[0].success({ data: pngData() }); // Late read callbacks cannot start a cache image.
     expect(files.writes).toHaveLength(0);
-    expect(host.images).toHaveLength(1);
-    expect(
-      host.logs.find((log) => log.args[0] === '[Guiyuan] 人物图集文件读取失败')?.args[1],
-    ).toEqual({
+    expect(host.images.map((image) => image.src)).toEqual([CHARACTER_ATLAS_PATH]);
+    host.images[0].onload?.();
+    host.renderNext();
+    expect(host.draws).toHaveLength(2);
+    expect(host.logs.filter((log) => log.level === 'error')).toHaveLength(0);
+    expect(host.logs.find((log) => log.level === 'warn')?.args[1]).toEqual({
       path: CHARACTER_ATLAS_PATH,
       reason: 'readFile:fail no such file',
     });
   });
 
-  it('reports cache-write failure and keeps undecoded images off Canvas', () => {
+  it('uses a direct image after cache-write failure with only a recoverable warning', () => {
     const files = mockFileSystem();
-    const host = startWechat({}, { fs: files.fs, userDataPath: '/wx-data' });
-    host.image.onerror?.({ type: 'error' });
+    const host = startWechat(CHARACTER_ATLAS_SIZE, { fs: files.fs, userDataPath: '/wx-data' });
     files.reads[0].success({ data: pngData() });
     files.writes[0].fail({ errMsg: 'writeFile:fail quota exceeded' });
+    files.writes[0].success();
+    expect(host.images.map((image) => image.src)).toEqual([CHARACTER_ATLAS_PATH]);
+    host.images[0].onload?.();
     host.renderNext();
-    expect(host.draws).toHaveLength(0);
-    expect(host.images).toHaveLength(1);
-    expect(
-      host.logs.find((log) => log.args[0] === '[Guiyuan] 人物图集缓存写入失败')?.args[1],
-    ).toEqual({
+    expect(host.draws).toHaveLength(2);
+    expect(host.logs.filter((log) => log.level === 'error')).toHaveLength(0);
+    expect(host.logs.find((log) => log.level === 'warn')?.args[1]).toEqual({
       path: '/wx-data/guiyuan-characters.png',
       reason: 'writeFile:fail quota exceeded',
     });
   });
 
-  it('stops after a single cache decode failure and ignores stale native callbacks', () => {
+  it('uses one direct fallback after cache decoding fails, ignoring stale and duplicated callbacks', () => {
     const files = mockFileSystem();
-    const host = startWechat({}, { fs: files.fs, userDataPath: '/wx-data' });
-    const staleLoad = host.image.onload;
-    const staleError = host.image.onerror;
-    host.image.onerror?.({ message: 'package decode failed' });
-    staleLoad?.();
-    staleError?.({ message: 'duplicate callback' });
+    const host = startWechat(CHARACTER_ATLAS_SIZE, { fs: files.fs, userDataPath: '/wx-data' });
     files.reads[0].success({ data: pngData() });
     files.writes[0].success();
-    files.writes[0].success(); // A duplicated native completion must not start another retry.
-    host.images[1].onerror?.({ error: { message: 'cache decode failed' } });
+    const staleLoad = host.images[0].onload;
+    const staleError = host.images[0].onerror;
+    host.images[0].onerror?.({ error: { message: 'cache decode failed' } });
+    files.writes[0].success();
+    host.images[1].onload?.();
+    staleLoad?.();
+    staleError?.({ message: 'duplicate callback' });
     host.renderNext();
-    expect(files.reads).toHaveLength(1);
-    expect(files.writes).toHaveLength(1);
-    expect(host.images).toHaveLength(2);
-    expect(host.draws).toHaveLength(0);
-    expect(
-      host.logs.find((log) => log.args[0] === '[Guiyuan] 人物图集缓存解码失败')?.args[1],
-    ).toEqual({
+    expect(host.images.map((image) => image.src)).toEqual([
+      '/wx-data/guiyuan-characters.png',
+      CHARACTER_ATLAS_PATH,
+    ]);
+    expect(host.draws).toHaveLength(2);
+    expect(host.draws.every((args) => args[0] === host.images[1])).toBe(true);
+    expect(host.logs.filter((log) => log.level === 'error')).toHaveLength(0);
+    expect(host.logs.find((log) => log.level === 'warn')?.args[1]).toEqual({
       path: '/wx-data/guiyuan-characters.png',
       reason: 'cache decode failed',
     });
   });
 
-  it('reports absent filesystem or cache-directory APIs without another user command', () => {
-    const host = startWechat();
-    host.image.onerror?.(undefined);
-    expect(host.logs.some((log) => log.args[0] === '[Guiyuan] 人物图集无法自动读取')).toBe(true);
+  it('keeps a final decode failure visible after all viable image paths have failed', () => {
     const files = mockFileSystem();
-    const noDirectory = startWechat({}, { fs: files.fs });
-    noDirectory.image.onerror?.(undefined);
+    const host = startWechat(CHARACTER_ATLAS_SIZE, { fs: files.fs, userDataPath: '/wx-data' });
     files.reads[0].success({ data: pngData() });
-    expect(files.writes).toHaveLength(0);
-    expect(noDirectory.logs.some((log) => log.args[0] === '[Guiyuan] 人物图集无法缓存')).toBe(true);
+    files.writes[0].success();
+    host.images[0].onerror?.({ type: 'error', detail: { errMsg: 'cache decode failed' } });
+    host.images[1].onerror?.({ errMsg: 'package decode failed' });
+    host.renderNext();
+    expect(host.draws).toHaveLength(0);
+    expect(host.images).toHaveLength(2);
+    expect(files.reads).toHaveLength(1);
+    expect(files.writes).toHaveLength(1);
+    expect(host.logs.filter((log) => log.level === 'error')).toEqual([
+      {
+        level: 'error',
+        args: [
+          '[Guiyuan] 人物图集加载失败',
+          {
+            path: CHARACTER_ATLAS_PATH,
+            reason: 'package decode failed',
+          },
+        ],
+      },
+    ]);
   });
 
-  it('rejects a non-PNG before writing and handles synchronous retry onload safely', () => {
+  it('loads directly without warnings on hosts lacking cache APIs or the user directory', () => {
     const files = mockFileSystem();
-    const invalid = startWechat({}, { fs: files.fs, userDataPath: '/wx-data' });
-    invalid.image.onerror?.(undefined);
+    const host = startWechat(CHARACTER_ATLAS_SIZE, { fs: files.fs });
+    expect(host.images.map((image) => image.src)).toEqual([CHARACTER_ATLAS_PATH]);
+    host.image.onload?.();
+    host.renderNext();
+    expect(files.reads).toHaveLength(0);
+    expect(files.writes).toHaveLength(0);
+    expect(host.draws).toHaveLength(2);
+    expect(host.logs.filter((log) => log.level !== 'log')).toHaveLength(0);
+  });
+
+  it('does not cache invalid PNG data and preserves the final direct decode error', () => {
+    const files = mockFileSystem();
+    const host = startWechat(CHARACTER_ATLAS_SIZE, { fs: files.fs, userDataPath: '/wx-data' });
     files.reads[0].success({ data: new ArrayBuffer(40) });
     expect(files.writes).toHaveLength(0);
-    expect(invalid.images).toHaveLength(1);
-    const goodFiles = mockFileSystem();
-    const valid = startWechat(
-      {},
-      { fs: goodFiles.fs, userDataPath: '/wx-data', autoRetryLoad: true },
-    );
-    valid.image.onerror?.(undefined);
-    goodFiles.reads[0].success({ data: pngData() });
-    goodFiles.writes[0].success();
-    valid.renderNext();
-    expect(valid.draws).toHaveLength(2);
-    expect(valid.callbacksBeforeSource).toEqual([true, true]);
+    expect(host.images.map((image) => image.src)).toEqual([CHARACTER_ATLAS_PATH]);
+    expect(
+      host.logs.some((log) => log.level === 'warn' && String(log.args[0]).includes('文件格式无效')),
+    ).toBe(true);
+    host.images[0].onerror?.({ message: 'invalid image' });
+    expect(
+      host.logs.some((log) => log.level === 'error' && String(log.args[0]).includes('加载失败')),
+    ).toBe(true);
   });
+
+  it('handles synchronous read, write and cached-image load with handlers bound before src', () => {
+    const fs: WechatCharacterFileSystem = {
+      readFile(options) {
+        options.success({ data: pngData() });
+      },
+      writeFile(options) {
+        options.success();
+        options.success();
+      },
+    };
+    const host = startWechat(CHARACTER_ATLAS_SIZE, {
+      fs,
+      userDataPath: '/wx-data',
+      autoCacheLoad: true,
+    });
+    host.renderNext();
+    expect(host.images.map((image) => image.src)).toEqual(['/wx-data/guiyuan-characters.png']);
+    expect(host.draws).toHaveLength(4); // First init frame and next frame both draw the loaded pair.
+    expect(host.callbacksBeforeSource).toEqual([true]);
+    expect(host.logs.filter((log) => log.level === 'error')).toHaveLength(0);
+  });
+
+  it.each(['read', 'write'] as const)(
+    'recovers from a synchronous %s exception through direct loading',
+    (stage) => {
+      const fs: WechatCharacterFileSystem = {
+        readFile(options) {
+          if (stage === 'read') throw new Error('read exception');
+          options.success({ data: pngData() });
+        },
+        writeFile() {
+          throw new Error('write exception');
+        },
+      };
+      const host = startWechat(CHARACTER_ATLAS_SIZE, { fs, userDataPath: '/wx-data' });
+      expect(host.images.map((image) => image.src)).toEqual([CHARACTER_ATLAS_PATH]);
+      host.images[0].onload?.();
+      host.renderNext();
+      expect(host.draws).toHaveLength(2);
+      expect(host.logs.filter((log) => log.level === 'error')).toHaveLength(0);
+      expect(host.logs.some((log) => log.level === 'warn')).toBe(true);
+    },
+  );
 });
