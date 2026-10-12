@@ -1,21 +1,11 @@
 import { GameScene } from './game-scene.js';
-import { CHARACTER_ATLAS_FRAMES, CHARACTER_ATLAS_PATH } from './character-sprite.js';
-import { resolveLoadedCharacterDimensions } from './character-atlas-loader.js';
+import { loadWechatCharacterAtlas, WechatCharacterImageHost } from './character-atlas-loader.js';
 import { Container } from './scene/container.js';
 import { InputManager, TouchEventLike } from './scene/input-manager.js';
 
 // 声明微信小游戏全局对象
-declare const wx: {
+declare const wx: WechatCharacterImageHost & {
   createCanvas: () => any;
-  createImage: () => {
-    src: string;
-    width?: number;
-    height?: number;
-    naturalWidth?: number;
-    naturalHeight?: number;
-    onload: (() => void) | null;
-    onerror: ((error: { errMsg?: string; message?: string } | string | null) => void) | null;
-  };
   getSystemInfoSync: () => {
     windowWidth: number;
     windowHeight: number;
@@ -77,34 +67,7 @@ export function initMiniGame(): void {
   stage.onTap = () => scene.handleTap();
   stage.addChild(scene);
 
-  const characters = wx.createImage();
-  characters.onload = () => {
-    const dimensions = resolveLoadedCharacterDimensions(characters);
-    if (dimensions.source === 'packaged') {
-      console.warn('[Guiyuan] 人物图集 onload 未提供有效尺寸，采用已打包资源尺寸', {
-        path: CHARACTER_ATLAS_PATH,
-        width: characters.width,
-        height: characters.height,
-        naturalWidth: characters.naturalWidth,
-        naturalHeight: characters.naturalHeight,
-      });
-    }
-    scene.characters.setSpriteAtlas({
-      image: characters as unknown as CanvasImageSource,
-      width: dimensions.width,
-      height: dimensions.height,
-      frames: CHARACTER_ATLAS_FRAMES,
-    });
-    console.log('[Guiyuan] 人物图集加载成功', { path: CHARACTER_ATLAS_PATH, ...dimensions });
-  };
-  characters.onerror = (error) => {
-    scene.characters.setSpriteAtlas(null);
-    const reason =
-      typeof error === 'string' ? error : (error?.errMsg ?? error?.message ?? '宿主未提供错误详情');
-    console.error('[Guiyuan] 人物图集加载失败', { path: CHARACTER_ATLAS_PATH, reason });
-  };
-  console.log('[Guiyuan] 开始加载人物图集', CHARACTER_ATLAS_PATH);
-  characters.src = CHARACTER_ATLAS_PATH;
+  loadWechatCharacterAtlas(wx, (atlas) => scene.characters.setSpriteAtlas(atlas));
 
   const input = new InputManager(stage);
   input.bindTouchEvents(wx);
