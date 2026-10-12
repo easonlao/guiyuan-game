@@ -19,6 +19,7 @@ const FAST_TIMING = {
   entranceDuration: 0.1,
   flightDuration: 0.1,
   impactDuration: 0.1,
+  resultHold: 0.04,
 } as const;
 
 /** 按给定天干索引依次抽取的 PRNG：`drawTianGan` 只读 `nextInt(0, 9)`。 */
@@ -112,7 +113,10 @@ describe('GameScene：唯一候选自动流转（场景级逐类覆盖）', () =
     expect(scene.actionBar.visible).toBe(false);
     expect(scene.actionBar.interactive).toBe(false);
     expect(scene.actionBar.getButtons().every((button) => button.disabled)).toBe(true);
-    expect(scene.characters.bannerSubText).toBe(expectedSubText);
+    expect(scene.characters.bannerSubText).toContain(scene.turnManager.getCurrentTianGan()!.name);
+    expect(scene.characters.bannerSubText).toContain(
+      expectedSubText.includes('调息') ? '调息' : expectedSubText.includes('化') ? '化' : '消散',
+    );
     return scene.turnManager.getState();
   }
 
@@ -320,8 +324,8 @@ describe('GameScene：回合生命周期与交互契约', () => {
     expect(scene.phase).toBe('awaiting-player');
     expect(scene.actionBar.visible).toBe(true);
     expect(scene.characters.currentPlayer).toBe('P1');
-    expect(scene.characters.bannerText).toBe('玩家回合 · 天干【甲】降临');
-    expect(scene.characters.bannerSubText).toBe('属性: 木 (阳)');
+    expect(scene.characters.bannerText).toBe('你的回合');
+    expect(scene.characters.bannerSubText).toBe('甲 · 木阳\n请选择法术');
 
     const labels = scene.actionBar.getButtons().map((button) => button.label);
     expect(labels).toEqual(['【调息】', '【破】']);
@@ -345,7 +349,7 @@ describe('GameScene：回合生命周期与交互契约', () => {
     expect(scene.phase).toBe('auto-pending');
     expect(scene.actionBar.visible).toBe(false);
     expect(scene.actionBar.getButtons()).toEqual([]);
-    expect(scene.characters.bannerSubText).toBe('自动吸纳中');
+    expect(scene.characters.bannerSubText).toBe('甲 · 木阳\n吸纳');
 
     // 缓冲期内核心状态未被写入（不抢跑），玩家全程零输入。
     const stateBefore = scene.turnManager.getState();
@@ -374,7 +378,7 @@ describe('GameScene：回合生命周期与交互契约', () => {
     ]);
     expect(scene.phase).toBe('auto-pending');
     expect(scene.actionBar.visible).toBe(false);
-    expect(scene.characters.bannerSubText).toBe('亢极满溢·散气回落中');
+    expect(scene.characters.bannerSubText).toBe('甲 · 木阳\n散气');
 
     advance(scene, 0.5);
     expect(scene.turnManager.getState().players.P1.board[WuXing.WOOD].yang).toBe(1);
@@ -407,7 +411,7 @@ describe('GameScene：回合生命周期与交互契约', () => {
     advance(scene, 0.15);
     expect(scene.phase).toBe('ai-thinking');
     expect(scene.actionBar.visible).toBe(false);
-    expect(scene.characters.bannerSubText).toBe('天道推演生克决策中...');
+    expect(scene.characters.bannerSubText).toBe('甲 · 木阳\n天道选择法术');
 
     const stateBefore = scene.turnManager.getState();
     advance(scene, 0.15);
@@ -478,15 +482,16 @@ describe('GameScene：回合生命周期与交互契约', () => {
     advance(scene, 0.35);
     expect(scene.turnManager.isExtraTurnActive()).toBe(true);
     expect(scene.characters.currentPlayer).toBe('P1');
-    expect(scene.characters.bannerText).toBe('【连动回合】玩家额外行动！');
+    expect(scene.characters.bannerText).toBe('你的连动回合');
     expect(scene.turnManager.getAvailableActions().map((action) => action.actionType)).toEqual([
       ActionType.ATK,
     ]);
 
-    // 连动回合的唯一【破】走自动流转：无按钮、无输入。
+    // 结算停留后连动回合的唯一【破】走自动流转：无按钮、无输入。
+    advanceUntil(scene, () => scene.phase === 'auto-pending');
     expect(scene.phase).toBe('auto-pending');
     expect(scene.actionBar.visible).toBe(false);
-    expect(scene.characters.bannerSubText).toBe('唯一机缘·破');
+    expect(scene.characters.bannerSubText).toContain('破');
 
     advance(scene, 0.6);
     expect(scene.turnManager.isExtraTurnActive()).toBe(false);
@@ -795,10 +800,18 @@ describe('GameScene：终轮天命揭牌与终局', () => {
     expect(scene.characters.bannerSubText).toContain('壬水');
     // 揭牌动效：符文降临并飞向抽中的水阳槽位。
     expect(scene.runeFlight.tianGan?.name).toBe('壬');
+    expect(scene.characters.currentPlayer).toBe('P2');
+    expect(scene.board.getSlot('P2', WuXing.WATER, Polarity.YANG).level).toBe(0);
+    expect(scene.lastAction.visible).toBe(false);
     advance(scene, 0.15);
     expect(scene.runeFlight.phase).toBe('flying');
     advance(scene, 0.35);
     expect(scene.board.getSlot('P2', WuXing.WATER, Polarity.YANG).level).toBe(1);
+    expect(scene.lastAction.title).toContain('天道用壬');
+    expect(scene.lastAction.title).toContain('天命抽牌');
+    expect(scene.lastAction.changes).toEqual([
+      { player: 'P2', element: WuXing.WATER, polarity: Polarity.YANG, before: 0, after: 1 },
+    ]);
   });
 
   it('天命揭牌落空：横幅播报【天命难违】并定格 P1 获胜', () => {
@@ -834,7 +847,7 @@ describe('GameScene：终轮天命揭牌与终局', () => {
     expect(restarted.round).toBe(1);
     expect(restarted.currentPlayer).toBe('P1');
     expect(scene.phase).toBe('entrance');
-    expect(scene.characters.bannerText).toContain('天干');
+    expect(scene.characters.bannerText).toContain('你的回合');
   });
 
   it('重开新局不继承上一局的揭牌定格：新一局的终局横幅由本局结局决定', () => {
@@ -930,7 +943,7 @@ describe('GameScene：终轮天命揭牌与终局', () => {
     scene.start();
     // 揭牌动效期间先播施法 / 受击（P2 抽中揭牌 -> P2 施法、P1 受击）。
     expect(scene.characters.getExpression('P2')).toBe('cast');
-    expect(scene.characters.getExpression('P1')).toBe('hurt');
+    expect(scene.characters.getExpression('P1')).toBe('idle');
 
     advance(scene, 1);
     expect(scene.turnManager.getState().winner).toBe('P2');
@@ -1122,12 +1135,12 @@ describe('GameScene：视口自适应', () => {
 
     expect(scene.runeFlight).not.toBe(before);
     expect(scene.board.layout.centerX).toBe(160);
-    expect(scene.board.layout.centerY).toBe(284);
+    expect(scene.runeFlight.position.y).toBe(scene.board.layout.centerY);
     // 操作台底对齐到安全区：按钮实测多高就占多高（空闲态无按钮时贴在安全区底边）。
     expect(scene.actionBar.y).toBe(568 - 8 - scene.actionBar.contentHeight);
     expect(scene.actionBar.x).toBe(14);
     // 挂载顺序仍是：法盘 -> 符文 -> 角色卡 -> 操作台。
-    expect(scene.children.length).toBe(4);
+    expect(scene.children.length).toBe(5);
     expect(scene.children.indexOf(scene.runeFlight)).toBe(1);
     expect(scene.children.indexOf(scene.actionBar)).toBe(3);
 
@@ -1218,6 +1231,7 @@ describe('GameScene：端到端对局（模拟时钟 + 真实 TurnManager + 真�
     // 自动流转与人工抉择都真实发生过。
     expect(autoFlowFrames).toBeGreaterThan(0);
     expect(choiceFrames).toBeGreaterThan(0);
+    advanceUntil(scene, () => scene.phase === 'game-over');
     expect(scene.phase).toBe('game-over');
     expect(scene.actionBar.visible).toBe(false);
     expect(() => scene.render(ctx.asContext())).not.toThrow();
@@ -1278,5 +1292,83 @@ describe('GameScene：端到端对局（模拟时钟 + 真实 TurnManager + 真�
     expect(['entrance', 'awaiting-player', 'auto-pending', 'ai-thinking', 'flying']).toContain(
       scene.phase,
     );
+  });
+});
+
+describe('GameScene：可读结算与回合交接', () => {
+  it('落点才更新盘面与比分，结算停留期间保留行动方和天干，之后交接', () => {
+    const scene = new GameScene({ ...FAST_TIMING, resultHold: 0.6, prng: scriptedPrng([0, 2]) });
+    scene.start();
+    advanceUntil(scene, () => scene.phase === 'flying');
+    expect(scene.board.getSlot('P1', WuXing.WOOD, Polarity.YANG).level).toBe(0);
+    expect(scene.lastAction.visible).toBe(false);
+    expect(scene.characters.scoreOf('P1')).toBe(0);
+    expect(scene.characters.round).toBe(1);
+    advanceUntil(scene, () => scene.runeFlight.phase === 'impact');
+    expect(scene.board.getSlot('P1', WuXing.WOOD, Polarity.YANG).level).toBe(1);
+    expect(scene.lastAction.changes).toEqual([
+      { player: 'P1', element: WuXing.WOOD, polarity: Polarity.YANG, before: 0, after: 1 },
+    ]);
+    expect(scene.characters.scoreOf('P1')).toBe(scene.turnManager.getState().players.P1.score);
+    expect(scene.characters.round).toBe(1);
+    const snapshot = scene.lastAction.title;
+    advanceUntil(scene, () => scene.phase === 'result');
+    advance(scene, 0.3);
+    expect(scene.phase).toBe('result');
+    const ctx = new RecordingContext();
+    scene.render(ctx.asContext());
+    expect(ctx.texts.some(({ text }) => text.includes('你') && text.includes('甲'))).toBe(true);
+    advanceUntil(scene, () => scene.phase === 'entrance');
+    expect(scene.characters.bannerText).toContain('天道');
+    expect(scene.lastAction.title).toBe(snapshot);
+    scene.dispose();
+  });
+
+  it('强化目标已满时只报告真实源消耗，明确目标未变且无目标冲击', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: {
+          [WuXing.WOOD]: { yin: 1, yang: 1 },
+          [WuXing.FIRE]: { yin: 2, yang: 2 },
+        },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    scene.start();
+    advanceUntil(scene, () => scene.phase === 'awaiting-player');
+    const burst = scene.actionBar.getButtons().find(({ label }) => label === '【强化】')!;
+    tapButton(new InputManager(scene), burst);
+    advanceUntil(scene, () => scene.phase === 'result');
+    expect(scene.lastAction.note).toBe('目标阴阳未变');
+    expect(scene.lastAction.changes).toHaveLength(1);
+    expect(scene.lastAction.changes[0]).toMatchObject({
+      element: WuXing.WOOD,
+      before: 1,
+      after: 0,
+    });
+    expect(scene.lastAction.changes.some(({ element }) => element === WuXing.FIRE)).toBe(false);
+    scene.dispose();
+  });
+
+  it('微信胶囊下的窄屏二行按钮缩放后，棋盘与上一招均在操作区上方', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      width: 460,
+      height: 900,
+      initialState: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } } }),
+      prng: scriptedPrng([0]),
+    });
+    scene.start();
+    advanceUntil(scene, () => scene.phase === 'awaiting-player');
+    scene.resize(320, 568, 88, 20);
+    expect(scene.actionBar.contentHeight).toBeGreaterThan(58);
+    const board = scene.board.layout;
+    expect(board.centerY - board.outerRadius - board.sealSize).toBeGreaterThanOrEqual(188);
+    expect(board.centerY + board.outerRadius + board.sealSize * 2).toBeLessThan(
+      scene.actionBar.y - 34,
+    );
+    expect(scene.runeFlight.position.y).toBe(board.centerY);
+    scene.dispose();
   });
 });

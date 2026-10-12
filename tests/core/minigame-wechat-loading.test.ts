@@ -18,9 +18,12 @@ function startWechat(
     userDataPath?: string;
     autoCacheLoad?: boolean;
     throwAfterCacheLoad?: boolean;
+    menuBottom?: number;
+    menuThrows?: boolean;
   } = {},
 ) {
   const draws: unknown[][] = [];
+  const texts: { text: string; y: number }[] = [];
   const logs: { level: string; args: unknown[] }[] = [];
   const schedule = { frame: undefined as ((timestamp: number) => void) | undefined };
   let source = '';
@@ -56,6 +59,8 @@ function startWechat(
     {
       get(target, key) {
         if (key in target) return target[key];
+        if (key === 'fillText')
+          return (text: string, _x: number, y: number) => texts.push({ text, y });
         if (key === 'drawImage') return (...args: unknown[]) => draws.push(args);
         if (key === 'createRadialGradient' || key === 'createLinearGradient') {
           return () => ({ addColorStop() {} });
@@ -75,6 +80,10 @@ function startWechat(
       createImage: makeImage,
       ...(options.fs ? { getFileSystemManager: () => options.fs } : {}),
       ...(options.userDataPath ? { env: { USER_DATA_PATH: options.userDataPath } } : {}),
+      getMenuButtonBoundingClientRect: () => {
+        if (options.menuThrows) throw new Error('unsupported');
+        return { bottom: options.menuBottom };
+      },
       getSystemInfoSync: () => ({ windowWidth: 390, windowHeight: 844, pixelRatio: 2 }),
       onTouchStart() {},
       onTouchEnd() {},
@@ -95,6 +104,7 @@ function startWechat(
     images,
     callbacksBeforeSource,
     draws,
+    texts,
     logs,
     source,
     renderNext: () => schedule.frame?.(16),
@@ -383,6 +393,28 @@ describe('Delivered WeChat cache-first loading', () => {
       expect(host.draws).toHaveLength(2);
       expect(host.logs.filter((log) => log.level === 'error')).toHaveLength(0);
       expect(host.logs.some((log) => log.level === 'warn')).toBe(true);
+    },
+  );
+});
+
+describe('Delivered WeChat capsule safe header', () => {
+  it('starts the header below the native capsule while retaining board startup', () => {
+    const host = startWechat({}, { menuBottom: 80 });
+    host.renderNext();
+    const brand = host.texts.find(({ text }) => text === '归元弈');
+    expect(brand).toBeDefined();
+    expect(brand!.y).toBeGreaterThan(80);
+    expect(host.logs.some(({ level }) => level === 'error')).toBe(false);
+  });
+  it.each([{ menuBottom: NaN }, { menuBottom: 900 }, { menuThrows: true }])(
+    'falls back safely for an unavailable or invalid capsule API: %j',
+    (options) => {
+      const host = startWechat({}, options);
+      host.renderNext();
+      const brand = host.texts.find(({ text }) => text === '归元弈');
+      expect(brand).toBeDefined();
+      expect(brand!.y).toBeLessThan(80);
+      expect(host.logs.some(({ level }) => level === 'error')).toBe(false);
     },
   );
 });

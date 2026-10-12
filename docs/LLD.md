@@ -67,8 +67,8 @@
 
 1. **双盘投影**：`BoardView.update(p1Board: BoardState, p2Board: BoardState)`——同时接收己方盘与对方盘两块快照，一次投影；表现层**不再**按当前行动方切换单一棋盘（ADR 0015 的动机）。
 2. **槽位定位**：`BoardView.getSlot(player: PlayerId, element: WuXing, polarity: Polarity): BoardSlotView`——返回指定**某一方**、某元素、某极性槽位的投影视图（含父坐标系下的 `x/y` 与角度），供 `RuneFlightView` 取飞行落点。`player` 决定取内环（己方）还是外环（对方）。
-3. **飞行落点**：`RuneFlightView` 的飞行目标坐标**唯一来源**是 `BoardView.getSlot(player, …)`；调用方必须传入被作用方的 `player`：`ATK`/`BURST_ATK` 为对方，其余为己方；**终轮天命揭牌是唯一的例外**——揭牌恒由天道 P2 抽牌并作用于对方盘（P2 盘），落点为抽中天干在 P2 盘上的槽位，与抽牌前的行动方无关（`flyTo('P2', …)`）。落点侧优先取载荷的 `polarity`；爆发候选不再携带该字段（见 §3.1），缺省时表现层按动作取一个**近似落点**：`BURST` 取**阴侧**，`BURST_ATK` 沿用其他动作的兜底——抽中天干的极性。该近似不保证等于解析器逐次按阴优先选出的实际作用侧（例如目标阴侧已满 2 时，解析器首步会改取阳侧），仅用于落点动画。
+3. **飞行落点**：`RuneFlightView` 的目标坐标来自 `BoardView.getSlot(player, …)`；`ATK`/`BURST_ATK` 作用于对方，其余作用于己方。`GameScene` 比较动作前后只读快照，使用真实发生变化的目标阴阳侧定位；没有目标净变化时不播放目标冲击，`PASS` 原地消散。天命揭牌恒以 P2 与揭牌天干定位，与揭牌前行动方无关。落点回调更新投影，动作结束后进入短暂停留的 `result` 阶段，再交接行动方和天干。`ActionResultView` 保存上一招归属、天干、动作与所有真实阴阳等级变化，跨回合保留，可展开查看；重开时清空。
 4. **同心双环语义**：内环恒为己方盘、外环恒为对方盘；外环相对内环逆时针偏移 2 格，每根射线满足「己方克对方」。该几何是契约而非样式（板盘测试按坐标断言）。
-5. **动作路径高亮**：`BoardView.setActivePaths(paths: readonly BoardActivePath[])` 按 `(kind, from)` 点亮「当前动作会走」的连线（`BoardActivePath = { kind: 'generation' | 'attack'; from: WuXing }`）；`resolveActionPath(actionType, element)` 是动作到路径的纯映射（`TRANS`/`BURST` → 相生边，`ATK`/`BURST_ATK` → 径向线，其余动作 `null`）。高亮只由 `GameScene` 在 `awaiting-player` 阶段按当前天干与候选动作驱动，其余阶段清空；不再由主印等级驱动。
-6. **环级视觉层级与归元图例**：内环（己方）主印在**尺寸**上大于外环（对方）主印（`BoardElementView.sealSize` 按环给出）；环带内环暖色实线、外环冷色虚线——「哪一圈是谁的」不依赖颜色也能读（不靠大面积底晕，底晕会叠成一团浑色）。两环各在正下方主印之间的空位画「己」「敌」归属徽记；归元进度以盘下方一行图例「己 x/5」「敌 y/5」表达（颜色对应各环带）。图例位置在对方盘外侧、落在视口内，且不与任何主印圆（含半环与归一外环外沿）相交——半环是阴阳等级的唯一载体，不得被遮。
+5. **候选路径查询**：`BoardView.setActivePaths(paths: readonly BoardActivePath[])` 保留 `(kind, from)` 查询契约（`TRANS`/`BURST` → 相生，`ATK`/`BURST_ATK` → 相克，其余无路径）；盘面不绘制候选连线，避免与状态编码混合。
+6. **阴阳与归属投影**：每个节点为一对 S 形太极鱼，左阴、右阳，各自读取该极性等级；崩坏为灰暗裂痕，虚空为无元素色，点亮为五行色，加持为同色发光。元素名置于鱼形外。内环恒为“你”、外环恒为“天道”，盘下方显示双方归元进度与一行状态图例。`BoardView.resize(width, height, bounds?)` 可接收原生顶部胶囊与操作区之间的内容边界；未传边界时保留默认几何。符文中心同步棋盘中心，操作面板重新排版后才计算边界。
 7. **操作面板定位**：`ActionBarView.contentHeight` 返回最近一次排版的实测内容高度（按钮总高 + 行间距）；`GameScene` 据此把面板底对齐到安全区底部（`y = height - safeBottom - contentHeight`），不预留固定空高。

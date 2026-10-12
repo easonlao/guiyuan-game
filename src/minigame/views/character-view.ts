@@ -25,6 +25,7 @@ export interface CharacterViewOptions {
   readonly width: number;
   /** 安全区顶部偏移（刘海屏），默认 24。 */
   readonly safeTop?: number;
+  readonly compact?: boolean;
 }
 
 /** 投影选项：连动回合是核心状态之外的回合语义，由调用方传入。 */
@@ -41,7 +42,7 @@ const AVATAR_HEIGHT = 112;
 const SIDE_MARGIN = 10;
 const TOP_BAR_HEIGHT = 26;
 const BANNER_GAP = 10;
-const BANNER_HEIGHT = 68;
+const BANNER_HEIGHT = 88;
 
 /* 配色（仅本视图使用）。 */
 const PANEL_COLOR = THEME.panel;
@@ -65,13 +66,14 @@ const EXPRESSION_COLOR: Record<CharacterActionState, string | null> = {
   lose: '#a0aec0',
 };
 
-const PLAYER_LABEL: Record<PlayerId, string> = { P1: '弈者', P2: '天道' };
+const PLAYER_LABEL: Record<PlayerId, string> = { P1: '你 · 弈者', P2: '天道' };
 const PLAYER_COLOR: Record<PlayerId, string> = { P1: P1_COLOR, P2: P2_COLOR };
 
 export class CharacterView extends Container {
   private _width: number;
   private _spriteAtlas: CharacterSpriteAtlas | null = null;
   private _safeTop: number;
+  private _compact: boolean;
 
   private _round = 0;
   private _maxRounds = 0;
@@ -137,6 +139,7 @@ export class CharacterView extends Container {
     super();
     this._width = options.width;
     this._safeTop = options.safeTop ?? 24;
+    this._compact = options.compact ?? false;
   }
 
   /** Hosts inject the decoded image only after loading has completed. */
@@ -196,9 +199,10 @@ export class CharacterView extends Container {
   }
 
   /** 视口自适应（安全区与宽度变化时调用）。 */
-  public resize(width: number, safeTop?: number): void {
+  public resize(width: number, safeTop?: number, compact?: boolean): void {
     this._width = width;
     this._safeTop = safeTop ?? this._safeTop;
+    this._compact = compact ?? this._compact;
   }
 
   /**
@@ -314,7 +318,7 @@ export class CharacterView extends Container {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(
-      `回合 ${this._round}/${this._maxRounds}`,
+      `回合 ${this._round}/${this._maxRounds} · ${this._currentPlayer === 'P1' ? '你行动' : this._currentPlayer === 'P2' ? '天道行动' : '等待开局'}`,
       this._width / 2,
       this._safeTop + TOP_BAR_HEIGHT / 2,
     );
@@ -328,6 +332,7 @@ export class CharacterView extends Container {
   }
 
   private drawAvatar(ctx: CanvasRenderingContext2D, player: PlayerId): void {
+    const avatarHeight = this._compact ? 80 : AVATAR_HEIGHT;
     const isPlayer = player === 'P1';
     const frameX = isPlayer ? SIDE_MARGIN : this._width - SIDE_MARGIN - AVATAR_WIDTH;
     const frameY = this._safeTop + TOP_BAR_HEIGHT + 4;
@@ -337,7 +342,7 @@ export class CharacterView extends Container {
       EXPRESSION_COLOR[expression] ?? (isCurrent ? ACTIVE_COLOR : isPlayer ? P1_COLOR : P2_COLOR);
 
     ctx.save();
-    drawPanel(ctx, frameX, frameY, AVATAR_WIDTH, AVATAR_HEIGHT, border, PANEL_COLOR);
+    drawPanel(ctx, frameX, frameY, AVATAR_WIDTH, avatarHeight, border, PANEL_COLOR);
     // Painted moon niche and plinth integrate the chibi into the same jade world.
     const aura = ctx.createRadialGradient(
       frameX + AVATAR_WIDTH / 2,
@@ -359,7 +364,7 @@ export class CharacterView extends Container {
     ctx.arc(frameX + AVATAR_WIDTH / 2, frameY + 41, 29, Math.PI, Math.PI * 2);
     ctx.stroke();
     ctx.fillStyle = THEME.deep;
-    ctx.fillRect(frameX + 9, frameY + AVATAR_HEIGHT - 9, AVATAR_WIDTH - 18, 4);
+    ctx.fillRect(frameX + 9, frameY + avatarHeight - 9, AVATAR_WIDTH - 18, 4);
     const drawPose = (pose: CharacterActionState, alpha: number): void => {
       if (alpha <= 0) return;
       ctx.save();
@@ -374,7 +379,7 @@ export class CharacterView extends Container {
           frameX,
           frameY,
           AVATAR_WIDTH,
-          AVATAR_HEIGHT,
+          avatarHeight,
           this.motionOffset(player),
         );
       } else {
@@ -383,7 +388,7 @@ export class CharacterView extends Container {
           (CHARACTER_SPRITE_BOUNDS.bottom - CHARACTER_SPRITE_BOUNDS.top) * CHARACTER_PIXEL_SIZE;
         ctx.translate(
           frameX + AVATAR_WIDTH / 2,
-          frameY + (AVATAR_HEIGHT - spriteHeight) / 2 - spriteTop,
+          frameY + (avatarHeight - spriteHeight) / 2 - spriteTop,
         );
         const motion = this.motionOffset(player);
         if (motion !== undefined) ctx.translate(motion.x, motion.y);
@@ -406,19 +411,15 @@ export class CharacterView extends Container {
     ctx.textBaseline = 'middle';
     ctx.fillStyle = PLAYER_COLOR[player];
     ctx.font = `bold 11px ${THEME.font}`;
-    ctx.fillText(PLAYER_LABEL[player], labelX, frameY + AVATAR_HEIGHT + 12);
+    ctx.fillText(PLAYER_LABEL[player], labelX, frameY + avatarHeight + 12);
     ctx.fillStyle = TEXT_COLOR;
     ctx.font = `bold 12px ${THEME.font}`;
-    ctx.fillText(`得分 ${this._scores[player]}`, labelX, frameY + AVATAR_HEIGHT + 26);
+    ctx.fillText(`得分 ${this._scores[player]}`, labelX, frameY + avatarHeight + 26);
 
     if (isCurrent) {
       ctx.fillStyle = this._isExtraTurn ? EXTRA_TURN_COLOR : ACTIVE_COLOR;
       ctx.font = `bold 9px ${THEME.font}`;
-      ctx.fillText(
-        this._isExtraTurn ? '连动行动中' : '行动中',
-        labelX,
-        frameY + AVATAR_HEIGHT + 40,
-      );
+      ctx.fillText(this._isExtraTurn ? '连动行动中' : '行动中', labelX, frameY + avatarHeight + 40);
     }
 
     const bubble = this._bubbles[player];
@@ -467,26 +468,26 @@ export class CharacterView extends Container {
     const y = this._safeTop + TOP_BAR_HEIGHT + 4;
 
     ctx.save();
-    drawPanel(ctx, x, y, width, BANNER_HEIGHT, PANEL_BORDER);
+    drawPanel(ctx, x, y, width, this._compact ? 64 : BANNER_HEIGHT, PANEL_BORDER);
 
     const textWidth = width - 16;
-    const mainLines = wrapText(this._bannerText, textWidth, 12, 2);
-    const subLines = wrapText(this._bannerSubText, textWidth, 9, 2);
+    const mainLines = wrapText(this._bannerText, textWidth, 13, this._compact ? 1 : 2);
+    const subLines = wrapText(this._bannerSubText, textWidth, 11, this._compact ? 2 : 4);
     const mainLineHeight = 16;
-    const subLineHeight = 12;
+    const subLineHeight = 14;
     const blockHeight = mainLines.length * mainLineHeight + subLines.length * subLineHeight;
-    let cursor = y + (BANNER_HEIGHT - blockHeight) / 2 + mainLineHeight / 2;
+    let cursor = y + ((this._compact ? 64 : BANNER_HEIGHT) - blockHeight) / 2 + mainLineHeight / 2;
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = TEXT_COLOR;
-    ctx.font = `bold 12px ${THEME.font}`;
+    ctx.font = `bold 13px ${THEME.font}`;
     for (const line of mainLines) {
       ctx.fillText(line, x + width / 2, cursor);
       cursor += mainLineHeight;
     }
     ctx.fillStyle = MUTED_COLOR;
-    ctx.font = `9px ${THEME.font}`;
+    ctx.font = `11px ${THEME.font}`;
     for (const line of subLines) {
       ctx.fillText(line, x + width / 2, cursor);
       cursor += subLineHeight;
@@ -508,6 +509,12 @@ function wrapText(text: string, maxWidth: number, fontSize: number, maxLines: nu
   const lines: string[] = [];
   let current = '';
   for (const unit of textUnits(text)) {
+    if (unit === '\n') {
+      lines.push(current);
+      current = '';
+      if (lines.length === maxLines) break;
+      continue;
+    }
     const next = current + unit;
     if (current !== '' && estimateTextWidth(next, fontSize) > maxWidth) {
       lines.push(current);
@@ -522,7 +529,7 @@ function wrapText(text: string, maxWidth: number, fontSize: number, maxLines: nu
   if (lines.length < maxLines && current !== '') {
     lines.push(current);
   }
-  if ([...lines.join('')].length < [...text].length) {
+  if ([...lines.join('')].length < [...text.replace(/\n/g, '')].length) {
     const last = lines[lines.length - 1] ?? '';
     lines[lines.length - 1] = `${truncateToWidth(last, maxWidth, fontSize)}…`;
   }

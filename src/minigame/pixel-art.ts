@@ -580,83 +580,28 @@ export function drawCenterTianGanRune(
   centerY: number,
   tg: TianGanInfo,
   animTick: number,
+  radius = 25,
 ): void {
   const elemCfg = WUXING_PALETTE[tg.element] ?? WUXING_PALETTE[WuXing.WOOD];
   const polarityName = tg.polarity === Polarity.YANG ? '阳' : '阴';
-  const floatY = Math.sin(animTick * 0.08) * 3;
-  const boxY = centerY + floatY;
-
   ctx.save();
-
-  // 1. 径向发光光晕 (柔和呼吸)
-  const glowRadius = 46 + Math.sin(animTick * 0.08) * 5;
-  const grad = ctx.createRadialGradient(centerX, boxY, 8, centerX, boxY, glowRadius);
-  grad.addColorStop(0, elemCfg.light + '66');
-  grad.addColorStop(0.6, elemCfg.main + '22');
-  grad.addColorStop(1, 'transparent');
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(centerX, boxY, glowRadius, 0, Math.PI * 2);
-  ctx.fill();
-
-  // 2. 旋转太极两仪外环
-  ctx.save();
-  ctx.translate(centerX, boxY);
-  ctx.rotate(animTick * 0.02);
-  ctx.strokeStyle = elemCfg.main + '99';
+  ctx.fillStyle = THEME.deep;
+  ctx.strokeStyle = elemCfg.main;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.arc(0, 0, 36, 0, Math.PI * 1.5);
-  ctx.stroke();
-  ctx.strokeStyle = elemCfg.light + 'cc';
-  ctx.beginPath();
-  ctx.arc(0, 0, 30, Math.PI, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
-
-  // 3. 灵玉法印主体 (圆盘玉牌)
-  ctx.fillStyle = THEME.deep;
-  ctx.beginPath();
-  ctx.arc(centerX, boxY, 24, 0, Math.PI * 2);
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = elemCfg.light;
-  ctx.lineWidth = 2;
   ctx.stroke();
-
-  // 4. 文字光芒
-  ctx.save();
-  ctx.shadowColor = elemCfg.light;
-  ctx.shadowBlur = 12;
   ctx.fillStyle = THEME.ivory;
-  ctx.font = `bold 24px ${THEME.font}`;
+  ctx.font = `bold ${Math.min(22, radius)}px ${THEME.font}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(tg.name, centerX, boxY);
-  ctx.restore();
-
-  // 5. 底部微标胶囊
-  const tagW = 48;
-  const tagH = 18;
-  const tagY = boxY + 28;
-  ctx.fillStyle = 'rgba(8,27,34,0.9)';
-  ctx.strokeStyle = elemCfg.main;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  if (ctx.roundRect) {
-    ctx.roundRect(centerX - tagW / 2, tagY, tagW, tagH, 9);
-  } else {
-    ctx.rect(centerX - tagW / 2, tagY, tagW, tagH);
-  }
-  ctx.fill();
-  ctx.stroke();
-
+  ctx.fillText(tg.name, centerX, centerY - 5);
   ctx.fillStyle = elemCfg.light;
-  ctx.font = `bold 10px ${THEME.font}`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(`${elemCfg.name}·${polarityName}`, centerX, tagY + tagH / 2);
-
+  ctx.font = `11px ${THEME.font}`;
+  if (radius >= 22) ctx.fillText(`${elemCfg.name} · ${polarityName}`, centerX, centerY + 14);
   ctx.restore();
+  void animTick;
 }
 
 /** 绘制受击/吸收到达冲击效果（柔和冲击波涟漪扩散） */

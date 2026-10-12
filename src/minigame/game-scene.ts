@@ -27,15 +27,26 @@ import {
   TianGanInfo,
   WuXing,
 } from '../core/types/domain.js';
-import { formatActionButton, getActionTargetElement } from './action-button-formatter.js';
+import { getActionTargetElement } from './action-button-formatter.js';
 import { isAttackAction } from './action-semantics.js';
 import { WUXING_PALETTE } from './pixel-art.js';
 import { drawLandscape, THEME } from './theme.js';
 import { Container } from './scene/container.js';
-import { EASINGS, Tween } from './scene/tween.js';
 import { ActionBarView } from './views/action-bar-view.js';
-import { BoardActivePath, BoardView, resolveActionPath } from './views/board-view.js';
+import {
+  BoardActivePath,
+  BoardView,
+  drawYinYangFish,
+  resolveActionPath,
+} from './views/board-view.js';
 import { CharacterView } from './views/character-view.js';
+import {
+  ActionResultView,
+  ACTION_LABEL,
+  changedNodes,
+  describeNodeChange,
+  NodeChange,
+} from './views/action-result-view.js';
 import { RuneFlightView } from './views/rune-flight-view.js';
 
 /** 场景所处的表现阶段。 */
@@ -52,6 +63,7 @@ export type GameScenePhase =
   | 'ai-thinking'
   /** 符文飞行与命中波纹播放中。 */
   | 'flying'
+  | 'result'
   /** 终局结算展示。 */
   | 'game-over';
 
@@ -88,6 +100,7 @@ export interface GameSceneOptions {
   readonly flightDuration?: number;
   /** 命中波纹时长（秒），默认 0.35。 */
   readonly impactDuration?: number;
+  readonly resultHold?: number;
 }
 
 /** 一个动作在法盘上的落点：作用到哪一方的哪个槽位。 */
@@ -106,10 +119,6 @@ const DEFAULT_CELEBRATE_HOLD = 1.2;
 /** 底部操作台高度（含按钮最多两行）。 */
 const ACTION_BAR_MARGIN = 14;
 /** 震屏时长与幅度（像素）。 */
-const SHAKE_DURATION = 0.28;
-const SHAKE_BURST = 8;
-const SHAKE_ATTACK = 4;
-const SHAKE_SHOWDOWN = 6;
 
 /**
  * 唯一候选自动流转的播报副文案（ADR 0008 / GDD §2.4）。
@@ -168,6 +177,10 @@ export class GameScene extends Container {
   private readonly entranceDuration: number;
   private readonly flightDuration: number;
   private readonly impactDuration: number;
+  private readonly resultHold: number;
+  public readonly lastAction: ActionResultView;
+  private visualStem: TianGanInfo | null = null;
+  private visualActor: PlayerId | null = null;
 
   private _phase: GameScenePhase = 'idle';
   private width: number;
@@ -186,10 +199,6 @@ export class GameScene extends Container {
   private lastShowdown: { tianGan: TianGanInfo; success: boolean } | null = null;
   private unsubscribes: (() => void)[] = [];
 
-  /** 震屏：补间把幅度衰减到 0，`update` 按幅度换算节点偏移。 */
-  private readonly shakeState = { amount: 0 };
-  private shakeTween: Tween<{ amount: number }> | null = null;
-  private elapsed = 0;
   /** 视口在对局中变化时，符文层延到下一个回合开始前重建（不打断当前动效）。 */
   private runeFlightStale = false;
 
@@ -207,6 +216,7 @@ export class GameScene extends Container {
     this.entranceDuration = options.entranceDuration ?? 0.44;
     this.flightDuration = options.flightDuration ?? 0.55;
     this.impactDuration = options.impactDuration ?? 0.35;
+    this.resultHold = options.resultHold ?? 0.65;
     // 规则开关绑定到 AI 估值器（策略层）；候选生成不读 rules。
     this.strategy = createStrategy(BALANCED_WEIGHTS, { rules: this.rules });
     this._turnManager =
@@ -217,19 +227,24 @@ export class GameScene extends Container {
       });
 
     this.board = new BoardView();
-    this.board.resize(this.width, this.height);
+    this.layoutBoard();
     this.runeFlight = this.buildRuneFlight();
     this.characters = new CharacterView({
       width: this.width,
       safeTop: this.safeTop,
+      compact: this.height < 650 && this.safeTop > 24,
     });
     this.actionBar = this.buildActionBar(this._turnManager);
     this.actionBar.visible = false;
     this.placeActionBar();
+    this.lastAction = new ActionResultView(this.width - 20);
+    this.lastAction.x = 10;
+    this.placeResult();
     this.addChild(this.board);
     this.addChild(this.runeFlight);
     this.addChild(this.characters);
     this.addChild(this.actionBar);
+    this.addChild(this.lastAction);
     this.bindTurnManager(this._turnManager);
   }
 
@@ -239,6 +254,10 @@ export class GameScene extends Container {
   }
 
   /** 当前表现阶段。 */
+  public get visualTurn(): { player: PlayerId | null; stem: TianGanInfo | null } {
+    return { player: this.visualActor, stem: this.visualStem };
+  }
+
   public get phase(): GameScenePhase {
     return this._phase;
   }
@@ -247,6 +266,7 @@ export class GameScene extends Container {
   private setPhase(phase: GameScenePhase): void {
     this._phase = phase;
     this.board.setActivePaths(this.activePathsFor(phase));
+    this.placeResult();
   }
 
   /**
@@ -280,9 +300,10 @@ export class GameScene extends Container {
     this.height = height;
     this.safeTop = safeTop ?? this.safeTop;
     this.safeBottom = safeBottom ?? this.safeBottom;
-    this.board.resize(width, height);
-    this.characters.resize(width, this.safeTop);
     this.actionBar.resize(width - ACTION_BAR_MARGIN * 2);
+    this.layoutBoard();
+    this.runeFlight.syncCenter();
+    this.characters.resize(width, this.safeTop, this.height < 650 && this.safeTop > 24);
     this.placeActionBar();
     if (this._phase === 'idle' || this._phase === 'game-over') {
       this.replaceRuneFlight();
@@ -310,12 +331,13 @@ export class GameScene extends Container {
     this.pendingCelebrations.clear();
     this.actionBefore = null;
     this.runeFlight.cancel();
-    this.shakeTween = null;
-    this.shakeState.amount = 0;
     this.x = 0;
     this.y = 0;
     // 终局胜 / 负的持续姿势不跨局残留。
     this.characters.resetFeedback();
+    this.lastAction.reset();
+    this.visualStem = null;
+    this.visualActor = null;
     this.actionBar.dispose();
     this.actionBar.removeFromParent();
     this.actionBar = this.buildActionBar(this._turnManager);
@@ -332,6 +354,9 @@ export class GameScene extends Container {
     this.actionBar.dispose();
     this.runeFlight.cancel();
     this.characters.resetFeedback();
+    this.lastAction.reset();
+    this.timer = 0;
+    this.setPhase('idle');
   }
 
   /**
@@ -339,10 +364,15 @@ export class GameScene extends Container {
    * `Tween` 不掌握帧循环，时钟完全由这里注入。
    */
   public update(dt: number): void {
-    this.elapsed += dt;
+    const phaseBefore = this._phase;
     this.characters.updateTimers(dt);
-    this.updateShake(dt);
     this.runeFlight.update(dt);
+    if (this._phase === 'result') {
+      if (phaseBefore !== 'result') return;
+      this.timer -= dt;
+      if (this.timer <= 0) this.finishResult();
+      return;
+    }
     if (this._phase !== 'auto-pending' && this._phase !== 'ai-thinking') {
       return;
     }
@@ -373,12 +403,20 @@ export class GameScene extends Container {
       this.replaceRuneFlight();
       this.runeFlightStale = false;
     }
+    this.layoutBoard();
+    if (
+      Math.abs(this.runeFlight.position.x - this.board.layout.centerX) > 0.1 ||
+      Math.abs(this.runeFlight.position.y - this.board.layout.centerY) > 0.1
+    )
+      this.replaceRuneFlight();
     const before = this._turnManager.getState();
     const actions = this._turnManager.startTurn();
     const state = this._turnManager.getState();
     const tianGan = this._turnManager.getCurrentTianGan();
     this.pendingAction = null;
     this.timer = 0;
+    this.visualStem = tianGan;
+    this.visualActor = state.currentPlayer;
     this.characters.update(state, { isExtraTurn: this._turnManager.isExtraTurnActive() });
 
     if (state.isGameOver) {
@@ -387,6 +425,9 @@ export class GameScene extends Container {
     }
     this.projectBoards(state);
     this.hideActionBar();
+    if (actions.length > 1) this.actionBar.refresh();
+    this.layoutBoard();
+    this.replaceRuneFlight();
     this.announceTurnStart(state, tianGan, actions);
 
     if (tianGan === null) {
@@ -394,7 +435,10 @@ export class GameScene extends Container {
       return;
     }
     this.setPhase('entrance');
-    this.runeFlight.playEntrance(tianGan, { onComplete: () => this.afterEntrance() });
+    this.runeFlight.playEntrance(tianGan, {
+      owner: state.currentPlayer,
+      onComplete: () => this.afterEntrance(),
+    });
   }
 
   /** 降临结束：进入玩家抉择 / 自动流转 / 天道推演三者之一。 */
@@ -467,6 +511,15 @@ export class GameScene extends Container {
     const state = this._turnManager.getState();
     const actor = event.player;
     const resolved = resolveActionTarget(action, event.actionType, actor, this._turnManager);
+    const beforeState = this.actionBefore;
+    const changes = changedNodes(beforeState, state).sort(
+      (a, b) =>
+        Number(b.player === resolved.player && b.element === resolved.element) -
+        Number(a.player === resolved.player && a.element === resolved.element),
+    );
+    const targetChanges = changes.filter(
+      (change) => change.player === resolved.player && change.element === resolved.element,
+    );
     const beforeNode = this.actionBefore?.players[resolved.player].board[resolved.element];
     const afterNode = state.players[resolved.player].board[resolved.element];
     const changedPolarities =
@@ -483,43 +536,56 @@ export class GameScene extends Container {
     const isAttack = isAttackAction(event.actionType);
 
     this.hideActionBar();
-    this.characters.update(state, {
+    const stemLabel = this.visualStem?.name ?? '';
+    const actionTitle = `${actor === 'P1' ? '你' : '天道'} · ${ACTION_LABEL[event.actionType]}`;
+    const compact = this.height < 650 && this.safeTop > 24;
+    this.characters.showBanner(
+      actionTitle,
+      `${stemLabel} · ${this.visualStem === null ? '' : WUXING_PALETTE[this.visualStem.element].name}${this.visualStem?.polarity === Polarity.YANG ? '阳' : '阴'}\n${event.actionType === ActionType.PASS ? '原地消散 · 无节点变化' : `${compact ? '→ ' : '作用于 '}${target.player === 'P1' ? '你' : '天道'}·${WUXING_PALETTE[target.element].name}${compact ? '' : '·'}${target.polarity === Polarity.YIN ? '阴' : '阳'}`}`,
+    );
+    this.characters.update(beforeState ?? state, {
       isExtraTurn: this._turnManager.isExtraTurnActive(),
       actingPlayer: actor,
     });
     this.characters.playAction(actor, event.actionType, this.flightDuration, this.impactDuration);
-    if (action !== null) {
-      // 气泡复用动作按钮的命名（同一真源），让「刚才发生了什么」在角色头上可见。
-      this.characters.announce(
-        actor,
-        formatActionButton(action).label,
-        Math.max(this.expressionHold * 2, this.runeFlight.actionDuration),
-      );
-    }
 
     // 法盘已是双环（行动前等级），飞行期不再换盘；落点后才投影结算结果。
     this.setPhase('flying');
     this.runeFlight.flyTo(target.player, target.element, target.polarity, {
       actionType: event.actionType,
       secondaryPolarity,
+      showImpact: targetChanges.length > 0,
       onImpact: () => {
         this.projectBoards(state);
-        if (isAttack) {
+        this.characters.update(
+          { ...state, round: beforeState?.round ?? state.round },
+          { actingPlayer: actor },
+        );
+        this.showActionResult(
+          actor,
+          event.actionType,
+          stemLabel,
+          changes,
+          targetChanges.length === 0,
+        );
+        if (isAttack && targetChanges.some((change) => change.after < change.before)) {
           this.characters.setExpression(
             opponentOf(actor),
             'hurt',
             Math.max(this.expressionHold, this.impactDuration),
             Math.min(0.08, this.impactDuration * 0.3),
           );
-          this.shake(event.actionType === ActionType.BURST_ATK ? SHAKE_BURST : SHAKE_ATTACK);
-          this.updateShake(0);
         }
         for (const player of this.pendingCelebrations) {
           this.characters.setExpression(player, 'celebrate', this.celebrateHold, 0.08);
         }
         this.pendingCelebrations.clear();
       },
-      onComplete: () => this.afterFlight(),
+      onComplete: () => {
+        if (event.actionType === ActionType.PASS)
+          this.showActionResult(actor, event.actionType, stemLabel, changes);
+        this.afterFlight();
+      },
     });
   }
 
@@ -544,16 +610,41 @@ export class GameScene extends Container {
     }
   }
 
-  /** 飞行结束：投影结算后的双盘，然后进入下一回合或终局。 */
+  private showActionResult(
+    actor: PlayerId,
+    action: ActionType,
+    stem: string,
+    changes: readonly NodeChange[],
+    targetUnchanged = false,
+  ): void {
+    this.lastAction.setResult(
+      actor,
+      action,
+      stem,
+      changes,
+      targetUnchanged && action !== ActionType.PASS ? '目标阴阳未变' : undefined,
+    );
+    const compact = this.height < 650 && this.safeTop > 24;
+    this.characters.showBanner(
+      `${actor === 'P1' ? '你' : '天道'} · ${ACTION_LABEL[action]}${compact ? '' : '已结算'}`,
+      changes.length === 0
+        ? '未改变阴阳状态'
+        : `${targetUnchanged ? '目标阴阳未变\n' : ''}${describeNodeChange(changes[0])}${!compact && changes.length > 1 ? `\n共${changes.length}处 · 下方可展开` : ''}`,
+    );
+    this.placeResult();
+  }
+
+  /** Keep the acting player and stem visible long enough to read the change before handover. */
   private afterFlight(): void {
+    this.projectBoards(this._turnManager.getState());
+    this.setPhase('result');
+    this.timer = this.resultHold;
+  }
+
+  private finishResult(): void {
     const state = this._turnManager.getState();
-    this.projectBoards(state);
-    this.characters.update(state, { isExtraTurn: this._turnManager.isExtraTurnActive() });
-    if (state.isGameOver) {
-      this.presentGameOver(null);
-      return;
-    }
-    this.beginTurn();
+    if (state.isGameOver) this.presentGameOver(null);
+    else this.beginTurn();
   }
 
   /**
@@ -578,17 +669,27 @@ export class GameScene extends Container {
           ? `【天命逆转】五行归元·后发制人！(抽中【${label}】)`
           : `【天命难违】差之一线·先手锁定胜局！(抽中【${label}】)`,
       );
-      this.characters.setExpression(showdown.success ? 'P2' : 'P1', 'cast', this.expressionHold);
-      this.characters.setExpression(showdown.success ? 'P1' : 'P2', 'hurt', this.expressionHold);
-      if (showdown.success) {
-        this.shake(SHAKE_SHOWDOWN);
-      }
+      this.characters.setExpression('P2', 'cast', 0);
       // 揭牌：法盘定格在揭晓前的双盘，符文降临后飞向对方盘上抽中的槽位，落点才点亮。
       this.board.update(beforeShowdown.players.P1.board, beforeShowdown.players.P2.board);
       const { element, polarity } = showdown.tianGan;
+      this.visualStem = showdown.tianGan;
+      this.visualActor = 'P2';
+      this.characters.update(state, { actingPlayer: 'P2' });
       this.runeFlight.playEntrance(showdown.tianGan, {
+        owner: 'P2',
         onComplete: () => {
           this.runeFlight.flyTo('P2', element, polarity, {
+            onImpact: () => {
+              this.board.update(state.players.P1.board, state.players.P2.board);
+              this.lastAction.setResult(
+                'P2',
+                'showdown',
+                showdown.tianGan.name,
+                changedNodes(beforeShowdown, state),
+              );
+              this.placeResult();
+            },
             onComplete: () => {
               this.board.update(state.players.P1.board, state.players.P2.board);
               // 落点后才定格终局姿势，揭牌期间保留施法 / 受击的揭牌动效。
@@ -626,21 +727,18 @@ export class GameScene extends Container {
   ): void {
     const isExtraTurn = this._turnManager.isExtraTurnActive();
     const isPlayer = state.currentPlayer === 'P1';
-    const who = isPlayer ? '玩家' : '天道';
-    const main = isExtraTurn
-      ? `【连动回合】${who}额外行动！`
-      : `${who}回合 · 天干【${tianGan?.name ?? ''}】降临`;
-
-    let sub: string;
-    if (!isPlayer) {
-      sub = '天道推演生克决策中...';
-    } else if (actions.length === 1) {
-      sub = describeAutoFlow(actions[0].actionType);
-    } else {
-      const elementName = tianGan === null ? '' : WUXING_PALETTE[tianGan.element].name;
-      const polarity = tianGan?.polarity === Polarity.YANG ? '阳' : '阴';
-      sub = `属性: ${elementName} (${polarity})`;
-    }
+    const who = isPlayer ? '你' : '天道';
+    const main = isExtraTurn ? `${who}的连动回合` : `${who}的回合`;
+    const stemText =
+      tianGan === null
+        ? ''
+        : `${tianGan.name} · ${WUXING_PALETTE[tianGan.element].name}${tianGan.polarity === Polarity.YANG ? '阳' : '阴'}`;
+    const prompt = !isPlayer
+      ? '天道选择法术'
+      : actions.length === 1
+        ? ACTION_LABEL[actions[0].actionType]
+        : '请选择法术';
+    const sub = `${stemText}\n${prompt}`;
     this.characters.showBanner(main, sub);
   }
 
@@ -658,6 +756,22 @@ export class GameScene extends Container {
   private placeActionBar(): void {
     this.actionBar.x = ACTION_BAR_MARGIN;
     this.actionBar.y = this.height - this.safeBottom - this.actionBar.contentHeight;
+    this.placeResult();
+  }
+
+  private layoutBoard(): void {
+    const compact = this.height < 650 || this.safeTop > 24;
+    const buttonHeight = Math.max(58, this.actionBar?.contentHeight ?? 0);
+    this.board.resize(
+      this.width,
+      this.height,
+      compact
+        ? {
+            top: this.safeTop + (this.height < 650 && this.safeTop > 24 ? 100 : 128),
+            bottom: this.height - this.safeBottom - buttonHeight - 64,
+          }
+        : undefined,
+    );
   }
 
   private buildActionBar(turnManager: TurnManager): ActionBarView {
@@ -670,8 +784,8 @@ export class GameScene extends Container {
   private buildRuneFlight(): RuneFlightView {
     return new RuneFlightView({
       board: this.board,
-      centerX: this.width / 2,
-      centerY: this.height / 2,
+      centerX: this.board.layout.centerX,
+      centerY: this.board.layout.centerY,
       entranceDuration: this.entranceDuration,
       flightDuration: this.flightDuration,
       impactDuration: this.impactDuration,
@@ -685,6 +799,7 @@ export class GameScene extends Container {
     this.addChild(this.runeFlight);
     this.addChild(this.characters);
     this.addChild(this.actionBar);
+    this.addChild(this.lastAction);
   }
 
   private bindTurnManager(turnManager: TurnManager): void {
@@ -706,35 +821,6 @@ export class GameScene extends Container {
     this.unsubscribes.length = 0;
   }
 
-  /** 触发震屏（幅度补间衰减到 0）。 */
-  private shake(magnitude: number): void {
-    this.shakeState.amount = magnitude;
-    this.shakeTween = new Tween(
-      this.shakeState,
-      { amount: 0 },
-      {
-        duration: SHAKE_DURATION,
-        easing: EASINGS.outQuad,
-      },
-    );
-  }
-
-  private updateShake(dt: number): void {
-    if (this.shakeTween === null) {
-      return;
-    }
-    this.shakeTween.update(dt);
-    const amount = this.shakeState.amount;
-    if (amount <= 0.01) {
-      this.shakeTween = null;
-      this.x = 0;
-      this.y = 0;
-      return;
-    }
-    this.x = Math.sin(this.elapsed * 62) * amount;
-    this.y = Math.cos(this.elapsed * 74) * amount;
-  }
-
   /** 底色与中央道场光晕（各视图画在其上）。 */
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
     drawLandscape(ctx, this.width, this.height);
@@ -748,87 +834,33 @@ export class GameScene extends Container {
     ctx.restore();
   }
 
-  /** 棋盘下方只呈现当前决策所需的提示；短屏自动收起状态图例。 */
+  private placeResult(): void {
+    if (this.lastAction === undefined) return;
+    this.lastAction.resize(this.width - 20);
+    this.lastAction.y =
+      this.height - this.safeBottom - Math.max(58, this.actionBar.contentHeight) - 42;
+  }
+
+  /** One permanent legend; the readable last-action strip owns the remaining footer. */
   private drawDecisionGuide(ctx: CanvasRenderingContext2D): void {
-    const layout = this.board.layout;
-    const top = layout.centerY + layout.outerRadius + layout.sealSize + 40;
-    const bottom =
-      this.height -
-      this.safeBottom -
-      (this.actionBar.visible ? this.actionBar.contentHeight : 0) -
-      14;
-    const room = bottom - top;
-    if (room < 22) {
-      if (room >= 12) {
-        ctx.textAlign = 'center';
-        ctx.fillStyle = THEME.muted;
-        ctx.font = `10px ${THEME.font}`;
-        ctx.fillText('左阴 · 右阳', this.width / 2, top + 6);
-      }
-      return;
-    }
-
-    const state = this._turnManager.getState();
-    const stem = this._turnManager.getCurrentTianGan();
-    let heading: string;
-    let detail: string;
-    switch (this._phase) {
-      case 'awaiting-player':
-        heading = '请选择法术';
-        detail = '循相生而化，沿相克而破';
-        break;
-      case 'auto-pending':
-        heading =
-          this.pendingAction === null
-            ? '顺势而行'
-            : describeAutoFlow(this.pendingAction.actionType);
-        detail = '点按任意处，加速结算';
-        break;
-      case 'ai-thinking':
-        heading = '天道推演';
-        detail = '静观其变，蓄势待发';
-        break;
-      case 'game-over':
-        heading = state.winner === 'P1' ? '此弈 · 弈者胜' : '此弈 · 天道胜';
-        detail = `${describeEndReason(state.endReason)} · 点按再弈`;
-        break;
-      case 'flying':
-        heading = '法术流转';
-        detail = '阴阳有序，生克有道';
-        break;
-      default:
-        heading = '天干降临';
-        detail =
-          stem === null
-            ? '阴阳调和，五行归元'
-            : `${stem.name} · ${WUXING_PALETTE[stem.element].name}行 · ${stem.polarity === Polarity.YANG ? '阳' : '阴'}`;
-    }
-
     ctx.textAlign = 'center';
-    ctx.fillStyle = THEME.ivory;
-    ctx.font = `bold ${room < 50 ? 13 : 17}px ${THEME.font}`;
-    ctx.fillText(heading, this.width / 2, top + 12);
-    if (room < 50) return;
+    ctx.textBaseline = 'middle';
     ctx.fillStyle = THEME.muted;
-    ctx.font = `12px ${THEME.font}`;
-    ctx.fillText(detail, this.width / 2, top + 37);
-    if (room < 105 || this._phase === 'game-over') return;
-
-    ctx.strokeStyle = THEME.edge;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(this.width * 0.16, top + 60);
-    ctx.lineTo(this.width * 0.84, top + 60);
-    ctx.stroke();
-    ctx.font = `10px ${THEME.font}`;
-    const labels = ['−1 道损', '0 虚空', '1 点亮', '2 加持'];
-    const colors = [THEME.damage, THEME.muted, THEME.jade, THEME.gold];
-    for (let index = 0; index < labels.length; index += 1) {
-      ctx.fillStyle = colors[index];
-      ctx.fillText(labels[index], this.width * (0.2 + index * 0.2), top + 78);
+    ctx.font = `11px ${THEME.font}`;
+    const y =
+      this.board.layout.centerY +
+      this.board.layout.outerRadius +
+      this.board.layout.sealSize * 1.9 +
+      18;
+    ctx.fillText('左阴 · 右阳', this.width / 2, y - 5);
+    for (const [index, level] of ([-1, 0, 1, 2] as const).entries()) {
+      const column = (this.width * (index + 0.5)) / 4;
+      drawYinYangFish(ctx, column - 13, y + 13, 7, Polarity.YIN, level, WuXing.WOOD);
+      drawYinYangFish(ctx, column - 13, y + 13, 7, Polarity.YANG, level, WuXing.WOOD);
+      ctx.fillStyle = THEME.ivory;
+      ctx.textAlign = 'left';
+      ctx.fillText(['崩坏', '虚空', '点亮', '发光'][index], column - 2, y + 13);
     }
-    ctx.fillStyle = THEME.muted;
-    ctx.fillText('左阴 · 右阳　两侧皆点亮即归一', this.width / 2, top + 99);
   }
 }
 
