@@ -194,11 +194,11 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
         const keTarget = OVERCOMING_CYCLE[element];
         const shengTarget = GENERATION_CYCLE[element];
 
-        it(`[${element}] Yang stem (${yangStem.name}) 相生目标 (2, 2) 时仅剩强化，结算为连动`, () => {
+        it(`[${element}] Yang stem (${yangStem.name}) 相生 (2, 2) 且相克 (-1, -1) 时强化与强破并列，强化结算为连动`, () => {
           let state = createInitialGameState();
           // P1: current element is (1, 1) -> CONVERT blocked because opposite (yin) is 1
-          // P1: shengTarget is (2, 2) -> TRANS/ATK 无关；强化门槛放开后仍可发动（满溢则亏）
-          // P2: keTarget is (-1, -1) -> ATK & BURST_ATK blocked because overcoming target is fully damaged
+          // P1: shengTarget is (2, 2) -> 强化门槛放开后仍可发动（满溢则亏）
+          // P2: keTarget is (-1, -1) -> ATK 被封死；强破门槛放开后仍可发动（见底即止）
           state = {
             ...state,
             players: {
@@ -225,13 +225,20 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
 
           const actions = getAvailableActions(state, yangStem);
 
-          expect(actions).toHaveLength(1);
-          expect(actions[0]).toEqual({
-            actionType: ActionType.BURST,
-            player: 'P1',
-            sourceElement: element,
-            consumePolarity: Polarity.YIN,
-          });
+          expect(actions).toEqual([
+            {
+              actionType: ActionType.BURST,
+              player: 'P1',
+              sourceElement: element,
+              consumePolarity: Polarity.YIN,
+            },
+            {
+              actionType: ActionType.BURST_ATK,
+              player: 'P1',
+              sourceElement: element,
+              consumePolarity: Polarity.YANG,
+            },
+          ]);
 
           const result = resolver.resolve(state, actions[0]);
 
@@ -258,11 +265,11 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
         const shengTarget = GENERATION_CYCLE[element];
         const keTarget = OVERCOMING_CYCLE[element];
 
-        it(`[${element}] Yin stem (${yinStem.name}) 相生目标 (2, 2) 时仅剩强化，结算为连动`, () => {
+        it(`[${element}] Yin stem (${yinStem.name}) 相生 (2, 2) 且相克 (-1, -1) 时强化与强破并列，强化结算为连动`, () => {
           let state = createInitialGameState();
           // P1: current element is (1, 1) -> CONVERT blocked because opposite (yang) is 1
           // P1: shengTarget is (2, 2) -> TRANS blocked；强化门槛放开后仍可发动（满溢则亏）
-          // P2: keTarget is (-1, -1) -> BURST_ATK blocked because overcoming target is fully damaged
+          // P2: keTarget is (-1, -1) -> 强破门槛放开后仍可发动（见底即止）
           state = {
             ...state,
             players: {
@@ -289,13 +296,20 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
 
           const actions = getAvailableActions(state, yinStem);
 
-          expect(actions).toHaveLength(1);
-          expect(actions[0]).toEqual({
-            actionType: ActionType.BURST,
-            player: 'P1',
-            sourceElement: element,
-            consumePolarity: Polarity.YIN,
-          });
+          expect(actions).toEqual([
+            {
+              actionType: ActionType.BURST,
+              player: 'P1',
+              sourceElement: element,
+              consumePolarity: Polarity.YIN,
+            },
+            {
+              actionType: ActionType.BURST_ATK,
+              player: 'P1',
+              sourceElement: element,
+              consumePolarity: Polarity.YANG,
+            },
+          ]);
 
           const result = resolver.resolve(state, actions[0]);
 
@@ -313,12 +327,12 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
     });
 
     describe('2.3 Non-GuiYi Mid-State Asymmetric Combinations ((2, 1) and (1, 2))', () => {
-      it('仅剩强化 when stem node is (yin: 2, yang: 1) for Yang stem and target is damaged', () => {
+      it('强化与强破并列 when stem node is (yin: 2, yang: 1) for Yang stem and ke target is damaged', () => {
         let state = createInitialGameState();
         // WOOD: yin 2, yang 1. Drawn stem is YANG (甲木).
         // Opposite side is YIN (2) -> CONVERT prohibited.
         // Node is GuiYi (yin 2, yang 1) -> BURST available.
-        // Overcoming target EARTH is (-1, -1), shengTarget FIRE is (2, 2)
+        // Overcoming target EARTH is (-1, -1) -> ATK blocked；强破门槛放开后仍可发动（见底即止）；shengTarget FIRE is (2, 2)
         state = {
           ...state,
           players: {
@@ -343,16 +357,15 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
 
         const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!;
         const actions = getAvailableActions(state, jiaWood);
-        expect(actions).toHaveLength(1);
-        expect(actions[0].actionType).toBe(ActionType.BURST);
+        expect(actions.map((a) => a.actionType)).toEqual([ActionType.BURST, ActionType.BURST_ATK]);
       });
 
-      it('仅剩强化 when stem node is (yin: 1, yang: 2) for Yin stem and target is maxed', () => {
+      it('强化与强破并列 when stem node is (yin: 1, yang: 2) for Yin stem and ke target is damaged', () => {
         let state = createInitialGameState();
         // FIRE: yin 1, yang 2. Drawn stem is YIN (丁火).
         // Opposite side is YANG (2) -> CONVERT prohibited.
         // Node is GuiYi (yin 1, yang 2) -> BURST available.
-        // Generation target EARTH is (2, 2), overcome target METAL is (-1, -1)
+        // Generation target EARTH is (2, 2) -> TRANS blocked；overcome target METAL is (-1, -1) -> 强破门槛放开后仍可发动（见底即止）
         state = {
           ...state,
           players: {
@@ -377,8 +390,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
 
         const dingFire = TIAN_GAN_LIST.find((tg) => tg.name === '丁')!;
         const actions = getAvailableActions(state, dingFire);
-        expect(actions).toHaveLength(1);
-        expect(actions[0].actionType).toBe(ActionType.BURST);
+        expect(actions.map((a) => a.actionType)).toEqual([ActionType.BURST, ActionType.BURST_ATK]);
       });
     });
 
@@ -552,7 +564,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
       expect(decision).toEqual(passAction);
     });
 
-    it('TurnManager executes turn smoothly when the AI strategy takes the sole 强化 candidate', () => {
+    it('TurnManager executes turn smoothly when the AI strategy takes the 强化 candidate', () => {
       const baseState = createInitialGameState();
       // Configure state so drawn stem 甲木 hits the extreme-target scenario without triggering 5-element GuiYuan
       const deadEndState: GameState = {
@@ -591,7 +603,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
         prng: deterministicPrng,
       });
 
-      // Execute turn with balancedStrategy: 甲木 相生目标 (2, 2) -> 唯一候选强化
+      // Execute turn with balancedStrategy: 甲木 相生目标 (2, 2) -> 候选【强化】【强破】，策略选中强化
       const result = turnManager.executeTurnWithStrategy(balancedStrategy);
 
       expect(result.success).toBe(true);

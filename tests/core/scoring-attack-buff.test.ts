@@ -167,7 +167,7 @@ describe('Ticket 02: 2.5倍攻击压制状态分实装', () => {
       expect(res.nextState.players.P2.board[WuXing.EARTH].yang).toBe(1);
     });
 
-    it('BURST_ATK: 0 -> -1 致阳道损（生产进度定价 ×0.3）：80 behavior + 90 attack points = 170', () => {
+    it('BURST_ATK: (0, 0) → (-1, -1) 致阴阳道损（生产进度定价 ×0.3）：80 + 75 + 90 = 245', () => {
       const baseState = createInitialGameState();
       const stateGuiYi = {
         ...baseState,
@@ -188,14 +188,13 @@ describe('Ticket 02: 2.5倍攻击压制状态分实装', () => {
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YANG,
-        polarity: Polarity.YANG, // Opponent EARTH yang 0 -> -1
       });
 
       expect(res.success).toBe(true);
-      // 对手盘面无归一节点 → ×0.3：round(300 × 0.3) = 90；80 + 90 = 170
-      expect(res.scoreDelta).toBe(170);
-      expect(res.nextState.players.P1.score).toBe(170);
-      expect(res.nextState.players.P2.board[WuXing.EARTH].yang).toBe(-1);
+      // 对手盘面无归一节点 → ×0.3：阴 0→-1 round(250 × 0.3) = 75；阳 0→-1 round(300 × 0.3) = 90；80 + 75 + 90 = 245
+      expect(res.scoreDelta).toBe(245);
+      expect(res.nextState.players.P1.score).toBe(245);
+      expect(res.nextState.players.P2.board[WuXing.EARTH]).toEqual({ yin: -1, yang: -1 });
     });
   });
 });
