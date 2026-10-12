@@ -36,6 +36,7 @@
     "benchmark:dynamic-switching": "npx tsx tools/DynamicSwitching.ts",
     "build:minigame": "node scripts/build-minigame.mjs",
     "dev:minigame": "node scripts/build-minigame.mjs --watch",
+    "preview:minigame": "vite tools/minigame-preview --host 0.0.0.0",
     "mutation": "stryker run",
     "mutation:milestone": "npm run mutation && npm run mutation:check",
     "mutation:changed": "node scripts/mutation-changed.mjs",

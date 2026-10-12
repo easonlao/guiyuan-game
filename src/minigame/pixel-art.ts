@@ -1,15 +1,16 @@
 import { Polarity, TianGanInfo, WuXing } from '../core/types/domain.js';
+import { THEME } from './theme.js';
 import { CharacterActionState, ImpactEffect } from './types.js';
 
 export const WUXING_PALETTE: Record<
   WuXing,
   { name: string; main: string; light: string; dark: string }
 > = {
-  [WuXing.WOOD]: { name: '木', main: '#38a169', light: '#68d391', dark: '#22543d' },
-  [WuXing.FIRE]: { name: '火', main: '#e53e3e', light: '#fc8181', dark: '#742a2a' },
-  [WuXing.EARTH]: { name: '土', main: '#d69e2e', light: '#f6e05e', dark: '#744210' },
-  [WuXing.METAL]: { name: '金', main: '#e2e8f0', light: '#ffffff', dark: '#718096' },
-  [WuXing.WATER]: { name: '水', main: '#3182ce', light: '#63b3ed', dark: '#2a4365' },
+  [WuXing.WOOD]: { name: '木', main: '#63ba8c', light: '#b4e7be', dark: '#294f42' },
+  [WuXing.FIRE]: { name: '火', main: '#e38c70', light: '#ffd0aa', dark: '#653e37' },
+  [WuXing.EARTH]: { name: '土', main: '#c3a16a', light: '#ecdbab', dark: '#60543a' },
+  [WuXing.METAL]: { name: '金', main: '#cbd5cd', light: '#f5f1de', dark: '#5e7378' },
+  [WuXing.WATER]: { name: '水', main: '#75b4cb', light: '#bce4eb', dark: '#315363' },
 };
 
 /** 绘制像素块 */
@@ -109,9 +110,9 @@ export function drawPixelCharacter(
   }
 
   // 角色基础色彩
-  const robeColor = isPlayer ? '#3182ce' : '#805ad5';
-  const robeTrim = isPlayer ? '#63b3ed' : '#b794f4';
-  const robeShade = isPlayer ? '#2c5282' : '#553c9a';
+  const robeColor = isPlayer ? '#408d7c' : '#617f9d';
+  const robeTrim = isPlayer ? THEME.jade : THEME.rival;
+  const robeShade = isPlayer ? '#24594f' : '#354c68';
   const skinColor = '#fed7aa';
   const skinShade = '#f6ad55';
   const hairColor = isPlayer ? '#1a202c' : '#edf2f7';
@@ -302,7 +303,7 @@ export function drawCenterTianGanRune(
   ctx.restore();
 
   // 3. 灵玉法印主体 (圆盘玉牌)
-  ctx.fillStyle = '#162032';
+  ctx.fillStyle = THEME.deep;
   ctx.beginPath();
   ctx.arc(centerX, boxY, 24, 0, Math.PI * 2);
   ctx.fill();
@@ -314,8 +315,8 @@ export function drawCenterTianGanRune(
   ctx.save();
   ctx.shadowColor = elemCfg.light;
   ctx.shadowBlur = 12;
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 22px sans-serif';
+  ctx.fillStyle = THEME.ivory;
+  ctx.font = `bold 24px ${THEME.font}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(tg.name, centerX, boxY);
@@ -325,7 +326,7 @@ export function drawCenterTianGanRune(
   const tagW = 48;
   const tagH = 18;
   const tagY = boxY + 28;
-  ctx.fillStyle = '#111827dd';
+  ctx.fillStyle = 'rgba(8,27,34,0.9)';
   ctx.strokeStyle = elemCfg.main;
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -338,7 +339,7 @@ export function drawCenterTianGanRune(
   ctx.stroke();
 
   ctx.fillStyle = elemCfg.light;
-  ctx.font = 'bold 10px sans-serif';
+  ctx.font = `bold 10px ${THEME.font}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(`${elemCfg.name}·${polarityName}`, centerX, tagY + tagH / 2);

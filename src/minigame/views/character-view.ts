@@ -12,10 +12,10 @@ import { CharacterActionState } from '../types.js';
 import {
   CHARACTER_PIXEL_SIZE,
   CHARACTER_SPRITE_BOUNDS,
-  drawPixelBox,
   drawPixelCharacter,
   drawPixelRect,
 } from '../pixel-art.js';
+import { drawPanel, THEME } from '../theme.js';
 import { Container } from '../scene/container.js';
 import { estimateTextWidth } from '../text-metrics.js';
 
@@ -32,7 +32,7 @@ export interface CharacterProjectionOptions {
   readonly isExtraTurn?: boolean;
 }
 
-/** 头像框架尺寸与边距（本视图局部样式常量，不引入共享主题模块）。 */
+/** 头像框架尺寸与边距（保持头像与播报的既有布局契约）。 */
 const AVATAR_WIDTH = 88;
 const AVATAR_HEIGHT = 112;
 const SIDE_MARGIN = 10;
@@ -41,28 +41,28 @@ const BANNER_GAP = 10;
 const BANNER_HEIGHT = 68;
 
 /* 配色（仅本视图使用）。 */
-const PANEL_COLOR = '#111827';
-const PANEL_BORDER = '#374151';
-const ACTIVE_COLOR = '#f6e05e';
-const EXTRA_TURN_COLOR = '#4fd1c5';
-const TEXT_COLOR = '#e2e8f0';
-const MUTED_COLOR = '#9ca3af';
-const P1_COLOR = '#63b3ed';
-const P2_COLOR = '#b794f4';
-const HURT_COLOR = '#fc8181';
+const PANEL_COLOR = THEME.panel;
+const PANEL_BORDER = THEME.edge;
+const ACTIVE_COLOR = THEME.gold;
+const EXTRA_TURN_COLOR = THEME.jade;
+const TEXT_COLOR = THEME.ivory;
+const MUTED_COLOR = THEME.muted;
+const P1_COLOR = THEME.jade;
+const P2_COLOR = THEME.rival;
+const HURT_COLOR = THEME.damage;
 
 /** 表情对应的框架描边色；待机时用当前行动方颜色。 */
 const EXPRESSION_COLOR: Record<CharacterActionState, string | null> = {
   idle: null,
-  attack: '#f6e05e',
+  attack: THEME.gold,
   hurt: HURT_COLOR,
-  cast: '#4fd1c5',
+  cast: '#b7f0da',
   celebrate: '#ed8936',
   win: '#48bb78',
   lose: '#a0aec0',
 };
 
-const PLAYER_LABEL: Record<PlayerId, string> = { P1: '玩家 P1', P2: '天道 P2' };
+const PLAYER_LABEL: Record<PlayerId, string> = { P1: '弈者', P2: '天道' };
 const PLAYER_COLOR: Record<PlayerId, string> = { P1: P1_COLOR, P2: P2_COLOR };
 
 export class CharacterView extends Container {
@@ -217,7 +217,7 @@ export class CharacterView extends Container {
   private drawTurnStrip(ctx: CanvasRenderingContext2D): void {
     ctx.save();
     ctx.fillStyle = MUTED_COLOR;
-    ctx.font = 'bold 12px monospace';
+    ctx.font = `bold 12px ${THEME.font}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(
@@ -227,9 +227,9 @@ export class CharacterView extends Container {
     );
     if (this._isExtraTurn) {
       ctx.fillStyle = EXTRA_TURN_COLOR;
-      ctx.font = 'bold 11px monospace';
-      ctx.textAlign = 'left';
-      ctx.fillText('连动', SIDE_MARGIN, this._safeTop + TOP_BAR_HEIGHT / 2);
+      ctx.font = `bold 11px ${THEME.font}`;
+      ctx.textAlign = 'right';
+      ctx.fillText('连动', this._width - SIDE_MARGIN, this._safeTop + TOP_BAR_HEIGHT / 2);
     }
     ctx.restore();
   }
@@ -244,7 +244,29 @@ export class CharacterView extends Container {
       EXPRESSION_COLOR[expression] ?? (isCurrent ? ACTIVE_COLOR : isPlayer ? P1_COLOR : P2_COLOR);
 
     ctx.save();
-    drawPixelBox(ctx, frameX, frameY, AVATAR_WIDTH, AVATAR_HEIGHT, PANEL_COLOR, border, 2);
+    drawPanel(ctx, frameX, frameY, AVATAR_WIDTH, AVATAR_HEIGHT, border, PANEL_COLOR);
+    // Painted moon niche and plinth integrate the chibi into the same jade world.
+    const aura = ctx.createRadialGradient(
+      frameX + AVATAR_WIDTH / 2,
+      frameY + 42,
+      2,
+      frameX + AVATAR_WIDTH / 2,
+      frameY + 42,
+      41,
+    );
+    aura.addColorStop(0, isPlayer ? 'rgba(128,214,186,0.18)' : 'rgba(134,184,203,0.18)');
+    aura.addColorStop(1, 'transparent');
+    ctx.fillStyle = aura;
+    ctx.beginPath();
+    ctx.arc(frameX + AVATAR_WIDTH / 2, frameY + 44, 39, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(216,184,118,0.20)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(frameX + AVATAR_WIDTH / 2, frameY + 41, 29, Math.PI, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = THEME.deep;
+    ctx.fillRect(frameX + 9, frameY + AVATAR_HEIGHT - 9, AVATAR_WIDTH - 18, 4);
     // 角色本体按精灵声明的包围盒在框架内居中：绘制例程直接画到最终尺寸，不在这里缩放。
     const spriteTop = CHARACTER_SPRITE_BOUNDS.top * CHARACTER_PIXEL_SIZE;
     const spriteHeight =
@@ -262,15 +284,15 @@ export class CharacterView extends Container {
     ctx.textAlign = isPlayer ? 'left' : 'right';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = PLAYER_COLOR[player];
-    ctx.font = 'bold 11px monospace';
+    ctx.font = `bold 11px ${THEME.font}`;
     ctx.fillText(PLAYER_LABEL[player], labelX, frameY + AVATAR_HEIGHT + 12);
     ctx.fillStyle = TEXT_COLOR;
-    ctx.font = 'bold 12px monospace';
-    ctx.fillText(`${this._scores[player]} 分`, labelX, frameY + AVATAR_HEIGHT + 26);
+    ctx.font = `bold 12px ${THEME.font}`;
+    ctx.fillText(`得分 ${this._scores[player]}`, labelX, frameY + AVATAR_HEIGHT + 26);
 
     if (isCurrent) {
       ctx.fillStyle = this._isExtraTurn ? EXTRA_TURN_COLOR : ACTIVE_COLOR;
-      ctx.font = 'bold 9px monospace';
+      ctx.font = `bold 9px ${THEME.font}`;
       ctx.fillText(
         this._isExtraTurn ? '连动行动中' : '行动中',
         labelX,
@@ -304,10 +326,10 @@ export class CharacterView extends Container {
       : Math.max(frameX + AVATAR_WIDTH - width, this._width - SIDE_MARGIN - width);
     const y = frameY - height - 4;
 
-    drawPixelRect(ctx, x, y, width, height, '#1a202c');
+    drawPanel(ctx, x, y, width, height, EXTRA_TURN_COLOR);
     drawPixelRect(ctx, x, y, width, 2, EXTRA_TURN_COLOR);
     ctx.fillStyle = TEXT_COLOR;
-    ctx.font = `${fontSize}px monospace`;
+    ctx.font = `${fontSize}px ${THEME.font}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(label, x + width / 2, y + height / 2 + 1);
@@ -324,7 +346,7 @@ export class CharacterView extends Container {
     const y = this._safeTop + TOP_BAR_HEIGHT + 4;
 
     ctx.save();
-    drawPixelBox(ctx, x, y, width, BANNER_HEIGHT, '#171e2e', PANEL_BORDER, 2);
+    drawPanel(ctx, x, y, width, BANNER_HEIGHT, PANEL_BORDER);
 
     const textWidth = width - 16;
     const mainLines = wrapText(this._bannerText, textWidth, 12, 2);
@@ -337,13 +359,13 @@ export class CharacterView extends Container {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = TEXT_COLOR;
-    ctx.font = 'bold 12px monospace';
+    ctx.font = `bold 12px ${THEME.font}`;
     for (const line of mainLines) {
       ctx.fillText(line, x + width / 2, cursor);
       cursor += mainLineHeight;
     }
     ctx.fillStyle = MUTED_COLOR;
-    ctx.font = '9px monospace';
+    ctx.font = `9px ${THEME.font}`;
     for (const line of subLines) {
       ctx.fillText(line, x + width / 2, cursor);
       cursor += subLineHeight;

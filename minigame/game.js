@@ -1639,23 +1639,94 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     SCORE_STRIPPED_WEIGHTS,
     POINTS_CONFIG
   );
+  const THEME = {
+    ink: "#081b22",
+    deep: "#0c252d",
+    panel: "#102e35",
+    panelRaised: "#183a40",
+    edge: "#36565a",
+    ivory: "#f4ead2",
+    muted: "#a3b8b3",
+    gold: "#d8b876",
+    goldDim: "#8d7852",
+    jade: "#80d6ba",
+    rival: "#86b8cb",
+    damage: "#ee8d77",
+    font: '"PingFang SC", "Microsoft YaHei", sans-serif'
+  };
+  function drawPanel(ctx, x, y, width, height, accent = THEME.edge, fill = THEME.panel) {
+    ctx.fillStyle = fill;
+    ctx.fillRect(x, y, width, height);
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
+    ctx.strokeStyle = "rgba(244,234,210,0.10)";
+    ctx.strokeRect(x + 4.5, y + 4.5, width - 9, height - 9);
+    ctx.fillStyle = accent;
+    for (const cornerX of [x, x + width - 7]) {
+      for (const cornerY of [y, y + height - 2]) {
+        ctx.fillRect(cornerX, cornerY, 7, 2);
+      }
+    }
+  }
+  function drawLandscape(ctx, width, height) {
+    ctx.fillStyle = THEME.ink;
+    ctx.fillRect(0, 0, width, height);
+    const span = Math.min(width, height);
+    const glow = ctx.createRadialGradient(
+      width * 0.5,
+      height * 0.48,
+      8,
+      width * 0.5,
+      height * 0.48,
+      span * 0.75
+    );
+    glow.addColorStop(0, "#1d4448");
+    glow.addColorStop(0.65, "#102e35");
+    glow.addColorStop(1, THEME.ink);
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, width, height);
+    for (let layer = 0; layer < 3; layer += 1) {
+      const base = height * (0.72 + layer * 0.075);
+      ctx.beginPath();
+      ctx.moveTo(0, height);
+      for (let step = 0; step <= 20; step += 1) {
+        const x = width * step / 20;
+        const crest = Math.sin(step * 1.42 + layer * 2) * 0.5 + Math.sin(step * 0.73 + layer) * 0.5;
+        ctx.lineTo(x, base - (crest + 1) * span * (0.09 - layer * 0.018));
+      }
+      ctx.lineTo(width, height);
+      ctx.closePath();
+      ctx.fillStyle = ["#18383d", "#102e34", "#0a232b"][layer];
+      ctx.fill();
+    }
+    ctx.strokeStyle = "rgba(163,184,179,0.09)";
+    ctx.lineWidth = 1;
+    for (let ribbon = 0; ribbon < 6; ribbon += 1) {
+      ctx.beginPath();
+      for (let step = 0; step <= 24; step += 1) {
+        const x = width * step / 24;
+        const y = height * (0.24 + ribbon * 0.12) + Math.sin(step * 0.4 + ribbon) * 8;
+        if (step === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(244,234,210,0.035)";
+    for (let index = 0; index < 96; index += 1) {
+      ctx.fillRect((index * 97 + 17) % width, (index * 173 + 31) % height, 1, 1);
+    }
+  }
   const WUXING_PALETTE = {
-    [WuXing.WOOD]: { name: "木", main: "#38a169", light: "#68d391", dark: "#22543d" },
-    [WuXing.FIRE]: { name: "火", main: "#e53e3e", light: "#fc8181", dark: "#742a2a" },
-    [WuXing.EARTH]: { name: "土", main: "#d69e2e", light: "#f6e05e", dark: "#744210" },
-    [WuXing.METAL]: { name: "金", main: "#e2e8f0", light: "#ffffff", dark: "#718096" },
-    [WuXing.WATER]: { name: "水", main: "#3182ce", light: "#63b3ed", dark: "#2a4365" }
+    [WuXing.WOOD]: { name: "木", main: "#63ba8c", light: "#b4e7be", dark: "#294f42" },
+    [WuXing.FIRE]: { name: "火", main: "#e38c70", light: "#ffd0aa", dark: "#653e37" },
+    [WuXing.EARTH]: { name: "土", main: "#c3a16a", light: "#ecdbab", dark: "#60543a" },
+    [WuXing.METAL]: { name: "金", main: "#cbd5cd", light: "#f5f1de", dark: "#5e7378" },
+    [WuXing.WATER]: { name: "水", main: "#75b4cb", light: "#bce4eb", dark: "#315363" }
   };
   function drawPixelRect(ctx, x, y, w, h, color) {
     ctx.fillStyle = color;
     ctx.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
-  }
-  function drawPixelBox(ctx, x, y, w, h, bgColor, borderColor, pixelSize = 2) {
-    drawPixelRect(ctx, x, y, w, h, bgColor);
-    drawPixelRect(ctx, x, y, w, pixelSize, borderColor);
-    drawPixelRect(ctx, x, y + h - pixelSize, w, pixelSize, borderColor);
-    drawPixelRect(ctx, x, y, pixelSize, h, borderColor);
-    drawPixelRect(ctx, x + w - pixelSize, y, pixelSize, h, borderColor);
   }
   const CHARACTER_PIXEL_SIZE = 4;
   const CHARACTER_SPRITE_BOUNDS = {
@@ -1693,9 +1764,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         throw new Error(`未处理的角色姿势：${String(unhandled)}`);
       }
     }
-    const robeColor = isPlayer ? "#3182ce" : "#805ad5";
-    const robeTrim = isPlayer ? "#63b3ed" : "#b794f4";
-    const robeShade = isPlayer ? "#2c5282" : "#553c9a";
+    const robeColor = isPlayer ? "#408d7c" : "#617f9d";
+    const robeTrim = isPlayer ? THEME.jade : THEME.rival;
+    const robeShade = isPlayer ? "#24594f" : "#354c68";
     const skinColor = "#fed7aa";
     const skinShade = "#f6ad55";
     const hairColor = isPlayer ? "#1a202c" : "#edf2f7";
@@ -1844,7 +1915,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     ctx.arc(0, 0, 30, Math.PI, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
-    ctx.fillStyle = "#162032";
+    ctx.fillStyle = THEME.deep;
     ctx.beginPath();
     ctx.arc(centerX, boxY, 24, 0, Math.PI * 2);
     ctx.fill();
@@ -1854,8 +1925,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     ctx.save();
     ctx.shadowColor = elemCfg.light;
     ctx.shadowBlur = 12;
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 22px sans-serif";
+    ctx.fillStyle = THEME.ivory;
+    ctx.font = `bold 24px ${THEME.font}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(tg.name, centerX, boxY);
@@ -1863,7 +1934,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     const tagW = 48;
     const tagH = 18;
     const tagY = boxY + 28;
-    ctx.fillStyle = "#111827dd";
+    ctx.fillStyle = "rgba(8,27,34,0.9)";
     ctx.strokeStyle = elemCfg.main;
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -1875,7 +1946,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = elemCfg.light;
-    ctx.font = "bold 10px sans-serif";
+    ctx.font = `bold 10px ${THEME.font}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(`${elemCfg.name}·${polarityName}`, centerX, tagY + tagH / 2);
@@ -2240,10 +2311,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const SUB_LABEL_LINE_HEIGHT = 14;
   const MIN_WIDTH = 72;
   const DEFAULT_PRESS_SCALE = 0.92;
-  const DEFAULT_COLOR = "#63b3ed";
-  const BACKGROUND_COLOR$1 = "#1a202c";
-  const SUB_LABEL_COLOR = "#9ca3af";
-  const DISABLED_COLOR = "#6b7280";
+  const DEFAULT_COLOR = THEME.jade;
+  const SUB_LABEL_COLOR = THEME.muted;
+  const DISABLED_COLOR = THEME.edge;
   class Button extends Node {
     constructor(options) {
       super();
@@ -2319,19 +2389,25 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const left = -this._width / 2;
       const top = -this._height / 2;
       const accent = this._disabled ? DISABLED_COLOR : this.color;
-      ctx.fillStyle = BACKGROUND_COLOR$1;
-      ctx.fillRect(left, top, this._width, this._height);
-      ctx.strokeStyle = accent;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(left, top, this._width, this._height);
+      drawPanel(
+        ctx,
+        left,
+        top,
+        this._width,
+        this._height,
+        accent,
+        this._disabled ? THEME.deep : this.scaleX < 1 ? THEME.panelRaised : THEME.panel
+      );
+      ctx.fillStyle = accent;
+      ctx.fillRect(left + 8, top + 9, 3, this._height - 18);
       ctx.textAlign = "center";
       ctx.textBaseline = "alphabetic";
-      ctx.fillStyle = accent;
-      ctx.font = `bold ${LABEL_FONT_SIZE}px monospace`;
+      ctx.fillStyle = this._disabled ? DISABLED_COLOR : THEME.ivory;
+      ctx.font = `bold ${LABEL_FONT_SIZE}px ${THEME.font}`;
       ctx.fillText(this.label, 0, top + PADDING_Y + LABEL_LINE_HEIGHT / 2);
       if (this.subLabel !== "") {
         ctx.fillStyle = this._disabled ? DISABLED_COLOR : SUB_LABEL_COLOR;
-        ctx.font = `${SUB_LABEL_FONT_SIZE}px monospace`;
+        ctx.font = `${SUB_LABEL_FONT_SIZE}px ${THEME.font}`;
         ctx.fillText(
           this.subLabel,
           0,
@@ -2400,6 +2476,11 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 最近一次排版的实测内容高度：调用方据此把面板底对齐到安全区，不预留空高。 */
     get contentHeight() {
       return this._contentHeight;
+    }
+    /** Reflow existing buttons and their hit regions when the viewport changes. */
+    resize(width) {
+      this.availableWidth = width;
+      this.layout();
     }
     /**
      * 按 `TurnManager` 的最新候选动作重新投影：
@@ -2529,16 +2610,16 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   };
   const VOID_LEVEL = 0;
   const VOID_NODE = { yin: VOID_LEVEL, yang: VOID_LEVEL };
-  const BOARD_BG_COLOR = "#111827";
-  const VOID_COLOR = "#374151";
-  const BLESSED_COLOR = "#f6e05e";
-  const GUI_YI_COLOR = "#ecc94b";
-  const OWN_BAND_COLOR = "rgba(183, 121, 31, 0.34)";
-  const OWN_BAND_EDGE = "#b7791f";
-  const OWN_RING_COLOR = "#d69e2e";
-  const OPPONENT_BAND_COLOR = "rgba(43, 108, 176, 0.26)";
-  const OPPONENT_BAND_EDGE = "#2b6cb0";
-  const OPPONENT_RING_COLOR = "#4299e1";
+  const BOARD_BG_COLOR = THEME.deep;
+  const VOID_COLOR = THEME.edge;
+  const BLESSED_COLOR = THEME.gold;
+  const GUI_YI_COLOR = THEME.gold;
+  const OWN_BAND_COLOR = "rgba(216,184,118,0.16)";
+  const OWN_BAND_EDGE = THEME.goldDim;
+  const OWN_RING_COLOR = THEME.gold;
+  const OPPONENT_BAND_COLOR = "rgba(134,184,203,0.12)";
+  const OPPONENT_BAND_EDGE = THEME.edge;
+  const OPPONENT_RING_COLOR = THEME.rival;
   const OWN_BAND_WIDTH_RATIO = 0.72;
   const OPPONENT_BAND_WIDTH_RATIO = 0.62;
   const RING_LABEL_ANGLE = Math.PI / 2;
@@ -2550,8 +2631,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     attack: "rgba(229, 62, 62, 0.22)"
   };
   const CONNECTION_ACTIVE = {
-    generation: "#48bb78",
-    attack: "#e53e3e"
+    generation: THEME.jade,
+    attack: THEME.damage
   };
   class BoardView extends Container {
     constructor(layout = {}) {
@@ -2713,10 +2794,41 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     /** 先画环带与连线，再画主印，最后叠加环归属标签（标签压在最上层）。 */
     renderSelf(ctx) {
+      this._drawEngraving(ctx);
       this._drawRingBands(ctx);
       this._drawConnections(ctx);
       this._drawSeals(ctx);
       this._drawRingLabels(ctx);
+    }
+    /** Decorative concentric engraving has no edges between elements. */
+    _drawEngraving(ctx) {
+      const { centerX: x, centerY: y, outerRadius, sealSize } = this._layout;
+      const radius = outerRadius + sealSize * 1.52;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(8,27,34,0.72)";
+      ctx.fill();
+      for (const inset of [0, 5, 10]) {
+        ctx.beginPath();
+        ctx.arc(x, y, radius - inset, 0, Math.PI * 2);
+        ctx.strokeStyle = inset === 5 ? "rgba(216,184,118,0.28)" : "rgba(128,214,186,0.10)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      for (let index = 0; index < 60; index += 1) {
+        const angle = index * Math.PI / 30;
+        const length = index % 5 === 0 ? 7 : 3;
+        ctx.beginPath();
+        ctx.moveTo(x + Math.cos(angle) * (radius - 5), y + Math.sin(angle) * (radius - 5));
+        ctx.lineTo(
+          x + Math.cos(angle) * (radius - 5 - length),
+          y + Math.sin(angle) * (radius - 5 - length)
+        );
+        ctx.strokeStyle = "rgba(216,184,118,0.28)";
+        ctx.stroke();
+      }
+      ctx.restore();
     }
     /**
      * 环带：内环暖色实线带（己方盘）、外环冷色虚线带（对方盘）。
@@ -2769,6 +2881,17 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           ctx.setLineDash([6, 5]);
         }
         ctx.stroke();
+        if (line.isActive) {
+          const angle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
+          const x = line.x1 + (line.x2 - line.x1) * 0.56;
+          const y = line.y1 + (line.y2 - line.y1) * 0.56;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(x - Math.cos(angle - 0.6) * 7, y - Math.sin(angle - 0.6) * 7);
+          ctx.lineTo(x, y);
+          ctx.lineTo(x - Math.cos(angle + 0.6) * 7, y - Math.sin(angle + 0.6) * 7);
+          ctx.stroke();
+        }
         ctx.restore();
       }
     }
@@ -2785,8 +2908,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         ctx.save();
         ctx.beginPath();
         ctx.arc(entry.x, entry.y, sealRadius, 0, Math.PI * 2);
-        ctx.fillStyle = isOwn ? withAlpha(palette.main, OWN_SEAL_FILL_ALPHA) : "rgba(10, 13, 20, 0.92)";
+        ctx.fillStyle = isOwn ? withAlpha(palette.main, OWN_SEAL_FILL_ALPHA) : THEME.deep;
         ctx.fill();
+        ctx.beginPath();
+        ctx.arc(entry.x, entry.y, sealRadius - 3, 0, Math.PI * 2);
+        ctx.strokeStyle = withAlpha(palette.light, isOwn ? 0.24 : 0.12);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(entry.x, entry.y, sealRadius, 0, Math.PI * 2);
         ctx.lineWidth = isOwn ? 2.5 : 2;
         ctx.strokeStyle = isOwn ? palette.main : withAlpha(palette.main, 0.55);
         ctx.stroke();
@@ -2800,13 +2930,17 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           ctx.stroke();
         }
         ctx.fillStyle = isOwn ? palette.light : withAlpha(palette.light, 0.72);
-        ctx.font = `bold ${String(Math.round(Math.max(11, sealRadius * 0.62)))}px monospace`;
+        ctx.font = `bold ${String(Math.round(Math.max(11, sealRadius * 0.62)))}px ${THEME.font}`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(palette.name, entry.x, entry.y);
+        ctx.fillText(palette.name, entry.x, entry.y - 3);
+        ctx.font = `9px ${THEME.font}`;
+        ctx.fillStyle = THEME.muted;
+        ctx.fillText(`${entry.yin}`, entry.x - sealRadius * 0.4, entry.y + sealRadius * 0.46);
+        ctx.fillText(`${entry.yang}`, entry.x + sealRadius * 0.4, entry.y + sealRadius * 0.46);
         if (entry.isKangJi) {
           ctx.fillStyle = BLESSED_COLOR;
-          ctx.font = `bold ${String(Math.round(Math.max(9, sealRadius * 0.42)))}px monospace`;
+          ctx.font = `bold ${String(Math.round(Math.max(9, sealRadius * 0.42)))}px ${THEME.font}`;
           ctx.fillText("亢", entry.x, entry.y - ringRadius - 13);
         }
         ctx.restore();
@@ -2834,7 +2968,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const y = this._layout.centerY + this._layout.outerRadius + this._layout.sealSize * 1.9;
       const gap = this._layout.sealSize * 2.6;
       ctx.save();
-      ctx.font = `bold ${String(fontSize)}px monospace`;
+      ctx.font = `bold ${String(fontSize)}px ${THEME.font}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillStyle = OWN_RING_COLOR;
@@ -2861,7 +2995,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.save();
       drawPill(ctx, x - width / 2, y - height / 2, width, height, height / 2, BOARD_BG_COLOR, edge);
       ctx.fillStyle = textColor;
-      ctx.font = `bold ${String(fontSize)}px monospace`;
+      ctx.font = `bold ${String(fontSize)}px ${THEME.font}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(text, x, y + 1);
@@ -2983,25 +3117,25 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const TOP_BAR_HEIGHT = 26;
   const BANNER_GAP = 10;
   const BANNER_HEIGHT = 68;
-  const PANEL_COLOR = "#111827";
-  const PANEL_BORDER = "#374151";
-  const ACTIVE_COLOR = "#f6e05e";
-  const EXTRA_TURN_COLOR = "#4fd1c5";
-  const TEXT_COLOR = "#e2e8f0";
-  const MUTED_COLOR = "#9ca3af";
-  const P1_COLOR = "#63b3ed";
-  const P2_COLOR = "#b794f4";
-  const HURT_COLOR = "#fc8181";
+  const PANEL_COLOR = THEME.panel;
+  const PANEL_BORDER = THEME.edge;
+  const ACTIVE_COLOR = THEME.gold;
+  const EXTRA_TURN_COLOR = THEME.jade;
+  const TEXT_COLOR = THEME.ivory;
+  const MUTED_COLOR = THEME.muted;
+  const P1_COLOR = THEME.jade;
+  const P2_COLOR = THEME.rival;
+  const HURT_COLOR = THEME.damage;
   const EXPRESSION_COLOR = {
     idle: null,
-    attack: "#f6e05e",
+    attack: THEME.gold,
     hurt: HURT_COLOR,
-    cast: "#4fd1c5",
+    cast: "#b7f0da",
     celebrate: "#ed8936",
     win: "#48bb78",
     lose: "#a0aec0"
   };
-  const PLAYER_LABEL = { P1: "玩家 P1", P2: "天道 P2" };
+  const PLAYER_LABEL = { P1: "弈者", P2: "天道" };
   const PLAYER_COLOR = { P1: P1_COLOR, P2: P2_COLOR };
   class CharacterView extends Container {
     constructor(options) {
@@ -3131,7 +3265,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     drawTurnStrip(ctx) {
       ctx.save();
       ctx.fillStyle = MUTED_COLOR;
-      ctx.font = "bold 12px monospace";
+      ctx.font = `bold 12px ${THEME.font}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(
@@ -3141,9 +3275,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       );
       if (this._isExtraTurn) {
         ctx.fillStyle = EXTRA_TURN_COLOR;
-        ctx.font = "bold 11px monospace";
-        ctx.textAlign = "left";
-        ctx.fillText("连动", SIDE_MARGIN, this._safeTop + TOP_BAR_HEIGHT / 2);
+        ctx.font = `bold 11px ${THEME.font}`;
+        ctx.textAlign = "right";
+        ctx.fillText("连动", this._width - SIDE_MARGIN, this._safeTop + TOP_BAR_HEIGHT / 2);
       }
       ctx.restore();
     }
@@ -3155,7 +3289,28 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const expression = this._expressions[player];
       const border = EXPRESSION_COLOR[expression] ?? (isCurrent ? ACTIVE_COLOR : isPlayer ? P1_COLOR : P2_COLOR);
       ctx.save();
-      drawPixelBox(ctx, frameX, frameY, AVATAR_WIDTH, AVATAR_HEIGHT, PANEL_COLOR, border, 2);
+      drawPanel(ctx, frameX, frameY, AVATAR_WIDTH, AVATAR_HEIGHT, border, PANEL_COLOR);
+      const aura = ctx.createRadialGradient(
+        frameX + AVATAR_WIDTH / 2,
+        frameY + 42,
+        2,
+        frameX + AVATAR_WIDTH / 2,
+        frameY + 42,
+        41
+      );
+      aura.addColorStop(0, isPlayer ? "rgba(128,214,186,0.18)" : "rgba(134,184,203,0.18)");
+      aura.addColorStop(1, "transparent");
+      ctx.fillStyle = aura;
+      ctx.beginPath();
+      ctx.arc(frameX + AVATAR_WIDTH / 2, frameY + 44, 39, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(216,184,118,0.20)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(frameX + AVATAR_WIDTH / 2, frameY + 41, 29, Math.PI, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = THEME.deep;
+      ctx.fillRect(frameX + 9, frameY + AVATAR_HEIGHT - 9, AVATAR_WIDTH - 18, 4);
       const spriteTop = CHARACTER_SPRITE_BOUNDS.top * CHARACTER_PIXEL_SIZE;
       const spriteHeight = (CHARACTER_SPRITE_BOUNDS.bottom - CHARACTER_SPRITE_BOUNDS.top) * CHARACTER_PIXEL_SIZE;
       ctx.save();
@@ -3169,14 +3324,14 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.textAlign = isPlayer ? "left" : "right";
       ctx.textBaseline = "middle";
       ctx.fillStyle = PLAYER_COLOR[player];
-      ctx.font = "bold 11px monospace";
+      ctx.font = `bold 11px ${THEME.font}`;
       ctx.fillText(PLAYER_LABEL[player], labelX, frameY + AVATAR_HEIGHT + 12);
       ctx.fillStyle = TEXT_COLOR;
-      ctx.font = "bold 12px monospace";
-      ctx.fillText(`${this._scores[player]} 分`, labelX, frameY + AVATAR_HEIGHT + 26);
+      ctx.font = `bold 12px ${THEME.font}`;
+      ctx.fillText(`得分 ${this._scores[player]}`, labelX, frameY + AVATAR_HEIGHT + 26);
       if (isCurrent) {
         ctx.fillStyle = this._isExtraTurn ? EXTRA_TURN_COLOR : ACTIVE_COLOR;
-        ctx.font = "bold 9px monospace";
+        ctx.font = `bold 9px ${THEME.font}`;
         ctx.fillText(
           this._isExtraTurn ? "连动行动中" : "行动中",
           labelX,
@@ -3199,10 +3354,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const height = 20;
       const x = isPlayer ? Math.min(frameX, Math.max(SIDE_MARGIN, frameX + AVATAR_WIDTH - width)) : Math.max(frameX + AVATAR_WIDTH - width, this._width - SIDE_MARGIN - width);
       const y = frameY - height - 4;
-      drawPixelRect(ctx, x, y, width, height, "#1a202c");
+      drawPanel(ctx, x, y, width, height, EXTRA_TURN_COLOR);
       drawPixelRect(ctx, x, y, width, 2, EXTRA_TURN_COLOR);
       ctx.fillStyle = TEXT_COLOR;
-      ctx.font = `${fontSize}px monospace`;
+      ctx.font = `${fontSize}px ${THEME.font}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(label, x + width / 2, y + height / 2 + 1);
@@ -3216,7 +3371,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const width = Math.max(80, this._width - 2 * x);
       const y = this._safeTop + TOP_BAR_HEIGHT + 4;
       ctx.save();
-      drawPixelBox(ctx, x, y, width, BANNER_HEIGHT, "#171e2e", PANEL_BORDER, 2);
+      drawPanel(ctx, x, y, width, BANNER_HEIGHT, PANEL_BORDER);
       const textWidth = width - 16;
       const mainLines = wrapText(this._bannerText, textWidth, 12, 2);
       const subLines = wrapText(this._bannerSubText, textWidth, 9, 2);
@@ -3227,13 +3382,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillStyle = TEXT_COLOR;
-      ctx.font = "bold 12px monospace";
+      ctx.font = `bold 12px ${THEME.font}`;
       for (const line of mainLines) {
         ctx.fillText(line, x + width / 2, cursor);
         cursor += mainLineHeight;
       }
       ctx.fillStyle = MUTED_COLOR;
-      ctx.font = "9px monospace";
+      ctx.font = `9px ${THEME.font}`;
       for (const line of subLines) {
         ctx.fillText(line, x + width / 2, cursor);
         cursor += subLineHeight;
@@ -3312,10 +3467,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const SERPENTINE_WAVES = 3;
   const IMPACT_MAX_RADIUS = 46;
   const ABSORB_SHRINK = 0.45;
-  const CORONA_COLOR = "#f6e05e";
+  const CORONA_COLOR = THEME.gold;
   const CORONA_RAY_COUNT = 12;
   const CORONA_RADIUS = 54;
-  const MOONLIGHT_COLOR = "#c3dafe";
+  const MOONLIGHT_COLOR = THEME.rival;
   const MOON_RADIUS = 48;
   class RuneFlightView extends Container {
     constructor(options) {
@@ -3617,8 +3772,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const SHAKE_BURST = 8;
   const SHAKE_ATTACK = 4;
   const SHAKE_SHOWDOWN = 6;
-  const BACKGROUND_COLOR = "#0a0d14";
-  const ARENA_GLOW_COLOR = "#1f2937";
   function describeAutoFlow(actionType) {
     switch (actionType) {
       case ActionType.AUTO:
@@ -3767,6 +3920,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.safeBottom = safeBottom ?? this.safeBottom;
       this.board.resize(width, height);
       this.characters.resize(width, this.safeTop);
+      this.actionBar.resize(width - ACTION_BAR_MARGIN * 2);
       this.placeActionBar();
       if (this._phase === "idle" || this._phase === "game-over") {
         this.replaceRuneFlight();
@@ -4117,22 +4271,84 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     /** 底色与中央道场光晕（各视图画在其上）。 */
     renderSelf(ctx) {
-      drawPixelRect(ctx, 0, 0, this.width, this.height, BACKGROUND_COLOR);
-      const radius = Math.min(this.width, this.height) * 0.45;
-      const gradient = ctx.createRadialGradient(
-        this.width / 2,
-        this.height / 2,
-        0,
-        this.width / 2,
-        this.height / 2,
-        radius
-      );
-      gradient.addColorStop(0, ARENA_GLOW_COLOR);
-      gradient.addColorStop(1, "transparent");
-      ctx.fillStyle = gradient;
+      drawLandscape(ctx, this.width, this.height);
+      ctx.save();
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = THEME.gold;
+      ctx.font = `bold 18px ${THEME.font}`;
+      ctx.fillText("归元弈", 18, this.safeTop + 13);
+      this.drawDecisionGuide(ctx);
+      ctx.restore();
+    }
+    /** 棋盘下方只呈现当前决策所需的提示；短屏自动收起状态图例。 */
+    drawDecisionGuide(ctx) {
+      const layout = this.board.layout;
+      const top = layout.centerY + layout.outerRadius + layout.sealSize + 40;
+      const bottom = this.height - this.safeBottom - (this.actionBar.visible ? this.actionBar.contentHeight : 0) - 14;
+      const room = bottom - top;
+      if (room < 22) {
+        if (room >= 12) {
+          ctx.textAlign = "center";
+          ctx.fillStyle = THEME.muted;
+          ctx.font = `10px ${THEME.font}`;
+          ctx.fillText("左阴 · 右阳", this.width / 2, top + 6);
+        }
+        return;
+      }
+      const state = this._turnManager.getState();
+      const stem = this._turnManager.getCurrentTianGan();
+      let heading;
+      let detail;
+      switch (this._phase) {
+        case "awaiting-player":
+          heading = "请选择法术";
+          detail = "循相生而化，沿相克而破";
+          break;
+        case "auto-pending":
+          heading = this.pendingAction === null ? "顺势而行" : describeAutoFlow(this.pendingAction.actionType);
+          detail = "点按任意处，加速结算";
+          break;
+        case "ai-thinking":
+          heading = "天道推演";
+          detail = "静观其变，蓄势待发";
+          break;
+        case "game-over":
+          heading = state.winner === "P1" ? "此弈 · 弈者胜" : "此弈 · 天道胜";
+          detail = `${describeEndReason(state.endReason)} · 点按再弈`;
+          break;
+        case "flying":
+          heading = "法术流转";
+          detail = "阴阳有序，生克有道";
+          break;
+        default:
+          heading = "天干降临";
+          detail = stem === null ? "阴阳调和，五行归元" : `${stem.name} · ${WUXING_PALETTE[stem.element].name}行 · ${stem.polarity === Polarity.YANG ? "阳" : "阴"}`;
+      }
+      ctx.textAlign = "center";
+      ctx.fillStyle = THEME.ivory;
+      ctx.font = `bold ${room < 50 ? 13 : 17}px ${THEME.font}`;
+      ctx.fillText(heading, this.width / 2, top + 12);
+      if (room < 50) return;
+      ctx.fillStyle = THEME.muted;
+      ctx.font = `12px ${THEME.font}`;
+      ctx.fillText(detail, this.width / 2, top + 37);
+      if (room < 105 || this._phase === "game-over") return;
+      ctx.strokeStyle = THEME.edge;
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(this.width / 2, this.height / 2, radius, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(this.width * 0.16, top + 60);
+      ctx.lineTo(this.width * 0.84, top + 60);
+      ctx.stroke();
+      ctx.font = `10px ${THEME.font}`;
+      const labels = ["−1 道损", "0 虚空", "1 点亮", "2 加持"];
+      const colors = [THEME.damage, THEME.muted, THEME.jade, THEME.gold];
+      for (let index = 0; index < labels.length; index += 1) {
+        ctx.fillStyle = colors[index];
+        ctx.fillText(labels[index], this.width * (0.2 + index * 0.2), top + 78);
+      }
+      ctx.fillStyle = THEME.muted;
+      ctx.fillText("左阴 · 右阳　两侧皆点亮即归一", this.width / 2, top + 99);
     }
   }
   function opponentOf(player) {

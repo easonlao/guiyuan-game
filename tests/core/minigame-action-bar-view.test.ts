@@ -276,3 +276,32 @@ describe('ActionBarView: 重排与生命周期', () => {
     expect(view.getButtons().map((button) => button.disabled)).toEqual([false, false]);
   });
 });
+
+describe('ActionBarView: viewport resize', () => {
+  it.each([320, 390])(
+    'reflows visible controls and hit regions within a %ipx viewport',
+    (viewportWidth) => {
+      const manager = seededManager({ yin: 0, yang: 1 });
+      manager.startTurn();
+      const view = new ActionBarView({ turnManager: manager, width: 432, y: 440 });
+      view.x = 14;
+      view.refresh();
+      const previousButtons = [...view.getButtons()];
+      view.resize(viewportWidth - 28);
+      expect(view.getButtons()).toEqual(previousButtons);
+      for (const button of view.getButtons()) {
+        expect(view.x + button.x - button.width / 2).toBeGreaterThanOrEqual(14);
+        expect(view.x + button.x + button.width / 2).toBeLessThanOrEqual(viewportWidth - 14);
+        expect(button.hitArea?.width).toBe(button.width);
+        expect(button.height).toBeGreaterThanOrEqual(44);
+      }
+      const input = mountView(view);
+      const action = manager.getAvailableActions()[1];
+      const executeSpy = vi.spyOn(manager, 'executeAction');
+      const point = centerOf(view, 1);
+      input.handleTouchStart(point.x, point.y);
+      input.handleTouchEnd(point.x, point.y);
+      expect(executeSpy).toHaveBeenCalledWith(action);
+    },
+  );
+});

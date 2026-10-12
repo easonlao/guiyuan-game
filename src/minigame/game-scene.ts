@@ -29,7 +29,8 @@ import {
 } from '../core/types/domain.js';
 import { formatActionButton, getActionTargetElement } from './action-button-formatter.js';
 import { isAttackAction } from './action-semantics.js';
-import { drawPixelRect, WUXING_PALETTE } from './pixel-art.js';
+import { WUXING_PALETTE } from './pixel-art.js';
+import { drawLandscape, THEME } from './theme.js';
 import { Container } from './scene/container.js';
 import { EASINGS, Tween } from './scene/tween.js';
 import { ActionBarView } from './views/action-bar-view.js';
@@ -109,10 +110,6 @@ const SHAKE_DURATION = 0.28;
 const SHAKE_BURST = 8;
 const SHAKE_ATTACK = 4;
 const SHAKE_SHOWDOWN = 6;
-
-/** 场景底色与中央道场光晕。 */
-const BACKGROUND_COLOR = '#0a0d14';
-const ARENA_GLOW_COLOR = '#1f2937';
 
 /**
  * 唯一候选自动流转的播报副文案（ADR 0008 / GDD §2.4）。
@@ -283,6 +280,7 @@ export class GameScene extends Container {
     this.safeBottom = safeBottom ?? this.safeBottom;
     this.board.resize(width, height);
     this.characters.resize(width, this.safeTop);
+    this.actionBar.resize(width - ACTION_BAR_MARGIN * 2);
     this.placeActionBar();
     if (this._phase === 'idle' || this._phase === 'game-over') {
       this.replaceRuneFlight();
@@ -689,22 +687,98 @@ export class GameScene extends Container {
 
   /** 底色与中央道场光晕（各视图画在其上）。 */
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
-    drawPixelRect(ctx, 0, 0, this.width, this.height, BACKGROUND_COLOR);
-    const radius = Math.min(this.width, this.height) * 0.45;
-    const gradient = ctx.createRadialGradient(
-      this.width / 2,
-      this.height / 2,
-      0,
-      this.width / 2,
-      this.height / 2,
-      radius,
-    );
-    gradient.addColorStop(0, ARENA_GLOW_COLOR);
-    gradient.addColorStop(1, 'transparent');
-    ctx.fillStyle = gradient;
+    drawLandscape(ctx, this.width, this.height);
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = THEME.gold;
+    ctx.font = `bold 18px ${THEME.font}`;
+    ctx.fillText('归元弈', 18, this.safeTop + 13);
+    this.drawDecisionGuide(ctx);
+    ctx.restore();
+  }
+
+  /** 棋盘下方只呈现当前决策所需的提示；短屏自动收起状态图例。 */
+  private drawDecisionGuide(ctx: CanvasRenderingContext2D): void {
+    const layout = this.board.layout;
+    const top = layout.centerY + layout.outerRadius + layout.sealSize + 40;
+    const bottom =
+      this.height -
+      this.safeBottom -
+      (this.actionBar.visible ? this.actionBar.contentHeight : 0) -
+      14;
+    const room = bottom - top;
+    if (room < 22) {
+      if (room >= 12) {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = THEME.muted;
+        ctx.font = `10px ${THEME.font}`;
+        ctx.fillText('左阴 · 右阳', this.width / 2, top + 6);
+      }
+      return;
+    }
+
+    const state = this._turnManager.getState();
+    const stem = this._turnManager.getCurrentTianGan();
+    let heading: string;
+    let detail: string;
+    switch (this._phase) {
+      case 'awaiting-player':
+        heading = '请选择法术';
+        detail = '循相生而化，沿相克而破';
+        break;
+      case 'auto-pending':
+        heading =
+          this.pendingAction === null
+            ? '顺势而行'
+            : describeAutoFlow(this.pendingAction.actionType);
+        detail = '点按任意处，加速结算';
+        break;
+      case 'ai-thinking':
+        heading = '天道推演';
+        detail = '静观其变，蓄势待发';
+        break;
+      case 'game-over':
+        heading = state.winner === 'P1' ? '此弈 · 弈者胜' : '此弈 · 天道胜';
+        detail = `${describeEndReason(state.endReason)} · 点按再弈`;
+        break;
+      case 'flying':
+        heading = '法术流转';
+        detail = '阴阳有序，生克有道';
+        break;
+      default:
+        heading = '天干降临';
+        detail =
+          stem === null
+            ? '阴阳调和，五行归元'
+            : `${stem.name} · ${WUXING_PALETTE[stem.element].name}行 · ${stem.polarity === Polarity.YANG ? '阳' : '阴'}`;
+    }
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = THEME.ivory;
+    ctx.font = `bold ${room < 50 ? 13 : 17}px ${THEME.font}`;
+    ctx.fillText(heading, this.width / 2, top + 12);
+    if (room < 50) return;
+    ctx.fillStyle = THEME.muted;
+    ctx.font = `12px ${THEME.font}`;
+    ctx.fillText(detail, this.width / 2, top + 37);
+    if (room < 105 || this._phase === 'game-over') return;
+
+    ctx.strokeStyle = THEME.edge;
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.arc(this.width / 2, this.height / 2, radius, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(this.width * 0.16, top + 60);
+    ctx.lineTo(this.width * 0.84, top + 60);
+    ctx.stroke();
+    ctx.font = `10px ${THEME.font}`;
+    const labels = ['−1 道损', '0 虚空', '1 点亮', '2 加持'];
+    const colors = [THEME.damage, THEME.muted, THEME.jade, THEME.gold];
+    for (let index = 0; index < labels.length; index += 1) {
+      ctx.fillStyle = colors[index];
+      ctx.fillText(labels[index], this.width * (0.2 + index * 0.2), top + 78);
+    }
+    ctx.fillStyle = THEME.muted;
+    ctx.fillText('左阴 · 右阳　两侧皆点亮即归一', this.width / 2, top + 99);
   }
 }
 

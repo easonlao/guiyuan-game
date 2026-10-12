@@ -136,6 +136,8 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 
 ### 4.6 小游戏真机验收 (QA Runbook)
 
+开发时可运行 `npm run preview:minigame` 在浏览器检查表现层布局与真实对局。入口位于 `tools/minigame-preview/`，直接复用 `GameScene` / `InputManager`，以 Pointer Events 转换触摸坐标；支持 `?seed=42` 固定种子、空格加速自动结算、R 重开。该宿主不进入微信构建产物，浏览器检查后仍按下列流程完成微信模拟器与真机验收。
+
 底层逻辑验证通过后，表现层集成按下面步骤验收（验收口径归 `docs/SRS.md` §5）：
 
 1.  `minigame/game.js` 已入库，通常可直接进第 2 步；改过 `src/minigame/` 或 `src/core/` 后先执行 `npm run build:minigame` 重建（或 `npm run dev:minigame` 启动监听）。忘了重建会被 `npm run check:artifact` 拦下（理由见 ADR 0014）。

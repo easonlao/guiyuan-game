@@ -1039,6 +1039,34 @@ describe('GameScene：归一庆祝由 node:stateChanged 触发', () => {
 });
 
 describe('GameScene：视口自适应', () => {
+  it('抉择中缩窄屏幕后按钮仍在安全边界内且右列可触摸出手', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      width: 390,
+      height: 844,
+      initialState: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 0, yang: 1 } } }),
+      prng: scriptedPrng([0]),
+    });
+    scene.start();
+    advanceUntil(scene, () => scene.phase === 'awaiting-player');
+    expect(scene.phase).toBe('awaiting-player');
+    scene.resize(320, 568, 24, 20);
+    const buttons = scene.actionBar.getButtons();
+    expect(buttons.length).toBeGreaterThan(1);
+    for (const button of buttons) {
+      const point = buttonScreenPosition(button);
+      expect(point.x - button.width / 2).toBeGreaterThanOrEqual(14);
+      expect(point.x + button.width / 2).toBeLessThanOrEqual(306);
+      expect(point.y + button.height / 2).toBeLessThanOrEqual(548);
+    }
+    const ctx = new RecordingContext();
+    scene.render(ctx.asContext());
+    expect(ctx.texts.some((entry) => entry.text === '左阴 · 右阳')).toBe(true);
+    tapButton(new InputManager(scene), buttons[1]);
+    expect(scene.phase).toBe('flying');
+    scene.dispose();
+  });
+
   it('空闲时重建符文层并重新排布法盘与操作台', () => {
     const scene = new GameScene({ ...FAST_TIMING, initialState: createInitialGameState() });
     const before = scene.runeFlight;

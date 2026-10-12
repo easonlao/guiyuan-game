@@ -12,6 +12,7 @@ import {
 import { isNodeGuiYi, isNodeKangJi } from '../../core/logic/State.js';
 import { isAttackAction } from '../action-semantics.js';
 import { WUXING_PALETTE } from '../pixel-art.js';
+import { THEME } from '../theme.js';
 import { estimateTextWidth } from '../text-metrics.js';
 import { Container } from '../scene/container.js';
 
@@ -117,22 +118,22 @@ export interface BoardActivePath {
   readonly from: WuXing;
 }
 
-/* 法盘配色（仅本视图使用，不进共享主题模块）。 */
-const BOARD_BG_COLOR = '#111827';
-const VOID_COLOR = '#374151';
-const BLESSED_COLOR = '#f6e05e';
-const GUI_YI_COLOR = '#ecc94b';
+/** Ring ownership remains warm/solid and cool/dashed (ADR 0015). */
+const BOARD_BG_COLOR = THEME.deep;
+const VOID_COLOR = THEME.edge;
+const BLESSED_COLOR = THEME.gold;
+const GUI_YI_COLOR = THEME.gold;
 
 /**
  * 环带：内环暖色实线带（己方盘）、外环冷色虚线带（对方盘）。
  * 环带本身承载「这块盘是谁的」，不再用两个大面积底晕——底晕会互相叠成一团浑色。
  */
-const OWN_BAND_COLOR = 'rgba(183, 121, 31, 0.34)';
-const OWN_BAND_EDGE = '#b7791f';
-const OWN_RING_COLOR = '#d69e2e';
-const OPPONENT_BAND_COLOR = 'rgba(43, 108, 176, 0.26)';
-const OPPONENT_BAND_EDGE = '#2b6cb0';
-const OPPONENT_RING_COLOR = '#4299e1';
+const OWN_BAND_COLOR = 'rgba(216,184,118,0.16)';
+const OWN_BAND_EDGE = THEME.goldDim;
+const OWN_RING_COLOR = THEME.gold;
+const OPPONENT_BAND_COLOR = 'rgba(134,184,203,0.12)';
+const OPPONENT_BAND_EDGE = THEME.edge;
+const OPPONENT_RING_COLOR = THEME.rival;
 /** 环带宽度占主印半径的比例。 */
 const OWN_BAND_WIDTH_RATIO = 0.72;
 const OPPONENT_BAND_WIDTH_RATIO = 0.62;
@@ -147,8 +148,8 @@ const CONNECTION_IDLE: Record<BoardConnectionKind, string> = {
   attack: 'rgba(229, 62, 62, 0.22)',
 };
 const CONNECTION_ACTIVE: Record<BoardConnectionKind, string> = {
-  generation: '#48bb78',
-  attack: '#e53e3e',
+  generation: THEME.jade,
+  attack: THEME.damage,
 };
 
 /** 一条生克连线的投影视图。 */
@@ -355,10 +356,42 @@ export class BoardView extends Container {
 
   /** 先画环带与连线，再画主印，最后叠加环归属标签（标签压在最上层）。 */
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
+    this._drawEngraving(ctx);
     this._drawRingBands(ctx);
     this._drawConnections(ctx);
     this._drawSeals(ctx);
     this._drawRingLabels(ctx);
+  }
+
+  /** Decorative concentric engraving has no edges between elements. */
+  private _drawEngraving(ctx: CanvasRenderingContext2D): void {
+    const { centerX: x, centerY: y, outerRadius, sealSize } = this._layout;
+    const radius = outerRadius + sealSize * 1.52;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(8,27,34,0.72)';
+    ctx.fill();
+    for (const inset of [0, 5, 10]) {
+      ctx.beginPath();
+      ctx.arc(x, y, radius - inset, 0, Math.PI * 2);
+      ctx.strokeStyle = inset === 5 ? 'rgba(216,184,118,0.28)' : 'rgba(128,214,186,0.10)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    for (let index = 0; index < 60; index += 1) {
+      const angle = (index * Math.PI) / 30;
+      const length = index % 5 === 0 ? 7 : 3;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(angle) * (radius - 5), y + Math.sin(angle) * (radius - 5));
+      ctx.lineTo(
+        x + Math.cos(angle) * (radius - 5 - length),
+        y + Math.sin(angle) * (radius - 5 - length),
+      );
+      ctx.strokeStyle = 'rgba(216,184,118,0.28)';
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   /**
@@ -415,6 +448,17 @@ export class BoardView extends Container {
         ctx.setLineDash([6, 5]);
       }
       ctx.stroke();
+      if (line.isActive) {
+        const angle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
+        const x = line.x1 + (line.x2 - line.x1) * 0.56;
+        const y = line.y1 + (line.y2 - line.y1) * 0.56;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(x - Math.cos(angle - 0.6) * 7, y - Math.sin(angle - 0.6) * 7);
+        ctx.lineTo(x, y);
+        ctx.lineTo(x - Math.cos(angle + 0.6) * 7, y - Math.sin(angle + 0.6) * 7);
+        ctx.stroke();
+      }
       ctx.restore();
     }
   }
@@ -432,10 +476,16 @@ export class BoardView extends Container {
       ctx.save();
       ctx.beginPath();
       ctx.arc(entry.x, entry.y, sealRadius, 0, Math.PI * 2);
-      ctx.fillStyle = isOwn
-        ? withAlpha(palette.main, OWN_SEAL_FILL_ALPHA)
-        : 'rgba(10, 13, 20, 0.92)';
+      ctx.fillStyle = isOwn ? withAlpha(palette.main, OWN_SEAL_FILL_ALPHA) : THEME.deep;
       ctx.fill();
+      // A light bevel and recessed face give each seal a physical jade setting.
+      ctx.beginPath();
+      ctx.arc(entry.x, entry.y, sealRadius - 3, 0, Math.PI * 2);
+      ctx.strokeStyle = withAlpha(palette.light, isOwn ? 0.24 : 0.12);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(entry.x, entry.y, sealRadius, 0, Math.PI * 2);
       ctx.lineWidth = isOwn ? 2.5 : 2;
       ctx.strokeStyle = isOwn ? palette.main : withAlpha(palette.main, 0.55);
       ctx.stroke();
@@ -453,14 +503,19 @@ export class BoardView extends Container {
       }
 
       ctx.fillStyle = isOwn ? palette.light : withAlpha(palette.light, 0.72);
-      ctx.font = `bold ${String(Math.round(Math.max(11, sealRadius * 0.62)))}px monospace`;
+      ctx.font = `bold ${String(Math.round(Math.max(11, sealRadius * 0.62)))}px ${THEME.font}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(palette.name, entry.x, entry.y);
+      ctx.fillText(palette.name, entry.x, entry.y - 3);
+      // Explicit polarity and numeric levels supplement the shape-coded half-rings.
+      ctx.font = `9px ${THEME.font}`;
+      ctx.fillStyle = THEME.muted;
+      ctx.fillText(`${entry.yin}`, entry.x - sealRadius * 0.4, entry.y + sealRadius * 0.46);
+      ctx.fillText(`${entry.yang}`, entry.x + sealRadius * 0.4, entry.y + sealRadius * 0.46);
 
       if (entry.isKangJi) {
         ctx.fillStyle = BLESSED_COLOR;
-        ctx.font = `bold ${String(Math.round(Math.max(9, sealRadius * 0.42)))}px monospace`;
+        ctx.font = `bold ${String(Math.round(Math.max(9, sealRadius * 0.42)))}px ${THEME.font}`;
         ctx.fillText('亢', entry.x, entry.y - ringRadius - 13);
       }
       ctx.restore();
@@ -490,7 +545,7 @@ export class BoardView extends Container {
     const y = this._layout.centerY + this._layout.outerRadius + this._layout.sealSize * 1.9;
     const gap = this._layout.sealSize * 2.6;
     ctx.save();
-    ctx.font = `bold ${String(fontSize)}px monospace`;
+    ctx.font = `bold ${String(fontSize)}px ${THEME.font}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = OWN_RING_COLOR;
@@ -525,7 +580,7 @@ export class BoardView extends Container {
     ctx.save();
     drawPill(ctx, x - width / 2, y - height / 2, width, height, height / 2, BOARD_BG_COLOR, edge);
     ctx.fillStyle = textColor;
-    ctx.font = `bold ${String(fontSize)}px monospace`;
+    ctx.font = `bold ${String(fontSize)}px ${THEME.font}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, x, y + 1);

@@ -16,6 +16,7 @@
 import { PlayerId, Polarity, TianGanInfo, WuXing } from '../../core/types/domain.js';
 import { BoardView } from './board-view.js';
 import { drawCenterTianGanRune, drawImpactEffect, WUXING_PALETTE } from '../pixel-art.js';
+import { THEME } from '../theme.js';
 import { Container } from '../scene/container.js';
 import { Node } from '../scene/node.js';
 import { EASINGS, Tween, TweenSequence } from '../scene/tween.js';
@@ -61,10 +62,10 @@ const IMPACT_MAX_RADIUS = 46;
 const ABSORB_SHRINK = 0.45;
 
 /* 光晕配色（仅本视图使用，不进共享主题模块）。 */
-const CORONA_COLOR = '#f6e05e';
+const CORONA_COLOR = THEME.gold;
 const CORONA_RAY_COUNT = 12;
 const CORONA_RADIUS = 54;
-const MOONLIGHT_COLOR = '#c3dafe';
+const MOONLIGHT_COLOR = THEME.rival;
 const MOON_RADIUS = 48;
 
 export class RuneFlightView extends Container {
