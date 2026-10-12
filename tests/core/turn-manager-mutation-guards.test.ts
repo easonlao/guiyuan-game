@@ -53,10 +53,11 @@ function autoManager() {
 }
 
 /** 中位态盘：P1 木归一，抽甲(木阳) 产出 ATK / BURST / BURST_ATK 候选 */
-function atkManager() {
+function atkManager(eventBus?: EventBus) {
   const manager = new TurnManager({
     initialState: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } } }),
     prng: prngFor(0),
+    eventBus,
   });
   const candidates = manager.startTurn();
   return { manager, candidates };
@@ -186,12 +187,13 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
 
   it('拒绝 consumePolarity 与 BURST 候选不符的动作', () => {
     const { manager } = atkManager();
+    // BURST 候选不携带 polarity（目标侧在解析时逐次决定，见 GDD §2.3 / LLD §3.1），
+    // 因此这里不传 polarity——否则会先被 polarity 不匹配拒绝，测不到 consumePolarity 守卫。
     const res = manager.executeAction({
       actionType: ActionType.BURST,
       player: 'P1',
       sourceElement: WuXing.WOOD,
       consumePolarity: Polarity.YANG,
-      polarity: Polarity.YIN,
     });
     expect(res.success).toBe(false);
   });
@@ -208,25 +210,32 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
   });
 
   it('拒绝缺少 sourceElement 的 BURST 动作', () => {
-    const { manager } = atkManager();
+    const bus = new EventBus();
+    const execute = vi.fn();
+    bus.on('action:execute', execute);
+    const { manager } = atkManager(bus);
     const res = manager.executeAction({
       actionType: ActionType.BURST,
       player: 'P1',
       consumePolarity: Polarity.YIN,
-      polarity: Polarity.YIN,
     });
     expect(res.success).toBe(false);
+    // 候选匹配守卫必须在进入解析器前拒绝：action:execute 是解析器路径的首个可观察副作用。
+    expect(execute).not.toHaveBeenCalled();
   });
 
   it('拒绝缺少 sourceElement 的 BURST_ATK 动作', () => {
-    const { manager } = atkManager();
+    const bus = new EventBus();
+    const execute = vi.fn();
+    bus.on('action:execute', execute);
+    const { manager } = atkManager(bus);
     const res = manager.executeAction({
       actionType: ActionType.BURST_ATK,
       player: 'P1',
       consumePolarity: Polarity.YANG,
-      polarity: Polarity.YIN,
     });
     expect(res.success).toBe(false);
+    expect(execute).not.toHaveBeenCalled();
   });
 });
 

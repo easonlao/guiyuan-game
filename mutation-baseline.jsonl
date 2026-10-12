@@ -3,22 +3,22 @@
 # 每行一条 JSON 记录：{"file","line","column","mutatorName","replacement"}，已按 file/line/column/mutatorName/replacement 稳定排序。
 # 身份键：{file, mutatorName, line, column, replacement}。不要用 Stryker 的 id（单次报告内才唯一）。
 {"file":"src/core/logic/ActionCandidates.ts","line":119,"column":7,"mutatorName":"ConditionalExpression","replacement":"true"}
-{"file":"src/core/logic/ActionResolver.ts","line":120,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
-{"file":"src/core/logic/ActionResolver.ts","line":129,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
-{"file":"src/core/logic/ActionResolver.ts","line":129,"column":13,"mutatorName":"EqualityOperator","replacement":"prevLevel > 2"}
-{"file":"src/core/logic/ActionResolver.ts","line":151,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
-{"file":"src/core/logic/ActionResolver.ts","line":192,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
-{"file":"src/core/logic/ActionResolver.ts","line":202,"column":13,"mutatorName":"ConditionalExpression","replacement":"true"}
-{"file":"src/core/logic/ActionResolver.ts","line":202,"column":13,"mutatorName":"EqualityOperator","replacement":"prevLevel <= 2"}
-{"file":"src/core/logic/ActionResolver.ts","line":221,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
-{"file":"src/core/logic/ActionResolver.ts","line":247,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
-{"file":"src/core/logic/ActionResolver.ts","line":287,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
-{"file":"src/core/logic/ActionResolver.ts","line":329,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
-{"file":"src/core/logic/ActionResolver.ts","line":357,"column":9,"mutatorName":"ConditionalExpression","replacement":"false"}
-{"file":"src/core/logic/ActionResolver.ts","line":372,"column":9,"mutatorName":"ConditionalExpression","replacement":"true"}
-{"file":"src/core/logic/ActionResolver.ts","line":372,"column":9,"mutatorName":"EqualityOperator","replacement":"guiYiDelta >= 0"}
-{"file":"src/core/logic/ActionResolver.ts","line":445,"column":15,"mutatorName":"ConditionalExpression","replacement":"false"}
-{"file":"src/core/logic/ActionResolver.ts","line":445,"column":15,"mutatorName":"EqualityOperator","replacement":"finalActiveScore >= finalOpponentScore"}
+{"file":"src/core/logic/ActionResolver.ts","line":124,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":133,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":133,"column":13,"mutatorName":"EqualityOperator","replacement":"prevLevel > 2"}
+{"file":"src/core/logic/ActionResolver.ts","line":155,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":196,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":206,"column":13,"mutatorName":"ConditionalExpression","replacement":"true"}
+{"file":"src/core/logic/ActionResolver.ts","line":206,"column":13,"mutatorName":"EqualityOperator","replacement":"prevLevel <= 2"}
+{"file":"src/core/logic/ActionResolver.ts","line":225,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":251,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":297,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":346,"column":13,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":374,"column":9,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":389,"column":9,"mutatorName":"ConditionalExpression","replacement":"true"}
+{"file":"src/core/logic/ActionResolver.ts","line":389,"column":9,"mutatorName":"EqualityOperator","replacement":"guiYiDelta >= 0"}
+{"file":"src/core/logic/ActionResolver.ts","line":462,"column":15,"mutatorName":"ConditionalExpression","replacement":"false"}
+{"file":"src/core/logic/ActionResolver.ts","line":462,"column":15,"mutatorName":"EqualityOperator","replacement":"finalActiveScore >= finalOpponentScore"}
 {"file":"src/core/logic/EventBus.ts","line":79,"column":9,"mutatorName":"ConditionalExpression","replacement":"true"}
 {"file":"src/core/logic/ScoreCalculator.ts","line":162,"column":9,"mutatorName":"ConditionalExpression","replacement":"false"}
 {"file":"src/core/logic/State.ts","line":150,"column":44,"mutatorName":"ConditionalExpression","replacement":"true"}

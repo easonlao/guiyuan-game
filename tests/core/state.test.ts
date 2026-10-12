@@ -177,5 +177,20 @@ describe('State Management & Boundary Rules', () => {
         }),
       ).toBe(false);
     });
+
+    it('should return false for a yang stem that generates the unlighted element (TRANS requires a yin stem)', () => {
+      const board: BoardState = {
+        ...fullyLitBoard(),
+        [WuXing.WOOD]: { yin: 0, yang: 1 },
+      };
+      // 未点亮侧为 木·阴；抽中 壬 (水·阳)：水虽生木，但化气只认阴天干
+      expect(
+        canTianGanLightUnlightedSide(board, {
+          name: '壬',
+          element: WuXing.WATER,
+          polarity: Polarity.YANG,
+        }),
+      ).toBe(false);
+    });
   });
 });
