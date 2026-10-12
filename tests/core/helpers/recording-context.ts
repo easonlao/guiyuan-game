@@ -31,6 +31,15 @@ export class RecordingContext {
   public shadowBlur = 0;
   /** 按调用顺序记录全部指令名（含 save / translate 这类状态指令）。 */
   public readonly calls: string[] = [];
+  public readonly gradients: { stops: { offset: number; color: string }[] }[] = [];
+  public readonly arcs: {
+    x: number;
+    y: number;
+    radius: number;
+    start: number;
+    end: number;
+    anticlockwise: boolean;
+  }[] = [];
   public readonly images: {
     image: CanvasImageSource;
     alpha: number;
@@ -92,6 +101,17 @@ export class RecordingContext {
     _anticlockwise?: boolean,
   ): void {
     this.calls.push('arc');
+    this.arcs.push({
+      x: _x,
+      y: _y,
+      radius: _radius,
+      start: _start,
+      end: _end,
+      anticlockwise: _anticlockwise ?? false,
+    });
+  }
+  public clip(): void {
+    this.calls.push('clip');
   }
   public rect(_x: number, _y: number, _w: number, _h: number): void {
     this.calls.push('rect');
@@ -175,7 +195,11 @@ export class RecordingContext {
     _r1: number,
   ): CanvasGradient {
     this.calls.push('createRadialGradient');
-    return { addColorStop: () => {} } as unknown as CanvasGradient;
+    const gradient = { stops: [] as { offset: number; color: string }[] };
+    this.gradients.push(gradient);
+    return {
+      addColorStop: (offset: number, color: string) => gradient.stops.push({ offset, color }),
+    } as unknown as CanvasGradient;
   }
   public asContext(): CanvasRenderingContext2D {
     return this as unknown as CanvasRenderingContext2D;

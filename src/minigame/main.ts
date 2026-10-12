@@ -20,6 +20,7 @@ declare const wx: WechatCharacterImageHost & {
       height: number;
     };
   };
+  getMenuButtonBoundingClientRect?: () => { bottom: number };
   onTouchStart: (callback: (e: TouchEventLike) => void) => void;
   onTouchEnd: (callback: (e: TouchEventLike) => void) => void;
 };
@@ -44,7 +45,19 @@ export function initMiniGame(): void {
 
   const sysInfo = wx.getSystemInfoSync();
   const { windowWidth, windowHeight, pixelRatio } = sysInfo;
-  const safeTop = sysInfo.safeArea ? sysInfo.safeArea.top : sysInfo.statusBarHeight || 20;
+  let safeTop = sysInfo.safeArea ? sysInfo.safeArea.top : sysInfo.statusBarHeight || 20;
+  try {
+    const menu = wx.getMenuButtonBoundingClientRect?.();
+    if (
+      menu !== undefined &&
+      Number.isFinite(menu.bottom) &&
+      menu.bottom > 0 &&
+      menu.bottom < windowHeight / 2
+    )
+      safeTop = Math.max(safeTop, menu.bottom + 8);
+  } catch {
+    /* Older hosts may expose this API without implementing it. */
+  }
   const safeBottom = sysInfo.safeArea ? Math.max(0, windowHeight - sysInfo.safeArea.bottom) : 10;
 
   const canvas = wx.createCanvas();

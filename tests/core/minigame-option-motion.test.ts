@@ -87,7 +87,8 @@ describe('Option animation timing', () => {
       view.update(0.4);
       const landing = new RecordingContext();
       view.render(landing.asContext());
-      expect(landing.drawCallCount()).toBeGreaterThan(0);
+      if (actionType === ActionType.PASS) expect(landing.drawCallCount()).toBe(0);
+      else expect(landing.drawCallCount()).toBeGreaterThan(0);
       expect(landing.calls.filter((call) => call === 'save').length).toBe(
         landing.calls.filter((call) => call === 'restore').length,
       );
@@ -133,9 +134,13 @@ describe('Scene landing and character motion', () => {
     scene.update(0.05);
     expect(scene.board.getSlot('P2', WuXing.EARTH, Polarity.YIN).level).toBe(0);
     expect(scene.characters.getExpression('P2')).toBe('hurt');
-    expect(Math.abs(scene.x) + Math.abs(scene.y)).toBeGreaterThan(0);
+    expect(scene.x).toBe(0);
+    expect(scene.y).toBe(0);
     scene.update(0.36);
     expect(scene.characters.getExpression('P1')).toBe('idle');
+    expect(scene.phase).toBe('result');
+    expect(scene.characters.currentPlayer).toBe('P1');
+    scene.update(0.66);
     expect(scene.characters.currentPlayer).toBe('P2');
   });
 
@@ -240,7 +245,7 @@ describe('Animation continuity and target identity', () => {
     expect(scale()).toBeCloseTo(0.62);
   });
 
-  it('second landing uses the target element and the strong-attack pattern', () => {
+  it('a second changed side receives one elemental pulse without extra rays', () => {
     const board = new BoardView();
     const view = new RuneFlightView({ board });
     view.playEntrance(stem);
@@ -252,11 +257,11 @@ describe('Animation continuity and target identity', () => {
     const ctx = new RecordingContext();
     view.render(ctx.asContext());
     const target = board.getSlot('P2', WuXing.EARTH, Polarity.YANG);
-    const strokes = ctx.paths.filter(
-      (path) => path.offset.x === target.x && path.offset.y === target.y,
+    expect(ctx.arcs.some((arc) => arc.x === target.x && arc.y === target.y)).toBe(true);
+    const pulse = ctx.paths.find(
+      (path) => path.offset.x === 0 && path.offset.y === 0 && path.strokeWidth === 2,
     );
-    expect(strokes.length).toBeGreaterThanOrEqual(8);
-    expect(strokes.every((path) => path.color === WUXING_PALETTE[WuXing.EARTH].light)).toBe(true);
-    expect(strokes.some((path) => path.points.length === 3)).toBe(true);
+    expect(pulse?.color).toBe(WUXING_PALETTE[WuXing.EARTH].light);
+    expect(ctx.paths.every((path) => path.points.length === 0)).toBe(true);
   });
 });

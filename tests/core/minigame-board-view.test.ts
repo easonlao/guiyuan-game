@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { BoardView, resolveActionPath } from '../../src/minigame/views/board-view.js';
+import {
+  BoardView,
+  drawYinYangFish,
+  resolveActionPath,
+} from '../../src/minigame/views/board-view.js';
 import { ActionType, PlayerId, Polarity, WuXing } from '../../src/core/types/domain.js';
 import { WUXING_PALETTE } from '../../src/minigame/pixel-art.js';
 import { boardWith } from '../../tools/BoardFixture.js';
@@ -340,11 +344,11 @@ describe('Minigame BoardView: 归一分层与进度读数', () => {
 
     const ctx = new RecordingContext();
     view.render(ctx.asContext());
-    expect(ctx.texts.map((entry) => entry.text)).toContain('己 3/5');
-    expect(ctx.texts.map((entry) => entry.text)).toContain('敌 1/5');
+    expect(ctx.texts.map((entry) => entry.text)).toContain('你 3/5');
+    expect(ctx.texts.map((entry) => entry.text)).toContain('天道 1/5');
     // 环级归属徽记：己方盘与对方盘各一个（不是主印上的五行名）。
-    expect(ctx.texts.map((entry) => entry.text)).toContain('己');
-    expect(ctx.texts.map((entry) => entry.text)).toContain('敌');
+    expect(ctx.texts.map((entry) => entry.text)).toContain('你');
+    expect(ctx.texts.map((entry) => entry.text)).toContain('天道');
   });
 });
 
@@ -451,12 +455,12 @@ describe('Minigame BoardView: 环带与归元图例版面', () => {
     [300, 900],
   ];
 
-  /** 盘下方归元图例的两个文字锚点（「己 x/5」「敌 y/5」）。 */
+  /** 盘下方归元图例的两个文字锚点（「你 x/5」「天道 y/5」）。 */
   function legendTexts(view: BoardView): { x: number; y: number; texts: string[] } {
     const ctx = new RecordingContext();
     view.render(ctx.asContext());
-    const own = ctx.texts.find((entry) => /^己 \d\/5$/.test(entry.text));
-    const opponent = ctx.texts.find((entry) => /^敌 \d\/5$/.test(entry.text));
+    const own = ctx.texts.find((entry) => /^你 \d\/5$/.test(entry.text));
+    const opponent = ctx.texts.find((entry) => /^天道 \d\/5$/.test(entry.text));
     expect(own).toBeDefined();
     expect(opponent).toBeDefined();
     return {
@@ -476,16 +480,16 @@ describe('Minigame BoardView: 环带与归元图例版面', () => {
     narrow.update(fullGuiYi, fullKangJi);
     const narrowCtx = new RecordingContext();
     narrow.render(narrowCtx.asContext());
-    expect(narrowCtx.texts.map((entry) => entry.text)).toContain('己 5/5');
-    expect(narrowCtx.texts.map((entry) => entry.text)).toContain('敌 5/5');
+    expect(narrowCtx.texts.map((entry) => entry.text)).toContain('你 5/5');
+    expect(narrowCtx.texts.map((entry) => entry.text)).toContain('天道 5/5');
 
     wide.update(fullGuiYi, fullKangJi);
     const wideCtx = new RecordingContext();
     wide.render(wideCtx.asContext());
     // 图例随视口整体缩放：宽屏的法盘更大，图例的 y（圆心 + 外环 + 主印）也更靠下。
     // （不断言像素字号：RecordingContext 只能从非 bold 的 font 串里读出数字。）
-    const narrowOwn = narrowCtx.texts.find((entry) => entry.text === '己 5/5');
-    const wideOwn = wideCtx.texts.find((entry) => entry.text === '己 5/5');
+    const narrowOwn = narrowCtx.texts.find((entry) => entry.text === '你 5/5');
+    const wideOwn = wideCtx.texts.find((entry) => entry.text === '你 5/5');
     expect(wideOwn?.y).toBeGreaterThan(narrowOwn?.y ?? 0);
   });
 
@@ -535,10 +539,10 @@ describe('Minigame BoardView: 渲染', () => {
       expect(texts).toContain(WUXING_PALETTE[element].name);
     }
     // 环归属徽记（各一个）与归元图例（各一个）。
-    expect(texts).toContain('己');
-    expect(texts).toContain('敌');
-    expect(texts).toContain('己 0/5');
-    expect(texts).toContain('敌 0/5');
+    expect(texts).toContain('你');
+    expect(texts).toContain('天道');
+    expect(texts).toContain('你 0/5');
+    expect(texts).toContain('天道 0/5');
 
     // 投影后图例换文案。
     const populated = new RecordingContext();
@@ -548,46 +552,62 @@ describe('Minigame BoardView: 渲染', () => {
     );
     expect(() => view.render(populated.asContext())).not.toThrow();
     const populatedTexts = populated.texts.map((entry) => entry.text);
-    expect(populatedTexts).toContain('己 1/5');
-    expect(populatedTexts).toContain('敌 0/5');
+    expect(populatedTexts).toContain('你 1/5');
+    expect(populatedTexts).toContain('天道 0/5');
   });
 });
 
-describe('Minigame BoardView: polarity labels', () => {
-  it('keeps yin and yang levels readable without color, and updates damaged/blessed states', () => {
-    const view = new BoardView();
-    view.resize(320, 568);
-    view.update(
-      boardWith({ [WuXing.WOOD]: { yin: -1, yang: 2 } }),
-      boardWith({ [WuXing.WOOD]: { yin: 1, yang: 0 } }),
-    );
-    const ctx = new RecordingContext();
-    view.render(ctx.asContext());
-    const labels = ctx.texts.filter((text) => /^-?\d$/.test(text.text));
-    expect(labels).toHaveLength(20);
-    const own = sealOf(view, 'P1', WuXing.WOOD);
-    const rival = sealOf(view, 'P2', WuXing.WOOD);
-    expect(
-      labels.some(
-        (label) =>
-          label.text === '-1' && label.x < own.x && Math.abs(label.y - own.y) < own.sealSize,
-      ),
-    ).toBe(true);
-    expect(
-      labels.some(
-        (label) =>
-          label.text === '2' && label.x > own.x && Math.abs(label.y - own.y) < own.sealSize,
-      ),
-    ).toBe(true);
-    expect(
-      labels.some(
-        (label) =>
-          label.text === '1' && label.x < rival.x && Math.abs(label.y - rival.y) < rival.sealSize,
-      ),
-    ).toBe(true);
-    view.update(boardWith({}), boardWith({}));
-    const cleared = new RecordingContext();
-    view.render(cleared.asContext());
-    expect(cleared.texts.some((text) => text.text === '-1' || text.text === '2')).toBe(false);
+describe('Minigame BoardView: independent yin-yang fish', () => {
+  it('uses complementary S outlines and independently styles all sixteen level pairs', () => {
+    const levels = [-1, 0, 1, 2] as const;
+    for (const yin of levels)
+      for (const yang of levels) {
+        const ctx = new RecordingContext();
+        drawYinYangFish(ctx.asContext(), 0, 0, 20, Polarity.YIN, yin, WuXing.WOOD);
+        drawYinYangFish(ctx.asContext(), 0, 0, 20, Polarity.YANG, yang, WuXing.WOOD);
+        const outer = ctx.arcs.filter((arc) => arc.radius === 20);
+        expect(outer.map((arc) => arc.anticlockwise)).toEqual([true, false]);
+        expect(ctx.arcs.filter((arc) => arc.radius === 10)).toHaveLength(4);
+        const bodyColors = ctx.paths
+          .filter((path) => path.points.length === 1 && path.strokeWidth === 0)
+          .map((path) => path.color);
+        expect(bodyColors).toEqual([
+          yin === -1
+            ? '#3e474a'
+            : yin === 0
+              ? '#182c34'
+              : yin === 2
+                ? '[object Object]'
+                : '#63ba8c',
+          yang === -1
+            ? '#3e474a'
+            : yang === 0
+              ? '#182c34'
+              : yang === 2
+                ? '[object Object]'
+                : '#63ba8c',
+        ]);
+        expect(ctx.calls.filter((call) => call === 'clip')).toHaveLength(
+          [yin, yang].filter((level) => level === -1 || level === 2).length,
+        );
+      }
+  });
+  it('keeps blessed colors elemental and leaves void fish without any elemental fill', () => {
+    const colors: string[] = [];
+    for (const element of Object.values(WuXing)) {
+      const glow = new RecordingContext();
+      drawYinYangFish(glow.asContext(), 0, 0, 20, Polarity.YANG, 2, element);
+      expect(glow.gradients).toHaveLength(1);
+      const stops = glow.gradients[0].stops;
+      expect(stops[0].color).toBe(WUXING_PALETTE[element].light);
+      expect(stops.at(-1)!.color).toBe(WUXING_PALETTE[element].main);
+      colors.push(stops.at(-1)!.color);
+      const empty = new RecordingContext();
+      drawYinYangFish(empty.asContext(), 0, 0, 20, Polarity.YANG, 0, element);
+      expect(
+        empty.paths.filter((path) => path.strokeWidth === 0).map((path) => path.color),
+      ).toEqual(['#182c34', '#e5eee4']);
+    }
+    expect(new Set(colors).size).toBe(5);
   });
 });

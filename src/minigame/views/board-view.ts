@@ -51,9 +51,6 @@ const SEAL_SIZE_RATIO = 0.062;
 /** 对方盘主印相对己方盘主印的缩放：外环更小、更暗，一眼分出主次（ADR 0015 的「环级区分」）。 */
 const OPPONENT_SEAL_SCALE = 0.82;
 
-/** 己方盘主印的填充底色（五行本色的低透明度版，避免变成一坨高饱和「糖果」）。 */
-const OWN_SEAL_FILL_ALPHA = 0.16;
-
 /** 阴阳槽位相对主印中心在阴/阳一侧的横向偏移（占主印半径的比例）。 */
 const SLOT_SIDE_RATIO = 0.7;
 
@@ -120,37 +117,18 @@ export interface BoardActivePath {
 
 /** Ring ownership remains warm/solid and cool/dashed (ADR 0015). */
 const BOARD_BG_COLOR = THEME.deep;
-const VOID_COLOR = THEME.edge;
-const BLESSED_COLOR = THEME.gold;
-const GUI_YI_COLOR = THEME.gold;
-
 /**
  * 环带：内环暖色实线带（己方盘）、外环冷色虚线带（对方盘）。
  * 环带本身承载「这块盘是谁的」，不再用两个大面积底晕——底晕会互相叠成一团浑色。
  */
-const OWN_BAND_COLOR = 'rgba(216,184,118,0.16)';
 const OWN_BAND_EDGE = THEME.goldDim;
 const OWN_RING_COLOR = THEME.gold;
-const OPPONENT_BAND_COLOR = 'rgba(134,184,203,0.12)';
 const OPPONENT_BAND_EDGE = THEME.edge;
 const OPPONENT_RING_COLOR = THEME.rival;
-/** 环带宽度占主印半径的比例。 */
-const OWN_BAND_WIDTH_RATIO = 0.72;
-const OPPONENT_BAND_WIDTH_RATIO = 0.62;
 /** 环归属标签画在两枚主印之间的空位上（正下方）。 */
 const RING_LABEL_ANGLE = Math.PI / 2;
 const RING_LABEL_PADDING_X = 8;
 const RING_LABEL_PADDING_Y = 4;
-
-const CONNECTION_IDLE: Record<BoardConnectionKind, string> = {
-  generation: '#2f4f3f',
-  // 径向线常驻但极淡：不误导，只在当前动作指向它时转亮。
-  attack: 'rgba(229, 62, 62, 0.22)',
-};
-const CONNECTION_ACTIVE: Record<BoardConnectionKind, string> = {
-  generation: THEME.jade,
-  attack: THEME.damage,
-};
 
 /** 一条生克连线的投影视图。 */
 export interface BoardConnectionView {
@@ -191,15 +169,46 @@ export class BoardView extends Container {
   }
 
   /** 按视口自适应：圆心取视口中心，内外环半径与主印半径按短边等比缩放。 */
-  public resize(width: number, height: number): void {
-    const span = Math.min(width, height);
+  public resize(width: number, height: number, bounds?: { top: number; bottom: number }): void {
+    let span = Math.min(width, height);
+    let centerY = height / 2;
+    let sealSize = span * SEAL_SIZE_RATIO;
+    let innerRadius = span * INNER_RADIUS_RATIO;
+    let outerRadius = span * OUTER_RADIUS_RATIO;
+    if (bounds !== undefined) {
+      const available = Math.max(100, bounds.bottom - bounds.top);
+      const minInner = available < 244 ? Math.min(40, Math.max(30, (available - 80) / 3.3)) : 40;
+      const minSeal = available < 244 ? Math.max(4, (available - minInner * 2 - 46) / 6.54) : 18;
+      const dimensions = (size: number) => {
+        const seal = Math.max(minSeal, size * SEAL_SIZE_RATIO);
+        const inner = Math.max(minInner, size * INNER_RADIUS_RATIO);
+        const outer = Math.max(
+          size * OUTER_RADIUS_RATIO,
+          inner + seal * (1 + OPPONENT_SEAL_SCALE) + 3,
+        );
+        return { seal, inner, outer, height: outer * 2 + seal * 2.9 + 40 };
+      };
+      let low = 0;
+      let high = span;
+      for (let i = 0; i < 20; i++) {
+        const mid = (low + high) / 2;
+        if (dimensions(mid).height <= available) low = mid;
+        else high = mid;
+      }
+      span = low;
+      const fitted = dimensions(span);
+      sealSize = fitted.seal;
+      innerRadius = fitted.inner;
+      outerRadius = fitted.outer;
+      centerY = bounds.top + outerRadius + sealSize + 14;
+    }
     this._layout = {
       ...this._layout,
       centerX: width / 2,
-      centerY: height / 2,
-      innerRadius: span * INNER_RADIUS_RATIO,
-      outerRadius: span * OUTER_RADIUS_RATIO,
-      sealSize: span * SEAL_SIZE_RATIO,
+      centerY,
+      innerRadius,
+      outerRadius,
+      sealSize,
     };
     this._rebuild();
   }
@@ -358,177 +367,65 @@ export class BoardView extends Container {
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
     this._drawEngraving(ctx);
     this._drawRingBands(ctx);
-    this._drawConnections(ctx);
     this._drawSeals(ctx);
     this._drawRingLabels(ctx);
   }
 
-  /** Decorative concentric engraving has no edges between elements. */
+  /** Quiet backing and one ownership guide per ring; decoration does not encode state. */
   private _drawEngraving(ctx: CanvasRenderingContext2D): void {
-    const { centerX: x, centerY: y, outerRadius, sealSize } = this._layout;
-    const radius = outerRadius + sealSize * 1.52;
     ctx.save();
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(8,27,34,0.72)';
+    ctx.beginPath();
+    ctx.arc(
+      this._layout.centerX,
+      this._layout.centerY,
+      this._layout.outerRadius + this._layout.sealSize * 1.1,
+      0,
+      Math.PI * 2,
+    );
     ctx.fill();
-    for (const inset of [0, 5, 10]) {
-      ctx.beginPath();
-      ctx.arc(x, y, radius - inset, 0, Math.PI * 2);
-      ctx.strokeStyle = inset === 5 ? 'rgba(216,184,118,0.28)' : 'rgba(128,214,186,0.10)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
-    for (let index = 0; index < 60; index += 1) {
-      const angle = (index * Math.PI) / 30;
-      const length = index % 5 === 0 ? 7 : 3;
-      ctx.beginPath();
-      ctx.moveTo(x + Math.cos(angle) * (radius - 5), y + Math.sin(angle) * (radius - 5));
-      ctx.lineTo(
-        x + Math.cos(angle) * (radius - 5 - length),
-        y + Math.sin(angle) * (radius - 5 - length),
-      );
-      ctx.strokeStyle = 'rgba(216,184,118,0.28)';
-      ctx.stroke();
-    }
     ctx.restore();
   }
 
-  /**
-   * 环带：内环暖色实线带（己方盘）、外环冷色虚线带（对方盘）。
-   * 两条带各自细而清晰、互不重叠，让「哪一圈是谁的」在颜色之外还有「实线 / 虚线」这条不依赖颜色的读法。
-   */
   private _drawRingBands(ctx: CanvasRenderingContext2D): void {
-    const bands: readonly [number, string, string, number, number[]][] = [
-      [
-        this._layout.innerRadius,
-        OWN_BAND_COLOR,
-        OWN_BAND_EDGE,
-        this._layout.sealSize * OWN_BAND_WIDTH_RATIO,
-        [],
-      ],
-      [
-        this._layout.outerRadius,
-        OPPONENT_BAND_COLOR,
-        OPPONENT_BAND_EDGE,
-        this._layout.sealSize * OPPONENT_BAND_WIDTH_RATIO,
-        [7, 6],
-      ],
-    ];
-    for (const [radius, fill, edge, width, dash] of bands) {
+    for (const [radius, color, dash] of [
+      [this._layout.innerRadius, OWN_BAND_EDGE, []],
+      [this._layout.outerRadius, OPPONENT_BAND_EDGE, [5, 5]],
+    ] as const) {
       ctx.save();
-      // 带体（半透明填充）
       ctx.beginPath();
       ctx.arc(this._layout.centerX, this._layout.centerY, radius, 0, Math.PI * 2);
-      ctx.strokeStyle = fill;
-      ctx.lineWidth = width;
-      ctx.stroke();
-      // 带沿（清晰描边，虚实区分内外环）
-      ctx.beginPath();
-      ctx.arc(this._layout.centerX, this._layout.centerY, radius, 0, Math.PI * 2);
-      ctx.strokeStyle = edge;
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash(dash);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([...dash]);
       ctx.stroke();
       ctx.restore();
     }
   }
 
-  /** 内环相生边（实线）+ 跨环径向线（虚线）；只有当前动作会走的那条转活动色。 */
-  private _drawConnections(ctx: CanvasRenderingContext2D): void {
-    for (const line of this._connections) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(line.x1, line.y1);
-      ctx.lineTo(line.x2, line.y2);
-      ctx.strokeStyle = line.isActive ? CONNECTION_ACTIVE[line.kind] : CONNECTION_IDLE[line.kind];
-      ctx.lineWidth = line.isActive ? 3 : 1.5;
-      ctx.lineCap = 'round';
-      if (line.kind === 'attack') {
-        ctx.setLineDash([6, 5]);
-      }
-      ctx.stroke();
-      if (line.isActive) {
-        const angle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
-        const x = line.x1 + (line.x2 - line.x1) * 0.56;
-        const y = line.y1 + (line.y2 - line.y1) * 0.56;
-        ctx.setLineDash([]);
-        ctx.beginPath();
-        ctx.moveTo(x - Math.cos(angle - 0.6) * 7, y - Math.sin(angle - 0.6) * 7);
-        ctx.lineTo(x, y);
-        ctx.lineTo(x - Math.cos(angle + 0.6) * 7, y - Math.sin(angle + 0.6) * 7);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-  }
-
-  /**
-   * 十个主印。内外环用**尺寸 + 填充 + 描边亮度**拉开层级（主印本体仍是五行本色，不换色）：
-   * 己方盘主印更大、填五行暗色、亮色描边；对方盘主印更小、填底色、暗色描边。
-   */
+  /** Each node owns two independent fish. Element labels sit outside the readable silhouette. */
   private _drawSeals(ctx: CanvasRenderingContext2D): void {
     for (const entry of this._elements) {
-      const isOwn = entry.player === OWN_PLAYER;
-      const palette = WUXING_PALETTE[entry.element];
-      const sealRadius = entry.sealSize;
-      const ringRadius = halfRingRadius(sealRadius);
+      const radius = entry.sealSize;
       ctx.save();
-      ctx.beginPath();
-      ctx.arc(entry.x, entry.y, sealRadius, 0, Math.PI * 2);
-      ctx.fillStyle = isOwn ? withAlpha(palette.main, OWN_SEAL_FILL_ALPHA) : THEME.deep;
-      ctx.fill();
-      // A light bevel and recessed face give each seal a physical jade setting.
-      ctx.beginPath();
-      ctx.arc(entry.x, entry.y, sealRadius - 3, 0, Math.PI * 2);
-      ctx.strokeStyle = withAlpha(palette.light, isOwn ? 0.24 : 0.12);
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(entry.x, entry.y, sealRadius, 0, Math.PI * 2);
-      ctx.lineWidth = isOwn ? 2.5 : 2;
-      ctx.strokeStyle = isOwn ? palette.main : withAlpha(palette.main, 0.55);
-      ctx.stroke();
-
-      drawHalfRing(ctx, entry.x, entry.y, ringRadius, true, entry.yin, entry.element);
-      drawHalfRing(ctx, entry.x, entry.y, ringRadius, false, entry.yang, entry.element);
-
-      if (entry.isGuiYi) {
-        // 归一：半环之外再套一圈实心金环（不占用主印描边——土 / 金的本色接近金色，占描边会分不出）。
-        ctx.beginPath();
-        ctx.arc(entry.x, entry.y, ringRadius + 5, 0, Math.PI * 2);
-        ctx.strokeStyle = entry.isKangJi ? BLESSED_COLOR : GUI_YI_COLOR;
-        ctx.lineWidth = entry.isKangJi ? 3 : 2;
-        ctx.stroke();
-      }
-
-      ctx.fillStyle = isOwn ? palette.light : withAlpha(palette.light, 0.72);
-      ctx.font = `bold ${String(Math.round(Math.max(11, sealRadius * 0.62)))}px ${THEME.font}`;
+      drawYinYangFish(ctx, entry.x, entry.y, radius, Polarity.YIN, entry.yin, entry.element);
+      drawYinYangFish(ctx, entry.x, entry.y, radius, Polarity.YANG, entry.yang, entry.element);
+      ctx.fillStyle = THEME.ivory;
+      ctx.font = `bold ${Math.round(Math.max(11, radius * 0.5))}px ${THEME.font}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(palette.name, entry.x, entry.y - 3);
-      // Explicit polarity and numeric levels supplement the shape-coded half-rings.
-      ctx.font = `9px ${THEME.font}`;
-      ctx.fillStyle = THEME.muted;
-      ctx.fillText(`${entry.yin}`, entry.x - sealRadius * 0.4, entry.y + sealRadius * 0.46);
-      ctx.fillText(`${entry.yang}`, entry.x + sealRadius * 0.4, entry.y + sealRadius * 0.46);
-
-      if (entry.isKangJi) {
-        ctx.fillStyle = BLESSED_COLOR;
-        ctx.font = `bold ${String(Math.round(Math.max(9, sealRadius * 0.42)))}px ${THEME.font}`;
-        ctx.fillText('亢', entry.x, entry.y - ringRadius - 13);
-      }
+      ctx.fillText(WUXING_PALETTE[entry.element].name, entry.x, entry.y - radius - 10);
       ctx.restore();
     }
   }
 
   /** 环归属标签：把「己」「敌」钉在各自的环带上（主印之间的正下方空位）。 */
   private _drawRingLabels(ctx: CanvasRenderingContext2D): void {
-    this._drawRingLabel(ctx, this._layout.innerRadius, '己', OWN_BAND_EDGE, OWN_RING_COLOR, 0.55);
+    this._drawRingLabel(ctx, this._layout.innerRadius, '你', OWN_BAND_EDGE, OWN_RING_COLOR, 0.55);
     this._drawRingLabel(
       ctx,
       this._layout.outerRadius,
-      '敌',
+      '天道',
       OPPONENT_BAND_EDGE,
       OPPONENT_RING_COLOR,
       0.55,
@@ -550,13 +447,13 @@ export class BoardView extends Container {
     ctx.textBaseline = 'middle';
     ctx.fillStyle = OWN_RING_COLOR;
     ctx.fillText(
-      `己 ${String(this._countGuiYi(OWN_PLAYER))}/${String(WUXING_COUNT)}`,
+      `你 ${String(this._countGuiYi(OWN_PLAYER))}/${String(WUXING_COUNT)}`,
       this._layout.centerX - gap,
       y,
     );
     ctx.fillStyle = OPPONENT_RING_COLOR;
     ctx.fillText(
-      `敌 ${String(this._countGuiYi(OPPONENT_PLAYER))}/${String(WUXING_COUNT)}`,
+      `天道 ${String(this._countGuiYi(OPPONENT_PLAYER))}/${String(WUXING_COUNT)}`,
       this._layout.centerX + gap,
       y,
     );
@@ -592,19 +489,6 @@ export class BoardView extends Container {
   }
 }
 
-/** 把 `#rrggbb` 转成带透明度的 `rgba()`；非法输入原样返回。 */
-function withAlpha(hex: string, alpha: number): string {
-  const match = /^#([0-9a-f]{6})$/i.exec(hex);
-  if (match === null) {
-    return hex;
-  }
-  const value = Number.parseInt(match[1], 16);
-  const r = (value >> 16) & 0xff;
-  const g = (value >> 8) & 0xff;
-  const b = value & 0xff;
-  return `rgba(${String(r)}, ${String(g)}, ${String(b)}, ${String(alpha)})`;
-}
-
 /** 圆角胶囊：底板 + 描边（`roundRect` 在部分环境缺失时退回矩形）。 */
 function drawPill(
   ctx: CanvasRenderingContext2D,
@@ -629,75 +513,78 @@ function drawPill(
   ctx.stroke();
 }
 
-/** 槽位与半环的笔触颜色：点亮取五行本色，道损取五行暗色。 */
-function slotColor(level: NodeLevel, element: WuXing): string {
-  const palette = WUXING_PALETTE[element];
-  switch (level) {
-    case -1:
-      return palette.dark;
-    case 0:
-      return VOID_COLOR;
-    case 1:
-      return palette.main;
-    case 2:
-      return BLESSED_COLOR;
-  }
-}
-
-/**
- * 画主印的一侧半环：阴在左半、阳在右半。
- * 等级用**形状档位 + 面积 + 颜色**三重冗余表达（不只靠颜色）：
- * 虚空 = 极细暗弧、道损 = 断口弧、点亮 = 实心弧、加持 = 双线 + 两颗圆点。
- */
-function drawHalfRing(
+/** Draw one S-shaped fish, with an independent state and a contrasting eye. */
+export function drawYinYangFish(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   radius: number,
-  isYin: boolean,
+  polarity: Polarity,
   level: NodeLevel,
   element: WuXing,
 ): void {
-  const start = isYin ? Math.PI * 0.5 : -Math.PI * 0.5;
-  const end = isYin ? Math.PI * 1.5 : Math.PI * 0.5;
+  const yin = polarity === Polarity.YIN;
+  const palette = WUXING_PALETTE[element];
   ctx.save();
   ctx.beginPath();
-  ctx.arc(x, y, radius, start, end);
-  ctx.strokeStyle = slotColor(level, element);
-  ctx.lineWidth = level === 2 ? 5 : level === 1 ? 4 : level === -1 ? 3 : 1.5;
-  ctx.lineCap = 'round';
-  if (level === -1) {
-    ctx.setLineDash([4, 3]);
-  }
-  ctx.stroke();
-
+  ctx.moveTo(x, y - radius);
+  ctx.arc(x, y, radius, -Math.PI / 2, Math.PI / 2, yin);
+  ctx.arc(x, y + radius / 2, radius / 2, Math.PI / 2, -Math.PI / 2, true);
+  ctx.arc(x, y - radius / 2, radius / 2, Math.PI / 2, -Math.PI / 2);
+  ctx.closePath();
+  if (level === 2 || level === -1) ctx.clip();
+  ctx.fillStyle = level === -1 ? '#3e474a' : level === 0 ? '#182c34' : palette.main;
   if (level === 2) {
-    // 加持：外圈补一道细线 + 两颗圆点，形状上数得出等级。
+    const core = ctx.createRadialGradient(
+      x,
+      y + ((yin ? 1 : -1) * radius) / 2,
+      0,
+      x,
+      y + ((yin ? 1 : -1) * radius) / 2,
+      radius * 1.5,
+    );
+    core.addColorStop(0, palette.light);
+    core.addColorStop(0.45, palette.light);
+    core.addColorStop(1, palette.main);
+    ctx.fillStyle = core;
+  }
+  ctx.strokeStyle = level === 2 ? palette.light : '#667b80';
+  ctx.lineWidth = level === 2 ? 2.2 : 1;
+  if (level === 2) {
+    ctx.shadowColor = palette.main;
+    ctx.shadowBlur = 7;
+  }
+  ctx.fill();
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  const eyeY = y + ((yin ? 1 : -1) * radius) / 2;
+  ctx.beginPath();
+  ctx.arc(x, eyeY, Math.max(2, radius * 0.13), 0, Math.PI * 2);
+  ctx.fillStyle = yin ? '#112129' : '#e5eee4';
+  ctx.fill();
+  if (level === -1) {
+    const side = yin ? -1 : 1;
     ctx.beginPath();
-    ctx.arc(x, y, radius + 4, start, end);
-    ctx.strokeStyle = BLESSED_COLOR;
+    ctx.moveTo(x + side * radius * 0.62, y - radius * 0.48);
+    ctx.lineTo(x + side * radius * 0.36, y - radius * 0.1);
+    ctx.lineTo(x + side * radius * 0.6, y + radius * 0.04);
+    ctx.lineTo(x + side * radius * 0.72, y + radius * 0.48);
+    ctx.strokeStyle = '#0b1d24';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
+  if (level === 2) {
+    const sx = x + (yin ? -1 : 1) * radius * 0.66;
+    ctx.beginPath();
+    ctx.moveTo(sx - 2, y - 2);
+    ctx.lineTo(sx + 2, y + 2);
+    ctx.moveTo(sx + 2, y - 2);
+    ctx.lineTo(sx - 2, y + 2);
+    ctx.strokeStyle = palette.light;
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    for (const ratio of [0.25, 0.75]) {
-      const angle = start + (end - start) * ratio;
-      ctx.beginPath();
-      ctx.arc(
-        x + Math.cos(angle) * (radius + 4),
-        y + Math.sin(angle) * (radius + 4),
-        2,
-        0,
-        Math.PI * 2,
-      );
-      ctx.fillStyle = BLESSED_COLOR;
-      ctx.fill();
-    }
   }
   ctx.restore();
-}
-
-/** 主印半环相对主印半径的外扩量：给主印与半环之间留出看得见的缝（内外环共用同一口径）。 */
-function halfRingRadius(sealRadius: number): number {
-  return sealRadius + Math.max(5, sealRadius * 0.24);
 }
 
 /** 沿相生环从木出发遍历五行；环本身以 `GENERATION_CYCLE` 为唯一真源（LLD §2.3）。 */

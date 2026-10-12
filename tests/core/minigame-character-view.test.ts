@@ -362,3 +362,23 @@ describe('CharacterView：双方角色卡投影', () => {
     expect(view.currentPlayer).toBe('P2');
   });
 });
+
+describe('CharacterView: compact native result banner', () => {
+  it.each([
+    ['你 · 强化', '你·火阴 虚空→加持'],
+    ['天道 · 强破', '目标阴阳未变\n天道·木阳 点亮→虚空'],
+  ])('keeps %s and long result text inside the 64px banner', (title, detail) => {
+    const view = new CharacterView({ width: 320, safeTop: 88, compact: true });
+    view.showBanner(title, detail);
+    const ctx = new RecordingContext();
+    view.render(ctx.asContext());
+    const lines = ctx.texts.filter(({ x }) => x === 160);
+    const bannerLines = lines.filter(({ text }) => text !== '归元弈' && !text.startsWith('回合'));
+    expect(bannerLines.length).toBeGreaterThan(0);
+    expect(bannerLines.length).toBeLessThanOrEqual(3);
+    for (const line of bannerLines) {
+      expect(line.y - line.fontSize / 2).toBeGreaterThanOrEqual(118);
+      expect(line.y + line.fontSize / 2).toBeLessThanOrEqual(182);
+    }
+  });
+});

@@ -2218,87 +2218,25 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     ctx.restore();
   }
-  function drawCenterTianGanRune(ctx, centerX, centerY, tg, animTick) {
+  function drawCenterTianGanRune(ctx, centerX, centerY, tg, animTick, radius = 25) {
     const elemCfg = WUXING_PALETTE[tg.element] ?? WUXING_PALETTE[WuXing.WOOD];
     const polarityName = tg.polarity === Polarity.YANG ? "阳" : "阴";
-    const floatY = Math.sin(animTick * 0.08) * 3;
-    const boxY = centerY + floatY;
     ctx.save();
-    const glowRadius = 46 + Math.sin(animTick * 0.08) * 5;
-    const grad = ctx.createRadialGradient(centerX, boxY, 8, centerX, boxY, glowRadius);
-    grad.addColorStop(0, elemCfg.light + "66");
-    grad.addColorStop(0.6, elemCfg.main + "22");
-    grad.addColorStop(1, "transparent");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(centerX, boxY, glowRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.save();
-    ctx.translate(centerX, boxY);
-    ctx.rotate(animTick * 0.02);
-    ctx.strokeStyle = elemCfg.main + "99";
+    ctx.fillStyle = THEME.deep;
+    ctx.strokeStyle = elemCfg.main;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(0, 0, 36, 0, Math.PI * 1.5);
-    ctx.stroke();
-    ctx.strokeStyle = elemCfg.light + "cc";
-    ctx.beginPath();
-    ctx.arc(0, 0, 30, Math.PI, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-    ctx.fillStyle = THEME.deep;
-    ctx.beginPath();
-    ctx.arc(centerX, boxY, 24, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = elemCfg.light;
-    ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.save();
-    ctx.shadowColor = elemCfg.light;
-    ctx.shadowBlur = 12;
     ctx.fillStyle = THEME.ivory;
-    ctx.font = `bold 24px ${THEME.font}`;
+    ctx.font = `bold ${Math.min(22, radius)}px ${THEME.font}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(tg.name, centerX, boxY);
-    ctx.restore();
-    const tagW = 48;
-    const tagH = 18;
-    const tagY = boxY + 28;
-    ctx.fillStyle = "rgba(8,27,34,0.9)";
-    ctx.strokeStyle = elemCfg.main;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    if (ctx.roundRect) {
-      ctx.roundRect(centerX - tagW / 2, tagY, tagW, tagH, 9);
-    } else {
-      ctx.rect(centerX - tagW / 2, tagY, tagW, tagH);
-    }
-    ctx.fill();
-    ctx.stroke();
+    ctx.fillText(tg.name, centerX, centerY - 5);
     ctx.fillStyle = elemCfg.light;
-    ctx.font = `bold 10px ${THEME.font}`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(`${elemCfg.name}·${polarityName}`, centerX, tagY + tagH / 2);
-    ctx.restore();
-  }
-  function drawImpactEffect(ctx, impact) {
-    ctx.save();
-    const { x, y, radius, maxRadius, lightColor, alpha } = impact;
-    ctx.globalAlpha = Math.max(0, alpha);
-    ctx.strokeStyle = lightColor;
-    ctx.lineWidth = 3 * (1 - radius / maxRadius) + 1;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.stroke();
-    const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
-    grad.addColorStop(0, lightColor + "44");
-    grad.addColorStop(1, "transparent");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.font = `11px ${THEME.font}`;
+    if (radius >= 22) ctx.fillText(`${elemCfg.name} · ${polarityName}`, centerX, centerY + 14);
     ctx.restore();
   }
   function isAttackAction(actionType) {
@@ -2502,122 +2440,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     return false;
   }
   class Container extends Node {
-  }
-  const EASINGS = {
-    /** 线性：进度即比例。 */
-    linear: (t) => t,
-    /** 先快后慢（二次）。 */
-    outQuad: (t) => 1 - (1 - t) * (1 - t),
-    /** 先快后慢（三次）：入场与飞行的默认手感。 */
-    outCubic: (t) => 1 - (1 - t) ** 3,
-    /** 两头慢、中间快（二次）。 */
-    inOutQuad: (t) => t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2
-  };
-  class Tween {
-    constructor(target, to, options) {
-      __publicField(this, "target");
-      /** 补间开始（构造）时的起点值：插值始终相对它计算，多次步进不会累积漂移。 */
-      __publicField(this, "from", /* @__PURE__ */ new Map());
-      __publicField(this, "to");
-      __publicField(this, "duration");
-      __publicField(this, "easing");
-      __publicField(this, "onUpdate");
-      __publicField(this, "onComplete");
-      __publicField(this, "elapsed", 0);
-      __publicField(this, "done", false);
-      this.target = target;
-      this.to = to;
-      if (!(options.duration > 0)) {
-        throw new Error(`补间时长必须是正数（秒），收到 ${options.duration}。`);
-      }
-      this.duration = options.duration;
-      this.easing = options.easing ?? EASINGS.linear;
-      this.onUpdate = options.onUpdate;
-      this.onComplete = options.onComplete;
-      const bag = target;
-      for (const key of Object.keys(to)) {
-        const start = bag[key];
-        if (typeof start !== "number") {
-          throw new Error(`补间目标上没有数值属性 ${key}。`);
-        }
-        this.from.set(key, start);
-      }
-    }
-    /** 补间是否还在推进（未完成）。 */
-    get isRunning() {
-      return !this.done;
-    }
-    /** 补间是否已抵达终值。 */
-    get isComplete() {
-      return this.done;
-    }
-    /** 距终值还差多少秒（已完成为 0）。序列据此把多余的 dt 结转给下一条。 */
-    get remaining() {
-      return this.done ? 0 : this.duration - this.elapsed;
-    }
-    /** 用 `dt` 秒推进补间；超出时长的部分会被丢弃（不越过终值）。 */
-    update(dt) {
-      if (this.done) {
-        return;
-      }
-      this.elapsed = Math.min(this.duration, this.elapsed + dt);
-      const progress = this.easing(this.elapsed / this.duration);
-      this.apply(progress);
-      this.onUpdate?.(progress);
-      if (this.elapsed >= this.duration) {
-        this.done = true;
-        this.onComplete?.();
-      }
-    }
-    apply(progress) {
-      const bag = this.target;
-      for (const [key, start] of this.from) {
-        const end = this.to[key];
-        if (end === void 0) {
-          continue;
-        }
-        bag[key] = start + (end - start) * progress;
-      }
-    }
-  }
-  class TweenSequence {
-    constructor(tweens, onComplete) {
-      __publicField(this, "tweens");
-      __publicField(this, "onComplete");
-      __publicField(this, "index", 0);
-      __publicField(this, "done", false);
-      this.tweens = tweens;
-      this.onComplete = onComplete;
-    }
-    /** 序列是否已跑完（空序列在第一次 `update` 时即算完成）。 */
-    get isComplete() {
-      return this.done;
-    }
-    get isRunning() {
-      return !this.done;
-    }
-    /** 用 `dt` 秒推进：时间依次流过序列里的各条补间，多余的 dt 不会丢弃。 */
-    update(dt) {
-      let remaining = dt;
-      while (!this.done) {
-        const current = this.tweens[this.index];
-        if (current === void 0) {
-          this.done = true;
-          this.onComplete?.();
-          return;
-        }
-        if (current.isComplete) {
-          this.index += 1;
-          continue;
-        }
-        if (remaining <= 0) {
-          return;
-        }
-        const step = Math.min(remaining, current.remaining);
-        current.update(step);
-        remaining -= step;
-      }
-    }
   }
   const FULL_WIDTH_RATIO = 1.2;
   const HALF_WIDTH_RATIO = 0.6;
@@ -2931,7 +2753,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const OUTER_RADIUS_RATIO = 0.4;
   const SEAL_SIZE_RATIO = 0.062;
   const OPPONENT_SEAL_SCALE = 0.82;
-  const OWN_SEAL_FILL_ALPHA = 0.16;
   const SLOT_SIDE_RATIO = 0.7;
   const DEFAULT_BOARD_LAYOUT = {
     centerX: 0,
@@ -2944,29 +2765,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const VOID_LEVEL = 0;
   const VOID_NODE = { yin: VOID_LEVEL, yang: VOID_LEVEL };
   const BOARD_BG_COLOR = THEME.deep;
-  const VOID_COLOR = THEME.edge;
-  const BLESSED_COLOR = THEME.gold;
-  const GUI_YI_COLOR = THEME.gold;
-  const OWN_BAND_COLOR = "rgba(216,184,118,0.16)";
   const OWN_BAND_EDGE = THEME.goldDim;
   const OWN_RING_COLOR = THEME.gold;
-  const OPPONENT_BAND_COLOR = "rgba(134,184,203,0.12)";
   const OPPONENT_BAND_EDGE = THEME.edge;
   const OPPONENT_RING_COLOR = THEME.rival;
-  const OWN_BAND_WIDTH_RATIO = 0.72;
-  const OPPONENT_BAND_WIDTH_RATIO = 0.62;
   const RING_LABEL_ANGLE = Math.PI / 2;
   const RING_LABEL_PADDING_X = 8;
   const RING_LABEL_PADDING_Y = 4;
-  const CONNECTION_IDLE = {
-    generation: "#2f4f3f",
-    // 径向线常驻但极淡：不误导，只在当前动作指向它时转亮。
-    attack: "rgba(229, 62, 62, 0.22)"
-  };
-  const CONNECTION_ACTIVE = {
-    generation: THEME.jade,
-    attack: THEME.damage
-  };
   class BoardView extends Container {
     constructor(layout = {}) {
       super();
@@ -2985,15 +2790,46 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       return { ...this._layout };
     }
     /** 按视口自适应：圆心取视口中心，内外环半径与主印半径按短边等比缩放。 */
-    resize(width, height) {
-      const span = Math.min(width, height);
+    resize(width, height, bounds) {
+      let span = Math.min(width, height);
+      let centerY = height / 2;
+      let sealSize = span * SEAL_SIZE_RATIO;
+      let innerRadius = span * INNER_RADIUS_RATIO;
+      let outerRadius = span * OUTER_RADIUS_RATIO;
+      if (bounds !== void 0) {
+        const available = Math.max(100, bounds.bottom - bounds.top);
+        const minInner = available < 244 ? Math.min(40, Math.max(30, (available - 80) / 3.3)) : 40;
+        const minSeal = available < 244 ? Math.max(4, (available - minInner * 2 - 46) / 6.54) : 18;
+        const dimensions = (size) => {
+          const seal = Math.max(minSeal, size * SEAL_SIZE_RATIO);
+          const inner = Math.max(minInner, size * INNER_RADIUS_RATIO);
+          const outer = Math.max(
+            size * OUTER_RADIUS_RATIO,
+            inner + seal * (1 + OPPONENT_SEAL_SCALE) + 3
+          );
+          return { seal, inner, outer, height: outer * 2 + seal * 2.9 + 40 };
+        };
+        let low = 0;
+        let high = span;
+        for (let i = 0; i < 20; i++) {
+          const mid = (low + high) / 2;
+          if (dimensions(mid).height <= available) low = mid;
+          else high = mid;
+        }
+        span = low;
+        const fitted = dimensions(span);
+        sealSize = fitted.seal;
+        innerRadius = fitted.inner;
+        outerRadius = fitted.outer;
+        centerY = bounds.top + outerRadius + sealSize + 14;
+      }
       this._layout = {
         ...this._layout,
         centerX: width / 2,
-        centerY: height / 2,
-        innerRadius: span * INNER_RADIUS_RATIO,
-        outerRadius: span * OUTER_RADIUS_RATIO,
-        sealSize: span * SEAL_SIZE_RATIO
+        centerY,
+        innerRadius,
+        outerRadius,
+        sealSize
       };
       this._rebuild();
     }
@@ -3129,163 +2965,61 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     renderSelf(ctx) {
       this._drawEngraving(ctx);
       this._drawRingBands(ctx);
-      this._drawConnections(ctx);
       this._drawSeals(ctx);
       this._drawRingLabels(ctx);
     }
-    /** Decorative concentric engraving has no edges between elements. */
+    /** Quiet backing and one ownership guide per ring; decoration does not encode state. */
     _drawEngraving(ctx) {
-      const { centerX: x, centerY: y, outerRadius, sealSize } = this._layout;
-      const radius = outerRadius + sealSize * 1.52;
       ctx.save();
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fillStyle = "rgba(8,27,34,0.72)";
+      ctx.beginPath();
+      ctx.arc(
+        this._layout.centerX,
+        this._layout.centerY,
+        this._layout.outerRadius + this._layout.sealSize * 1.1,
+        0,
+        Math.PI * 2
+      );
       ctx.fill();
-      for (const inset of [0, 5, 10]) {
-        ctx.beginPath();
-        ctx.arc(x, y, radius - inset, 0, Math.PI * 2);
-        ctx.strokeStyle = inset === 5 ? "rgba(216,184,118,0.28)" : "rgba(128,214,186,0.10)";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-      for (let index = 0; index < 60; index += 1) {
-        const angle = index * Math.PI / 30;
-        const length = index % 5 === 0 ? 7 : 3;
-        ctx.beginPath();
-        ctx.moveTo(x + Math.cos(angle) * (radius - 5), y + Math.sin(angle) * (radius - 5));
-        ctx.lineTo(
-          x + Math.cos(angle) * (radius - 5 - length),
-          y + Math.sin(angle) * (radius - 5 - length)
-        );
-        ctx.strokeStyle = "rgba(216,184,118,0.28)";
-        ctx.stroke();
-      }
       ctx.restore();
     }
-    /**
-     * 环带：内环暖色实线带（己方盘）、外环冷色虚线带（对方盘）。
-     * 两条带各自细而清晰、互不重叠，让「哪一圈是谁的」在颜色之外还有「实线 / 虚线」这条不依赖颜色的读法。
-     */
     _drawRingBands(ctx) {
-      const bands = [
-        [
-          this._layout.innerRadius,
-          OWN_BAND_COLOR,
-          OWN_BAND_EDGE,
-          this._layout.sealSize * OWN_BAND_WIDTH_RATIO,
-          []
-        ],
-        [
-          this._layout.outerRadius,
-          OPPONENT_BAND_COLOR,
-          OPPONENT_BAND_EDGE,
-          this._layout.sealSize * OPPONENT_BAND_WIDTH_RATIO,
-          [7, 6]
-        ]
-      ];
-      for (const [radius, fill, edge, width, dash] of bands) {
+      for (const [radius, color, dash] of [
+        [this._layout.innerRadius, OWN_BAND_EDGE, []],
+        [this._layout.outerRadius, OPPONENT_BAND_EDGE, [5, 5]]
+      ]) {
         ctx.save();
         ctx.beginPath();
         ctx.arc(this._layout.centerX, this._layout.centerY, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = fill;
-        ctx.lineWidth = width;
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(this._layout.centerX, this._layout.centerY, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = edge;
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash(dash);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([...dash]);
         ctx.stroke();
         ctx.restore();
       }
     }
-    /** 内环相生边（实线）+ 跨环径向线（虚线）；只有当前动作会走的那条转活动色。 */
-    _drawConnections(ctx) {
-      for (const line of this._connections) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(line.x1, line.y1);
-        ctx.lineTo(line.x2, line.y2);
-        ctx.strokeStyle = line.isActive ? CONNECTION_ACTIVE[line.kind] : CONNECTION_IDLE[line.kind];
-        ctx.lineWidth = line.isActive ? 3 : 1.5;
-        ctx.lineCap = "round";
-        if (line.kind === "attack") {
-          ctx.setLineDash([6, 5]);
-        }
-        ctx.stroke();
-        if (line.isActive) {
-          const angle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
-          const x = line.x1 + (line.x2 - line.x1) * 0.56;
-          const y = line.y1 + (line.y2 - line.y1) * 0.56;
-          ctx.setLineDash([]);
-          ctx.beginPath();
-          ctx.moveTo(x - Math.cos(angle - 0.6) * 7, y - Math.sin(angle - 0.6) * 7);
-          ctx.lineTo(x, y);
-          ctx.lineTo(x - Math.cos(angle + 0.6) * 7, y - Math.sin(angle + 0.6) * 7);
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-    }
-    /**
-     * 十个主印。内外环用**尺寸 + 填充 + 描边亮度**拉开层级（主印本体仍是五行本色，不换色）：
-     * 己方盘主印更大、填五行暗色、亮色描边；对方盘主印更小、填底色、暗色描边。
-     */
+    /** Each node owns two independent fish. Element labels sit outside the readable silhouette. */
     _drawSeals(ctx) {
       for (const entry of this._elements) {
-        const isOwn = entry.player === OWN_PLAYER;
-        const palette = WUXING_PALETTE[entry.element];
-        const sealRadius = entry.sealSize;
-        const ringRadius = halfRingRadius(sealRadius);
+        const radius = entry.sealSize;
         ctx.save();
-        ctx.beginPath();
-        ctx.arc(entry.x, entry.y, sealRadius, 0, Math.PI * 2);
-        ctx.fillStyle = isOwn ? withAlpha(palette.main, OWN_SEAL_FILL_ALPHA) : THEME.deep;
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(entry.x, entry.y, sealRadius - 3, 0, Math.PI * 2);
-        ctx.strokeStyle = withAlpha(palette.light, isOwn ? 0.24 : 0.12);
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(entry.x, entry.y, sealRadius, 0, Math.PI * 2);
-        ctx.lineWidth = isOwn ? 2.5 : 2;
-        ctx.strokeStyle = isOwn ? palette.main : withAlpha(palette.main, 0.55);
-        ctx.stroke();
-        drawHalfRing(ctx, entry.x, entry.y, ringRadius, true, entry.yin, entry.element);
-        drawHalfRing(ctx, entry.x, entry.y, ringRadius, false, entry.yang, entry.element);
-        if (entry.isGuiYi) {
-          ctx.beginPath();
-          ctx.arc(entry.x, entry.y, ringRadius + 5, 0, Math.PI * 2);
-          ctx.strokeStyle = entry.isKangJi ? BLESSED_COLOR : GUI_YI_COLOR;
-          ctx.lineWidth = entry.isKangJi ? 3 : 2;
-          ctx.stroke();
-        }
-        ctx.fillStyle = isOwn ? palette.light : withAlpha(palette.light, 0.72);
-        ctx.font = `bold ${String(Math.round(Math.max(11, sealRadius * 0.62)))}px ${THEME.font}`;
+        drawYinYangFish(ctx, entry.x, entry.y, radius, Polarity.YIN, entry.yin, entry.element);
+        drawYinYangFish(ctx, entry.x, entry.y, radius, Polarity.YANG, entry.yang, entry.element);
+        ctx.fillStyle = THEME.ivory;
+        ctx.font = `bold ${Math.round(Math.max(11, radius * 0.5))}px ${THEME.font}`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(palette.name, entry.x, entry.y - 3);
-        ctx.font = `9px ${THEME.font}`;
-        ctx.fillStyle = THEME.muted;
-        ctx.fillText(`${entry.yin}`, entry.x - sealRadius * 0.4, entry.y + sealRadius * 0.46);
-        ctx.fillText(`${entry.yang}`, entry.x + sealRadius * 0.4, entry.y + sealRadius * 0.46);
-        if (entry.isKangJi) {
-          ctx.fillStyle = BLESSED_COLOR;
-          ctx.font = `bold ${String(Math.round(Math.max(9, sealRadius * 0.42)))}px ${THEME.font}`;
-          ctx.fillText("亢", entry.x, entry.y - ringRadius - 13);
-        }
+        ctx.fillText(WUXING_PALETTE[entry.element].name, entry.x, entry.y - radius - 10);
         ctx.restore();
       }
     }
     /** 环归属标签：把「己」「敌」钉在各自的环带上（主印之间的正下方空位）。 */
     _drawRingLabels(ctx) {
-      this._drawRingLabel(ctx, this._layout.innerRadius, "己", OWN_BAND_EDGE, OWN_RING_COLOR, 0.55);
+      this._drawRingLabel(ctx, this._layout.innerRadius, "你", OWN_BAND_EDGE, OWN_RING_COLOR, 0.55);
       this._drawRingLabel(
         ctx,
         this._layout.outerRadius,
-        "敌",
+        "天道",
         OPPONENT_BAND_EDGE,
         OPPONENT_RING_COLOR,
         0.55
@@ -3306,13 +3040,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.textBaseline = "middle";
       ctx.fillStyle = OWN_RING_COLOR;
       ctx.fillText(
-        `己 ${String(this._countGuiYi(OWN_PLAYER))}/${String(WUXING_COUNT)}`,
+        `你 ${String(this._countGuiYi(OWN_PLAYER))}/${String(WUXING_COUNT)}`,
         this._layout.centerX - gap,
         y
       );
       ctx.fillStyle = OPPONENT_RING_COLOR;
       ctx.fillText(
-        `敌 ${String(this._countGuiYi(OPPONENT_PLAYER))}/${String(WUXING_COUNT)}`,
+        `天道 ${String(this._countGuiYi(OPPONENT_PLAYER))}/${String(WUXING_COUNT)}`,
         this._layout.centerX + gap,
         y
       );
@@ -3338,17 +3072,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       return this._elements.filter((entry) => entry.player === player && entry.isGuiYi).length;
     }
   }
-  function withAlpha(hex, alpha) {
-    const match = /^#([0-9a-f]{6})$/i.exec(hex);
-    if (match === null) {
-      return hex;
-    }
-    const value = Number.parseInt(match[1], 16);
-    const r = value >> 16 & 255;
-    const g = value >> 8 & 255;
-    const b = value & 255;
-    return `rgba(${String(r)}, ${String(g)}, ${String(b)}, ${String(alpha)})`;
-  }
   function drawPill(ctx, x, y, width, height, radius, fill, stroke) {
     ctx.beginPath();
     if (typeof ctx.roundRect === "function") {
@@ -3362,56 +3085,69 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     ctx.lineWidth = 1.5;
     ctx.stroke();
   }
-  function slotColor(level, element) {
+  function drawYinYangFish(ctx, x, y, radius, polarity, level, element) {
+    const yin = polarity === Polarity.YIN;
     const palette = WUXING_PALETTE[element];
-    switch (level) {
-      case -1:
-        return palette.dark;
-      case 0:
-        return VOID_COLOR;
-      case 1:
-        return palette.main;
-      case 2:
-        return BLESSED_COLOR;
-    }
-  }
-  function drawHalfRing(ctx, x, y, radius, isYin, level, element) {
-    const start = isYin ? Math.PI * 0.5 : -Math.PI * 0.5;
-    const end = isYin ? Math.PI * 1.5 : Math.PI * 0.5;
     ctx.save();
     ctx.beginPath();
-    ctx.arc(x, y, radius, start, end);
-    ctx.strokeStyle = slotColor(level, element);
-    ctx.lineWidth = level === 2 ? 5 : level === 1 ? 4 : level === -1 ? 3 : 1.5;
-    ctx.lineCap = "round";
-    if (level === -1) {
-      ctx.setLineDash([4, 3]);
-    }
-    ctx.stroke();
+    ctx.moveTo(x, y - radius);
+    ctx.arc(x, y, radius, -Math.PI / 2, Math.PI / 2, yin);
+    ctx.arc(x, y + radius / 2, radius / 2, Math.PI / 2, -Math.PI / 2, true);
+    ctx.arc(x, y - radius / 2, radius / 2, Math.PI / 2, -Math.PI / 2);
+    ctx.closePath();
+    if (level === 2 || level === -1) ctx.clip();
+    ctx.fillStyle = level === -1 ? "#3e474a" : level === 0 ? "#182c34" : palette.main;
     if (level === 2) {
+      const core = ctx.createRadialGradient(
+        x,
+        y + (yin ? 1 : -1) * radius / 2,
+        0,
+        x,
+        y + (yin ? 1 : -1) * radius / 2,
+        radius * 1.5
+      );
+      core.addColorStop(0, palette.light);
+      core.addColorStop(0.45, palette.light);
+      core.addColorStop(1, palette.main);
+      ctx.fillStyle = core;
+    }
+    ctx.strokeStyle = level === 2 ? palette.light : "#667b80";
+    ctx.lineWidth = level === 2 ? 2.2 : 1;
+    if (level === 2) {
+      ctx.shadowColor = palette.main;
+      ctx.shadowBlur = 7;
+    }
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    const eyeY = y + (yin ? 1 : -1) * radius / 2;
+    ctx.beginPath();
+    ctx.arc(x, eyeY, Math.max(2, radius * 0.13), 0, Math.PI * 2);
+    ctx.fillStyle = yin ? "#112129" : "#e5eee4";
+    ctx.fill();
+    if (level === -1) {
+      const side = yin ? -1 : 1;
       ctx.beginPath();
-      ctx.arc(x, y, radius + 4, start, end);
-      ctx.strokeStyle = BLESSED_COLOR;
+      ctx.moveTo(x + side * radius * 0.62, y - radius * 0.48);
+      ctx.lineTo(x + side * radius * 0.36, y - radius * 0.1);
+      ctx.lineTo(x + side * radius * 0.6, y + radius * 0.04);
+      ctx.lineTo(x + side * radius * 0.72, y + radius * 0.48);
+      ctx.strokeStyle = "#0b1d24";
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
+    if (level === 2) {
+      const sx = x + (yin ? -1 : 1) * radius * 0.66;
+      ctx.beginPath();
+      ctx.moveTo(sx - 2, y - 2);
+      ctx.lineTo(sx + 2, y + 2);
+      ctx.moveTo(sx + 2, y - 2);
+      ctx.lineTo(sx - 2, y + 2);
+      ctx.strokeStyle = palette.light;
       ctx.lineWidth = 1.5;
       ctx.stroke();
-      for (const ratio of [0.25, 0.75]) {
-        const angle = start + (end - start) * ratio;
-        ctx.beginPath();
-        ctx.arc(
-          x + Math.cos(angle) * (radius + 4),
-          y + Math.sin(angle) * (radius + 4),
-          2,
-          0,
-          Math.PI * 2
-        );
-        ctx.fillStyle = BLESSED_COLOR;
-        ctx.fill();
-      }
     }
     ctx.restore();
-  }
-  function halfRingRadius(sealRadius) {
-    return sealRadius + Math.max(5, sealRadius * 0.24);
   }
   function buildGenerationRing() {
     const ring = [];
@@ -3524,7 +3260,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const SIDE_MARGIN = 10;
   const TOP_BAR_HEIGHT = 26;
   const BANNER_GAP = 10;
-  const BANNER_HEIGHT = 68;
+  const BANNER_HEIGHT = 88;
   const PANEL_COLOR = THEME.panel;
   const PANEL_BORDER = THEME.edge;
   const ACTIVE_COLOR = THEME.gold;
@@ -3543,7 +3279,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     win: "#48bb78",
     lose: "#a0aec0"
   };
-  const PLAYER_LABEL = { P1: "弈者", P2: "天道" };
+  const PLAYER_LABEL = { P1: "你 · 弈者", P2: "天道" };
   const PLAYER_COLOR = { P1: P1_COLOR, P2: P2_COLOR };
   class CharacterView extends Container {
     constructor(options) {
@@ -3551,6 +3287,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "_width");
       __publicField(this, "_spriteAtlas", null);
       __publicField(this, "_safeTop");
+      __publicField(this, "_compact");
       __publicField(this, "_round", 0);
       __publicField(this, "_maxRounds", 0);
       __publicField(this, "_currentPlayer", null);
@@ -3570,6 +3307,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "transitions", {});
       this._width = options.width;
       this._safeTop = options.safeTop ?? 24;
+      this._compact = options.compact ?? false;
     }
     changePose(player, pose, duration = 0) {
       const previous = this._expressions[player];
@@ -3646,9 +3384,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this._scores = { P1: state.players.P1.score, P2: state.players.P2.score };
     }
     /** 视口自适应（安全区与宽度变化时调用）。 */
-    resize(width, safeTop) {
+    resize(width, safeTop, compact) {
       this._width = width;
       this._safeTop = safeTop ?? this._safeTop;
+      this._compact = compact ?? this._compact;
     }
     /**
      * 表情反馈：`holdSeconds` 秒后自动回落待机；`holdSeconds <= 0` 表示**持续**到下一次表情
@@ -3744,7 +3483,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(
-        `回合 ${this._round}/${this._maxRounds}`,
+        `回合 ${this._round}/${this._maxRounds} · ${this._currentPlayer === "P1" ? "你行动" : this._currentPlayer === "P2" ? "天道行动" : "等待开局"}`,
         this._width / 2,
         this._safeTop + TOP_BAR_HEIGHT / 2
       );
@@ -3757,6 +3496,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.restore();
     }
     drawAvatar(ctx, player) {
+      const avatarHeight = this._compact ? 80 : AVATAR_HEIGHT;
       const isPlayer = player === "P1";
       const frameX = isPlayer ? SIDE_MARGIN : this._width - SIDE_MARGIN - AVATAR_WIDTH;
       const frameY = this._safeTop + TOP_BAR_HEIGHT + 4;
@@ -3764,7 +3504,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const expression = this._expressions[player];
       const border = EXPRESSION_COLOR[expression] ?? (isCurrent ? ACTIVE_COLOR : isPlayer ? P1_COLOR : P2_COLOR);
       ctx.save();
-      drawPanel(ctx, frameX, frameY, AVATAR_WIDTH, AVATAR_HEIGHT, border, PANEL_COLOR);
+      drawPanel(ctx, frameX, frameY, AVATAR_WIDTH, avatarHeight, border, PANEL_COLOR);
       const aura = ctx.createRadialGradient(
         frameX + AVATAR_WIDTH / 2,
         frameY + 42,
@@ -3785,7 +3525,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.arc(frameX + AVATAR_WIDTH / 2, frameY + 41, 29, Math.PI, Math.PI * 2);
       ctx.stroke();
       ctx.fillStyle = THEME.deep;
-      ctx.fillRect(frameX + 9, frameY + AVATAR_HEIGHT - 9, AVATAR_WIDTH - 18, 4);
+      ctx.fillRect(frameX + 9, frameY + avatarHeight - 9, AVATAR_WIDTH - 18, 4);
       const drawPose = (pose, alpha) => {
         if (alpha <= 0) return;
         ctx.save();
@@ -3800,7 +3540,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
             frameX,
             frameY,
             AVATAR_WIDTH,
-            AVATAR_HEIGHT,
+            avatarHeight,
             this.motionOffset(player)
           );
         } else {
@@ -3808,7 +3548,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           const spriteHeight = (CHARACTER_SPRITE_BOUNDS.bottom - CHARACTER_SPRITE_BOUNDS.top) * CHARACTER_PIXEL_SIZE;
           ctx.translate(
             frameX + AVATAR_WIDTH / 2,
-            frameY + (AVATAR_HEIGHT - spriteHeight) / 2 - spriteTop
+            frameY + (avatarHeight - spriteHeight) / 2 - spriteTop
           );
           const motion = this.motionOffset(player);
           if (motion !== void 0) ctx.translate(motion.x, motion.y);
@@ -3829,18 +3569,14 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.textBaseline = "middle";
       ctx.fillStyle = PLAYER_COLOR[player];
       ctx.font = `bold 11px ${THEME.font}`;
-      ctx.fillText(PLAYER_LABEL[player], labelX, frameY + AVATAR_HEIGHT + 12);
+      ctx.fillText(PLAYER_LABEL[player], labelX, frameY + avatarHeight + 12);
       ctx.fillStyle = TEXT_COLOR;
       ctx.font = `bold 12px ${THEME.font}`;
-      ctx.fillText(`得分 ${this._scores[player]}`, labelX, frameY + AVATAR_HEIGHT + 26);
+      ctx.fillText(`得分 ${this._scores[player]}`, labelX, frameY + avatarHeight + 26);
       if (isCurrent) {
         ctx.fillStyle = this._isExtraTurn ? EXTRA_TURN_COLOR : ACTIVE_COLOR;
         ctx.font = `bold 9px ${THEME.font}`;
-        ctx.fillText(
-          this._isExtraTurn ? "连动行动中" : "行动中",
-          labelX,
-          frameY + AVATAR_HEIGHT + 40
-        );
+        ctx.fillText(this._isExtraTurn ? "连动行动中" : "行动中", labelX, frameY + avatarHeight + 40);
       }
       const bubble = this._bubbles[player];
       if (bubble !== null) {
@@ -3875,24 +3611,24 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const width = Math.max(80, this._width - 2 * x);
       const y = this._safeTop + TOP_BAR_HEIGHT + 4;
       ctx.save();
-      drawPanel(ctx, x, y, width, BANNER_HEIGHT, PANEL_BORDER);
+      drawPanel(ctx, x, y, width, this._compact ? 64 : BANNER_HEIGHT, PANEL_BORDER);
       const textWidth = width - 16;
-      const mainLines = wrapText(this._bannerText, textWidth, 12, 2);
-      const subLines = wrapText(this._bannerSubText, textWidth, 9, 2);
+      const mainLines = wrapText(this._bannerText, textWidth, 13, this._compact ? 1 : 2);
+      const subLines = wrapText(this._bannerSubText, textWidth, 11, this._compact ? 2 : 4);
       const mainLineHeight = 16;
-      const subLineHeight = 12;
+      const subLineHeight = 14;
       const blockHeight = mainLines.length * mainLineHeight + subLines.length * subLineHeight;
-      let cursor = y + (BANNER_HEIGHT - blockHeight) / 2 + mainLineHeight / 2;
+      let cursor = y + ((this._compact ? 64 : BANNER_HEIGHT) - blockHeight) / 2 + mainLineHeight / 2;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillStyle = TEXT_COLOR;
-      ctx.font = `bold 12px ${THEME.font}`;
+      ctx.font = `bold 13px ${THEME.font}`;
       for (const line of mainLines) {
         ctx.fillText(line, x + width / 2, cursor);
         cursor += mainLineHeight;
       }
       ctx.fillStyle = MUTED_COLOR;
-      ctx.font = `9px ${THEME.font}`;
+      ctx.font = `11px ${THEME.font}`;
       for (const line of subLines) {
         ctx.fillText(line, x + width / 2, cursor);
         cursor += subLineHeight;
@@ -3908,6 +3644,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     const lines = [];
     let current = "";
     for (const unit of textUnits(text)) {
+      if (unit === "\n") {
+        lines.push(current);
+        current = "";
+        if (lines.length === maxLines) break;
+        continue;
+      }
       const next = current + unit;
       if (current !== "" && estimateTextWidth(next, fontSize) > maxWidth) {
         lines.push(current);
@@ -3922,7 +3664,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     if (lines.length < maxLines && current !== "") {
       lines.push(current);
     }
-    if ([...lines.join("")].length < [...text].length) {
+    if ([...lines.join("")].length < [...text.replace(/\n/g, "")].length) {
       const last = lines[lines.length - 1] ?? "";
       lines[lines.length - 1] = `${truncateToWidth(last, maxWidth, fontSize)}…`;
     }
@@ -3961,82 +3703,226 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     return `${chars.join("")}…`;
   }
-  function drawActionAura(ctx, action, progress, radius, color, impact = false) {
-    ctx.save();
-    ctx.strokeStyle = color;
-    ctx.fillStyle = color;
-    ctx.lineWidth = action === ActionType.BURST_ATK ? 2.5 : 1.5;
-    const turn = progress * Math.PI * 2;
-    const ring = (r, start = 0, sweep = Math.PI * 2) => {
-      ctx.beginPath();
-      ctx.arc(0, 0, Math.max(0.1, r), start, start + sweep);
-      ctx.stroke();
-    };
-    switch (action) {
-      case ActionType.AUTO:
-        ring(radius * (impact ? 1 - progress * 0.65 : 0.8), -turn, Math.PI * 1.6);
-        for (let i = 0; i < 6; i++) {
-          const a = turn + i * Math.PI / 3;
-          const r = radius * (1 - progress * 0.75);
-          ctx.fillRect(Math.cos(a) * r - 1, Math.sin(a) * r - 1, 2, 2);
+  const LEVEL_LABEL = {
+    [-1]: "崩坏",
+    0: "虚空",
+    1: "点亮",
+    2: "加持"
+  };
+  const ACTION_LABEL = {
+    [ActionType.AUTO]: "吸纳",
+    [ActionType.CONVERT]: "调息",
+    [ActionType.TRANS]: "化",
+    [ActionType.ATK]: "破",
+    [ActionType.BURST]: "强化",
+    [ActionType.BURST_ATK]: "强破",
+    [ActionType.DISSIPATE]: "散气",
+    [ActionType.PASS]: "消散"
+  };
+  function changedNodes(before, after) {
+    if (before === null) return [];
+    const changes = [];
+    for (const player of ["P1", "P2"])
+      for (const element of Object.values(WuXing)) {
+        for (const polarity of [Polarity.YIN, Polarity.YANG]) {
+          const key = polarity === Polarity.YIN ? "yin" : "yang";
+          const previous = before.players[player].board[element][key];
+          const next = after.players[player].board[element][key];
+          if (previous !== next)
+            changes.push({ player, element, polarity, before: previous, after: next });
         }
-        break;
-      case ActionType.CONVERT:
-        ring(radius * 0.8, turn, Math.PI * 0.8);
-        ring(radius * 0.8, turn + Math.PI, Math.PI * 0.8);
-        ring(radius * 0.42, -turn, Math.PI * 1.5);
-        break;
-      case ActionType.TRANS:
-        for (let i = 0; i < 5; i++) {
-          const a = turn * 0.35 + i * Math.PI * 2 / 5;
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.quadraticCurveTo(
-            Math.cos(a + 0.5) * radius,
-            Math.sin(a + 0.5) * radius,
-            Math.cos(a) * radius,
-            Math.sin(a) * radius
-          );
-          ctx.stroke();
-        }
-        break;
-      case ActionType.BURST:
-        ring(radius);
-        ring(radius * 0.62, turn, Math.PI * 1.75);
-        ring(radius * 0.3);
-        break;
-      case ActionType.ATK:
-      case ActionType.BURST_ATK: {
-        const count = action === ActionType.BURST_ATK ? 8 : 4;
-        for (let i = 0; i < count; i++) {
-          const a = i * Math.PI * 2 / count + Math.PI / 4;
-          ctx.beginPath();
-          ctx.moveTo(Math.cos(a) * radius * 0.2, Math.sin(a) * radius * 0.2);
-          ctx.lineTo(Math.cos(a + 0.16) * radius * 0.62, Math.sin(a + 0.16) * radius * 0.62);
-          ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius);
-          ctx.stroke();
-        }
-        if (action === ActionType.BURST_ATK) {
-          ring(radius * 0.72);
-          if (impact && progress > 0.35) ring(radius * ((progress - 0.35) / 0.65));
-        }
-        break;
       }
-      case ActionType.DISSIPATE:
-      case ActionType.PASS:
-        for (let i = 0; i < 8; i++) {
-          const a = i * Math.PI / 4 + turn * 0.15;
-          const r = radius * (0.35 + progress * 0.65);
-          const x = Math.cos(a) * r;
-          const y = Math.sin(a) * r;
-          ctx.beginPath();
-          ctx.moveTo(x, y);
-          ctx.lineTo(x + Math.cos(a) * 5, y + Math.sin(a) * 5);
-          ctx.stroke();
-        }
-        break;
+    return changes;
+  }
+  function describeNodeChange(change) {
+    return `${change.player === "P1" ? "你" : "天道"}·${WUXING_PALETTE[change.element].name}${change.polarity === Polarity.YIN ? "阴" : "阳"} ${LEVEL_LABEL[change.before]}→${LEVEL_LABEL[change.after]}`;
+  }
+  class ActionResultView extends Container {
+    constructor(width) {
+      super();
+      __publicField(this, "changes", []);
+      __publicField(this, "title", "");
+      __publicField(this, "note");
+      __publicField(this, "width");
+      __publicField(this, "expanded", false);
+      this.width = width;
+      this.visible = false;
+      this.onTap = () => {
+        this.expanded = !this.expanded;
+        this.reflow();
+        return true;
+      };
     }
-    ctx.restore();
+    setResult(actor, action, stem, changes, note) {
+      this.title = `上一招 · ${actor === "P1" ? "你" : "天道"}用${stem} · ${action === "showdown" ? "天命抽牌" : ACTION_LABEL[action]}`;
+      this.changes = [...changes];
+      this.note = note;
+      this.expanded = false;
+      this.visible = true;
+      this.reflow();
+    }
+    reset() {
+      this.visible = false;
+      this.title = "";
+      this.changes = [];
+      this.expanded = false;
+    }
+    resize(width) {
+      this.width = width;
+      this.reflow();
+    }
+    reflow() {
+      const height = this.expanded ? 32 + Math.max(1, this.changes.length + (this.note ? 1 : 0)) * 18 : 34;
+      this.hitArea = { x: 0, y: 34 - height, width: this.width, height };
+    }
+    renderSelf(ctx) {
+      const area = this.hitArea;
+      drawPanel(ctx, 0, area.y, this.width, area.height, THEME.edge, THEME.deep);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.font = `11px ${THEME.font}`;
+      ctx.fillStyle = THEME.muted;
+      ctx.fillText(this.title, 9, area.y + 10);
+      ctx.fillStyle = THEME.ivory;
+      if (this.expanded) {
+        const lines = this.changes.length === 0 ? ["未改变任何阴阳状态"] : this.changes.map(describeNodeChange);
+        if (this.note) lines.unshift(this.note);
+        lines.forEach((line, index) => ctx.fillText(line, 9, area.y + 32 + index * 18));
+        ctx.textAlign = "right";
+        ctx.fillStyle = THEME.muted;
+        ctx.fillText("收起", this.width - 9, area.y + 10);
+      } else {
+        const first = this.changes[0];
+        ctx.fillText(
+          this.note ?? (first === void 0 ? "未改变任何阴阳状态" : describeNodeChange(first)),
+          9,
+          25
+        );
+        ctx.textAlign = "right";
+        ctx.fillStyle = THEME.jade;
+        ctx.fillText(
+          this.changes.length > 1 ? `${this.changes.length}处 · 展开` : "查看",
+          this.width - 9,
+          25
+        );
+      }
+    }
+  }
+  const EASINGS = {
+    /** 线性：进度即比例。 */
+    linear: (t) => t,
+    /** 先快后慢（二次）。 */
+    outQuad: (t) => 1 - (1 - t) * (1 - t),
+    /** 先快后慢（三次）：入场与飞行的默认手感。 */
+    outCubic: (t) => 1 - (1 - t) ** 3,
+    /** 两头慢、中间快（二次）。 */
+    inOutQuad: (t) => t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2
+  };
+  class Tween {
+    constructor(target, to, options) {
+      __publicField(this, "target");
+      /** 补间开始（构造）时的起点值：插值始终相对它计算，多次步进不会累积漂移。 */
+      __publicField(this, "from", /* @__PURE__ */ new Map());
+      __publicField(this, "to");
+      __publicField(this, "duration");
+      __publicField(this, "easing");
+      __publicField(this, "onUpdate");
+      __publicField(this, "onComplete");
+      __publicField(this, "elapsed", 0);
+      __publicField(this, "done", false);
+      this.target = target;
+      this.to = to;
+      if (!(options.duration > 0)) {
+        throw new Error(`补间时长必须是正数（秒），收到 ${options.duration}。`);
+      }
+      this.duration = options.duration;
+      this.easing = options.easing ?? EASINGS.linear;
+      this.onUpdate = options.onUpdate;
+      this.onComplete = options.onComplete;
+      const bag = target;
+      for (const key of Object.keys(to)) {
+        const start = bag[key];
+        if (typeof start !== "number") {
+          throw new Error(`补间目标上没有数值属性 ${key}。`);
+        }
+        this.from.set(key, start);
+      }
+    }
+    /** 补间是否还在推进（未完成）。 */
+    get isRunning() {
+      return !this.done;
+    }
+    /** 补间是否已抵达终值。 */
+    get isComplete() {
+      return this.done;
+    }
+    /** 距终值还差多少秒（已完成为 0）。序列据此把多余的 dt 结转给下一条。 */
+    get remaining() {
+      return this.done ? 0 : this.duration - this.elapsed;
+    }
+    /** 用 `dt` 秒推进补间；超出时长的部分会被丢弃（不越过终值）。 */
+    update(dt) {
+      if (this.done) {
+        return;
+      }
+      this.elapsed = Math.min(this.duration, this.elapsed + dt);
+      const progress = this.easing(this.elapsed / this.duration);
+      this.apply(progress);
+      this.onUpdate?.(progress);
+      if (this.elapsed >= this.duration) {
+        this.done = true;
+        this.onComplete?.();
+      }
+    }
+    apply(progress) {
+      const bag = this.target;
+      for (const [key, start] of this.from) {
+        const end = this.to[key];
+        if (end === void 0) {
+          continue;
+        }
+        bag[key] = start + (end - start) * progress;
+      }
+    }
+  }
+  class TweenSequence {
+    constructor(tweens, onComplete) {
+      __publicField(this, "tweens");
+      __publicField(this, "onComplete");
+      __publicField(this, "index", 0);
+      __publicField(this, "done", false);
+      this.tweens = tweens;
+      this.onComplete = onComplete;
+    }
+    /** 序列是否已跑完（空序列在第一次 `update` 时即算完成）。 */
+    get isComplete() {
+      return this.done;
+    }
+    get isRunning() {
+      return !this.done;
+    }
+    /** 用 `dt` 秒推进：时间依次流过序列里的各条补间，多余的 dt 不会丢弃。 */
+    update(dt) {
+      let remaining = dt;
+      while (!this.done) {
+        const current = this.tweens[this.index];
+        if (current === void 0) {
+          this.done = true;
+          this.onComplete?.();
+          return;
+        }
+        if (current.isComplete) {
+          this.index += 1;
+          continue;
+        }
+        if (remaining <= 0) {
+          return;
+        }
+        const step = Math.min(remaining, current.remaining);
+        current.update(step);
+        remaining -= step;
+      }
+    }
   }
   const DEFAULT_ENTRANCE_DURATION = 0.44;
   const DEFAULT_FLIGHT_DURATION = 0.55;
@@ -4048,11 +3934,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const SERPENTINE_WAVES = 3;
   const IMPACT_MAX_RADIUS = 46;
   const ABSORB_SHRINK = 0.45;
-  const CORONA_COLOR = THEME.gold;
-  const CORONA_RAY_COUNT = 12;
-  const CORONA_RADIUS = 54;
-  const MOONLIGHT_COLOR = THEME.rival;
-  const MOON_RADIUS = 48;
   class RuneFlightView extends Container {
     constructor(options) {
       super();
@@ -4079,8 +3960,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "flight", null);
       __publicField(this, "flightOnComplete");
       __publicField(this, "actionType", null);
+      __publicField(this, "targetSlot", null);
       __publicField(this, "secondaryTarget", null);
-      __publicField(this, "trail", []);
       this.board = options.board;
       this.centerX = options.centerX ?? 0;
       this.centerY = options.centerY ?? 0;
@@ -4088,6 +3969,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.flightDuration = options.flightDuration ?? DEFAULT_FLIGHT_DURATION;
       this.impactDuration = options.impactDuration ?? DEFAULT_IMPACT_DURATION;
       this.rune = new RuneNode();
+      this.rune.radius = Math.max(
+        8,
+        Math.min(25, this.board.layout.innerRadius - this.board.layout.sealSize - 3)
+      );
       this.rune.x = this.centerX;
       this.rune.y = this.centerY;
       this.rune.visible = false;
@@ -4095,6 +3980,36 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.ripple = new ImpactNode();
       this.ripple.visible = false;
       this.addChild(this.ripple);
+    }
+    /** Reproject through BoardView on resize; waiting glyphs and in-flight targets share its geometry. */
+    syncCenter() {
+      this.rune.radius = Math.max(
+        8,
+        Math.min(25, this.board.layout.innerRadius - this.board.layout.sealSize - 3)
+      );
+      this.centerX = this.board.layout.centerX;
+      this.centerY = this.board.layout.centerY;
+      if (this._phase === "entering" || this._phase === "ready") {
+        this.rune.x = this.centerX;
+        this.rune.y = this.centerY;
+      }
+      if (this.secondaryTarget !== null)
+        this.secondaryTarget = this.board.getSlot(
+          this.secondaryTarget.player,
+          this.secondaryTarget.element,
+          this.secondaryTarget.polarity
+        );
+      if (this._phase === "impact" && this.targetSlot !== null) {
+        const target = this.board.getSlot(
+          this.targetSlot.player,
+          this.targetSlot.element,
+          this.targetSlot.polarity
+        );
+        this.ripple.x = target.x;
+        this.ripple.y = target.y;
+        this.rune.x = target.x;
+        this.rune.y = target.y;
+      }
     }
     get actionDuration() {
       return this.flightDuration + this.impactDuration;
@@ -4104,42 +4019,30 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.flight = null;
       this.entranceOnComplete = void 0;
       this.flightOnComplete = void 0;
-      this.trail = [];
       this.rune.visible = false;
       this.ripple.visible = false;
       this._phase = "hidden";
     }
     renderSelf(ctx) {
-      if (this._phase === "flying" && this.actionType !== null && this.trail.length > 1) {
+      if (this._phase === "impact" && this.secondaryTarget !== null && this.ripple.showImpact) {
         ctx.save();
-        ctx.strokeStyle = WUXING_PALETTE[this._tianGan.element].light;
-        ctx.lineCap = "round";
-        for (let i = 1; i < this.trail.length; i++) {
-          ctx.globalAlpha *= i / this.trail.length;
-          ctx.lineWidth = this.actionType === ActionType.BURST_ATK ? 4 : 2;
-          ctx.beginPath();
-          ctx.moveTo(this.trail[i - 1].x, this.trail[i - 1].y);
-          ctx.lineTo(this.trail[i].x, this.trail[i].y);
-          ctx.stroke();
-          ctx.globalAlpha /= i / this.trail.length;
-        }
-        ctx.restore();
-      }
-      if (this._phase === "impact" && this.secondaryTarget !== null && this.impactState.progress > 0.3) {
-        ctx.save();
-        ctx.translate(this.secondaryTarget.x, this.secondaryTarget.y);
-        const progress = (this.impactState.progress - 0.3) / 0.7;
-        ctx.globalAlpha *= 1 - progress;
-        drawActionAura(
-          ctx,
-          this.actionType ?? ActionType.BURST,
-          progress,
-          36 * progress,
-          this.ripple.lightColor,
-          true
+        ctx.globalAlpha *= 1 - this.impactState.progress;
+        ctx.strokeStyle = this.ripple.lightColor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(
+          this.secondaryTarget.x,
+          this.secondaryTarget.y,
+          5 + this.impactState.progress * 11,
+          0,
+          Math.PI * 2
         );
+        ctx.stroke();
         ctx.restore();
       }
+    }
+    get owner() {
+      return this.rune.owner;
     }
     /** 当前动效阶段。 */
     get phase() {
@@ -4171,10 +4074,11 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.actionType = null;
       this.rune.actionType = null;
       this.secondaryTarget = null;
-      this.trail = [];
       this._tianGan = tianGan;
       this._haloStyle = tianGan.polarity === Polarity.YANG ? "corona" : "moonlight";
       this.rune.tianGan = tianGan;
+      this.rune.owner = options.owner ?? null;
+      this.rune.showOwner = this.board.layout.innerRadius >= 70;
       this.rune.haloStyle = this._haloStyle;
       this.rune.x = this.centerX;
       this.rune.y = this.centerY;
@@ -4229,18 +4133,17 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       this.actionType = options.actionType ?? null;
       this.rune.actionType = this.actionType;
+      this.rune.showOwner = false;
       this.ripple.actionType = this.actionType;
+      this.ripple.showImpact = options.showImpact ?? true;
       const isPass = this.actionType === ActionType.PASS;
       const target = isPass ? { x: this.centerX, y: this.centerY } : this.board.getSlot(player, element, polarity);
+      this.targetSlot = isPass ? null : this.board.getSlot(player, element, polarity);
       this.secondaryTarget = options.secondaryPolarity === void 0 ? null : this.board.getSlot(player, element, options.secondaryPolarity);
-      this.trail = [];
       const startX = this.rune.x;
       const startY = this.rune.y;
-      const deltaX = target.x - startX;
-      const deltaY = target.y - startY;
-      const length = Math.hypot(deltaX, deltaY) || 1;
-      const normalX = -deltaY / length;
-      const normalY = deltaX / length;
+      const centerAtStartX = this.centerX;
+      const centerAtStartY = this.centerY;
       const isYang = tianGan.polarity === Polarity.YANG;
       this.flightState.progress = 0;
       this._phase = "flying";
@@ -4252,6 +4155,14 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           duration: this.flightDuration,
           easing: EASINGS.linear,
           onUpdate: (time) => {
+            const projected = isPass ? { x: this.centerX, y: this.centerY } : this.board.getSlot(player, element, polarity);
+            const fromX = startX + this.centerX - centerAtStartX;
+            const fromY = startY + this.centerY - centerAtStartY;
+            const deltaX = projected.x - fromX;
+            const deltaY = projected.y - fromY;
+            const length = Math.hypot(deltaX, deltaY) || 1;
+            const normalX = -deltaY / length;
+            const normalY = deltaX / length;
             const progress = this.actionType === null ? EASINGS.outCubic(time) : EASINGS.inOutQuad(Math.max(0, (time - 0.18) / 0.82));
             let curve = isYang ? -Math.sin(progress * Math.PI) * METEOR_ARC : Math.sin(progress * Math.PI * SERPENTINE_WAVES) * SERPENTINE_AMPLITUDE;
             if (this.actionType === ActionType.ATK || this.actionType === ActionType.BURST_ATK)
@@ -4268,18 +4179,16 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
               this.rune.scaleY = scale;
               if (isPass) this.rune.alpha = 1 - progress;
             }
-            this.rune.x = startX + deltaX * progress + normalX * curve;
-            this.rune.y = startY + deltaY * progress + normalY * curve;
-            if (time > 0.18 && !isPass) {
-              this.trail.push({ x: this.rune.x, y: this.rune.y });
-              if (this.trail.length > 10) this.trail.shift();
-            }
+            this.rune.x = fromX + deltaX * progress + normalX * curve;
+            this.rune.y = fromY + deltaY * progress + normalY * curve;
           },
           onComplete: () => {
-            this.rune.x = target.x;
-            this.rune.y = target.y;
+            const arrival = isPass ? { x: this.centerX, y: this.centerY } : this.board.getSlot(player, element, polarity);
+            this.rune.x = arrival.x;
+            this.rune.y = arrival.y;
+            this.ripple.x = arrival.x;
+            this.ripple.y = arrival.y;
             this._phase = "impact";
-            this.trail = [];
             if (!isPass) options.onImpact?.();
           }
         }
@@ -4345,92 +4254,42 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       super(...arguments);
       __publicField(this, "tianGan", null);
       __publicField(this, "haloStyle", "corona");
-      /** 动画帧计数，交给 `drawCenterTianGanRune` 驱动呼吸与旋转。 */
       __publicField(this, "tick", 0);
       __publicField(this, "actionType", null);
       __publicField(this, "progress", 0);
+      __publicField(this, "owner", null);
+      __publicField(this, "radius", 25);
+      __publicField(this, "showOwner", true);
     }
     renderSelf(ctx) {
-      const tianGan = this.tianGan;
-      if (tianGan === null) {
-        return;
+      if (this.tianGan === null) return;
+      drawCenterTianGanRune(ctx, 0, 0, this.tianGan, this.tick, this.radius);
+      if (this.owner !== null && this.showOwner) {
+        ctx.fillStyle = THEME.ivory;
+        ctx.font = `11px ${THEME.font}`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.owner === "P1" ? "你的天干" : "天道的天干", 0, -36);
       }
-      const palette = WUXING_PALETTE[tianGan.element];
-      if (this.actionType !== null) {
-        drawActionAura(ctx, this.actionType, this.progress, 43, palette.light);
-      } else if (this.haloStyle === "corona") {
-        this.drawCorona(ctx, palette.light);
-      } else {
-        this.drawMoonlight(ctx, palette.light);
-      }
-      drawCenterTianGanRune(ctx, 0, 0, tianGan, this.tick);
-    }
-    /** 金乌日冕：暖金色放射日珥 + 随呼吸胀缩的光晕。 */
-    drawCorona(ctx, elementLight) {
-      const radius = CORONA_RADIUS * (1 + Math.sin(this.tick * 0.08) * 0.06);
-      const grad = ctx.createRadialGradient(0, 0, 4, 0, 0, radius);
-      grad.addColorStop(0, `${CORONA_COLOR}55`);
-      grad.addColorStop(0.55, `${elementLight}33`);
-      grad.addColorStop(1, "transparent");
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(0, 0, radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = `${CORONA_COLOR}aa`;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      for (let index = 0; index < CORONA_RAY_COUNT; index += 1) {
-        const angle = index * Math.PI * 2 / CORONA_RAY_COUNT + this.tick * 0.01;
-        ctx.moveTo(Math.cos(angle) * radius * 0.74, Math.sin(angle) * radius * 0.74);
-        ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
-      }
-      ctx.stroke();
-    }
-    /** 玄阴幽光：冷月色光晕 + 缓转的弦月弧。 */
-    drawMoonlight(ctx, elementLight) {
-      const radius = MOON_RADIUS * (1 + Math.sin(this.tick * 0.05) * 0.05);
-      const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, radius);
-      grad.addColorStop(0, `${MOONLIGHT_COLOR}44`);
-      grad.addColorStop(0.6, `${elementLight}22`);
-      grad.addColorStop(1, "transparent");
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(0, 0, radius, 0, Math.PI * 2);
-      ctx.fill();
-      const phase = this.tick * 0.012;
-      ctx.strokeStyle = `${MOONLIGHT_COLOR}cc`;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, radius * 0.84, phase, phase + Math.PI * 0.9);
-      ctx.stroke();
     }
   }
   class ImpactNode extends Node {
     constructor() {
       super(...arguments);
       __publicField(this, "radius", 0);
+      __publicField(this, "showImpact", true);
       __publicField(this, "maxRadius", IMPACT_MAX_RADIUS);
       __publicField(this, "lightColor", "#ffffff");
       __publicField(this, "actionType", null);
       __publicField(this, "progress", 0);
     }
     renderSelf(ctx) {
-      if (this.radius <= 0) {
-        return;
-      }
-      if (this.actionType !== null) {
-        drawActionAura(ctx, this.actionType, this.progress, this.radius, this.lightColor, true);
-        return;
-      }
-      drawImpactEffect(ctx, {
-        x: 0,
-        y: 0,
-        radius: this.radius,
-        maxRadius: this.maxRadius,
-        lightColor: this.lightColor,
-        // 绘制例程直接赋值 `globalAlpha`，这里把节点自身的淡出值传进去。
-        alpha: this.alpha
-      });
+      if (this.radius <= 0 || this.actionType === ActionType.PASS || !this.showImpact) return;
+      ctx.strokeStyle = this.lightColor;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, 5 + this.progress * 11, 0, Math.PI * 2);
+      ctx.stroke();
     }
   }
   const DEFAULT_SAFE_TOP = 24;
@@ -4440,30 +4299,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const DEFAULT_EXPRESSION_HOLD = 0.6;
   const DEFAULT_CELEBRATE_HOLD = 1.2;
   const ACTION_BAR_MARGIN = 14;
-  const SHAKE_DURATION = 0.28;
-  const SHAKE_BURST = 8;
-  const SHAKE_ATTACK = 4;
-  const SHAKE_SHOWDOWN = 6;
-  function describeAutoFlow(actionType) {
-    switch (actionType) {
-      case ActionType.AUTO:
-        return "自动吸纳中";
-      case ActionType.DISSIPATE:
-        return "亢极满溢·散气回落中";
-      case ActionType.PASS:
-        return "道法受阻·消散过牌中";
-      case ActionType.ATK:
-        return "唯一机缘·破";
-      case ActionType.TRANS:
-        return "唯一机缘·化";
-      case ActionType.CONVERT:
-        return "势在必行·调息";
-      case ActionType.BURST:
-        return "势在必行·强化";
-      case ActionType.BURST_ATK:
-        return "势在必行·强破";
-    }
-  }
   function describeEndReason(endReason) {
     switch (endReason) {
       case "GUI_YUAN":
@@ -4495,6 +4330,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "entranceDuration");
       __publicField(this, "flightDuration");
       __publicField(this, "impactDuration");
+      __publicField(this, "resultHold");
+      __publicField(this, "lastAction");
+      __publicField(this, "visualStem", null);
+      __publicField(this, "visualActor", null);
       __publicField(this, "_phase", "idle");
       __publicField(this, "width");
       __publicField(this, "height");
@@ -4510,10 +4349,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "actionBefore", null);
       __publicField(this, "lastShowdown", null);
       __publicField(this, "unsubscribes", []);
-      /** 震屏：补间把幅度衰减到 0，`update` 按幅度换算节点偏移。 */
-      __publicField(this, "shakeState", { amount: 0 });
-      __publicField(this, "shakeTween", null);
-      __publicField(this, "elapsed", 0);
       /** 视口在对局中变化时，符文层延到下一个回合开始前重建（不打断当前动效）。 */
       __publicField(this, "runeFlightStale", false);
       this.width = options.width;
@@ -4528,25 +4363,31 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.entranceDuration = options.entranceDuration ?? 0.44;
       this.flightDuration = options.flightDuration ?? 0.55;
       this.impactDuration = options.impactDuration ?? 0.35;
+      this.resultHold = options.resultHold ?? 0.65;
       this.strategy = createStrategy(BALANCED_WEIGHTS, { rules: this.rules });
       this._turnManager = options.turnManager ?? new TurnManager({
         prng: options.prng ?? createPRNG(options.seed ?? Date.now()),
         initialState: options.initialState
       });
       this.board = new BoardView();
-      this.board.resize(this.width, this.height);
+      this.layoutBoard();
       this.runeFlight = this.buildRuneFlight();
       this.characters = new CharacterView({
         width: this.width,
-        safeTop: this.safeTop
+        safeTop: this.safeTop,
+        compact: this.height < 650 && this.safeTop > 24
       });
       this.actionBar = this.buildActionBar(this._turnManager);
       this.actionBar.visible = false;
       this.placeActionBar();
+      this.lastAction = new ActionResultView(this.width - 20);
+      this.lastAction.x = 10;
+      this.placeResult();
       this.addChild(this.board);
       this.addChild(this.runeFlight);
       this.addChild(this.characters);
       this.addChild(this.actionBar);
+      this.addChild(this.lastAction);
       this.bindTurnManager(this._turnManager);
     }
     /** 核心状态机（只读；`restart()` 会换成新实例）。 */
@@ -4554,6 +4395,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       return this._turnManager;
     }
     /** 当前表现阶段。 */
+    get visualTurn() {
+      return { player: this.visualActor, stem: this.visualStem };
+    }
     get phase() {
       return this._phase;
     }
@@ -4561,6 +4405,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     setPhase(phase) {
       this._phase = phase;
       this.board.setActivePaths(this.activePathsFor(phase));
+      this.placeResult();
     }
     /**
      * 当前阶段该点亮的连线：候选动作各自映射成路径后取并集（同一根天干下最多两类，
@@ -4592,9 +4437,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.height = height;
       this.safeTop = safeTop ?? this.safeTop;
       this.safeBottom = safeBottom ?? this.safeBottom;
-      this.board.resize(width, height);
-      this.characters.resize(width, this.safeTop);
       this.actionBar.resize(width - ACTION_BAR_MARGIN * 2);
+      this.layoutBoard();
+      this.runeFlight.syncCenter();
+      this.characters.resize(width, this.safeTop, this.height < 650 && this.safeTop > 24);
       this.placeActionBar();
       if (this._phase === "idle" || this._phase === "game-over") {
         this.replaceRuneFlight();
@@ -4620,11 +4466,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.pendingCelebrations.clear();
       this.actionBefore = null;
       this.runeFlight.cancel();
-      this.shakeTween = null;
-      this.shakeState.amount = 0;
       this.x = 0;
       this.y = 0;
       this.characters.resetFeedback();
+      this.lastAction.reset();
+      this.visualStem = null;
+      this.visualActor = null;
       this.actionBar.dispose();
       this.actionBar.removeFromParent();
       this.actionBar = this.buildActionBar(this._turnManager);
@@ -4640,16 +4487,24 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.actionBar.dispose();
       this.runeFlight.cancel();
       this.characters.resetFeedback();
+      this.lastAction.reset();
+      this.timer = 0;
+      this.setPhase("idle");
     }
     /**
      * 主循环步进（秒）：推进动效与缓冲倒计时。
      * `Tween` 不掌握帧循环，时钟完全由这里注入。
      */
     update(dt) {
-      this.elapsed += dt;
+      const phaseBefore = this._phase;
       this.characters.updateTimers(dt);
-      this.updateShake(dt);
       this.runeFlight.update(dt);
+      if (this._phase === "result") {
+        if (phaseBefore !== "result") return;
+        this.timer -= dt;
+        if (this.timer <= 0) this.finishResult();
+        return;
+      }
       if (this._phase !== "auto-pending" && this._phase !== "ai-thinking") {
         return;
       }
@@ -4678,12 +4533,17 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         this.replaceRuneFlight();
         this.runeFlightStale = false;
       }
+      this.layoutBoard();
+      if (Math.abs(this.runeFlight.position.x - this.board.layout.centerX) > 0.1 || Math.abs(this.runeFlight.position.y - this.board.layout.centerY) > 0.1)
+        this.replaceRuneFlight();
       const before = this._turnManager.getState();
       const actions = this._turnManager.startTurn();
       const state = this._turnManager.getState();
       const tianGan = this._turnManager.getCurrentTianGan();
       this.pendingAction = null;
       this.timer = 0;
+      this.visualStem = tianGan;
+      this.visualActor = state.currentPlayer;
       this.characters.update(state, { isExtraTurn: this._turnManager.isExtraTurnActive() });
       if (state.isGameOver) {
         this.presentGameOver(before);
@@ -4691,13 +4551,19 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       this.projectBoards(state);
       this.hideActionBar();
+      if (actions.length > 1) this.actionBar.refresh();
+      this.layoutBoard();
+      this.replaceRuneFlight();
       this.announceTurnStart(state, tianGan, actions);
       if (tianGan === null) {
         this.afterEntrance();
         return;
       }
       this.setPhase("entrance");
-      this.runeFlight.playEntrance(tianGan, { onComplete: () => this.afterEntrance() });
+      this.runeFlight.playEntrance(tianGan, {
+        owner: state.currentPlayer,
+        onComplete: () => this.afterEntrance()
+      });
     }
     /** 降临结束：进入玩家抉择 / 自动流转 / 天道推演三者之一。 */
     afterEntrance() {
@@ -4762,6 +4628,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const state = this._turnManager.getState();
       const actor = event.player;
       const resolved = resolveActionTarget(action, event.actionType, actor, this._turnManager);
+      const beforeState = this.actionBefore;
+      const changes = changedNodes(beforeState, state).sort(
+        (a, b) => Number(b.player === resolved.player && b.element === resolved.element) - Number(a.player === resolved.player && a.element === resolved.element)
+      );
+      const targetChanges = changes.filter(
+        (change) => change.player === resolved.player && change.element === resolved.element
+      );
       const beforeNode = this.actionBefore?.players[resolved.player].board[resolved.element];
       const afterNode = state.players[resolved.player].board[resolved.element];
       const changedPolarities = beforeNode === void 0 ? [] : [Polarity.YIN, Polarity.YANG].filter(
@@ -4772,40 +4645,55 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.actionBefore = null;
       const isAttack = isAttackAction(event.actionType);
       this.hideActionBar();
-      this.characters.update(state, {
+      const stemLabel = this.visualStem?.name ?? "";
+      const actionTitle = `${actor === "P1" ? "你" : "天道"} · ${ACTION_LABEL[event.actionType]}`;
+      const compact = this.height < 650 && this.safeTop > 24;
+      this.characters.showBanner(
+        actionTitle,
+        `${stemLabel} · ${this.visualStem === null ? "" : WUXING_PALETTE[this.visualStem.element].name}${this.visualStem?.polarity === Polarity.YANG ? "阳" : "阴"}
+${event.actionType === ActionType.PASS ? "原地消散 · 无节点变化" : `${compact ? "→ " : "作用于 "}${target.player === "P1" ? "你" : "天道"}·${WUXING_PALETTE[target.element].name}${compact ? "" : "·"}${target.polarity === Polarity.YIN ? "阴" : "阳"}`}`
+      );
+      this.characters.update(beforeState ?? state, {
         isExtraTurn: this._turnManager.isExtraTurnActive(),
         actingPlayer: actor
       });
       this.characters.playAction(actor, event.actionType, this.flightDuration, this.impactDuration);
-      if (action !== null) {
-        this.characters.announce(
-          actor,
-          formatActionButton(action).label,
-          Math.max(this.expressionHold * 2, this.runeFlight.actionDuration)
-        );
-      }
       this.setPhase("flying");
       this.runeFlight.flyTo(target.player, target.element, target.polarity, {
         actionType: event.actionType,
         secondaryPolarity,
+        showImpact: targetChanges.length > 0,
         onImpact: () => {
           this.projectBoards(state);
-          if (isAttack) {
+          this.characters.update(
+            { ...state, round: beforeState?.round ?? state.round },
+            { actingPlayer: actor }
+          );
+          this.showActionResult(
+            actor,
+            event.actionType,
+            stemLabel,
+            changes,
+            targetChanges.length === 0
+          );
+          if (isAttack && targetChanges.some((change) => change.after < change.before)) {
             this.characters.setExpression(
               opponentOf(actor),
               "hurt",
               Math.max(this.expressionHold, this.impactDuration),
               Math.min(0.08, this.impactDuration * 0.3)
             );
-            this.shake(event.actionType === ActionType.BURST_ATK ? SHAKE_BURST : SHAKE_ATTACK);
-            this.updateShake(0);
           }
           for (const player of this.pendingCelebrations) {
             this.characters.setExpression(player, "celebrate", this.celebrateHold, 0.08);
           }
           this.pendingCelebrations.clear();
         },
-        onComplete: () => this.afterFlight()
+        onComplete: () => {
+          if (event.actionType === ActionType.PASS)
+            this.showActionResult(actor, event.actionType, stemLabel, changes);
+          this.afterFlight();
+        }
       });
     }
     /**
@@ -4822,16 +4710,32 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         else this.characters.setExpression(event.player, "celebrate", this.celebrateHold);
       }
     }
-    /** 飞行结束：投影结算后的双盘，然后进入下一回合或终局。 */
+    showActionResult(actor, action, stem, changes, targetUnchanged = false) {
+      this.lastAction.setResult(
+        actor,
+        action,
+        stem,
+        changes,
+        targetUnchanged && action !== ActionType.PASS ? "目标阴阳未变" : void 0
+      );
+      const compact = this.height < 650 && this.safeTop > 24;
+      this.characters.showBanner(
+        `${actor === "P1" ? "你" : "天道"} · ${ACTION_LABEL[action]}${compact ? "" : "已结算"}`,
+        changes.length === 0 ? "未改变阴阳状态" : `${targetUnchanged ? "目标阴阳未变\n" : ""}${describeNodeChange(changes[0])}${!compact && changes.length > 1 ? `
+共${changes.length}处 · 下方可展开` : ""}`
+      );
+      this.placeResult();
+    }
+    /** Keep the acting player and stem visible long enough to read the change before handover. */
     afterFlight() {
+      this.projectBoards(this._turnManager.getState());
+      this.setPhase("result");
+      this.timer = this.resultHold;
+    }
+    finishResult() {
       const state = this._turnManager.getState();
-      this.projectBoards(state);
-      this.characters.update(state, { isExtraTurn: this._turnManager.isExtraTurnActive() });
-      if (state.isGameOver) {
-        this.presentGameOver(null);
-        return;
-      }
-      this.beginTurn();
+      if (state.isGameOver) this.presentGameOver(null);
+      else this.beginTurn();
     }
     /**
      * 终局展示：天命揭牌保留抽牌横幅与符文揭示动效，常规终局用胜负横幅。
@@ -4852,16 +4756,26 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           "【终轮绝杀·天命抽牌】",
           showdown.success ? `【天命逆转】五行归元·后发制人！(抽中【${label}】)` : `【天命难违】差之一线·先手锁定胜局！(抽中【${label}】)`
         );
-        this.characters.setExpression(showdown.success ? "P2" : "P1", "cast", this.expressionHold);
-        this.characters.setExpression(showdown.success ? "P1" : "P2", "hurt", this.expressionHold);
-        if (showdown.success) {
-          this.shake(SHAKE_SHOWDOWN);
-        }
+        this.characters.setExpression("P2", "cast", 0);
         this.board.update(beforeShowdown.players.P1.board, beforeShowdown.players.P2.board);
         const { element, polarity } = showdown.tianGan;
+        this.visualStem = showdown.tianGan;
+        this.visualActor = "P2";
+        this.characters.update(state, { actingPlayer: "P2" });
         this.runeFlight.playEntrance(showdown.tianGan, {
+          owner: "P2",
           onComplete: () => {
             this.runeFlight.flyTo("P2", element, polarity, {
+              onImpact: () => {
+                this.board.update(state.players.P1.board, state.players.P2.board);
+                this.lastAction.setResult(
+                  "P2",
+                  "showdown",
+                  showdown.tianGan.name,
+                  changedNodes(beforeShowdown, state)
+                );
+                this.placeResult();
+              },
               onComplete: () => {
                 this.board.update(state.players.P1.board, state.players.P2.board);
                 this.showFinalPoses(state);
@@ -4891,18 +4805,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     announceTurnStart(state, tianGan, actions) {
       const isExtraTurn = this._turnManager.isExtraTurnActive();
       const isPlayer = state.currentPlayer === "P1";
-      const who = isPlayer ? "玩家" : "天道";
-      const main = isExtraTurn ? `【连动回合】${who}额外行动！` : `${who}回合 · 天干【${tianGan?.name ?? ""}】降临`;
-      let sub;
-      if (!isPlayer) {
-        sub = "天道推演生克决策中...";
-      } else if (actions.length === 1) {
-        sub = describeAutoFlow(actions[0].actionType);
-      } else {
-        const elementName = tianGan === null ? "" : WUXING_PALETTE[tianGan.element].name;
-        const polarity = tianGan?.polarity === Polarity.YANG ? "阳" : "阴";
-        sub = `属性: ${elementName} (${polarity})`;
-      }
+      const who = isPlayer ? "你" : "天道";
+      const main = isExtraTurn ? `${who}的连动回合` : `${who}的回合`;
+      const stemText = tianGan === null ? "" : `${tianGan.name} · ${WUXING_PALETTE[tianGan.element].name}${tianGan.polarity === Polarity.YANG ? "阳" : "阴"}`;
+      const prompt = !isPlayer ? "天道选择法术" : actions.length === 1 ? ACTION_LABEL[actions[0].actionType] : "请选择法术";
+      const sub = `${stemText}
+${prompt}`;
       this.characters.showBanner(main, sub);
     }
     /** 一次投影双方的棋盘到法盘双环（只读快照，不写回；ADR 0015）。 */
@@ -4917,6 +4825,19 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     placeActionBar() {
       this.actionBar.x = ACTION_BAR_MARGIN;
       this.actionBar.y = this.height - this.safeBottom - this.actionBar.contentHeight;
+      this.placeResult();
+    }
+    layoutBoard() {
+      const compact = this.height < 650 || this.safeTop > 24;
+      const buttonHeight = Math.max(58, this.actionBar?.contentHeight ?? 0);
+      this.board.resize(
+        this.width,
+        this.height,
+        compact ? {
+          top: this.safeTop + (this.height < 650 && this.safeTop > 24 ? 100 : 128),
+          bottom: this.height - this.safeBottom - buttonHeight - 64
+        } : void 0
+      );
     }
     buildActionBar(turnManager) {
       return new ActionBarView({
@@ -4927,8 +4848,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     buildRuneFlight() {
       return new RuneFlightView({
         board: this.board,
-        centerX: this.width / 2,
-        centerY: this.height / 2,
+        centerX: this.board.layout.centerX,
+        centerY: this.board.layout.centerY,
         entranceDuration: this.entranceDuration,
         flightDuration: this.flightDuration,
         impactDuration: this.impactDuration
@@ -4941,6 +4862,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.addChild(this.runeFlight);
       this.addChild(this.characters);
       this.addChild(this.actionBar);
+      this.addChild(this.lastAction);
     }
     bindTurnManager(turnManager) {
       const bus = turnManager.getEventBus();
@@ -4959,33 +4881,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       this.unsubscribes.length = 0;
     }
-    /** 触发震屏（幅度补间衰减到 0）。 */
-    shake(magnitude) {
-      this.shakeState.amount = magnitude;
-      this.shakeTween = new Tween(
-        this.shakeState,
-        { amount: 0 },
-        {
-          duration: SHAKE_DURATION,
-          easing: EASINGS.outQuad
-        }
-      );
-    }
-    updateShake(dt) {
-      if (this.shakeTween === null) {
-        return;
-      }
-      this.shakeTween.update(dt);
-      const amount = this.shakeState.amount;
-      if (amount <= 0.01) {
-        this.shakeTween = null;
-        this.x = 0;
-        this.y = 0;
-        return;
-      }
-      this.x = Math.sin(this.elapsed * 62) * amount;
-      this.y = Math.cos(this.elapsed * 74) * amount;
-    }
     /** 底色与中央道场光晕（各视图画在其上）。 */
     renderSelf(ctx) {
       drawLandscape(ctx, this.width, this.height);
@@ -4998,74 +4893,27 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.drawDecisionGuide(ctx);
       ctx.restore();
     }
-    /** 棋盘下方只呈现当前决策所需的提示；短屏自动收起状态图例。 */
+    placeResult() {
+      if (this.lastAction === void 0) return;
+      this.lastAction.resize(this.width - 20);
+      this.lastAction.y = this.height - this.safeBottom - Math.max(58, this.actionBar.contentHeight) - 42;
+    }
+    /** One permanent legend; the readable last-action strip owns the remaining footer. */
     drawDecisionGuide(ctx) {
-      const layout = this.board.layout;
-      const top = layout.centerY + layout.outerRadius + layout.sealSize + 40;
-      const bottom = this.height - this.safeBottom - (this.actionBar.visible ? this.actionBar.contentHeight : 0) - 14;
-      const room = bottom - top;
-      if (room < 22) {
-        if (room >= 12) {
-          ctx.textAlign = "center";
-          ctx.fillStyle = THEME.muted;
-          ctx.font = `10px ${THEME.font}`;
-          ctx.fillText("左阴 · 右阳", this.width / 2, top + 6);
-        }
-        return;
-      }
-      const state = this._turnManager.getState();
-      const stem = this._turnManager.getCurrentTianGan();
-      let heading;
-      let detail;
-      switch (this._phase) {
-        case "awaiting-player":
-          heading = "请选择法术";
-          detail = "循相生而化，沿相克而破";
-          break;
-        case "auto-pending":
-          heading = this.pendingAction === null ? "顺势而行" : describeAutoFlow(this.pendingAction.actionType);
-          detail = "点按任意处，加速结算";
-          break;
-        case "ai-thinking":
-          heading = "天道推演";
-          detail = "静观其变，蓄势待发";
-          break;
-        case "game-over":
-          heading = state.winner === "P1" ? "此弈 · 弈者胜" : "此弈 · 天道胜";
-          detail = `${describeEndReason(state.endReason)} · 点按再弈`;
-          break;
-        case "flying":
-          heading = "法术流转";
-          detail = "阴阳有序，生克有道";
-          break;
-        default:
-          heading = "天干降临";
-          detail = stem === null ? "阴阳调和，五行归元" : `${stem.name} · ${WUXING_PALETTE[stem.element].name}行 · ${stem.polarity === Polarity.YANG ? "阳" : "阴"}`;
-      }
       ctx.textAlign = "center";
-      ctx.fillStyle = THEME.ivory;
-      ctx.font = `bold ${room < 50 ? 13 : 17}px ${THEME.font}`;
-      ctx.fillText(heading, this.width / 2, top + 12);
-      if (room < 50) return;
+      ctx.textBaseline = "middle";
       ctx.fillStyle = THEME.muted;
-      ctx.font = `12px ${THEME.font}`;
-      ctx.fillText(detail, this.width / 2, top + 37);
-      if (room < 105 || this._phase === "game-over") return;
-      ctx.strokeStyle = THEME.edge;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(this.width * 0.16, top + 60);
-      ctx.lineTo(this.width * 0.84, top + 60);
-      ctx.stroke();
-      ctx.font = `10px ${THEME.font}`;
-      const labels = ["−1 道损", "0 虚空", "1 点亮", "2 加持"];
-      const colors = [THEME.damage, THEME.muted, THEME.jade, THEME.gold];
-      for (let index = 0; index < labels.length; index += 1) {
-        ctx.fillStyle = colors[index];
-        ctx.fillText(labels[index], this.width * (0.2 + index * 0.2), top + 78);
+      ctx.font = `11px ${THEME.font}`;
+      const y = this.board.layout.centerY + this.board.layout.outerRadius + this.board.layout.sealSize * 1.9 + 18;
+      ctx.fillText("左阴 · 右阳", this.width / 2, y - 5);
+      for (const [index, level] of [-1, 0, 1, 2].entries()) {
+        const column = this.width * (index + 0.5) / 4;
+        drawYinYangFish(ctx, column - 13, y + 13, 7, Polarity.YIN, level, WuXing.WOOD);
+        drawYinYangFish(ctx, column - 13, y + 13, 7, Polarity.YANG, level, WuXing.WOOD);
+        ctx.fillStyle = THEME.ivory;
+        ctx.textAlign = "left";
+        ctx.fillText(["崩坏", "虚空", "点亮", "发光"][index], column - 2, y + 13);
       }
-      ctx.fillStyle = THEME.muted;
-      ctx.fillText("左阴 · 右阳　两侧皆点亮即归一", this.width / 2, top + 99);
     }
   }
   function opponentOf(player) {
@@ -5292,7 +5140,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     const sysInfo = wx.getSystemInfoSync();
     const { windowWidth, windowHeight, pixelRatio } = sysInfo;
-    const safeTop = sysInfo.safeArea ? sysInfo.safeArea.top : sysInfo.statusBarHeight || 20;
+    let safeTop = sysInfo.safeArea ? sysInfo.safeArea.top : sysInfo.statusBarHeight || 20;
+    try {
+      const menu = wx.getMenuButtonBoundingClientRect?.();
+      if (menu !== void 0 && Number.isFinite(menu.bottom) && menu.bottom > 0 && menu.bottom < windowHeight / 2)
+        safeTop = Math.max(safeTop, menu.bottom + 8);
+    } catch {
+    }
     const safeBottom = sysInfo.safeArea ? Math.max(0, windowHeight - sysInfo.safeArea.bottom) : 10;
     const canvas = wx.createCanvas();
     canvas.width = windowWidth * pixelRatio;
