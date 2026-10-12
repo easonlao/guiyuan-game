@@ -1,5 +1,6 @@
 /** 仅开发使用的浏览器宿主，直接运行微信小游戏的真实场景与输入分发。 */
 import { GameScene } from '@guiyuan/game/minigame/game-scene.js';
+import { CHARACTER_ATLAS_FRAMES } from '@guiyuan/game/minigame/character-sprite.js';
 import { Container } from '@guiyuan/game/minigame/scene/container.js';
 import { InputManager } from '@guiyuan/game/minigame/scene/input-manager.js';
 
@@ -18,6 +19,16 @@ const scene = new GameScene({
   seed: Number.isFinite(querySeed) ? querySeed : 42,
 });
 stage.addChild(scene);
+const characterImage = new Image();
+characterImage.onload = () =>
+  scene.characters.setSpriteAtlas({
+    image: characterImage,
+    width: characterImage.naturalWidth,
+    height: characterImage.naturalHeight,
+    frames: CHARACTER_ATLAS_FRAMES,
+  });
+characterImage.onerror = () => scene.characters.setSpriteAtlas(null);
+characterImage.src = new URL('../../minigame/assets/characters.png', import.meta.url).href;
 stage.onTap = () => scene.handleTap();
 const input = new InputManager(stage);
 

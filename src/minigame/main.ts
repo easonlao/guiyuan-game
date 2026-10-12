@@ -1,10 +1,18 @@
 import { GameScene } from './game-scene.js';
+import { CHARACTER_ATLAS_FRAMES, CHARACTER_ATLAS_PATH } from './character-sprite.js';
 import { Container } from './scene/container.js';
 import { InputManager, TouchEventLike } from './scene/input-manager.js';
 
 // 声明微信小游戏全局对象
 declare const wx: {
   createCanvas: () => any;
+  createImage: () => {
+    src: string;
+    width: number;
+    height: number;
+    onload: (() => void) | null;
+    onerror: (() => void) | null;
+  };
   getSystemInfoSync: () => {
     windowWidth: number;
     windowHeight: number;
@@ -65,6 +73,17 @@ export function initMiniGame(): void {
   });
   stage.onTap = () => scene.handleTap();
   stage.addChild(scene);
+
+  const characters = wx.createImage();
+  characters.onload = () =>
+    scene.characters.setSpriteAtlas({
+      image: characters as unknown as CanvasImageSource,
+      width: characters.width,
+      height: characters.height,
+      frames: CHARACTER_ATLAS_FRAMES,
+    });
+  characters.onerror = () => scene.characters.setSpriteAtlas(null);
+  characters.src = CHARACTER_ATLAS_PATH;
 
   const input = new InputManager(stage);
   input.bindTouchEvents(wx);

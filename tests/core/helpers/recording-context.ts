@@ -13,6 +13,17 @@ export class RecordingContext {
   public strokeStyle: string | CanvasGradient | CanvasPattern = '#000';
   public lineWidth = 1;
   public lineCap: CanvasLineCap = 'butt';
+  public lineJoin: CanvasLineJoin = 'miter';
+  public readonly paths: {
+    points: { x: number; y: number }[];
+    color: string;
+    strokeWidth: number;
+    offset: { x: number; y: number };
+  }[] = [];
+  private pathPoints: { x: number; y: number }[] = [];
+  private offset = { x: 0, y: 0 };
+  private readonly alphaStack: number[] = [];
+  private offsetStack: { x: number; y: number }[] = [];
   public font = '';
   public textAlign: CanvasTextAlign = 'start';
   public textBaseline: CanvasTextBaseline = 'alphabetic';
@@ -20,6 +31,18 @@ export class RecordingContext {
   public shadowBlur = 0;
   /** 按调用顺序记录全部指令名（含 save / translate 这类状态指令）。 */
   public readonly calls: string[] = [];
+  public readonly images: {
+    image: CanvasImageSource;
+    alpha: number;
+    sx: number;
+    sy: number;
+    sw: number;
+    sh: number;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  }[] = [];
   /** 按调用顺序记录落笔文本（文本、锚点、字号），供「文本不越界」这类版面断言使用。 */
   public readonly texts: { text: string; x: number; y: number; fontSize: number }[] = [];
   /** 按调用顺序记录落笔矩形（坐标、尺寸与当时的填充色），供姿势与配色断言使用。 */
@@ -33,13 +56,18 @@ export class RecordingContext {
 
   public save(): void {
     this.calls.push('save');
+    this.alphaStack.push(this.globalAlpha);
+    this.offsetStack.push({ ...this.offset });
   }
   public restore(): void {
     this.calls.push('restore');
+    this.globalAlpha = this.alphaStack.pop() ?? 1;
+    this.offset = this.offsetStack.pop() ?? { x: 0, y: 0 };
   }
   public translate(x: number, y: number): void {
     this.calls.push('translate');
     this.translations.push({ x, y });
+    this.offset = { x: this.offset.x + x, y: this.offset.y + y };
   }
   public scale(x: number, y: number): void {
     this.calls.push('scale');
@@ -50,6 +78,7 @@ export class RecordingContext {
   }
   public beginPath(): void {
     this.calls.push('beginPath');
+    this.pathPoints = [];
   }
   public closePath(): void {
     this.calls.push('closePath');
@@ -76,17 +105,36 @@ export class RecordingContext {
   ): void {
     this.calls.push('roundRect');
   }
-  public moveTo(_x: number, _y: number): void {
+  public moveTo(x: number, y: number): void {
     this.calls.push('moveTo');
+    this.pathPoints.push({ x, y });
   }
-  public lineTo(_x: number, _y: number): void {
+  public lineTo(x: number, y: number): void {
     this.calls.push('lineTo');
+    this.pathPoints.push({ x, y });
+  }
+  public quadraticCurveTo(cx: number, cy: number, x: number, y: number): void {
+    this.calls.push('quadraticCurveTo');
+    // Bezier curves remain inside the convex hull of their control points.
+    this.pathPoints.push({ x: cx, y: cy }, { x, y });
   }
   public stroke(): void {
     this.calls.push('stroke');
+    this.paths.push({
+      points: [...this.pathPoints],
+      color: String(this.strokeStyle),
+      strokeWidth: this.lineWidth,
+      offset: { ...this.offset },
+    });
   }
   public fill(): void {
     this.calls.push('fill');
+    this.paths.push({
+      points: [...this.pathPoints],
+      color: String(this.fillStyle),
+      strokeWidth: 0,
+      offset: { ...this.offset },
+    });
   }
   public fillRect(x: number, y: number, w: number, h: number): void {
     this.calls.push('fillRect');
@@ -95,6 +143,20 @@ export class RecordingContext {
   public strokeRect(x: number, y: number, w: number, h: number): void {
     this.calls.push('strokeRect');
     this.strokedRects.push({ x, y, w, h, color: String(this.strokeStyle) });
+  }
+  public drawImage(
+    image: CanvasImageSource,
+    sx: number,
+    sy: number,
+    sw: number,
+    sh: number,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): void {
+    this.calls.push('drawImage');
+    this.images.push({ image, alpha: this.globalAlpha, sx, sy, sw, sh, x, y, w, h });
   }
   public fillText(text: string, x: number, y: number): void {
     this.calls.push('fillText');
@@ -121,7 +183,12 @@ export class RecordingContext {
   /** 真正落笔的绘制指令数（排除 save / translate 之类的状态指令）。 */
   public drawCallCount(): number {
     return this.calls.filter(
-      (call) => call === 'fill' || call === 'stroke' || call === 'fillRect' || call === 'fillText',
+      (call) =>
+        call === 'fill' ||
+        call === 'stroke' ||
+        call === 'fillRect' ||
+        call === 'fillText' ||
+        call === 'drawImage',
     ).length;
   }
 }

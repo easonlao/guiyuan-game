@@ -7,8 +7,9 @@
  * 表情与气泡是纯表现态，由调用方（`GameScene`）触发，靠 `updateTimers(dt)` 自行衰减。
  */
 
-import { GameState, PlayerId } from '../../core/types/domain.js';
+import { ActionType, GameState, PlayerId } from '../../core/types/domain.js';
 import { CharacterActionState } from '../types.js';
+import { CharacterSpriteAtlas, drawCharacterSprite } from '../character-sprite.js';
 import {
   CHARACTER_PIXEL_SIZE,
   CHARACTER_SPRITE_BOUNDS,
@@ -28,6 +29,8 @@ export interface CharacterViewOptions {
 
 /** 投影选项：连动回合是核心状态之外的回合语义，由调用方传入。 */
 export interface CharacterProjectionOptions {
+  /** Keep the visual turn marker on the casting actor until the animation finishes. */
+  readonly actingPlayer?: PlayerId;
   /** 当前是否处于爆发连动带来的额外行动中。 */
   readonly isExtraTurn?: boolean;
 }
@@ -67,6 +70,7 @@ const PLAYER_COLOR: Record<PlayerId, string> = { P1: P1_COLOR, P2: P2_COLOR };
 
 export class CharacterView extends Container {
   private _width: number;
+  private _spriteAtlas: CharacterSpriteAtlas | null = null;
   private _safeTop: number;
 
   private _round = 0;
@@ -84,11 +88,67 @@ export class CharacterView extends Container {
   private _bannerSubText = '';
   /** 头像呼吸动画的累积时间（秒）。 */
   private _tick = 0;
+  private readonly motions: Partial<
+    Record<PlayerId, { action: ActionType; elapsed: number; flight: number; total: number }>
+  > = {};
+
+  private readonly transitions: Partial<
+    Record<PlayerId, { from: CharacterActionState; elapsed: number; duration: number }>
+  > = {};
+
+  private changePose(player: PlayerId, pose: CharacterActionState, duration = 0): boolean {
+    const previous = this._expressions[player];
+    if (previous === pose) return false;
+    if (duration > 0) this.transitions[player] = { from: previous, elapsed: 0, duration };
+    else delete this.transitions[player];
+    this._expressions[player] = pose;
+    return true;
+  }
+
+  /** Anticipation, release and recovery share the rune clock, including custom playback durations. */
+  public playAction(player: PlayerId, action: ActionType, flight: number, impact: number): void {
+    this.setExpression(player, 'cast', 0, Math.min(0.08, flight * 0.18));
+    this.motions[player] = { action, elapsed: 0, flight, total: flight + impact };
+  }
+
+  private motionOffset(player: PlayerId): { x: number; y: number } | undefined {
+    const motion = this.motions[player];
+    if (motion === undefined) return undefined;
+    const t = motion.elapsed / motion.flight;
+    const direction = player === 'P1' ? 1 : -1;
+    if (t < 0.18)
+      return {
+        x: -direction * 1.5 * Math.sin((t / 0.18) * Math.PI),
+        y: Math.sin((t / 0.18) * Math.PI),
+      };
+    const attack = motion.action === ActionType.ATK || motion.action === ActionType.BURST_ATK;
+    const release = Math.sin(Math.min(1, (t - 0.18) / 0.82) * Math.PI);
+    const recovery = Math.max(
+      0,
+      1 - (motion.elapsed - motion.flight) / (motion.total - motion.flight),
+    );
+    return {
+      x: attack ? direction * 2.5 * release : 0,
+      y: t < 1 ? -release * 1.5 : -Math.sin(recovery * Math.PI),
+    };
+  }
 
   public constructor(options: CharacterViewOptions) {
     super();
     this._width = options.width;
     this._safeTop = options.safeTop ?? 24;
+  }
+
+  /** Hosts inject the decoded image only after loading has completed. */
+  public setSpriteAtlas(atlas: CharacterSpriteAtlas | null): void {
+    this._spriteAtlas =
+      atlas !== null &&
+      Number.isFinite(atlas.width) &&
+      Number.isFinite(atlas.height) &&
+      atlas.width > 0 &&
+      atlas.height > 0
+        ? atlas
+        : null;
   }
 
   /** 回合数（未投影时为 0）。 */
@@ -130,7 +190,7 @@ export class CharacterView extends Container {
   public update(state: GameState, options: CharacterProjectionOptions = {}): void {
     this._round = state.round;
     this._maxRounds = state.maxRounds;
-    this._currentPlayer = state.currentPlayer;
+    this._currentPlayer = options.actingPlayer ?? state.currentPlayer;
     this._isExtraTurn = options.isExtraTurn ?? false;
     this._scores = { P1: state.players.P1.score, P2: state.players.P2.score };
   }
@@ -149,8 +209,10 @@ export class CharacterView extends Container {
     player: PlayerId,
     expression: CharacterActionState,
     holdSeconds = 0.6,
+    transitionSeconds = 0,
   ): void {
-    this._expressions[player] = expression;
+    delete this.motions[player];
+    this.changePose(player, expression, transitionSeconds);
     this._expressionTimers[player] = expression === 'idle' ? 0 : Math.max(0, holdSeconds);
   }
 
@@ -162,6 +224,8 @@ export class CharacterView extends Container {
   /** 清空双方表情与气泡（重开一局时调用）：终局胜 / 负的持续姿势不跨局残留。 */
   public resetFeedback(): void {
     for (const player of PLAYER_IDS) {
+      delete this.motions[player];
+      delete this.transitions[player];
       this._expressions[player] = 'idle';
       this._expressionTimers[player] = 0;
       this._bubbles[player] = null;
@@ -188,11 +252,40 @@ export class CharacterView extends Container {
   public updateTimers(dt: number): void {
     this._tick += dt;
     for (const player of PLAYER_IDS) {
+      const transition = this.transitions[player];
+      if (transition !== undefined) {
+        transition.elapsed += dt;
+        if (transition.elapsed >= transition.duration) delete this.transitions[player];
+      }
+      const motion = this.motions[player];
+      if (motion !== undefined) {
+        motion.elapsed += dt;
+        const releaseAt = motion.flight * 0.18;
+        const recoverAt = motion.flight + (motion.total - motion.flight) * 0.75;
+        const recovering = motion.elapsed >= recoverAt;
+        const attack = motion.action === ActionType.ATK || motion.action === ActionType.BURST_ATK;
+        const pose = recovering
+          ? 'idle'
+          : motion.elapsed >= releaseAt && attack
+            ? 'attack'
+            : 'cast';
+        const duration = recovering
+          ? Math.min(0.08, (motion.total - motion.flight) * 0.25)
+          : Math.min(0.08, motion.flight * 0.18);
+        if (this.changePose(player, pose, duration)) {
+          const next = this.transitions[player];
+          if (next !== undefined) {
+            next.elapsed = Math.max(0, motion.elapsed - (recovering ? recoverAt : releaseAt));
+            if (next.elapsed >= next.duration) delete this.transitions[player];
+          }
+        }
+        if (motion.elapsed >= motion.total) delete this.motions[player];
+      }
       if (this._expressionTimers[player] > 0) {
         this._expressionTimers[player] -= dt;
         if (this._expressionTimers[player] <= 0) {
           this._expressionTimers[player] = 0;
-          this._expressions[player] = 'idle';
+          this.changePose(player, 'idle', 0.08);
         }
       }
       const bubble = this._bubbles[player];
@@ -267,17 +360,45 @@ export class CharacterView extends Container {
     ctx.stroke();
     ctx.fillStyle = THEME.deep;
     ctx.fillRect(frameX + 9, frameY + AVATAR_HEIGHT - 9, AVATAR_WIDTH - 18, 4);
-    // 角色本体按精灵声明的包围盒在框架内居中：绘制例程直接画到最终尺寸，不在这里缩放。
-    const spriteTop = CHARACTER_SPRITE_BOUNDS.top * CHARACTER_PIXEL_SIZE;
-    const spriteHeight =
-      (CHARACTER_SPRITE_BOUNDS.bottom - CHARACTER_SPRITE_BOUNDS.top) * CHARACTER_PIXEL_SIZE;
-    ctx.save();
-    ctx.translate(
-      frameX + AVATAR_WIDTH / 2,
-      frameY + (AVATAR_HEIGHT - spriteHeight) / 2 - spriteTop,
-    );
-    drawPixelCharacter(ctx, 0, 0, isPlayer, expression, this._tick * 60);
-    ctx.restore();
+    const drawPose = (pose: CharacterActionState, alpha: number): void => {
+      if (alpha <= 0) return;
+      ctx.save();
+      ctx.globalAlpha *= alpha;
+      if (this._spriteAtlas !== null) {
+        drawCharacterSprite(
+          ctx,
+          this._spriteAtlas,
+          player,
+          pose,
+          this._tick * 60,
+          frameX,
+          frameY,
+          AVATAR_WIDTH,
+          AVATAR_HEIGHT,
+          this.motionOffset(player),
+        );
+      } else {
+        const spriteTop = CHARACTER_SPRITE_BOUNDS.top * CHARACTER_PIXEL_SIZE;
+        const spriteHeight =
+          (CHARACTER_SPRITE_BOUNDS.bottom - CHARACTER_SPRITE_BOUNDS.top) * CHARACTER_PIXEL_SIZE;
+        ctx.translate(
+          frameX + AVATAR_WIDTH / 2,
+          frameY + (AVATAR_HEIGHT - spriteHeight) / 2 - spriteTop,
+        );
+        const motion = this.motionOffset(player);
+        if (motion !== undefined) ctx.translate(motion.x, motion.y);
+        drawPixelCharacter(ctx, 0, 0, isPlayer, pose, this._tick * 60);
+      }
+      ctx.restore();
+    };
+    const transition = this.transitions[player];
+    if (transition === undefined) drawPose(expression, 1);
+    else {
+      const t = Math.min(1, transition.elapsed / transition.duration);
+      const weight = t * t * (3 - 2 * t);
+      drawPose(transition.from, 1 - weight);
+      drawPose(expression, weight);
+    }
 
     // 名牌：贴着头像框下沿向屏幕内侧排（越靠屏幕外缘越靠近法盘）。
     const labelX = isPlayer ? frameX : frameX + AVATAR_WIDTH;
