@@ -60,7 +60,8 @@ describe('动作价值普查：盘面动作价值排序', () => {
     );
 
     const ranked = [...observations].sort((a, b) => b.value - a.value);
-    expect(ranked[0].actionType).toBe(ActionType.BURST_ATK);
+    // 双级强化后，本盘面的最优动作从强破变为强化（消耗归一换连动 + 两级盘面收益）。
+    expect(ranked[0].actionType).toBe(ActionType.BURST);
     expect(ranked[0].value).toBeGreaterThan(ranked[1].value);
 
     // 价值 = 盘面分量 + 规则得分分量；两者都可见。
@@ -82,14 +83,14 @@ describe('动作价值普查：盘面动作价值排序', () => {
     const observations = evaluateActionValues(state, tianGanNamed('甲'));
 
     const atk = byType(observations, ActionType.ATK);
-    const burstAtk = byType(observations, ActionType.BURST_ATK);
+    const burst = byType(observations, ActionType.BURST);
 
-    // 已知被支配情形：强破（消耗归一换连动）严格优于破（本盘面）。
-    expect(burstAtk.value).toBeGreaterThan(atk.value);
+    // 已知被支配情形：强化（消耗归一换连动 + 两级盘面收益）严格优于破（本盘面）。
+    expect(burst.value).toBeGreaterThan(atk.value);
     expect(atk.isDominated).toBe(true);
     expect(atk.isOptimal).toBe(false);
-    expect(burstAtk.isDominated).toBe(false);
-    expect(burstAtk.isOptimal).toBe(true);
+    expect(burst.isDominated).toBe(false);
+    expect(burst.isOptimal).toBe(true);
   });
 
   it('并列最优不算支配（epsilon 内的浮点并列）', () => {

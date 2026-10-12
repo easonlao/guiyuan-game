@@ -203,7 +203,6 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
       player: 'P1',
       sourceElement: WuXing.WOOD,
       consumePolarity: undefined,
-      polarity: Polarity.YIN,
     });
     expect(res.success).toBe(true);
   });

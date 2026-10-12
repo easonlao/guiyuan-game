@@ -6,6 +6,7 @@ import {
   getPlusTargetPolarity,
   getMinusTargetPolarity,
 } from '../../src/core/logic/ActionCandidates.js';
+import { gameStateWith } from '../../tools/BoardFixture.js';
 
 describe('ActionCandidates (Legal Action Generator)', () => {
   it('1. When stem node is VOID (0), should propose AUTO only', () => {
@@ -150,13 +151,13 @@ describe('ActionCandidates (Legal Action Generator)', () => {
       polarity: Polarity.YIN,
     });
 
-    // Burst action: METAL GuiYi -> BURST (METAL生WATER) consuming YIN
+    // Burst action: METAL GuiYi -> BURST (METAL生WATER) consuming YIN；
+    // 目标侧在解析时逐次决定，候选不再预先钉死 polarity
     expect(actions).toContainEqual({
       actionType: ActionType.BURST,
       player: 'P1',
       sourceElement: WuXing.METAL,
       consumePolarity: Polarity.YIN,
-      polarity: Polarity.YIN,
     });
 
     // Burst action: METAL GuiYi -> BURST_ATK (METAL克WOOD) consuming YANG
@@ -730,6 +731,136 @@ describe('ActionCandidates (Legal Action Generator)', () => {
         element: WuXing.WOOD,
         polarity: Polarity.YANG,
       });
+    });
+  });
+
+  describe('burst-plus-two ticket 01: 强化门槛放开与候选契约', () => {
+    const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!; // WOOD, YANG
+    const yiWood = TIAN_GAN_LIST.find((tg) => tg.name === '乙')!; // WOOD, YIN
+
+    /** 源节点 WOOD 归一 (1, 1)、相生目标 FIRE 已是亢极 (2, 2) 的盘面 */
+    const maxedShengTargetState = () =>
+      gameStateWith({
+        P1: {
+          [WuXing.WOOD]: { yin: 1, yang: 1 },
+          [WuXing.FIRE]: { yin: 2, yang: 2 },
+        },
+      });
+
+    it('相生目标已是 (2, 2) 亢极时，强化仍在候选集内（盘面净零但换一次连动）', () => {
+      const actions = getAvailableActions(maxedShengTargetState(), jiaWood);
+
+      expect(actions).toContainEqual({
+        actionType: ActionType.BURST,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        consumePolarity: Polarity.YIN,
+      });
+    });
+
+    it('连动额外行动中不再生成强化', () => {
+      const actions = getAvailableActions(maxedShengTargetState(), jiaWood, {
+        isExtraTurn: true,
+      });
+
+      expect(actions.some((a) => a.actionType === ActionType.BURST)).toBe(false);
+    });
+
+    it('强化候选不再携带预先钉死的目标侧 polarity 字段', () => {
+      const actions = getAvailableActions(maxedShengTargetState(), jiaWood);
+      const burst = actions.find((a) => a.actionType === ActionType.BURST)!;
+
+      expect(burst).not.toHaveProperty('polarity');
+      expect(Object.keys(burst).sort()).toEqual([
+        'actionType',
+        'consumePolarity',
+        'player',
+        'sourceElement',
+      ]);
+    });
+
+    it('化 (TRANS) 的门槛不放开：相生目标 (2, 2) 时仍不生成化', () => {
+      const actions = getAvailableActions(maxedShengTargetState(), yiWood);
+
+      expect(actions.some((a) => a.actionType === ActionType.TRANS)).toBe(false);
+      // 强化仍可选，门槛只对爆发放开
+      expect(actions.some((a) => a.actionType === ActionType.BURST)).toBe(true);
+    });
+
+    it('吸纳/调息/化/破/散气/过牌的候选形状逐字不变（仍带 polarity）', () => {
+      // AUTO：抽中侧虚空
+      expect(getAvailableActions(gameStateWith(), jiaWood)).toEqual([
+        {
+          actionType: ActionType.AUTO,
+          player: 'P1',
+          element: WuXing.WOOD,
+          polarity: Polarity.YANG,
+        },
+      ]);
+
+      // CONVERT：同节点对侧虚空
+      expect(
+        getAvailableActions(gameStateWith({ P1: { [WuXing.WOOD]: { yin: 0, yang: 1 } } }), jiaWood),
+      ).toContainEqual({
+        actionType: ActionType.CONVERT,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YIN,
+      });
+
+      // TRANS：阴干 + 相生目标未满
+      expect(
+        getAvailableActions(gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } } }), yiWood),
+      ).toContainEqual({
+        actionType: ActionType.TRANS,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        polarity: Polarity.YIN,
+      });
+
+      // ATK：阳干 + 相克目标未到底
+      expect(
+        getAvailableActions(gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } } }), jiaWood),
+      ).toContainEqual({
+        actionType: ActionType.ATK,
+        player: 'P1',
+        sourceElement: WuXing.WOOD,
+        polarity: Polarity.YIN,
+      });
+
+      // DISSIPATE：抽中节点亢极
+      expect(
+        getAvailableActions(gameStateWith({ P1: { [WuXing.WOOD]: { yin: 2, yang: 2 } } }), jiaWood),
+      ).toEqual([
+        {
+          actionType: ActionType.DISSIPATE,
+          player: 'P1',
+          element: WuXing.WOOD,
+          polarity: Polarity.YANG,
+        },
+      ]);
+
+      // PASS：连动回合中无其他合法动作
+      expect(
+        getAvailableActions(
+          gameStateWith({
+            P1: {
+              [WuXing.WOOD]: { yin: 1, yang: 1 },
+              [WuXing.FIRE]: { yin: 2, yang: 2 },
+            },
+            P2: { [WuXing.EARTH]: { yin: -1, yang: -1 } },
+          }),
+          jiaWood,
+          { isExtraTurn: true },
+        ),
+      ).toEqual([
+        {
+          actionType: ActionType.PASS,
+          player: 'P1',
+          element: WuXing.WOOD,
+          polarity: Polarity.YANG,
+        },
+      ]);
     });
   });
 });

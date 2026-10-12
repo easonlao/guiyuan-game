@@ -185,8 +185,8 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
     });
   });
 
-  describe('2. Mid-State Dead-End Scenarios: Stable PASS Generation & Pure Resolution', () => {
-    describe('2.1 Exhaustive 5-Element Mid-State Dead-Ends for Yang Stems', () => {
+  describe('2. Mid-State Extreme Targets: 强化门槛放开后的候选集与结算', () => {
+    describe('2.1 Exhaustive 5-Element Mid-State: Yang Stems', () => {
       for (const element of ALL_ELEMENTS) {
         const yangStem = TIAN_GAN_LIST.find(
           (tg) => tg.element === element && tg.polarity === Polarity.YANG,
@@ -194,10 +194,10 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
         const keTarget = OVERCOMING_CYCLE[element];
         const shengTarget = GENERATION_CYCLE[element];
 
-        it(`[${element}] Yang stem (${yangStem.name}) dead-end triggers PASS only and resolves with 0 score delta and unchanged board`, () => {
+        it(`[${element}] Yang stem (${yangStem.name}) 相生目标 (2, 2) 时仅剩强化，结算为连动`, () => {
           let state = createInitialGameState();
           // P1: current element is (1, 1) -> CONVERT blocked because opposite (yin) is 1
-          // P1: shengTarget is (2, 2) -> BURST blocked because generation target is maxed
+          // P1: shengTarget is (2, 2) -> TRANS/ATK 无关；强化门槛放开后仍可发动（满溢则亏）
           // P2: keTarget is (-1, -1) -> ATK & BURST_ATK blocked because overcoming target is fully damaged
           state = {
             ...state,
@@ -227,29 +227,30 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
 
           expect(actions).toHaveLength(1);
           expect(actions[0]).toEqual({
-            actionType: ActionType.PASS,
+            actionType: ActionType.BURST,
             player: 'P1',
-            element,
-            polarity: Polarity.YANG,
+            sourceElement: element,
+            consumePolarity: Polarity.YIN,
           });
 
-          // Resolve PASS
           const result = resolver.resolve(state, actions[0]);
 
           expect(result.success).toBe(true);
-          expect(result.scoreDelta).toBe(0);
-          expect(result.extraTurn).toBe(false);
-          expect(result.nextState.players.P1.score).toBe(150);
+          expect(result.extraTurn).toBe(true);
+          // 相生目标 (2, 2) 净零：100 行为分 + 一次溢出（0 分）+ 一次加持 (200)
+          expect(result.scoreDelta).toBe(300);
+          expect(result.nextState.players.P1.score).toBe(450);
           expect(result.nextState.players.P2.score).toBe(80);
-          expect(result.nextState.players.P1.board).toEqual(state.players.P1.board);
-          expect(result.nextState.players.P2.board).toEqual(state.players.P2.board);
-          expect(result.nextState.currentPlayer).toBe('P2');
+          expect(result.nextState.players.P1.board[element]).toEqual({ yin: 0, yang: 1 });
+          expect(result.nextState.players.P1.board[shengTarget]).toEqual({ yin: 2, yang: 2 });
+          // 连动：行动权留在 P1，回合不推进
+          expect(result.nextState.currentPlayer).toBe('P1');
           expect(result.nextState.round).toBe(state.round);
         });
       }
     });
 
-    describe('2.2 Exhaustive 5-Element Mid-State Dead-Ends for Yin Stems', () => {
+    describe('2.2 Exhaustive 5-Element Mid-State: Yin Stems', () => {
       for (const element of ALL_ELEMENTS) {
         const yinStem = TIAN_GAN_LIST.find(
           (tg) => tg.element === element && tg.polarity === Polarity.YIN,
@@ -257,10 +258,10 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
         const shengTarget = GENERATION_CYCLE[element];
         const keTarget = OVERCOMING_CYCLE[element];
 
-        it(`[${element}] Yin stem (${yinStem.name}) dead-end triggers PASS only and resolves cleanly`, () => {
+        it(`[${element}] Yin stem (${yinStem.name}) 相生目标 (2, 2) 时仅剩强化，结算为连动`, () => {
           let state = createInitialGameState();
           // P1: current element is (1, 1) -> CONVERT blocked because opposite (yang) is 1
-          // P1: shengTarget is (2, 2) -> TRANS & BURST blocked because generation target is maxed
+          // P1: shengTarget is (2, 2) -> TRANS blocked；强化门槛放开后仍可发动（满溢则亏）
           // P2: keTarget is (-1, -1) -> BURST_ATK blocked because overcoming target is fully damaged
           state = {
             ...state,
@@ -290,34 +291,33 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
 
           expect(actions).toHaveLength(1);
           expect(actions[0]).toEqual({
-            actionType: ActionType.PASS,
+            actionType: ActionType.BURST,
             player: 'P1',
-            element,
-            polarity: Polarity.YIN,
+            sourceElement: element,
+            consumePolarity: Polarity.YIN,
           });
 
-          // Resolve PASS
           const result = resolver.resolve(state, actions[0]);
 
           expect(result.success).toBe(true);
-          expect(result.scoreDelta).toBe(0);
-          expect(result.extraTurn).toBe(false);
-          expect(result.nextState.players.P1.score).toBe(200);
+          expect(result.extraTurn).toBe(true);
+          expect(result.scoreDelta).toBe(300);
+          expect(result.nextState.players.P1.score).toBe(500);
           expect(result.nextState.players.P2.score).toBe(110);
-          expect(result.nextState.players.P1.board).toEqual(state.players.P1.board);
-          expect(result.nextState.players.P2.board).toEqual(state.players.P2.board);
-          expect(result.nextState.currentPlayer).toBe('P2');
+          expect(result.nextState.players.P1.board[element]).toEqual({ yin: 0, yang: 1 });
+          expect(result.nextState.players.P1.board[shengTarget]).toEqual({ yin: 2, yang: 2 });
+          expect(result.nextState.currentPlayer).toBe('P1');
           expect(result.nextState.round).toBe(state.round);
         });
       }
     });
 
     describe('2.3 Non-GuiYi Mid-State Asymmetric Combinations ((2, 1) and (1, 2))', () => {
-      it('triggers PASS when stem node is (yin: 2, yang: 1) for Yang stem and target is damaged', () => {
+      it('仅剩强化 when stem node is (yin: 2, yang: 1) for Yang stem and target is damaged', () => {
         let state = createInitialGameState();
         // WOOD: yin 2, yang 1. Drawn stem is YANG (甲木).
         // Opposite side is YIN (2) -> CONVERT prohibited.
-        // Node is not GuiYi burst-ready? (yin 2, yang 1 is GuiYi since both >= 1).
+        // Node is GuiYi (yin 2, yang 1) -> BURST available.
         // Overcoming target EARTH is (-1, -1), shengTarget FIRE is (2, 2)
         state = {
           ...state,
@@ -344,13 +344,14 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
         const jiaWood = TIAN_GAN_LIST.find((tg) => tg.name === '甲')!;
         const actions = getAvailableActions(state, jiaWood);
         expect(actions).toHaveLength(1);
-        expect(actions[0].actionType).toBe(ActionType.PASS);
+        expect(actions[0].actionType).toBe(ActionType.BURST);
       });
 
-      it('triggers PASS when stem node is (yin: 1, yang: 2) for Yin stem and target is maxed', () => {
+      it('仅剩强化 when stem node is (yin: 1, yang: 2) for Yin stem and target is maxed', () => {
         let state = createInitialGameState();
         // FIRE: yin 1, yang 2. Drawn stem is YIN (丁火).
         // Opposite side is YANG (2) -> CONVERT prohibited.
+        // Node is GuiYi (yin 1, yang 2) -> BURST available.
         // Generation target EARTH is (2, 2), overcome target METAL is (-1, -1)
         state = {
           ...state,
@@ -377,7 +378,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
         const dingFire = TIAN_GAN_LIST.find((tg) => tg.name === '丁')!;
         const actions = getAvailableActions(state, dingFire);
         expect(actions).toHaveLength(1);
-        expect(actions[0].actionType).toBe(ActionType.PASS);
+        expect(actions[0].actionType).toBe(ActionType.BURST);
       });
     });
 
@@ -448,12 +449,15 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
           },
         };
 
-        const renWater = TIAN_GAN_LIST.find((tg) => tg.name === '壬')!;
-        const actions = getAvailableActions(state, renWater);
-        expect(actions).toHaveLength(1);
-        expect(actions[0].actionType).toBe(ActionType.PASS);
-
-        const result = resolver.resolve(state, actions[0]);
+        // 强化门槛放开后，这一盘面不再生成 PASS（唯一候选是强化），
+        // 故直接构造 PASS 载荷，继续钉住「PASS 闭合大回合并推进回合数」的契约。
+        const passAction: ActionPayload = {
+          actionType: ActionType.PASS,
+          player: 'P2',
+          element: WuXing.WATER,
+          polarity: Polarity.YANG,
+        };
+        const result = resolver.resolve(state, passAction);
         expect(result.success).toBe(true);
         expect(result.scoreDelta).toBe(0);
         expect(result.nextState.currentPlayer).toBe('P1');
@@ -506,28 +510,15 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
     });
 
     it('all preset strategies select PASS when PASS is the sole candidate action', () => {
-      let deadEndState = createInitialGameState();
-      deadEndState = {
-        ...deadEndState,
-        players: {
-          ...deadEndState.players,
-          P1: {
-            ...deadEndState.players.P1,
-            board: {
-              ...deadEndState.players.P1.board,
-              [WuXing.WOOD]: { yin: 1, yang: 1 },
-              [WuXing.FIRE]: { yin: 2, yang: 2 },
-            },
-          },
-          P2: {
-            ...deadEndState.players.P2,
-            board: {
-              ...deadEndState.players.P2.board,
-              [WuXing.EARTH]: { yin: -1, yang: -1 },
-            },
-          },
-        },
+      // 强化门槛放开后，中位态总能给出合法动作，PASS 只在连动额外行动中出现；
+      // 因此这里直接给出唯一候选，继续钉住预设策略对 PASS 单候选的处理。
+      const passAction: ActionPayload = {
+        actionType: ActionType.PASS,
+        player: 'P1',
+        element: WuXing.WOOD,
+        polarity: Polarity.YANG,
       };
+      const state = createInitialGameState();
 
       const strategies = [
         { name: 'balancedStrategy', fn: balancedStrategy },
@@ -537,7 +528,7 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
       ];
 
       for (const { name, fn } of strategies) {
-        const decision = fn(deadEndState, jiaWood);
+        const decision = fn(state, jiaWood, [passAction]);
         expect(decision.actionType, `${name} should select PASS`).toBe(ActionType.PASS);
         expect(decision.player).toBe('P1');
       }
@@ -561,9 +552,9 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
       expect(decision).toEqual(passAction);
     });
 
-    it('TurnManager executes turn smoothly when AI strategy encounters dead-end PASS', () => {
+    it('TurnManager executes turn smoothly when the AI strategy takes the sole 强化 candidate', () => {
       const baseState = createInitialGameState();
-      // Configure state so drawn stem 甲木 hits dead-end without triggering 5-element GuiYuan
+      // Configure state so drawn stem 甲木 hits the extreme-target scenario without triggering 5-element GuiYuan
       const deadEndState: GameState = {
         ...baseState,
         players: {
@@ -600,13 +591,16 @@ describe('Ticket 02: CONVERT Gate Boundary Matrix & System Regression', () => {
         prng: deterministicPrng,
       });
 
-      // Execute turn with balancedStrategy: drawn stem 甲木 hits dead-end and PASS is selected!
+      // Execute turn with balancedStrategy: 甲木 相生目标 (2, 2) -> 唯一候选强化
       const result = turnManager.executeTurnWithStrategy(balancedStrategy);
 
       expect(result.success).toBe(true);
-      expect(result.scoreDelta).toBe(0);
-      expect(turnManager.getState().players.P1.score).toBe(100);
-      expect(turnManager.getState().currentPlayer).toBe('P2');
+      // 100 行为分 + 一次溢出（0 分）+ 一次加持 (200)
+      expect(result.scoreDelta).toBe(300);
+      expect(turnManager.getState().players.P1.score).toBe(400);
+      // 连动：行动权留在 P1，回合不推进
+      expect(turnManager.getState().currentPlayer).toBe('P1');
+      expect(turnManager.isExtraTurnActive()).toBe(true);
       expect(turnManager.getState().isGameOver).toBe(false);
     });
   });
