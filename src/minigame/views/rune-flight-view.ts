@@ -13,9 +13,10 @@
  * 数据流与投影契约见 `docs/LLD.md` §4，模块职责见 `docs/HLD.md` §2 Layer 3。
  */
 
-import { PlayerId, Polarity, TianGanInfo, WuXing } from '../../core/types/domain.js';
+import { ActionType, PlayerId, Polarity, TianGanInfo, WuXing } from '../../core/types/domain.js';
 import { BoardView } from './board-view.js';
 import { drawCenterTianGanRune, drawImpactEffect, WUXING_PALETTE } from '../pixel-art.js';
+import { drawActionAura } from '../action-effects.js';
 import { THEME } from '../theme.js';
 import { Container } from '../scene/container.js';
 import { Node } from '../scene/node.js';
@@ -94,6 +95,61 @@ export class RuneFlightView extends Container {
   private entranceOnComplete?: () => void;
   private flight: TweenSequence | null = null;
   private flightOnComplete?: () => void;
+  private actionType: ActionType | null = null;
+  private secondaryTarget: { x: number; y: number } | null = null;
+  private trail: { x: number; y: number }[] = [];
+
+  public get actionDuration(): number {
+    return this.flightDuration + this.impactDuration;
+  }
+
+  public cancel(): void {
+    this.entrance = null;
+    this.flight = null;
+    this.entranceOnComplete = undefined;
+    this.flightOnComplete = undefined;
+    this.trail = [];
+    this.rune.visible = false;
+    this.ripple.visible = false;
+    this._phase = 'hidden';
+  }
+
+  protected override renderSelf(ctx: CanvasRenderingContext2D): void {
+    if (this._phase === 'flying' && this.actionType !== null && this.trail.length > 1) {
+      ctx.save();
+      ctx.strokeStyle = WUXING_PALETTE[this._tianGan!.element].light;
+      ctx.lineCap = 'round';
+      for (let i = 1; i < this.trail.length; i++) {
+        ctx.globalAlpha *= i / this.trail.length;
+        ctx.lineWidth = this.actionType === ActionType.BURST_ATK ? 4 : 2;
+        ctx.beginPath();
+        ctx.moveTo(this.trail[i - 1].x, this.trail[i - 1].y);
+        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+        ctx.stroke();
+        ctx.globalAlpha /= i / this.trail.length;
+      }
+      ctx.restore();
+    }
+    if (
+      this._phase === 'impact' &&
+      this.secondaryTarget !== null &&
+      this.impactState.progress > 0.3
+    ) {
+      ctx.save();
+      ctx.translate(this.secondaryTarget.x, this.secondaryTarget.y);
+      const progress = (this.impactState.progress - 0.3) / 0.7;
+      ctx.globalAlpha *= 1 - progress;
+      drawActionAura(
+        ctx,
+        this.actionType ?? ActionType.BURST,
+        progress,
+        36 * progress,
+        this.ripple.lightColor,
+        true,
+      );
+      ctx.restore();
+    }
+  }
 
   public constructor(options: RuneFlightViewOptions) {
     super();
@@ -147,6 +203,10 @@ export class RuneFlightView extends Container {
     // 新回合直接打断上一段未跑完的飞行动效：旧序列停步、旧回调作废（不再交回控制权）。
     this.flight = null;
     this.flightOnComplete = undefined;
+    this.actionType = null;
+    this.rune.actionType = null;
+    this.secondaryTarget = null;
+    this.trail = [];
     this._tianGan = tianGan;
     this._haloStyle = tianGan.polarity === Polarity.YANG ? 'corona' : 'moonlight';
     this.rune.tianGan = tianGan;
@@ -199,7 +259,12 @@ export class RuneFlightView extends Container {
     player: PlayerId,
     element: WuXing,
     polarity: Polarity,
-    options: { onComplete?: () => void } = {},
+    options: {
+      actionType?: ActionType;
+      secondaryPolarity?: Polarity;
+      onImpact?: () => void;
+      onComplete?: () => void;
+    } = {},
   ): void {
     // 玩家可能点得比入场动效还快：直接把符文落到待机态，不要因此丢掉整段飞行。
     if (this._phase === 'entering') {
@@ -210,7 +275,18 @@ export class RuneFlightView extends Container {
     if (this._phase !== 'ready' || tianGan === null) {
       throw new Error('符文不在待机态，无法起飞；请先 playEntrance() 并等它落地。');
     }
-    const target = this.board.getSlot(player, element, polarity);
+    this.actionType = options.actionType ?? null;
+    this.rune.actionType = this.actionType;
+    this.ripple.actionType = this.actionType;
+    const isPass = this.actionType === ActionType.PASS;
+    const target = isPass
+      ? { x: this.centerX, y: this.centerY }
+      : this.board.getSlot(player, element, polarity);
+    this.secondaryTarget =
+      options.secondaryPolarity === undefined
+        ? null
+        : this.board.getSlot(player, element, options.secondaryPolarity);
+    this.trail = [];
     const startX = this.rune.x;
     const startY = this.rune.y;
     const deltaX = target.x - startX;
@@ -229,25 +305,50 @@ export class RuneFlightView extends Container {
       { progress: 1 },
       {
         duration: this.flightDuration,
-        easing: EASINGS.outCubic,
-        onUpdate: (progress) => {
+        easing: EASINGS.linear,
+        onUpdate: (time) => {
+          const progress =
+            this.actionType === null
+              ? EASINGS.outCubic(time)
+              : EASINGS.inOutQuad(Math.max(0, (time - 0.18) / 0.82));
           // 阳：刚健流星弧线（全程偏向一侧）；阴：灵蛇蜿蜒（来回摆动）。
-          const curve = isYang
+          let curve = isYang
             ? -Math.sin(progress * Math.PI) * METEOR_ARC
             : Math.sin(progress * Math.PI * SERPENTINE_WAVES) * SERPENTINE_AMPLITUDE;
+          if (this.actionType === ActionType.ATK || this.actionType === ActionType.BURST_ATK)
+            curve *= 0.12;
+          if (this.actionType === ActionType.CONVERT) curve = Math.sin(progress * Math.PI * 2) * 23;
+          if (this.actionType === ActionType.TRANS) curve = -Math.sin(progress * Math.PI) * 48;
+          if (this.actionType === ActionType.AUTO)
+            curve = Math.sin(progress * Math.PI * 4) * 12 * (1 - progress);
+          this.rune.progress = time;
+          if (this.actionType !== null) {
+            const release = EASINGS.inOutQuad(Math.min(1, Math.max(0, (time - 0.18) / 0.2)));
+            const scale =
+              time < 0.18 ? 1 + Math.sin((time / 0.18) * Math.PI) * 0.12 : 1 - 0.38 * release;
+            this.rune.scaleX = scale;
+            this.rune.scaleY = scale;
+            if (isPass) this.rune.alpha = 1 - progress;
+          }
           this.rune.x = startX + deltaX * progress + normalX * curve;
           this.rune.y = startY + deltaY * progress + normalY * curve;
+          if (time > 0.18 && !isPass) {
+            this.trail.push({ x: this.rune.x, y: this.rune.y });
+            if (this.trail.length > 10) this.trail.shift();
+          }
         },
         onComplete: () => {
           // 落点对齐法盘投影的坐标（不依赖浮点累加的巧合）。
           this.rune.x = target.x;
           this.rune.y = target.y;
           this._phase = 'impact';
+          this.trail = [];
+          if (!isPass) options.onImpact?.();
         },
       },
     );
     this.flight = new TweenSequence(
-      [flightTween, this.buildImpactTween(target.x, target.y, tianGan.element)],
+      [flightTween, this.buildImpactTween(target.x, target.y, element)],
       () => {
         this.flight = null;
         this.ripple.visible = false;
@@ -271,7 +372,7 @@ export class RuneFlightView extends Container {
     this.ripple.y = targetY;
     this.ripple.maxRadius = IMPACT_MAX_RADIUS;
     this.ripple.lightColor = palette.light;
-    this.ripple.visible = true;
+    this.ripple.visible = false;
     return new Tween(
       this.impactState,
       { progress: 1 },
@@ -300,10 +401,12 @@ export class RuneFlightView extends Container {
 
   /** 命中进度的投影：波纹半径 + 符文被吸收。 */
   private applyImpact(progress: number): void {
+    this.ripple.visible = true;
+    this.ripple.progress = progress;
     this.ripple.radius = IMPACT_MAX_RADIUS * progress;
     this.ripple.alpha = 1 - progress;
-    this.rune.alpha = 1 - progress;
-    const scale = 1 - ABSORB_SHRINK * progress;
+    this.rune.alpha = this.actionType === ActionType.PASS ? 0 : 1 - progress;
+    const scale = (this.actionType === null ? 1 : 0.62) * (1 - ABSORB_SHRINK * progress);
     this.rune.scaleX = scale;
     this.rune.scaleY = scale;
   }
@@ -315,6 +418,8 @@ class RuneNode extends Node {
   public haloStyle: RuneHaloStyle = 'corona';
   /** 动画帧计数，交给 `drawCenterTianGanRune` 驱动呼吸与旋转。 */
   public tick = 0;
+  public actionType: ActionType | null = null;
+  public progress = 0;
 
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
     const tianGan = this.tianGan;
@@ -322,7 +427,9 @@ class RuneNode extends Node {
       return;
     }
     const palette = WUXING_PALETTE[tianGan.element];
-    if (this.haloStyle === 'corona') {
+    if (this.actionType !== null) {
+      drawActionAura(ctx, this.actionType, this.progress, 43, palette.light);
+    } else if (this.haloStyle === 'corona') {
       this.drawCorona(ctx, palette.light);
     } else {
       this.drawMoonlight(ctx, palette.light);
@@ -380,9 +487,15 @@ class ImpactNode extends Node {
   public radius = 0;
   public maxRadius = IMPACT_MAX_RADIUS;
   public lightColor = '#ffffff';
+  public actionType: ActionType | null = null;
+  public progress = 0;
 
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
     if (this.radius <= 0) {
+      return;
+    }
+    if (this.actionType !== null) {
+      drawActionAura(ctx, this.actionType, this.progress, this.radius, this.lightColor, true);
       return;
     }
     drawImpactEffect(ctx, {

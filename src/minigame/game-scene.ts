@@ -181,6 +181,8 @@ export class GameScene extends Container {
   private pendingAction: ActionPayload | null = null;
   /** `action:execute` 记录的完整载荷，供 `action:executed` 计算飞行落点。 */
   private actionInFlight: ActionPayload | null = null;
+  private readonly pendingCelebrations = new Set<PlayerId>();
+  private actionBefore: GameState | null = null;
   private lastShowdown: { tianGan: TianGanInfo; success: boolean } | null = null;
   private unsubscribes: (() => void)[] = [];
 
@@ -305,6 +307,13 @@ export class GameScene extends Container {
     this._turnManager = new TurnManager({ prng });
     this.lastShowdown = null;
     this.actionInFlight = null;
+    this.pendingCelebrations.clear();
+    this.actionBefore = null;
+    this.runeFlight.cancel();
+    this.shakeTween = null;
+    this.shakeState.amount = 0;
+    this.x = 0;
+    this.y = 0;
     // 终局胜 / 负的持续姿势不跨局残留。
     this.characters.resetFeedback();
     this.actionBar.dispose();
@@ -321,6 +330,8 @@ export class GameScene extends Container {
   public dispose(): void {
     this.unbindTurnManager();
     this.actionBar.dispose();
+    this.runeFlight.cancel();
+    this.characters.resetFeedback();
   }
 
   /**
@@ -329,9 +340,9 @@ export class GameScene extends Container {
    */
   public update(dt: number): void {
     this.elapsed += dt;
-    this.runeFlight.update(dt);
     this.characters.updateTimers(dt);
     this.updateShake(dt);
+    this.runeFlight.update(dt);
     if (this._phase !== 'auto-pending' && this._phase !== 'ai-thinking') {
       return;
     }
@@ -443,6 +454,9 @@ export class GameScene extends Container {
 
   /** `action:execute`：记录完整载荷（此时核心尚未结算），供 `action:executed` 解析飞行落点。 */
   private handleActionExecute(event: { action: ActionPayload }): void {
+    this.pendingCelebrations.clear();
+    this.actionBefore = null;
+    this.actionBefore = this._turnManager.getState();
     this.actionInFlight = event.action;
   }
 
@@ -452,24 +466,59 @@ export class GameScene extends Container {
     this.actionInFlight = null;
     const state = this._turnManager.getState();
     const actor = event.player;
-    const target = resolveActionTarget(action, event.actionType, actor, this._turnManager);
+    const resolved = resolveActionTarget(action, event.actionType, actor, this._turnManager);
+    const beforeNode = this.actionBefore?.players[resolved.player].board[resolved.element];
+    const afterNode = state.players[resolved.player].board[resolved.element];
+    const changedPolarities =
+      beforeNode === undefined
+        ? []
+        : [Polarity.YIN, Polarity.YANG].filter((polarity) =>
+            polarity === Polarity.YIN
+              ? beforeNode.yin !== afterNode.yin
+              : beforeNode.yang !== afterNode.yang,
+          );
+    const target = { ...resolved, polarity: changedPolarities[0] ?? resolved.polarity };
+    const secondaryPolarity = changedPolarities.find((polarity) => polarity !== target.polarity);
+    this.actionBefore = null;
     const isAttack = isAttackAction(event.actionType);
 
     this.hideActionBar();
-    this.characters.update(state, { isExtraTurn: this._turnManager.isExtraTurnActive() });
-    this.characters.setExpression(actor, isAttack ? 'attack' : 'cast', this.expressionHold);
+    this.characters.update(state, {
+      isExtraTurn: this._turnManager.isExtraTurnActive(),
+      actingPlayer: actor,
+    });
+    this.characters.playAction(actor, event.actionType, this.flightDuration, this.impactDuration);
     if (action !== null) {
       // 气泡复用动作按钮的命名（同一真源），让「刚才发生了什么」在角色头上可见。
-      this.characters.announce(actor, formatActionButton(action).label, this.expressionHold * 2);
-    }
-    if (isAttack) {
-      this.characters.setExpression(opponentOf(actor), 'hurt', this.expressionHold);
-      this.shake(event.actionType === ActionType.BURST_ATK ? SHAKE_BURST : SHAKE_ATTACK);
+      this.characters.announce(
+        actor,
+        formatActionButton(action).label,
+        Math.max(this.expressionHold * 2, this.runeFlight.actionDuration),
+      );
     }
 
     // 法盘已是双环（行动前等级），飞行期不再换盘；落点后才投影结算结果。
     this.setPhase('flying');
     this.runeFlight.flyTo(target.player, target.element, target.polarity, {
+      actionType: event.actionType,
+      secondaryPolarity,
+      onImpact: () => {
+        this.projectBoards(state);
+        if (isAttack) {
+          this.characters.setExpression(
+            opponentOf(actor),
+            'hurt',
+            Math.max(this.expressionHold, this.impactDuration),
+            Math.min(0.08, this.impactDuration * 0.3),
+          );
+          this.shake(event.actionType === ActionType.BURST_ATK ? SHAKE_BURST : SHAKE_ATTACK);
+          this.updateShake(0);
+        }
+        for (const player of this.pendingCelebrations) {
+          this.characters.setExpression(player, 'celebrate', this.celebrateHold, 0.08);
+        }
+        this.pendingCelebrations.clear();
+      },
       onComplete: () => this.afterFlight(),
     });
   }
@@ -490,7 +539,8 @@ export class GameScene extends Container {
     }
     const node = this._turnManager.getState().players[event.player].board[event.element];
     if (isNodeGuiYi(node)) {
-      this.characters.setExpression(event.player, 'celebrate', this.celebrateHold);
+      if (this._phase === 'flying') this.pendingCelebrations.add(event.player);
+      else this.characters.setExpression(event.player, 'celebrate', this.celebrateHold);
     }
   }
 
@@ -794,7 +844,7 @@ function opponentOf(player: PlayerId): PlayerId {
  *
  * 强化 (BURST) 不再携带目标侧：作用侧由解析器逐次按阴优先决定。
  * 载荷缺省时这里对强化取阴侧、对强破取抽中天干的极性，是**近似落点**——
- * 不保证等于解析器逐次选出的实际作用侧（相生目标阴侧已满 2 时首步取阳侧）。
+ * 结算事件记录的真实变更会在 handleActionExecuted 中覆盖此缺省侧。
  */
 function resolveActionTarget(
   action: ActionPayload | null,

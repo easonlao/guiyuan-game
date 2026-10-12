@@ -43,7 +43,7 @@ function renderPose(state: CharacterActionState, isPlayer = true, animTick = 0):
   return ctx;
 }
 
-/** 一组矩形的像素包围盒（含首个 `translate` 的浮动偏移，即屏幕上实际落笔的范围）。 */
+/** 曲线路径的保守包围盒（控制点凸包、描边半径与嵌套位移全部计入）。 */
 function boundsOf(ctx: RecordingContext): {
   left: number;
   right: number;
@@ -52,12 +52,19 @@ function boundsOf(ctx: RecordingContext): {
   width: number;
   height: number;
 } {
-  const offsetX = ctx.translations[0]?.x ?? 0;
-  const offsetY = ctx.translations[0]?.y ?? 0;
-  const left = Math.min(...ctx.rects.map((rect) => Math.floor(offsetX + rect.x)));
-  const right = Math.max(...ctx.rects.map((rect) => Math.floor(offsetX + rect.x) + rect.w));
-  const top = Math.min(...ctx.rects.map((rect) => Math.floor(offsetY + rect.y)));
-  const bottom = Math.max(...ctx.rects.map((rect) => Math.floor(offsetY + rect.y) + rect.h));
+  const extents = ctx.paths
+    .filter((path) => path.points.length > 0)
+    .flatMap((path) =>
+      path.points.map((point) => ({
+        x: point.x + path.offset.x,
+        y: point.y + path.offset.y,
+        margin: path.strokeWidth / 2,
+      })),
+    );
+  const left = Math.min(...extents.map((point) => point.x - point.margin));
+  const right = Math.max(...extents.map((point) => point.x + point.margin));
+  const top = Math.min(...extents.map((point) => point.y - point.margin));
+  const bottom = Math.max(...extents.map((point) => point.y + point.margin));
   return { left, right, top, bottom, width: right - left, height: bottom - top };
 }
 
@@ -66,7 +73,7 @@ function frameBorders(ctx: RecordingContext): string[] {
   return ctx.strokedRects.filter((rect) => rect.w >= 60 && rect.h >= 100).map((rect) => rect.color);
 }
 
-describe('drawPixelCharacter：放大重画（票 03）', () => {
+describe('drawPixelCharacter：卡通修士造型', () => {
   it('待机全身像在屏幕上的高度落在 100–120px（提高逻辑分辨率，不靠视图缩放）', () => {
     const box = boundsOf(renderPose('idle'));
     expect(box.height).toBeGreaterThanOrEqual(100);
@@ -94,14 +101,14 @@ describe('drawPixelCharacter：放大重画（票 03）', () => {
     }
   });
 
-  it('七种姿势各自的落笔序列（像素块 + 浮动）互不相同，新状态不落回待机', () => {
+  it('七种姿势各自的落笔序列（曲线路径 + 浮动）互不相同，新状态不落回待机', () => {
     const sequences = new Map<string, string>();
     for (const state of ALL_POSES) {
       for (const isPlayer of [true, false]) {
         const ctx = renderPose(state, isPlayer);
         sequences.set(
           `${state}:${String(isPlayer)}`,
-          JSON.stringify({ rects: ctx.rects, translations: ctx.translations }),
+          JSON.stringify({ paths: ctx.paths, translations: ctx.translations }),
         );
       }
     }
@@ -119,16 +126,13 @@ describe('drawPixelCharacter：放大重画（票 03）', () => {
     }
   });
 
-  it('放大后的角色按屏幕像素块落笔：最小的细节块也不低于 2px', () => {
-    // 「画 1 逻辑像素再靠上下文缩放」的旧画法会在这里露出 < 1px 的碎块；
-    // 提高逻辑分辨率重画则每个块都是屏幕像素尺寸。
+  it('两名角色都使用曲线塑造轮廓，直接按屏幕尺寸绘制', () => {
     for (const state of ALL_POSES) {
       for (const isPlayer of [true, false]) {
         const ctx = renderPose(state, isPlayer);
-        const minWidth = Math.min(...ctx.rects.map((rect) => rect.w));
-        const minHeight = Math.min(...ctx.rects.map((rect) => rect.h));
-        expect(minWidth, `${state} 的最小像素块宽度`).toBeGreaterThanOrEqual(2);
-        expect(minHeight, `${state} 的最小像素块高度`).toBeGreaterThanOrEqual(2);
+        expect(ctx.calls).toContain('quadraticCurveTo');
+        expect(ctx.paths.length).toBeGreaterThan(0);
+        expect(ctx.scales).toEqual([]);
       }
     }
   });
@@ -275,7 +279,7 @@ describe('CharacterView：双方角色卡投影', () => {
     }
   });
 
-  it('视图按原尺寸落笔角色：头像里的像素块与直接渲染该姿势逐块一致', () => {
+  it('视图按原尺寸落笔角色：头像里的路径与直接渲染该姿势一致', () => {
     const view = makeView();
     view.update(stateWith({ currentPlayer: 'P1' }));
     view.setExpression('P1', 'celebrate', 0.5);
@@ -284,16 +288,21 @@ describe('CharacterView：双方角色卡投影', () => {
     const ctx = new RecordingContext();
     view.render(ctx.asContext());
 
-    // 视图不得再叠任何缩放：头像里的落笔块必须与直接绘制同一姿势完全相同。
+    // 视图不得再叠任何缩放：头像里的路径必须与直接绘制同一姿势完全相同。
     const poses: readonly (readonly ['P1' | 'P2', CharacterActionState])[] = [
       ['P1', 'celebrate'],
       ['P2', 'lose'],
     ];
     for (const [player, pose] of poses) {
-      const expected = renderPose(pose, player === 'P1').rects;
+      const expected = renderPose(pose, player === 'P1').paths.map(
+        ({ offset: _offset, ...path }) => path,
+      );
       expect(expected.length).toBeGreaterThan(0);
-      for (const rect of expected) {
-        expect(ctx.rects, `${player} 的 ${pose} 落笔块`).toContainEqual(rect);
+      for (const path of expected) {
+        expect(
+          ctx.paths.map(({ offset: _offset, ...drawn }) => drawn),
+          `${player} 的 ${pose} 路径`,
+        ).toContainEqual(path);
       }
     }
   });

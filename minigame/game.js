@@ -1739,150 +1739,478 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   function drawPixelCharacter(ctx, x, y, isPlayer, state, animTick) {
     const p = CHARACTER_PIXEL_SIZE;
     const dir = isPlayer ? 1 : -1;
-    let bobY;
+    const bob = {
+      idle: Math.sin(animTick * 0.08) * 2,
+      attack: -2,
+      cast: Math.sin(animTick * 0.06) * 1.5,
+      hurt: 2,
+      celebrate: -Math.abs(Math.sin(animTick * 0.12)) * 3,
+      win: Math.sin(animTick * 0.08) * 1.5,
+      lose: 2
+    };
+    const ink = "#203c40";
+    const robe = isPlayer ? "#4b9b86" : "#648da0";
+    const shade = isPlayer ? "#2c665c" : "#3e6178";
+    const light = isPlayer ? "#b5dfc4" : "#c5e1df";
+    const hair = isPlayer ? "#263c43" : "#e2ede8";
+    const hairShade = isPlayer ? "#45606a" : "#9eb9bc";
+    const skin = "#f5d9ba";
+    const gold = "#d8b876";
+    const shape = (points, color, outline = true) => {
+      ctx.beginPath();
+      const first = points[0];
+      ctx.moveTo(first[0] * p * dir, first[1] * p);
+      for (const point of points.slice(1)) {
+        if (point.length === 2) ctx.lineTo(point[0] * p * dir, point[1] * p);
+        else ctx.quadraticCurveTo(point[0] * p * dir, point[1] * p, point[2] * p * dir, point[3] * p);
+      }
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+      if (outline) {
+        ctx.strokeStyle = ink;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
+    };
+    const oval = (cx, cy, rx, ry, color, outline = false) => {
+      shape(
+        [
+          [cx - rx, cy],
+          [cx - rx, cy - ry, cx, cy - ry],
+          [cx + rx, cy - ry, cx + rx, cy],
+          [cx + rx, cy + ry, cx, cy + ry],
+          [cx - rx, cy + ry, cx - rx, cy]
+        ],
+        color,
+        outline
+      );
+    };
+    const line = (points, color, width = 1.2) => {
+      ctx.beginPath();
+      ctx.moveTo(points[0][0] * p * dir, points[0][1] * p);
+      for (const point of points.slice(1)) ctx.lineTo(point[0] * p * dir, point[1] * p);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.stroke();
+    };
+    ctx.save();
+    ctx.translate(x, y + bob[state]);
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    if (!isPlayer) {
+      shape(
+        [
+          [-4.8, -10],
+          [-7, -8, -6.1, 4.5],
+          [-4.2, 3.8],
+          [-3.4, -7],
+          [3.4, -7],
+          [4.3, 4.7],
+          [6.8, 4.1, 5.7, -9]
+        ],
+        hair
+      );
+      line(
+        [
+          [-5.2, -5],
+          [-5.3, 2.7]
+        ],
+        hairShade
+      );
+      line(
+        [
+          [4.8, -5],
+          [5.1, 3]
+        ],
+        hairShade
+      );
+    } else {
+      shape(
+        [
+          [-2.8, -8],
+          [-5, -5, -4.3, 2],
+          [-3.2, 0.7],
+          [-2.3, -5]
+        ],
+        shade
+      );
+    }
+    const spread = state === "celebrate" ? 0.8 : 0;
+    oval(-2.9 - spread, 10.2, 1.8, 1.1, ink, true);
+    oval(2.9 + spread, 10.2, 1.8, 1.1, ink, true);
+    line(
+      [
+        [-4 - spread, 10.4],
+        [-2.1 - spread, 10.4]
+      ],
+      gold
+    );
+    line(
+      [
+        [2.1 + spread, 10.4],
+        [4 + spread, 10.4]
+      ],
+      gold
+    );
+    shape(
+      [
+        [-3.6, 1],
+        [-5.2, 5, -6.1, 9],
+        [-2.2, 10, 0, 9.6],
+        [3.8, 10, 6.1, 9],
+        [5.1, 5, 3.6, 1]
+      ],
+      shade
+    );
+    shape(
+      [
+        [-3.4, 1.2],
+        [-4.3, 5.5, -4.7, 8.9],
+        [0, 9.7, 4.9, 8.9],
+        [3.6, 5.3, 2.8, 1.2]
+      ],
+      robe
+    );
+    shape(
+      [
+        [0, 2],
+        [0.2, 6, -0.8, 9.2],
+        [1.1, 9.4, 2.3, 9.1],
+        [1.8, 5, 1.2, 2]
+      ],
+      light,
+      false
+    );
+    line(
+      [
+        [-4.8, 8.7],
+        [-1.1, 9.1]
+      ],
+      gold
+    );
+    line(
+      [
+        [2.5, 9],
+        [4.9, 8.6]
+      ],
+      gold
+    );
+    line(
+      [
+        [-2.6, 4],
+        [-3.3, 7.6]
+      ],
+      shade
+    );
+    shape(
+      [
+        [-2.3, -4.8],
+        [-4.5, -4.7, -4.8, -2.2],
+        [-3.9, 2.5],
+        [3.9, 2.5],
+        [4.8, -2.2],
+        [4.2, -4.8, 2.1, -4.8]
+      ],
+      robe
+    );
+    oval(0, -5.1, 1.2, 1.3, skin, true);
+    shape(
+      [
+        [-2.6, -4.8],
+        [-1.5, -3.5, 1.3, -1.4],
+        [2.7, -4.8],
+        [1.2, -4.2],
+        [0, -2.7],
+        [-1.4, -4.6]
+      ],
+      light,
+      false
+    );
+    line(
+      [
+        [-2.4, -4.5],
+        [1.1, -1.4],
+        [0.4, 1.5]
+      ],
+      shade
+    );
+    if (!isPlayer) {
+      shape(
+        [
+          [-4.4, -4.1],
+          [-3.7, -5.3, -2.5, -4.5],
+          [-1.4, -3.4],
+          [-3.3, -2.5],
+          [-4.4, -3]
+        ],
+        light
+      );
+      shape(
+        [
+          [4.4, -4.1],
+          [3.7, -5.3, 2.5, -4.5],
+          [1.4, -3.4],
+          [3.3, -2.5],
+          [4.4, -3]
+        ],
+        light
+      );
+    }
+    shape(
+      [
+        [-4, 1.4],
+        [4, 1.4],
+        [3.9, 2.5],
+        [-3.9, 2.5]
+      ],
+      shade
+    );
+    oval(0, 1.9, 0.8, 0.7, gold, true);
+    line(
+      [
+        [1.8, 2.5],
+        [2.1, 4.4]
+      ],
+      gold
+    );
+    oval(2.1, 4.8, 0.65, 0.9, light, true);
+    const arm = (side, wristX, wristY) => {
+      const shoulderX = side * 3.7;
+      const dx = wristX - shoulderX;
+      const dy = wristY + 3.2;
+      const length = Math.hypot(dx, dy);
+      const nx = -dy / length;
+      const ny = dx / length;
+      shape(
+        [
+          [shoulderX + nx * 1.2, -3.2 + ny * 1.2],
+          [
+            shoulderX + dx * 0.55 + nx * 2.1,
+            -3.2 + dy * 0.55 + ny * 2.1,
+            wristX + nx * 1.25,
+            wristY + ny * 1.25
+          ],
+          [wristX - nx * 1.25, wristY - ny * 1.25],
+          [
+            shoulderX + dx * 0.45 - nx * 1.9,
+            -3.2 + dy * 0.45 - ny * 1.9,
+            shoulderX - nx * 1.2,
+            -3.2 - ny * 1.2
+          ]
+        ],
+        side > 0 ? robe : shade
+      );
+      line(
+        [
+          [wristX + nx * 1.2, wristY + ny * 1.2],
+          [wristX - nx * 1.2, wristY - ny * 1.2]
+        ],
+        gold,
+        1.8
+      );
+      oval(wristX + dx / length * 0.65, wristY + dy / length * 0.65, 0.85, 1, skin, true);
+    };
+    const drop = state === "lose" ? 1.2 : state === "hurt" ? 0.4 : 0;
+    ctx.save();
+    ctx.translate(0, drop * p);
+    oval(-4.3, -7.8, 0.8, 1.2, skin, true);
+    oval(4.3, -7.8, 0.8, 1.2, skin, true);
+    shape(
+      [
+        [-4.4, -10.5],
+        [-3.6, -12.5, 0, -12.5],
+        [4, -12.4, 4.5, -10.1],
+        [4.8, -6.4, 2.5, -5.2],
+        [0, -4.3, -2.4, -5.2],
+        [-4.8, -6.4, -4.4, -10.5]
+      ],
+      skin
+    );
+    oval(-2.8, -6.8, 0.8, 0.35, "#e9b8a0");
+    oval(2.9, -6.8, 0.8, 0.35, "#e9b8a0");
+    if (isPlayer) {
+      oval(-1.1, -13.2, 1.9, 0.8, hair, true);
+      shape(
+        [
+          [-4.5, -8.3],
+          [-5.2, -12.5, -1.4, -12.6],
+          [2.8, -13.3, 4.5, -10.5],
+          [4.9, -9.1, 4.3, -8.2],
+          [3.4, -8.8, 2.7, -10.4],
+          [1.4, -9.1, 0.1, -9.7],
+          [-1.2, -10.4],
+          [-2.6, -8.9, -3.5, -9.5],
+          [-4.5, -8.3]
+        ],
+        hair
+      );
+      line(
+        [
+          [-2.7, -11.4],
+          [-0.7, -11.9],
+          [1.1, -11.5]
+        ],
+        hairShade
+      );
+      line(
+        [
+          [-2.8, -13.1],
+          [1.3, -13.1]
+        ],
+        gold,
+        2
+      );
+      oval(1.5, -13.1, 0.45, 0.45, light);
+    } else {
+      shape(
+        [
+          [-4.5, -7.5],
+          [-5.7, -12, -1.1, -12.8],
+          [2.9, -13, 4.5, -10.8],
+          [5.4, -8.8, 4.6, -7.3],
+          [3.8, -8.5, 3.1, -10.5],
+          [1.9, -9.3, 0.4, -9.8],
+          [-0.7, -10.6],
+          [-2.8, -8.8, -3.8, -9.2],
+          [-4.5, -7.5]
+        ],
+        hair
+      );
+      line(
+        [
+          [-3.6, -11.2],
+          [-1.5, -11.8]
+        ],
+        hairShade
+      );
+      line(
+        [
+          [0.8, -11.9],
+          [2.8, -11]
+        ],
+        hairShade
+      );
+      shape(
+        [
+          [-0.6, -11.7],
+          [0, -12.5],
+          [0.6, -11.7],
+          [0, -11]
+        ],
+        gold,
+        false
+      );
+    }
+    const happy = state === "celebrate" || state === "win";
+    const closed = state === "hurt" || state === "lose" || state === "cast";
+    for (const ex of [-1.9, 2]) {
+      const ey = -7.9;
+      if (happy)
+        line(
+          [
+            [ex - 0.65, ey + 0.2],
+            [ex, ey - 0.35],
+            [ex + 0.65, ey + 0.2]
+          ],
+          ink,
+          1.6
+        );
+      else if (closed)
+        line(
+          [
+            [ex - 0.65, ey],
+            [ex, ey + 0.2],
+            [ex + 0.65, ey]
+          ],
+          ink,
+          1.5
+        );
+      else {
+        oval(ex, ey, 0.62, 0.85, ink);
+        oval(ex + 0.16, ey - 0.28, 0.19, 0.25, "#fff8e9");
+      }
+      line(
+        [
+          [ex - 0.65, -9],
+          [ex + 0.6, state === "attack" ? -8.7 : -9.1]
+        ],
+        hairShade
+      );
+    }
+    line(
+      [
+        [0.2, -7.1],
+        [0.55, -6.9]
+      ],
+      "#ce9d82",
+      1
+    );
+    if (happy)
+      shape(
+        [
+          [-0.7, -6.2],
+          [0, -5.3, 0.9, -6.2]
+        ],
+        "#ac6c59",
+        false
+      );
+    else
+      line(
+        [
+          [-0.5, -6.1],
+          [0.7, state === "lose" ? -6.3 : -6.1]
+        ],
+        "#ac6c59",
+        1.2
+      );
+    ctx.restore();
     switch (state) {
-      case "attack":
-        bobY = -2;
+      case "idle":
+        arm(-1, -5.8, 2.4);
+        arm(1, 5.8, 2.4);
         break;
-      case "hurt":
-        bobY = 2;
+      case "attack":
+        arm(-1, -6.2, 0.2);
+        arm(1, 8.8, -2.8);
         break;
       case "cast":
-        bobY = Math.sin(animTick * 0.06) * 1.5;
+        arm(-1, -1.1, -2.6);
+        arm(1, 1.1, -2.6);
+        oval(0, -3.5, 0.55, 0.55, gold);
+        break;
+      case "hurt":
+        arm(-1, -4.5, -9.4);
+        arm(1, 4.5, -9.4);
         break;
       case "celebrate":
-        bobY = -Math.abs(Math.sin(animTick * 0.12)) * 3;
+        arm(-1, -6.4, -11.8);
+        arm(1, 6.4, -11.8);
+        line(
+          [
+            [-8, -9.3],
+            [-8, -8]
+          ],
+          gold,
+          1.8
+        );
+        line(
+          [
+            [8, -10.3],
+            [8, -9]
+          ],
+          gold,
+          1.8
+        );
         break;
       case "win":
-        bobY = Math.sin(animTick * 0.08) * 1.5;
+        arm(-1, -5.1, -0.5);
+        arm(1, 6.4, -11.8);
         break;
       case "lose":
-        bobY = 2;
+        arm(-1, -6, 3.7);
+        arm(1, 6, 3.7);
         break;
-      case "idle":
-        bobY = Math.sin(animTick * 0.08) * 2;
-        break;
-      default: {
-        const unhandled = state;
-        throw new Error(`未处理的角色姿势：${String(unhandled)}`);
-      }
-    }
-    const robeColor = isPlayer ? "#408d7c" : "#617f9d";
-    const robeTrim = isPlayer ? THEME.jade : THEME.rival;
-    const robeShade = isPlayer ? "#24594f" : "#354c68";
-    const skinColor = "#fed7aa";
-    const skinShade = "#f6ad55";
-    const hairColor = isPlayer ? "#1a202c" : "#edf2f7";
-    const eyeColor = isPlayer ? "#2d3748" : "#e53e3e";
-    const mouthColor = "#c05621";
-    const beltColor = isPlayer ? "#d69e2e" : "#e53e3e";
-    const shoeColor = "#1a202c";
-    const glowColor = isPlayer ? "#f6e05e" : "#e9d8fd";
-    const px = (lx, ly, lw, lh, color) => {
-      drawPixelRect(ctx, lx * p, ly * p, lw * p, lh * p, color);
-    };
-    const mx = (lx, lw) => dir > 0 ? lx : -lx - lw;
-    ctx.save();
-    ctx.translate(x, y + bobY);
-    px(-6.5, 3.5, 13, 6, robeColor);
-    px(-6.5, 8.5, 13, 1, robeTrim);
-    px(-1, 3.5, 2, 5, robeTrim);
-    if (state === "celebrate") {
-      px(-5.5, 9.5, 3.5, 2, shoeColor);
-      px(2, 9.5, 3.5, 2, shoeColor);
-    } else {
-      px(-4.5, 9.5, 3.5, 2, shoeColor);
-      px(1, 9.5, 3.5, 2, shoeColor);
-    }
-    px(-5.5, 2, 11, 2, beltColor);
-    px(-1.5, 2, 3, 2.5, robeShade);
-    px(-5.5, -4.5, 11, 2, robeColor);
-    px(-5, -4.5, 10, 6.5, robeColor);
-    px(-2.5, -5, 5, 1.5, robeTrim);
-    px(-1, -4.5, 2, 5, robeTrim);
-    const headDrop = state === "lose" ? 1.5 : state === "hurt" ? 0.5 : 0;
-    const headY = -13 + headDrop;
-    px(-1.5, -6.5, 3, 2, skinShade);
-    px(-4.5, headY, 9, 8, skinColor);
-    px(-5, headY - 1, 10, 2.5, hairColor);
-    px(-5, headY + 1.5, 10, 1, hairColor);
-    if (isPlayer) {
-      px(mx(3, 3), headY + 0.5, 3, 0.75, "#d69e2e");
-    } else {
-      px(-6.5, headY + 1.5, 2, 9, hairColor);
-      px(4.5, headY + 1.5, 2, 9, hairColor);
-    }
-    const eyeX = mx(1, 2);
-    if (state === "celebrate" || state === "win") {
-      px(eyeX - 0.5, headY + 3.5, 1, 0.75, eyeColor);
-      px(eyeX + 0.5, headY + 2.75, 1, 0.75, eyeColor);
-      px(eyeX + 1.5, headY + 3.5, 1, 0.75, eyeColor);
-    } else if (state === "hurt" || state === "lose") {
-      px(eyeX - 0.5, headY + 3.25, 3, 0.75, eyeColor);
-    } else {
-      px(eyeX, headY + 2.75, 2, 2, eyeColor);
-      px(eyeX + 0.5, headY + 3.25, 0.75, 0.75, "#ffffff");
-    }
-    if (state === "celebrate" || state === "win") {
-      px(mx(0, 2), headY + 5.5, 2, 1, mouthColor);
-    } else if (state === "lose") {
-      px(mx(0.5, 1.5), headY + 6, 1.5, 0.5, mouthColor);
-    } else {
-      px(mx(0, 1.5), headY + 6, 1.5, 0.5, mouthColor);
-    }
-    switch (state) {
-      case "attack": {
-        px(mx(4, 4.5), -2.5, 4.5, 3, robeColor);
-        px(mx(8.5, 2), -2.5, 2, 3, skinColor);
-        px(mx(-7.5, 3), -3.5, 3, 5, robeShade);
-        break;
-      }
-      case "cast": {
-        px(mx(1.5, 2.5), -5, 2.5, 5, robeColor);
-        px(mx(-4, 2.5), -5, 2.5, 5, robeShade);
-        px(mx(1.5, 2.5), -6.5, 2.5, 1.5, skinColor);
-        px(mx(-4, 2.5), -6.5, 2.5, 1.5, skinColor);
-        px(mx(-0.5, 1), -7.5, 1, 1, glowColor);
-        break;
-      }
-      case "celebrate": {
-        px(mx(4, 2.5), -12.5, 2.5, 8.5, robeColor);
-        px(mx(-6.5, 2.5), -12.5, 2.5, 8.5, robeShade);
-        px(mx(4, 2.5), -14, 2.5, 1.5, skinColor);
-        px(mx(-6.5, 2.5), -14, 2.5, 1.5, skinColor);
-        px(mx(7, 1), -11, 1, 1, glowColor);
-        px(mx(-8, 1), -9, 1, 1, glowColor);
-        px(mx(6.5, 1), 0.5, 1, 1, glowColor);
-        break;
-      }
-      case "win": {
-        px(mx(4, 2.5), -12.5, 2.5, 8.5, robeColor);
-        px(mx(4, 2.5), -14, 2.5, 1.5, skinColor);
-        px(mx(-6.5, 3), -1.5, 3, 4.5, robeColor);
-        px(mx(-6.5, 3), -3, 3, 1.5, skinColor);
-        break;
-      }
-      case "hurt": {
-        px(mx(3, 3), -11, 3, 6, robeColor);
-        px(mx(-6, 3), -11, 3, 6, robeShade);
-        px(mx(3, 3), -12.5, 3, 1.5, skinColor);
-        px(mx(-6, 3), -12.5, 3, 1.5, skinColor);
-        break;
-      }
-      case "lose": {
-        px(mx(5, 2.5), -2, 2.5, 6.5, robeShade);
-        px(mx(-7.5, 2.5), -2, 2.5, 6.5, robeShade);
-        px(mx(5, 2.5), 4.5, 2.5, 1.5, skinColor);
-        px(mx(-7.5, 2.5), 4.5, 2.5, 1.5, skinColor);
-        break;
-      }
-      case "idle": {
-        px(mx(5, 2.5), -4, 2.5, 7, robeColor);
-        px(mx(-7.5, 2.5), -4, 2.5, 7, robeShade);
-        px(mx(5, 2.5), 3, 2.5, 1.5, skinColor);
-        px(mx(-7.5, 2.5), 3, 2.5, 1.5, skinColor);
-        break;
-      }
       default: {
         const unhandled = state;
         throw new Error(`未处理的角色姿势：${String(unhandled)}`);
@@ -2181,7 +2509,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 先快后慢（二次）。 */
     outQuad: (t) => 1 - (1 - t) * (1 - t),
     /** 先快后慢（三次）：入场与飞行的默认手感。 */
-    outCubic: (t) => 1 - (1 - t) ** 3
+    outCubic: (t) => 1 - (1 - t) ** 3,
+    /** 两头慢、中间快（二次）。 */
+    inOutQuad: (t) => t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2
   };
   class Tween {
     constructor(target, to, options) {
@@ -3114,6 +3444,80 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
     }
   }
+  const CHARACTER_ATLAS_PATH = "assets/characters.png";
+  const POSE_COLUMN = {
+    idle: 0,
+    attack: 1,
+    hurt: 2,
+    cast: 3,
+    celebrate: 4,
+    win: 5,
+    lose: 6
+  };
+  const CHARACTER_ATLAS_COLUMNS = 4;
+  const CHARACTER_ATLAS_ROWS = 4;
+  const CHARACTER_ATLAS_FRAMES = {
+    P1: {
+      idle: { x: 76, y: 80, width: 174, height: 264, footY: 338 },
+      attack: { x: 377, y: 79, width: 214, height: 265, footY: 337 },
+      hurt: { x: 683, y: 98, width: 182, height: 247, footY: 337 },
+      cast: { x: 981, y: 80, width: 216, height: 264, footY: 338 },
+      celebrate: { x: 66, y: 359, width: 217, height: 304, footY: 655 },
+      win: { x: 389, y: 399, width: 204, height: 264, footY: 655 },
+      lose: { x: 683, y: 419, width: 182, height: 244, footY: 655 }
+    },
+    P2: {
+      idle: { x: 987, y: 392, width: 210, height: 271, footY: 656 },
+      attack: { x: 43, y: 692, width: 268, height: 271, footY: 954 },
+      hurt: { x: 377, y: 709, width: 219, height: 254, footY: 953 },
+      cast: { x: 660, y: 713, width: 229, height: 250, footY: 955 },
+      celebrate: { x: 972, y: 672, width: 248, height: 291, footY: 956 },
+      win: { x: 48, y: 980, width: 268, height: 241, footY: 1214 },
+      lose: { x: 388, y: 988, width: 190, height: 234, footY: 1214 }
+    }
+  };
+  function drawCharacterSprite(ctx, atlas, player, state, tick, frameX, frameY, frameWidth, frameHeight, motion) {
+    const cellWidth = atlas.width / CHARACTER_ATLAS_COLUMNS;
+    const cellHeight = atlas.height / CHARACTER_ATLAS_ROWS;
+    const sourceFrame = (pose) => {
+      const index = POSE_COLUMN[pose] + (player === "P1" ? 0 : 7);
+      return atlas.frames?.[player]?.[pose] ?? {
+        x: index % CHARACTER_ATLAS_COLUMNS * cellWidth,
+        y: Math.floor(index / CHARACTER_ATLAS_COLUMNS) * cellHeight,
+        width: cellWidth,
+        height: cellHeight
+      };
+    };
+    const crop = sourceFrame(state);
+    const sourceWidth = crop.width;
+    const sourceHeight = crop.height;
+    const frames = Object.keys(POSE_COLUMN).map(sourceFrame);
+    const maxWidth = Math.max(...frames.map((frame) => frame.width));
+    const maxHeight = Math.max(...frames.map((frame) => frame.height));
+    const scale = Math.min((frameWidth - 6) / maxWidth, (frameHeight - 12) / maxHeight);
+    const width = sourceWidth * scale;
+    const height = sourceHeight * scale;
+    const offsets = {
+      idle: Math.sin(tick * 0.08) * 2,
+      attack: -2,
+      hurt: 2,
+      cast: Math.sin(tick * 0.06) * 1.5,
+      celebrate: -Math.abs(Math.sin(tick * 0.12)) * 3,
+      win: Math.sin(tick * 0.08) * 1.5,
+      lose: 2
+    };
+    ctx.drawImage(
+      atlas.image,
+      crop.x,
+      crop.y,
+      sourceWidth,
+      sourceHeight,
+      frameX + (frameWidth - width) / 2 + (motion?.x ?? 0),
+      frameY + frameHeight - 8 - ((crop.footY ?? crop.y + sourceHeight) - crop.y) * scale + (motion?.y ?? offsets[state]),
+      width,
+      height
+    );
+  }
   const AVATAR_WIDTH = 88;
   const AVATAR_HEIGHT = 112;
   const SIDE_MARGIN = 10;
@@ -3144,6 +3548,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     constructor(options) {
       super();
       __publicField(this, "_width");
+      __publicField(this, "_spriteAtlas", null);
       __publicField(this, "_safeTop");
       __publicField(this, "_round", 0);
       __publicField(this, "_maxRounds", 0);
@@ -3160,8 +3565,48 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "_bannerSubText", "");
       /** 头像呼吸动画的累积时间（秒）。 */
       __publicField(this, "_tick", 0);
+      __publicField(this, "motions", {});
+      __publicField(this, "transitions", {});
       this._width = options.width;
       this._safeTop = options.safeTop ?? 24;
+    }
+    changePose(player, pose, duration = 0) {
+      const previous = this._expressions[player];
+      if (previous === pose) return false;
+      if (duration > 0) this.transitions[player] = { from: previous, elapsed: 0, duration };
+      else delete this.transitions[player];
+      this._expressions[player] = pose;
+      return true;
+    }
+    /** Anticipation, release and recovery share the rune clock, including custom playback durations. */
+    playAction(player, action, flight, impact) {
+      this.setExpression(player, "cast", 0, Math.min(0.08, flight * 0.18));
+      this.motions[player] = { action, elapsed: 0, flight, total: flight + impact };
+    }
+    motionOffset(player) {
+      const motion = this.motions[player];
+      if (motion === void 0) return void 0;
+      const t = motion.elapsed / motion.flight;
+      const direction = player === "P1" ? 1 : -1;
+      if (t < 0.18)
+        return {
+          x: -direction * 1.5 * Math.sin(t / 0.18 * Math.PI),
+          y: Math.sin(t / 0.18 * Math.PI)
+        };
+      const attack = motion.action === ActionType.ATK || motion.action === ActionType.BURST_ATK;
+      const release = Math.sin(Math.min(1, (t - 0.18) / 0.82) * Math.PI);
+      const recovery = Math.max(
+        0,
+        1 - (motion.elapsed - motion.flight) / (motion.total - motion.flight)
+      );
+      return {
+        x: attack ? direction * 2.5 * release : 0,
+        y: t < 1 ? -release * 1.5 : -Math.sin(recovery * Math.PI)
+      };
+    }
+    /** Hosts inject the decoded image only after loading has completed. */
+    setSpriteAtlas(atlas) {
+      this._spriteAtlas = atlas !== null && Number.isFinite(atlas.width) && Number.isFinite(atlas.height) && atlas.width > 0 && atlas.height > 0 ? atlas : null;
     }
     /** 回合数（未投影时为 0）。 */
     get round() {
@@ -3195,7 +3640,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     update(state, options = {}) {
       this._round = state.round;
       this._maxRounds = state.maxRounds;
-      this._currentPlayer = state.currentPlayer;
+      this._currentPlayer = options.actingPlayer ?? state.currentPlayer;
       this._isExtraTurn = options.isExtraTurn ?? false;
       this._scores = { P1: state.players.P1.score, P2: state.players.P2.score };
     }
@@ -3208,8 +3653,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
      * 表情反馈：`holdSeconds` 秒后自动回落待机；`holdSeconds <= 0` 表示**持续**到下一次表情
      * 覆盖或 `resetFeedback()`（终局胜 / 负用）。重复触发会重新计时。
      */
-    setExpression(player, expression, holdSeconds = 0.6) {
-      this._expressions[player] = expression;
+    setExpression(player, expression, holdSeconds = 0.6, transitionSeconds = 0) {
+      delete this.motions[player];
+      this.changePose(player, expression, transitionSeconds);
       this._expressionTimers[player] = expression === "idle" ? 0 : Math.max(0, holdSeconds);
     }
     /** 指定玩家当前的表情。 */
@@ -3219,6 +3665,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 清空双方表情与气泡（重开一局时调用）：终局胜 / 负的持续姿势不跨局残留。 */
     resetFeedback() {
       for (const player of PLAYER_IDS) {
+        delete this.motions[player];
+        delete this.transitions[player];
         this._expressions[player] = "idle";
         this._expressionTimers[player] = 0;
         this._bubbles[player] = null;
@@ -3241,11 +3689,34 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     updateTimers(dt) {
       this._tick += dt;
       for (const player of PLAYER_IDS) {
+        const transition = this.transitions[player];
+        if (transition !== void 0) {
+          transition.elapsed += dt;
+          if (transition.elapsed >= transition.duration) delete this.transitions[player];
+        }
+        const motion = this.motions[player];
+        if (motion !== void 0) {
+          motion.elapsed += dt;
+          const releaseAt = motion.flight * 0.18;
+          const recoverAt = motion.flight + (motion.total - motion.flight) * 0.75;
+          const recovering = motion.elapsed >= recoverAt;
+          const attack = motion.action === ActionType.ATK || motion.action === ActionType.BURST_ATK;
+          const pose = recovering ? "idle" : motion.elapsed >= releaseAt && attack ? "attack" : "cast";
+          const duration = recovering ? Math.min(0.08, (motion.total - motion.flight) * 0.25) : Math.min(0.08, motion.flight * 0.18);
+          if (this.changePose(player, pose, duration)) {
+            const next = this.transitions[player];
+            if (next !== void 0) {
+              next.elapsed = Math.max(0, motion.elapsed - (recovering ? recoverAt : releaseAt));
+              if (next.elapsed >= next.duration) delete this.transitions[player];
+            }
+          }
+          if (motion.elapsed >= motion.total) delete this.motions[player];
+        }
         if (this._expressionTimers[player] > 0) {
           this._expressionTimers[player] -= dt;
           if (this._expressionTimers[player] <= 0) {
             this._expressionTimers[player] = 0;
-            this._expressions[player] = "idle";
+            this.changePose(player, "idle", 0.08);
           }
         }
         const bubble = this._bubbles[player];
@@ -3314,15 +3785,44 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.stroke();
       ctx.fillStyle = THEME.deep;
       ctx.fillRect(frameX + 9, frameY + AVATAR_HEIGHT - 9, AVATAR_WIDTH - 18, 4);
-      const spriteTop = CHARACTER_SPRITE_BOUNDS.top * CHARACTER_PIXEL_SIZE;
-      const spriteHeight = (CHARACTER_SPRITE_BOUNDS.bottom - CHARACTER_SPRITE_BOUNDS.top) * CHARACTER_PIXEL_SIZE;
-      ctx.save();
-      ctx.translate(
-        frameX + AVATAR_WIDTH / 2,
-        frameY + (AVATAR_HEIGHT - spriteHeight) / 2 - spriteTop
-      );
-      drawPixelCharacter(ctx, 0, 0, isPlayer, expression, this._tick * 60);
-      ctx.restore();
+      const drawPose = (pose, alpha) => {
+        if (alpha <= 0) return;
+        ctx.save();
+        ctx.globalAlpha *= alpha;
+        if (this._spriteAtlas !== null) {
+          drawCharacterSprite(
+            ctx,
+            this._spriteAtlas,
+            player,
+            pose,
+            this._tick * 60,
+            frameX,
+            frameY,
+            AVATAR_WIDTH,
+            AVATAR_HEIGHT,
+            this.motionOffset(player)
+          );
+        } else {
+          const spriteTop = CHARACTER_SPRITE_BOUNDS.top * CHARACTER_PIXEL_SIZE;
+          const spriteHeight = (CHARACTER_SPRITE_BOUNDS.bottom - CHARACTER_SPRITE_BOUNDS.top) * CHARACTER_PIXEL_SIZE;
+          ctx.translate(
+            frameX + AVATAR_WIDTH / 2,
+            frameY + (AVATAR_HEIGHT - spriteHeight) / 2 - spriteTop
+          );
+          const motion = this.motionOffset(player);
+          if (motion !== void 0) ctx.translate(motion.x, motion.y);
+          drawPixelCharacter(ctx, 0, 0, isPlayer, pose, this._tick * 60);
+        }
+        ctx.restore();
+      };
+      const transition = this.transitions[player];
+      if (transition === void 0) drawPose(expression, 1);
+      else {
+        const t = Math.min(1, transition.elapsed / transition.duration);
+        const weight = t * t * (3 - 2 * t);
+        drawPose(transition.from, 1 - weight);
+        drawPose(expression, weight);
+      }
       const labelX = isPlayer ? frameX : frameX + AVATAR_WIDTH;
       ctx.textAlign = isPlayer ? "left" : "right";
       ctx.textBaseline = "middle";
@@ -3460,6 +3960,83 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     return `${chars.join("")}…`;
   }
+  function drawActionAura(ctx, action, progress, radius, color, impact = false) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = action === ActionType.BURST_ATK ? 2.5 : 1.5;
+    const turn = progress * Math.PI * 2;
+    const ring = (r, start = 0, sweep = Math.PI * 2) => {
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(0.1, r), start, start + sweep);
+      ctx.stroke();
+    };
+    switch (action) {
+      case ActionType.AUTO:
+        ring(radius * (impact ? 1 - progress * 0.65 : 0.8), -turn, Math.PI * 1.6);
+        for (let i = 0; i < 6; i++) {
+          const a = turn + i * Math.PI / 3;
+          const r = radius * (1 - progress * 0.75);
+          ctx.fillRect(Math.cos(a) * r - 1, Math.sin(a) * r - 1, 2, 2);
+        }
+        break;
+      case ActionType.CONVERT:
+        ring(radius * 0.8, turn, Math.PI * 0.8);
+        ring(radius * 0.8, turn + Math.PI, Math.PI * 0.8);
+        ring(radius * 0.42, -turn, Math.PI * 1.5);
+        break;
+      case ActionType.TRANS:
+        for (let i = 0; i < 5; i++) {
+          const a = turn * 0.35 + i * Math.PI * 2 / 5;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.quadraticCurveTo(
+            Math.cos(a + 0.5) * radius,
+            Math.sin(a + 0.5) * radius,
+            Math.cos(a) * radius,
+            Math.sin(a) * radius
+          );
+          ctx.stroke();
+        }
+        break;
+      case ActionType.BURST:
+        ring(radius);
+        ring(radius * 0.62, turn, Math.PI * 1.75);
+        ring(radius * 0.3);
+        break;
+      case ActionType.ATK:
+      case ActionType.BURST_ATK: {
+        const count = action === ActionType.BURST_ATK ? 8 : 4;
+        for (let i = 0; i < count; i++) {
+          const a = i * Math.PI * 2 / count + Math.PI / 4;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * radius * 0.2, Math.sin(a) * radius * 0.2);
+          ctx.lineTo(Math.cos(a + 0.16) * radius * 0.62, Math.sin(a + 0.16) * radius * 0.62);
+          ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius);
+          ctx.stroke();
+        }
+        if (action === ActionType.BURST_ATK) {
+          ring(radius * 0.72);
+          if (impact && progress > 0.35) ring(radius * ((progress - 0.35) / 0.65));
+        }
+        break;
+      }
+      case ActionType.DISSIPATE:
+      case ActionType.PASS:
+        for (let i = 0; i < 8; i++) {
+          const a = i * Math.PI / 4 + turn * 0.15;
+          const r = radius * (0.35 + progress * 0.65);
+          const x = Math.cos(a) * r;
+          const y = Math.sin(a) * r;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + Math.cos(a) * 5, y + Math.sin(a) * 5);
+          ctx.stroke();
+        }
+        break;
+    }
+    ctx.restore();
+  }
   const DEFAULT_ENTRANCE_DURATION = 0.44;
   const DEFAULT_FLIGHT_DURATION = 0.55;
   const DEFAULT_IMPACT_DURATION = 0.35;
@@ -3500,6 +4077,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "entranceOnComplete");
       __publicField(this, "flight", null);
       __publicField(this, "flightOnComplete");
+      __publicField(this, "actionType", null);
+      __publicField(this, "secondaryTarget", null);
+      __publicField(this, "trail", []);
       this.board = options.board;
       this.centerX = options.centerX ?? 0;
       this.centerY = options.centerY ?? 0;
@@ -3514,6 +4094,51 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.ripple = new ImpactNode();
       this.ripple.visible = false;
       this.addChild(this.ripple);
+    }
+    get actionDuration() {
+      return this.flightDuration + this.impactDuration;
+    }
+    cancel() {
+      this.entrance = null;
+      this.flight = null;
+      this.entranceOnComplete = void 0;
+      this.flightOnComplete = void 0;
+      this.trail = [];
+      this.rune.visible = false;
+      this.ripple.visible = false;
+      this._phase = "hidden";
+    }
+    renderSelf(ctx) {
+      if (this._phase === "flying" && this.actionType !== null && this.trail.length > 1) {
+        ctx.save();
+        ctx.strokeStyle = WUXING_PALETTE[this._tianGan.element].light;
+        ctx.lineCap = "round";
+        for (let i = 1; i < this.trail.length; i++) {
+          ctx.globalAlpha *= i / this.trail.length;
+          ctx.lineWidth = this.actionType === ActionType.BURST_ATK ? 4 : 2;
+          ctx.beginPath();
+          ctx.moveTo(this.trail[i - 1].x, this.trail[i - 1].y);
+          ctx.lineTo(this.trail[i].x, this.trail[i].y);
+          ctx.stroke();
+          ctx.globalAlpha /= i / this.trail.length;
+        }
+        ctx.restore();
+      }
+      if (this._phase === "impact" && this.secondaryTarget !== null && this.impactState.progress > 0.3) {
+        ctx.save();
+        ctx.translate(this.secondaryTarget.x, this.secondaryTarget.y);
+        const progress = (this.impactState.progress - 0.3) / 0.7;
+        ctx.globalAlpha *= 1 - progress;
+        drawActionAura(
+          ctx,
+          this.actionType ?? ActionType.BURST,
+          progress,
+          36 * progress,
+          this.ripple.lightColor,
+          true
+        );
+        ctx.restore();
+      }
     }
     /** 当前动效阶段。 */
     get phase() {
@@ -3542,6 +4167,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     playEntrance(tianGan, options = {}) {
       this.flight = null;
       this.flightOnComplete = void 0;
+      this.actionType = null;
+      this.rune.actionType = null;
+      this.secondaryTarget = null;
+      this.trail = [];
       this._tianGan = tianGan;
       this._haloStyle = tianGan.polarity === Polarity.YANG ? "corona" : "moonlight";
       this.rune.tianGan = tianGan;
@@ -3597,7 +4226,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       if (this._phase !== "ready" || tianGan === null) {
         throw new Error("符文不在待机态，无法起飞；请先 playEntrance() 并等它落地。");
       }
-      const target = this.board.getSlot(player, element, polarity);
+      this.actionType = options.actionType ?? null;
+      this.rune.actionType = this.actionType;
+      this.ripple.actionType = this.actionType;
+      const isPass = this.actionType === ActionType.PASS;
+      const target = isPass ? { x: this.centerX, y: this.centerY } : this.board.getSlot(player, element, polarity);
+      this.secondaryTarget = options.secondaryPolarity === void 0 ? null : this.board.getSlot(player, element, options.secondaryPolarity);
+      this.trail = [];
       const startX = this.rune.x;
       const startY = this.rune.y;
       const deltaX = target.x - startX;
@@ -3614,21 +4249,42 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         { progress: 1 },
         {
           duration: this.flightDuration,
-          easing: EASINGS.outCubic,
-          onUpdate: (progress) => {
-            const curve = isYang ? -Math.sin(progress * Math.PI) * METEOR_ARC : Math.sin(progress * Math.PI * SERPENTINE_WAVES) * SERPENTINE_AMPLITUDE;
+          easing: EASINGS.linear,
+          onUpdate: (time) => {
+            const progress = this.actionType === null ? EASINGS.outCubic(time) : EASINGS.inOutQuad(Math.max(0, (time - 0.18) / 0.82));
+            let curve = isYang ? -Math.sin(progress * Math.PI) * METEOR_ARC : Math.sin(progress * Math.PI * SERPENTINE_WAVES) * SERPENTINE_AMPLITUDE;
+            if (this.actionType === ActionType.ATK || this.actionType === ActionType.BURST_ATK)
+              curve *= 0.12;
+            if (this.actionType === ActionType.CONVERT) curve = Math.sin(progress * Math.PI * 2) * 23;
+            if (this.actionType === ActionType.TRANS) curve = -Math.sin(progress * Math.PI) * 48;
+            if (this.actionType === ActionType.AUTO)
+              curve = Math.sin(progress * Math.PI * 4) * 12 * (1 - progress);
+            this.rune.progress = time;
+            if (this.actionType !== null) {
+              const release = EASINGS.inOutQuad(Math.min(1, Math.max(0, (time - 0.18) / 0.2)));
+              const scale = time < 0.18 ? 1 + Math.sin(time / 0.18 * Math.PI) * 0.12 : 1 - 0.38 * release;
+              this.rune.scaleX = scale;
+              this.rune.scaleY = scale;
+              if (isPass) this.rune.alpha = 1 - progress;
+            }
             this.rune.x = startX + deltaX * progress + normalX * curve;
             this.rune.y = startY + deltaY * progress + normalY * curve;
+            if (time > 0.18 && !isPass) {
+              this.trail.push({ x: this.rune.x, y: this.rune.y });
+              if (this.trail.length > 10) this.trail.shift();
+            }
           },
           onComplete: () => {
             this.rune.x = target.x;
             this.rune.y = target.y;
             this._phase = "impact";
+            this.trail = [];
+            if (!isPass) options.onImpact?.();
           }
         }
       );
       this.flight = new TweenSequence(
-        [flightTween, this.buildImpactTween(target.x, target.y, tianGan.element)],
+        [flightTween, this.buildImpactTween(target.x, target.y, element)],
         () => {
           this.flight = null;
           this.ripple.visible = false;
@@ -3647,7 +4303,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.ripple.y = targetY;
       this.ripple.maxRadius = IMPACT_MAX_RADIUS;
       this.ripple.lightColor = palette.light;
-      this.ripple.visible = true;
+      this.ripple.visible = false;
       return new Tween(
         this.impactState,
         { progress: 1 },
@@ -3673,10 +4329,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     /** 命中进度的投影：波纹半径 + 符文被吸收。 */
     applyImpact(progress) {
+      this.ripple.visible = true;
+      this.ripple.progress = progress;
       this.ripple.radius = IMPACT_MAX_RADIUS * progress;
       this.ripple.alpha = 1 - progress;
-      this.rune.alpha = 1 - progress;
-      const scale = 1 - ABSORB_SHRINK * progress;
+      this.rune.alpha = this.actionType === ActionType.PASS ? 0 : 1 - progress;
+      const scale = (this.actionType === null ? 1 : 0.62) * (1 - ABSORB_SHRINK * progress);
       this.rune.scaleX = scale;
       this.rune.scaleY = scale;
     }
@@ -3688,6 +4346,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "haloStyle", "corona");
       /** 动画帧计数，交给 `drawCenterTianGanRune` 驱动呼吸与旋转。 */
       __publicField(this, "tick", 0);
+      __publicField(this, "actionType", null);
+      __publicField(this, "progress", 0);
     }
     renderSelf(ctx) {
       const tianGan = this.tianGan;
@@ -3695,7 +4355,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         return;
       }
       const palette = WUXING_PALETTE[tianGan.element];
-      if (this.haloStyle === "corona") {
+      if (this.actionType !== null) {
+        drawActionAura(ctx, this.actionType, this.progress, 43, palette.light);
+      } else if (this.haloStyle === "corona") {
         this.drawCorona(ctx, palette.light);
       } else {
         this.drawMoonlight(ctx, palette.light);
@@ -3748,9 +4410,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "radius", 0);
       __publicField(this, "maxRadius", IMPACT_MAX_RADIUS);
       __publicField(this, "lightColor", "#ffffff");
+      __publicField(this, "actionType", null);
+      __publicField(this, "progress", 0);
     }
     renderSelf(ctx) {
       if (this.radius <= 0) {
+        return;
+      }
+      if (this.actionType !== null) {
+        drawActionAura(ctx, this.actionType, this.progress, this.radius, this.lightColor, true);
         return;
       }
       drawImpactEffect(ctx, {
@@ -3837,6 +4505,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "pendingAction", null);
       /** `action:execute` 记录的完整载荷，供 `action:executed` 计算飞行落点。 */
       __publicField(this, "actionInFlight", null);
+      __publicField(this, "pendingCelebrations", /* @__PURE__ */ new Set());
+      __publicField(this, "actionBefore", null);
       __publicField(this, "lastShowdown", null);
       __publicField(this, "unsubscribes", []);
       /** 震屏：补间把幅度衰减到 0，`update` 按幅度换算节点偏移。 */
@@ -3946,6 +4616,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this._turnManager = new TurnManager({ prng });
       this.lastShowdown = null;
       this.actionInFlight = null;
+      this.pendingCelebrations.clear();
+      this.actionBefore = null;
+      this.runeFlight.cancel();
+      this.shakeTween = null;
+      this.shakeState.amount = 0;
+      this.x = 0;
+      this.y = 0;
       this.characters.resetFeedback();
       this.actionBar.dispose();
       this.actionBar.removeFromParent();
@@ -3960,6 +4637,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     dispose() {
       this.unbindTurnManager();
       this.actionBar.dispose();
+      this.runeFlight.cancel();
+      this.characters.resetFeedback();
     }
     /**
      * 主循环步进（秒）：推进动效与缓冲倒计时。
@@ -3967,9 +4646,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
      */
     update(dt) {
       this.elapsed += dt;
-      this.runeFlight.update(dt);
       this.characters.updateTimers(dt);
       this.updateShake(dt);
+      this.runeFlight.update(dt);
       if (this._phase !== "auto-pending" && this._phase !== "ai-thinking") {
         return;
       }
@@ -4070,6 +4749,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     /** `action:execute`：记录完整载荷（此时核心尚未结算），供 `action:executed` 解析飞行落点。 */
     handleActionExecute(event) {
+      this.pendingCelebrations.clear();
+      this.actionBefore = null;
+      this.actionBefore = this._turnManager.getState();
       this.actionInFlight = event.action;
     }
     /** `action:executed`：动作已结算，播放符文飞行；法盘已是行动前等级，落点后才投影结算结果。 */
@@ -4078,20 +4760,50 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.actionInFlight = null;
       const state = this._turnManager.getState();
       const actor = event.player;
-      const target = resolveActionTarget(action, event.actionType, actor, this._turnManager);
+      const resolved = resolveActionTarget(action, event.actionType, actor, this._turnManager);
+      const beforeNode = this.actionBefore?.players[resolved.player].board[resolved.element];
+      const afterNode = state.players[resolved.player].board[resolved.element];
+      const changedPolarities = beforeNode === void 0 ? [] : [Polarity.YIN, Polarity.YANG].filter(
+        (polarity) => polarity === Polarity.YIN ? beforeNode.yin !== afterNode.yin : beforeNode.yang !== afterNode.yang
+      );
+      const target = { ...resolved, polarity: changedPolarities[0] ?? resolved.polarity };
+      const secondaryPolarity = changedPolarities.find((polarity) => polarity !== target.polarity);
+      this.actionBefore = null;
       const isAttack = isAttackAction(event.actionType);
       this.hideActionBar();
-      this.characters.update(state, { isExtraTurn: this._turnManager.isExtraTurnActive() });
-      this.characters.setExpression(actor, isAttack ? "attack" : "cast", this.expressionHold);
+      this.characters.update(state, {
+        isExtraTurn: this._turnManager.isExtraTurnActive(),
+        actingPlayer: actor
+      });
+      this.characters.playAction(actor, event.actionType, this.flightDuration, this.impactDuration);
       if (action !== null) {
-        this.characters.announce(actor, formatActionButton(action).label, this.expressionHold * 2);
-      }
-      if (isAttack) {
-        this.characters.setExpression(opponentOf(actor), "hurt", this.expressionHold);
-        this.shake(event.actionType === ActionType.BURST_ATK ? SHAKE_BURST : SHAKE_ATTACK);
+        this.characters.announce(
+          actor,
+          formatActionButton(action).label,
+          Math.max(this.expressionHold * 2, this.runeFlight.actionDuration)
+        );
       }
       this.setPhase("flying");
       this.runeFlight.flyTo(target.player, target.element, target.polarity, {
+        actionType: event.actionType,
+        secondaryPolarity,
+        onImpact: () => {
+          this.projectBoards(state);
+          if (isAttack) {
+            this.characters.setExpression(
+              opponentOf(actor),
+              "hurt",
+              Math.max(this.expressionHold, this.impactDuration),
+              Math.min(0.08, this.impactDuration * 0.3)
+            );
+            this.shake(event.actionType === ActionType.BURST_ATK ? SHAKE_BURST : SHAKE_ATTACK);
+            this.updateShake(0);
+          }
+          for (const player of this.pendingCelebrations) {
+            this.characters.setExpression(player, "celebrate", this.celebrateHold, 0.08);
+          }
+          this.pendingCelebrations.clear();
+        },
         onComplete: () => this.afterFlight()
       });
     }
@@ -4105,7 +4817,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       const node = this._turnManager.getState().players[event.player].board[event.element];
       if (isNodeGuiYi(node)) {
-        this.characters.setExpression(event.player, "celebrate", this.celebrateHold);
+        if (this._phase === "flying") this.pendingCelebrations.add(event.player);
+        else this.characters.setExpression(event.player, "celebrate", this.celebrateHold);
       }
     }
     /** 飞行结束：投影结算后的双盘，然后进入下一回合或终局。 */
@@ -4432,6 +5145,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     });
     stage.onTap = () => scene.handleTap();
     stage.addChild(scene);
+    const characters = wx.createImage();
+    characters.onload = () => scene.characters.setSpriteAtlas({
+      image: characters,
+      width: characters.width,
+      height: characters.height,
+      frames: CHARACTER_ATLAS_FRAMES
+    });
+    characters.onerror = () => scene.characters.setSpriteAtlas(null);
+    characters.src = CHARACTER_ATLAS_PATH;
     const input = new InputManager(stage);
     input.bindTouchEvents(wx);
     scene.start();

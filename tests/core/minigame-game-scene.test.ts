@@ -978,6 +978,8 @@ describe('GameScene：归一庆祝由 node:stateChanged 触发', () => {
       yin: 1,
       yang: 1,
     });
+    expect(scene.characters.getExpression('P1')).not.toBe('celebrate');
+    advanceUntil(scene, () => scene.runeFlight.phase === 'impact');
     expect(scene.characters.getExpression('P1')).toBe('celebrate');
     expect(scene.characters.getExpression('P2')).toBe('idle');
   });
@@ -995,6 +997,8 @@ describe('GameScene：归一庆祝由 node:stateChanged 触发', () => {
     scene.start();
     advanceUntil(scene, () => scene.turnManager.getState().players.P2.board[WuXing.WOOD].yang >= 1);
 
+    expect(scene.characters.getExpression('P2')).not.toBe('celebrate');
+    advanceUntil(scene, () => scene.runeFlight.phase === 'impact');
     expect(scene.characters.getExpression('P2')).toBe('celebrate');
     expect(scene.characters.getExpression('P1')).toBe('idle');
   });
@@ -1073,7 +1077,9 @@ describe('GameScene：归一庆祝由 node:stateChanged 触发', () => {
     );
 
     expect(scene.turnManager.getState().players.P2.board[WuXing.EARTH].yin).toBe(0);
-    // 天道只播受击，不播庆祝。
+    // 落点前不受击，抵达后只播受击、不播庆祝。
+    expect(scene.characters.getExpression('P2')).toBe('idle');
+    advanceUntil(scene, () => scene.runeFlight.phase === 'impact');
     expect(scene.characters.getExpression('P2')).toBe('hurt');
     expect(scene.characters.getExpression('P2')).not.toBe('celebrate');
   });
