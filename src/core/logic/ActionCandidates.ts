@@ -171,18 +171,15 @@ export function getAvailableActions(
       consumePolarity: Polarity.YIN,
     });
 
-    // 3.2 强破 (BURST_ATK): 消耗阳侧，削弱相克节点
-    const keEl = OVERCOMING_CYCLE[stemElement];
-    const keTargetPolarity = getMinusTargetPolarity(opponentBoard[keEl]);
-    if (keTargetPolarity !== null) {
-      actions.push({
-        actionType: ActionType.BURST_ATK,
-        player: playerId,
-        sourceElement: stemElement,
-        consumePolarity: Polarity.YANG,
-        polarity: keTargetPolarity,
-      });
-    }
+    // 3.2 强破 (BURST_ATK): 消耗阳侧，削弱相克节点。
+    // 门槛只看源节点归一：相克目标即使已是 (-1, -1) 道损也仍可发动（见底即止），
+    // 目标侧在解析时逐次决定，候选不再预先钉死 polarity。
+    actions.push({
+      actionType: ActionType.BURST_ATK,
+      player: playerId,
+      sourceElement: stemElement,
+      consumePolarity: Polarity.YANG,
+    });
   }
 
   // 兜底：中位态下若所有合法行动（调息、化、破、爆发）皆不可行，生成消散过牌 (PASS) 动作

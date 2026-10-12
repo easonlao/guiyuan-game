@@ -74,9 +74,9 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
     });
   });
 
-  describe('Scenario 2: Overcoming Target (-1, -1) Extreme Lock (克制目标全损锁死)', () => {
+  describe('Scenario 2: Overcoming Target (-1, -1) (克制目标全损：破被封死、强破仍可选)', () => {
     ALL_ELEMENTS.forEach((elem) => {
-      it(`[${elem}] Yang Stem draws GuiYi node when ke target is (-1, -1) -> Single BURST`, () => {
+      it(`[${elem}] Yang Stem draws GuiYi node when ke target is (-1, -1) -> BURST + BURST_ATK`, () => {
         const yangStem = TIAN_GAN_LIST.find(
           (tg) => tg.element === elem && tg.polarity === Polarity.YANG,
         )!;
@@ -99,16 +99,26 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
               ...state.players.P2,
               board: {
                 ...state.players.P2.board,
-                [keEl]: { yang: -1, yin: -1 }, // Ke target extreme lock -> ATK & BURST_ATK locked
+                [keEl]: { yang: -1, yin: -1 }, // Ke target 双道损 -> ATK 封死；强破门槛放开后仍可发动（见底即止）
               },
             },
           },
         };
 
         const actions = getAvailableActions(state, yangStem);
-        expect(actions.length).toBe(1);
-        expect(actions[0].actionType).toBe(ActionType.BURST);
-        expect(actions[0].sourceElement).toBe(elem);
+        expect(actions).toHaveLength(2);
+        expect(actions[0]).toEqual({
+          actionType: ActionType.BURST,
+          player: 'P1',
+          sourceElement: elem,
+          consumePolarity: Polarity.YIN,
+        });
+        expect(actions[1]).toEqual({
+          actionType: ActionType.BURST_ATK,
+          player: 'P1',
+          sourceElement: elem,
+          consumePolarity: Polarity.YANG,
+        });
       });
     });
   });
@@ -223,9 +233,9 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
     });
   });
 
-  describe('Scenario 5: All Extremes Locked (全极值锁死仅剩强化)', () => {
+  describe('Scenario 5: All Extremes Locked (全极值锁死仅剩强化与强破)', () => {
     ALL_ELEMENTS.forEach((elem) => {
-      it(`[${elem}] Yang Stem with GuiYi node, ke (-1, -1) and sheng (2, 2) -> Single BURST`, () => {
+      it(`[${elem}] Yang Stem with GuiYi node, ke (-1, -1) and sheng (2, 2) -> BURST + BURST_ATK`, () => {
         const yangStem = TIAN_GAN_LIST.find(
           (tg) => tg.element === elem && tg.polarity === Polarity.YANG,
         )!;
@@ -243,31 +253,37 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
               board: {
                 ...state.players.P1.board,
                 [elem]: { yang: 1, yin: 1 }, // GuiYi -> CONVERT blocked
-                [shengEl]: { yang: 2, yin: 2 }, // Sheng blocked -> BURST blocked
+                [shengEl]: { yang: 2, yin: 2 }, // Sheng blocked -> 强化仍可发动（满溢则亏）
               },
             },
             P2: {
               ...state.players.P2,
               board: {
                 ...state.players.P2.board,
-                [keEl]: { yang: -1, yin: -1 }, // Ke blocked -> ATK & BURST_ATK blocked
+                [keEl]: { yang: -1, yin: -1 }, // Ke blocked -> ATK 封死；强破仍可发动（见底即止）
               },
             },
           },
         };
 
         const actions = getAvailableActions(state, yangStem);
-        // 强化门槛放开：相生目标 (2, 2) 仍生成强化，不再是死路 PASS
-        expect(actions).toHaveLength(1);
+        // 强化门槛放开：相生目标 (2, 2) 仍生成强化；强破门槛放开：相克目标 (-1, -1) 仍生成强破
+        expect(actions).toHaveLength(2);
         expect(actions[0]).toEqual({
           actionType: ActionType.BURST,
           player: 'P1',
           sourceElement: elem,
           consumePolarity: Polarity.YIN,
         });
+        expect(actions[1]).toEqual({
+          actionType: ActionType.BURST_ATK,
+          player: 'P1',
+          sourceElement: elem,
+          consumePolarity: Polarity.YANG,
+        });
       });
 
-      it(`[${elem}] Yin Stem with GuiYi node, ke (-1, -1) and sheng (2, 2) -> Single BURST`, () => {
+      it(`[${elem}] Yin Stem with GuiYi node, ke (-1, -1) and sheng (2, 2) -> BURST + BURST_ATK`, () => {
         const yinStem = TIAN_GAN_LIST.find(
           (tg) => tg.element === elem && tg.polarity === Polarity.YIN,
         )!;
@@ -285,26 +301,32 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
               board: {
                 ...state.players.P1.board,
                 [elem]: { yang: 1, yin: 1 }, // GuiYi -> CONVERT blocked
-                [shengEl]: { yang: 2, yin: 2 }, // Sheng blocked -> TRANS & BURST blocked
+                [shengEl]: { yang: 2, yin: 2 }, // Sheng blocked -> TRANS 封死；强化仍可发动（满溢则亏）
               },
             },
             P2: {
               ...state.players.P2,
               board: {
                 ...state.players.P2.board,
-                [keEl]: { yang: -1, yin: -1 }, // Ke blocked -> BURST_ATK blocked
+                [keEl]: { yang: -1, yin: -1 }, // Ke blocked -> 强破仍可发动（见底即止）
               },
             },
           },
         };
 
         const actions = getAvailableActions(state, yinStem);
-        expect(actions).toHaveLength(1);
+        expect(actions).toHaveLength(2);
         expect(actions[0]).toEqual({
           actionType: ActionType.BURST,
           player: 'P1',
           sourceElement: elem,
           consumePolarity: Polarity.YIN,
+        });
+        expect(actions[1]).toEqual({
+          actionType: ActionType.BURST_ATK,
+          player: 'P1',
+          sourceElement: elem,
+          consumePolarity: Polarity.YANG,
         });
       });
     });
