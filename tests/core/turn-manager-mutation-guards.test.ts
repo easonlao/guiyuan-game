@@ -186,12 +186,13 @@ describe('TurnManager 候选匹配守卫 (isActionMatch)', () => {
 
   it('拒绝 consumePolarity 与 BURST 候选不符的动作', () => {
     const { manager } = atkManager();
+    // BURST 候选不携带 polarity（目标侧在解析时逐次决定，见 GDD §2.3 / LLD §3.1），
+    // 因此这里不传 polarity——否则会先被 polarity 不匹配拒绝，测不到 consumePolarity 守卫。
     const res = manager.executeAction({
       actionType: ActionType.BURST,
       player: 'P1',
       sourceElement: WuXing.WOOD,
       consumePolarity: Polarity.YANG,
-      polarity: Polarity.YIN,
     });
     expect(res.success).toBe(false);
   });
