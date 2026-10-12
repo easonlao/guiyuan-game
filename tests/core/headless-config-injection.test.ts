@@ -243,13 +243,9 @@ describe('Ticket 01 - headless scoring-config injection', () => {
         rules: { isBoardOnly: true },
       });
 
-      // 双级强化后归元率在本口径下饱和（两种模式都 30/30），改钉不会饱和的规则指标：
-      // board-only 至少改变平均大回合 / 先手胜率 / 平均得分之一。
-      expect(
-        boardOnlyMetrics.avgRounds !== defaultMetrics.avgRounds ||
-          boardOnlyMetrics.p1WinRate !== defaultMetrics.p1WinRate ||
-          boardOnlyMetrics.avgP1Score !== defaultMetrics.avgP1Score,
-      ).toBe(true);
+      // 本用例原先钉归元数；归元数是 0..30 的整数、粒度粗，改钉连续量平均大回合。
+      // 基准按 baseSeed + i 逐局播种，指标确定可复现；board-only 不追计分、对局更长。
+      expect(boardOnlyMetrics.avgRounds).not.toBe(defaultMetrics.avgRounds);
     });
   });
 
