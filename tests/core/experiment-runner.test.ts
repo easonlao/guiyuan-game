@@ -221,7 +221,7 @@ describe('Ticket 06 - 声明式矩阵 (strategy × scoreConfig × rule mode)', (
 });
 
 describe('Ticket 06 - 基线复现 (self-distortion alarm)', () => {
-  it('默认参数下复现 91.40% / 19.27 / 52.20%，容差 ≤1.5 个百分点', () => {
+  it('默认参数下复现 91.05% / 17.78 / 54.55%，容差 ≤1.5 个百分点', () => {
     const balanced = DEFAULT_STRATEGY_VARIANTS.find((variant) => variant.name === '平衡')!;
     const defaultConfig = DEFAULT_SCORE_CONFIG_VARIANTS.find(
       (variant) => variant.name === 'default',
@@ -239,9 +239,14 @@ describe('Ticket 06 - 基线复现 (self-distortion alarm)', () => {
     const cell = report.cells[0];
     // 工单 06 采纳进度定价后基线位移：归元率 88.64% → 91.40%、平均大回合 20.20 → 19.27、
     // 先手胜率 52.02% → 52.20%（2000 局、种子 10000、平衡自对弈）。容差不变。
-    expect(Math.abs(cell.guiYuanRate - 0.914)).toBeLessThanOrEqual(0.015);
-    expect(Math.abs(cell.avgRounds - 19.27)).toBeLessThanOrEqual(1.5);
-    expect(Math.abs(cell.p1WinRate - 0.522)).toBeLessThanOrEqual(0.015);
+    //
+    // burst-plus-two（爆发双级作用 + 满溢则亏 + 门槛放开）落地后基线再次位移：
+    // 归元率 91.40% → 91.05%（−0.35pp）、平均大回合 19.27 → 17.78（−1.49）、
+    // 先手胜率 52.20% → 54.55%（+2.35pp）。本次位移是规则改动的真实后果，不是管道失真；
+    // 三条护栏的完整对照与在带/带外结论见 docs/headless/burst-plus-two-balance.md。
+    expect(Math.abs(cell.guiYuanRate - 0.9105)).toBeLessThanOrEqual(0.015);
+    expect(Math.abs(cell.avgRounds - 17.783)).toBeLessThanOrEqual(1.5);
+    expect(Math.abs(cell.p1WinRate - 0.5455)).toBeLessThanOrEqual(0.015);
   });
 
   it('矩阵自对弈格与直接调用 HeadlessBenchmark 完全一致 (薄层不引入偏差)', () => {
