@@ -11,9 +11,10 @@
  */
 
 import { estimateTextWidth } from '../text-metrics.js';
+import { drawPanel, THEME } from '../theme.js';
 import { Node } from './node.js';
 
-/** 按钮内边距与字号（本模块局部样式常量，不引入共享主题模块）。 */
+/** 按钮内边距与字号（保持原有命中区尺寸）。 */
 const PADDING_X = 12;
 const PADDING_Y = 8;
 const LABEL_FONT_SIZE = 14;
@@ -27,11 +28,11 @@ const MIN_WIDTH = 72;
 const DEFAULT_PRESS_SCALE = 0.92;
 
 /** 未被选中时按钮描边与文字的颜色。 */
-const DEFAULT_COLOR = '#63b3ed';
-const BACKGROUND_COLOR = '#1a202c';
-const SUB_LABEL_COLOR = '#9ca3af';
+const DEFAULT_COLOR = THEME.jade;
+
+const SUB_LABEL_COLOR = THEME.muted;
 /** 禁用态描边与文字颜色。 */
-const DISABLED_COLOR = '#6b7280';
+const DISABLED_COLOR = THEME.edge;
 
 export interface ButtonOptions {
   /** 主标题，如【吸纳】。 */
@@ -139,20 +140,26 @@ export class Button extends Node {
     const left = -this._width / 2;
     const top = -this._height / 2;
     const accent = this._disabled ? DISABLED_COLOR : this.color;
-    ctx.fillStyle = BACKGROUND_COLOR;
-    ctx.fillRect(left, top, this._width, this._height);
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(left, top, this._width, this._height);
+    drawPanel(
+      ctx,
+      left,
+      top,
+      this._width,
+      this._height,
+      accent,
+      this._disabled ? THEME.deep : this.scaleX < 1 ? THEME.panelRaised : THEME.panel,
+    );
+    ctx.fillStyle = accent;
+    ctx.fillRect(left + 8, top + 9, 3, this._height - 18);
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = accent;
-    ctx.font = `bold ${LABEL_FONT_SIZE}px monospace`;
+    ctx.fillStyle = this._disabled ? DISABLED_COLOR : THEME.ivory;
+    ctx.font = `bold ${LABEL_FONT_SIZE}px ${THEME.font}`;
     ctx.fillText(this.label, 0, top + PADDING_Y + LABEL_LINE_HEIGHT / 2);
     if (this.subLabel !== '') {
       ctx.fillStyle = this._disabled ? DISABLED_COLOR : SUB_LABEL_COLOR;
-      ctx.font = `${SUB_LABEL_FONT_SIZE}px monospace`;
+      ctx.font = `${SUB_LABEL_FONT_SIZE}px ${THEME.font}`;
       ctx.fillText(
         this.subLabel,
         0,

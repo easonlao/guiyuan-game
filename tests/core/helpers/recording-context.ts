@@ -24,6 +24,8 @@ export class RecordingContext {
   public readonly texts: { text: string; x: number; y: number; fontSize: number }[] = [];
   /** 按调用顺序记录落笔矩形（坐标、尺寸与当时的填充色），供姿势与配色断言使用。 */
   public readonly rects: { x: number; y: number; w: number; h: number; color: string }[] = [];
+  public readonly strokedRects: { x: number; y: number; w: number; h: number; color: string }[] =
+    [];
   /** 按调用顺序记录 translate 的位移参数（不参与坐标换算，供「呼吸浮动」这类断言使用）。 */
   public readonly translations: { x: number; y: number }[] = [];
   /** 按调用顺序记录 scale 的缩放参数（节点自身的 1:1 变换与真正的放大都记在这里）。 */
@@ -90,8 +92,9 @@ export class RecordingContext {
     this.calls.push('fillRect');
     this.rects.push({ x, y, w, h, color: String(this.fillStyle) });
   }
-  public strokeRect(_x: number, _y: number, _w: number, _h: number): void {
+  public strokeRect(x: number, y: number, w: number, h: number): void {
     this.calls.push('strokeRect');
+    this.strokedRects.push({ x, y, w, h, color: String(this.strokeStyle) });
   }
   public fillText(text: string, x: number, y: number): void {
     this.calls.push('fillText');

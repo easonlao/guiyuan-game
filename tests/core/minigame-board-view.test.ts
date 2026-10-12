@@ -552,3 +552,42 @@ describe('Minigame BoardView: 渲染', () => {
     expect(populatedTexts).toContain('敌 0/5');
   });
 });
+
+describe('Minigame BoardView: polarity labels', () => {
+  it('keeps yin and yang levels readable without color, and updates damaged/blessed states', () => {
+    const view = new BoardView();
+    view.resize(320, 568);
+    view.update(
+      boardWith({ [WuXing.WOOD]: { yin: -1, yang: 2 } }),
+      boardWith({ [WuXing.WOOD]: { yin: 1, yang: 0 } }),
+    );
+    const ctx = new RecordingContext();
+    view.render(ctx.asContext());
+    const labels = ctx.texts.filter((text) => /^-?\d$/.test(text.text));
+    expect(labels).toHaveLength(20);
+    const own = sealOf(view, 'P1', WuXing.WOOD);
+    const rival = sealOf(view, 'P2', WuXing.WOOD);
+    expect(
+      labels.some(
+        (label) =>
+          label.text === '-1' && label.x < own.x && Math.abs(label.y - own.y) < own.sealSize,
+      ),
+    ).toBe(true);
+    expect(
+      labels.some(
+        (label) =>
+          label.text === '2' && label.x > own.x && Math.abs(label.y - own.y) < own.sealSize,
+      ),
+    ).toBe(true);
+    expect(
+      labels.some(
+        (label) =>
+          label.text === '1' && label.x < rival.x && Math.abs(label.y - rival.y) < rival.sealSize,
+      ),
+    ).toBe(true);
+    view.update(boardWith({}), boardWith({}));
+    const cleared = new RecordingContext();
+    view.render(cleared.asContext());
+    expect(cleared.texts.some((text) => text.text === '-1' || text.text === '2')).toBe(false);
+  });
+});

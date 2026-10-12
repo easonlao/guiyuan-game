@@ -61,11 +61,9 @@ function boundsOf(ctx: RecordingContext): {
   return { left, right, top, bottom, width: right - left, height: bottom - top };
 }
 
-/** 头像框的四条描边（宽 ≥ 60 的横条或高 ≥ 60 的竖条）。 */
+/** Avatar frame outlines, excluding the smaller narration panel. */
 function frameBorders(ctx: RecordingContext): string[] {
-  return ctx.rects
-    .filter((rect) => (rect.h === 2 && rect.w >= 60) || (rect.w === 2 && rect.h >= 60))
-    .map((rect) => rect.color);
+  return ctx.strokedRects.filter((rect) => rect.w >= 60 && rect.h >= 100).map((rect) => rect.color);
 }
 
 describe('drawPixelCharacter：放大重画（票 03）', () => {

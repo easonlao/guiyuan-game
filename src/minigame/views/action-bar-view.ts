@@ -42,7 +42,7 @@ export class ActionBarView extends Container {
   public interactive: boolean;
 
   private readonly turnManager: TurnManager;
-  private readonly availableWidth: number;
+  private availableWidth: number;
   private readonly maxColumns: number;
   private readonly gapX: number;
   private readonly gapY: number;
@@ -77,6 +77,12 @@ export class ActionBarView extends Container {
   /** 最近一次排版的实测内容高度：调用方据此把面板底对齐到安全区，不预留空高。 */
   public get contentHeight(): number {
     return this._contentHeight;
+  }
+
+  /** Reflow existing buttons and their hit regions when the viewport changes. */
+  public resize(width: number): void {
+    this.availableWidth = width;
+    this.layout();
   }
 
   /**
