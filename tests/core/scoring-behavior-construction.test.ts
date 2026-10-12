@@ -171,7 +171,7 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
       expect(res.scoreDelta).toBeGreaterThanOrEqual(40);
     });
 
-    it('BURST: awards 100 behavior points + 100 target light_up points = 200 points', () => {
+    it('BURST: awards 100 behavior points + 300 target boost points = 400 points', () => {
       const baseState = createInitialGameState();
       const stateGuiYi = {
         ...baseState,
@@ -192,12 +192,13 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YANG, // Target FIRE yang 0 -> 1
       });
 
       expect(res.success).toBe(true);
-      expect(res.scoreDelta).toBe(200); // 100 action + 100 light_up
-      expect(res.nextState.players.P1.score).toBe(200);
+      // 阴优先两级：FIRE (0, 0) -> (2, 0)，light_up (100) + blessing (200)
+      expect(res.scoreDelta).toBe(400);
+      expect(res.nextState.players.P1.score).toBe(400);
+      expect(res.nextState.players.P1.board[WuXing.FIRE]).toEqual({ yin: 2, yang: 0 });
     });
 
     it('BURST_ATK: awards 80 behavior points', () => {

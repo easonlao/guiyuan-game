@@ -198,7 +198,6 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         player: 'P1' as const,
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YIN,
       };
 
       const result = manager.executeAction(burstAction);
@@ -219,7 +218,6 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         player: 'P1',
         sourceElement: WuXing.METAL,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YIN,
       });
       expect(illegalBurst.success).toBe(false);
       expect(illegalBurst.message).toContain('连动行动中禁止再次使用爆发动作');
@@ -360,7 +358,6 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         player: 'P2' as const,
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YIN,
       };
       const res1 = manager.executeAction(burstAction);
       expect(res1.success).toBe(true);
@@ -458,7 +455,6 @@ describe('TurnManager (Lifecycle Engine & Burst Lock & Draw Rule)', () => {
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YIN,
       });
 
       expect(onBurstExtraTurn).toHaveBeenCalledWith({ player: 'P1' });

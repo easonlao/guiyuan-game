@@ -113,9 +113,9 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
     });
   });
 
-  describe('Scenario 3: Generation Target (2, 2) Extreme Lock (相生目标全满锁死)', () => {
+  describe('Scenario 3: Generation Target (2, 2) Extreme Target (相生目标全满，强化门槛放开)', () => {
     ALL_ELEMENTS.forEach((elem) => {
-      it(`[${elem}] Yin Stem draws GuiYi node when sheng target is (2, 2) -> Single BURST_ATK`, () => {
+      it(`[${elem}] Yin Stem draws GuiYi node when sheng target is (2, 2) -> BURST + BURST_ATK`, () => {
         const yinStem = TIAN_GAN_LIST.find(
           (tg) => tg.element === elem && tg.polarity === Polarity.YIN,
         )!;
@@ -139,9 +139,16 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
         };
 
         const actions = getAvailableActions(state, yinStem);
-        expect(actions.length).toBe(1);
-        expect(actions[0].actionType).toBe(ActionType.BURST_ATK);
-        expect(actions[0].sourceElement).toBe(elem);
+        // 强化门槛放开：相生目标 (2, 2) 时仍生成强化（满溢则亏）；强破目标未到极限，照旧生成
+        expect(actions).toHaveLength(2);
+        expect(actions[0]).toEqual({
+          actionType: ActionType.BURST,
+          player: 'P1',
+          sourceElement: elem,
+          consumePolarity: Polarity.YIN,
+        });
+        expect(actions[1].actionType).toBe(ActionType.BURST_ATK);
+        expect(actions[1].sourceElement).toBe(elem);
       });
     });
   });
@@ -216,9 +223,9 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
     });
   });
 
-  describe('Scenario 5: All Extremes Locked (全极值锁死生成唯一消散过牌 PASS)', () => {
+  describe('Scenario 5: All Extremes Locked (全极值锁死仅剩强化)', () => {
     ALL_ELEMENTS.forEach((elem) => {
-      it(`[${elem}] Yang Stem with GuiYi node, ke (-1, -1) and sheng (2, 2) -> Single PASS`, () => {
+      it(`[${elem}] Yang Stem with GuiYi node, ke (-1, -1) and sheng (2, 2) -> Single BURST`, () => {
         const yangStem = TIAN_GAN_LIST.find(
           (tg) => tg.element === elem && tg.polarity === Polarity.YANG,
         )!;
@@ -250,12 +257,17 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
         };
 
         const actions = getAvailableActions(state, yangStem);
-        expect(actions.length).toBe(1);
-        expect(actions[0].actionType).toBe(ActionType.PASS);
-        expect(actions[0].element).toBe(elem);
+        // 强化门槛放开：相生目标 (2, 2) 仍生成强化，不再是死路 PASS
+        expect(actions).toHaveLength(1);
+        expect(actions[0]).toEqual({
+          actionType: ActionType.BURST,
+          player: 'P1',
+          sourceElement: elem,
+          consumePolarity: Polarity.YIN,
+        });
       });
 
-      it(`[${elem}] Yin Stem with GuiYi node, ke (-1, -1) and sheng (2, 2) -> Single PASS`, () => {
+      it(`[${elem}] Yin Stem with GuiYi node, ke (-1, -1) and sheng (2, 2) -> Single BURST`, () => {
         const yinStem = TIAN_GAN_LIST.find(
           (tg) => tg.element === elem && tg.polarity === Polarity.YIN,
         )!;
@@ -287,9 +299,13 @@ describe('ADR-0008 & Issue 02: Boundary Matrix Verification & Single-Candidate A
         };
 
         const actions = getAvailableActions(state, yinStem);
-        expect(actions.length).toBe(1);
-        expect(actions[0].actionType).toBe(ActionType.PASS);
-        expect(actions[0].element).toBe(elem);
+        expect(actions).toHaveLength(1);
+        expect(actions[0]).toEqual({
+          actionType: ActionType.BURST,
+          player: 'P1',
+          sourceElement: elem,
+          consumePolarity: Polarity.YIN,
+        });
       });
     });
   });

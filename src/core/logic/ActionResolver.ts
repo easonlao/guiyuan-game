@@ -26,7 +26,11 @@ import {
   countBoardGuiYi,
   isBoardTingPai,
 } from './State.js';
+import { getPlusTargetPolarity } from './ActionCandidates.js';
 import { ScoreCalculator } from './ScoreCalculator.js';
+
+/** 强化 (BURST) 的相生作用次数：两次独立的 +1，每次之前重新读盘面选侧 */
+const BURST_PASSES = 2;
 
 export class ActionResolver {
   constructor(private readonly scoreCalculator: ScoreCalculator = new ScoreCalculator()) {}
@@ -256,25 +260,31 @@ export class ActionResolver {
           return { nextState: state, success: false, scoreDelta: 0, extraTurn: false, message: '源节点未达成归一，无法爆发' };
         }
         scoreDelta += this.scoreCalculator.calculateActionPoints(ActionType.BURST);
-        // 消耗源节点一侧
+        // 消耗源节点一侧（不计状态分；因此失去归一时也不扣分）
         patchActiveNode(sourceElement, {
           [consumePolarity]: clampNodeLevel(sourceNode[consumePolarity] - 1),
         });
-        // 强化相生节点
+        // 强化相生节点：两次独立的 +1，每次之前重新读盘面并按阴优先选侧。
+        // 目标已是亢极 (2, 2) 时该次改为阴侧 -1（满溢则亏，与亢极散气一致）；
+        // 非攻击的 2→1 转移在计分器里本就返回 0，无需特判。
         const targetElement = GENERATION_CYCLE[sourceElement];
-        const targetPolarity = payload.polarity || Polarity.YANG;
-        const targetNode = nextActiveBoard[targetElement];
-        const prevLevel = targetNode[targetPolarity];
-        const newLevel = clampNodeLevel(prevLevel + 1);
-        patchActiveNode(targetElement, {
-          [targetPolarity]: newLevel,
-        });
-        scoreDelta += this.scoreCalculator.calculateTransitionPoints(
-          prevLevel,
-          newLevel,
-          targetPolarity,
-          false,
-        );
+        for (let pass = 0; pass < BURST_PASSES; pass++) {
+          const targetNode = nextActiveBoard[targetElement];
+          const boostPolarity = getPlusTargetPolarity(targetNode);
+          const targetPolarity = boostPolarity ?? Polarity.YIN;
+          const levelStep = boostPolarity === null ? -1 : 1;
+          const prevLevel = targetNode[targetPolarity];
+          const newLevel = clampNodeLevel(prevLevel + levelStep);
+          patchActiveNode(targetElement, {
+            [targetPolarity]: newLevel,
+          });
+          scoreDelta += this.scoreCalculator.calculateTransitionPoints(
+            prevLevel,
+            newLevel,
+            targetPolarity,
+            false,
+          );
+        }
         extraTurn = true;
         success = true;
         break;

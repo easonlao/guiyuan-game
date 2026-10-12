@@ -99,15 +99,14 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
       player: 'P1',
       sourceElement: WuXing.WOOD,
       consumePolarity: Polarity.YIN,
-      polarity: Polarity.YANG,
     });
 
     expect(burstResult.success).toBe(true);
     expect(burstResult.extraTurn).toBe(true);
     // WOOD yin was consumed from 1 to 0
     expect(burstResult.nextState.players.P1.board[WuXing.WOOD].yin).toBe(0);
-    // FIRE yang was buffed from 0 to 1
-    expect(burstResult.nextState.players.P1.board[WuXing.FIRE].yang).toBe(1);
+    // FIRE was buffed twice, yin-first: (0, 0) -> (2, 0)
+    expect(burstResult.nextState.players.P1.board[WuXing.FIRE]).toEqual({ yin: 2, yang: 0 });
     // Extra turn keeps current player as P1 without advancing round
     expect(burstResult.nextState.currentPlayer).toBe('P1');
   });
@@ -404,7 +403,6 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YANG,
-        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(true);
@@ -433,7 +431,6 @@ describe('ActionResolver (Pure Immutable Calculations)', () => {
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(false);

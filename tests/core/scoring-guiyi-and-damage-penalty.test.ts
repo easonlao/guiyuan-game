@@ -135,7 +135,7 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
 
     it('BURST: grants +60 milestone bonus when target element newly achieves GuiYi', () => {
       // Source WOOD is GuiYi { yin: 1, yang: 1 }. Target FIRE is { yin: 1, yang: 0 }.
-      // BURST consumes WOOD yin (1 -> 0), buffs FIRE yang (0 -> 1) => FIRE reaches GuiYi!
+      // BURST consumes WOOD yin (1 -> 0)，两次阴优先强化把 FIRE 推到 { yin: 2, yang: 1 } => FIRE reaches GuiYi!
       const baseState = createInitialGameState();
       const state = {
         ...baseState,
@@ -158,15 +158,14 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(true);
-      // BURST (100) + LIGHT_UP (100) + GUI_YI_MILESTONE (60) = 260
-      expect(result.scoreDelta).toBe(260);
-      expect(result.nextState.players.P1.score).toBe(260);
+      // BURST (100) + BLESSING (200) + LIGHT_UP (100) + GUI_YI_MILESTONE (60) = 460
+      expect(result.scoreDelta).toBe(460);
+      expect(result.nextState.players.P1.score).toBe(460);
       expect(result.nextState.players.P1.board[WuXing.WOOD].yin).toBe(0);
-      expect(result.nextState.players.P1.board[WuXing.FIRE].yang).toBe(1);
+      expect(result.nextState.players.P1.board[WuXing.FIRE]).toEqual({ yin: 2, yang: 1 });
     });
   });
 
@@ -267,13 +266,13 @@ describe('GuiYi Milestone Bonus (+60) & Endgame Damage Penalty (-50)', () => {
         player: 'P1',
         sourceElement: WuXing.WOOD,
         consumePolarity: Polarity.YIN,
-        polarity: Polarity.YANG,
       });
 
       expect(result.success).toBe(true);
-      // BURST (100) + LIGHT_UP (100) = 200, no milestone
-      expect(result.scoreDelta).toBe(200);
-      expect(result.nextState.players.P1.score).toBe(200);
+      // BURST (100) + LIGHT_UP (100) + BLESSING (200) = 400；FIRE (2, 0) 未归一，无里程碑
+      expect(result.scoreDelta).toBe(400);
+      expect(result.nextState.players.P1.score).toBe(400);
+      expect(result.nextState.players.P1.board[WuXing.FIRE]).toEqual({ yin: 2, yang: 0 });
     });
   });
 
