@@ -1,6 +1,6 @@
 # 按住预览：路径箭头与幽灵结果态
 
-Status: ready-for-agent
+Status: resolved
 
 ## 用户目标
 
@@ -23,3 +23,20 @@ Status: ready-for-agent
 - 破 / 化 / 强化 / 强破 各一次按住预览截图，幽灵态与结算后的真实盘面逐侧一致。
 - PASS 与净零变化不伪造预览。
 - 行为测试覆盖「按住 → 弧加速 + 路径 + 幽灵态」与「松开 / 取消 → 回到决策期」；`verify` 通过。
+
+## 实施结果
+
+- **交互**：`ActionBarView` 新增 `onPreview(action | null)`，由按钮按下 / 抬起驱动（`Button` 新增 `onPress` / `onRelease`）。`GameScene.previewAction` 在按下时调 `BoardView.setPreview`，松开 / 取消时传 `null`；`setPhase` 换阶段一并清空。抬指在按钮上仍是原有的「点击即结算」（预览在结算前先清），手指移出后抬起算取消、留在决策期。
+- **取消的底层修复**：`InputManager.handleTouchEnd` 改为把抬起回调恒定发给**按下时命中的节点**（此前只发给抬起时命中的节点）——否则手指移出按钮后抬起时按钮不收到 `onTouchEnd`，预览清不掉（正是 `Button` 注释里记的已知边界）。
+- **路径箭头**：`BoardConnectionView.isActive` 在按住时收窄到这一下的路径；相生（化 / 强化）画内环外侧顺时针弧箭、相克（破 / 强破）画跨环径向箭，墨用候选强调紫。决策期不按住时不画。
+- **幽灵态**：`resolvePreviewGhost(action, state)`（新模块 `src/minigame/preview-target.ts`）**真跑一遍 `ActionResolver`** 取目标节点结算后的等级，只重画真的会变的那几侧（先压暗该半身再半透明画目标形态）。强化 / 强破的目标侧不在载荷里、各作用两次，只有解析结果才与结算逐侧一致；净零变化 / `PASS` / 见底即止返回 `null`，不画。
+- **加速**：按住时所有候选呼吸一起加快（`PREVIEW_BREATH_SPEED = 3`），复用 `BoardView.tick(dt)`；票 03 的「候选同相位」是硬约束，不能只加快被按住那一个，「是哪一下」由箭头与幽灵态指出。
+- 未动核心规则 / AI / 载荷契约；`minigame/game.js` 已重建。
+- 文档回写：ADR 0018 追加「按住预览落地」勘误（含取消路径与加速口径）；`docs/LLD.md` §4.1 第 5 条与新增第 9 条；`docs/HLD.md` §2 Layer 3 改标「已落地票 01–04」。
+
+## 验收
+
+- 行为测试：`tests/core/minigame-preview-target.test.ts`（幽灵态真跑解析器：破 / 化 / 强化同侧连加与跨侧、强破先阴后阳、净零 / 见底即止 / PASS 返回 `null`）+ `minigame-board-view.test.ts`（按住收窄高亮、相生弧箭与径向箭几何、幽灵只画会变半身、三尺寸不越主印、预览期呼吸加快与复原）+ `minigame-game-scene.test.ts`（按住 → 路径 + 幽灵 + 加速；取消回决策期；破 / 化 / 强化 / 强破 的幽灵态与结算后盘面逐侧一致；净零与见底即止不画幽灵）。
+- `check:quick`、`typecheck`、`test`（54 文件 987 测试）、`build:minigame`、`verify` 通过，`minigame/game.js` 与源码逐字节对账。
+- **微信开发者工具视觉验收（用户）**：加载入库产物 `minigame/game.js`，各按一次破 / 化 / 强化 / 强破 与结算后逐侧对照；本票的截图与色号由用户在该工具里目验拍板。agent 本机的浏览器预览只是自查，不算验收证据（口径见 `spec.md` 验收节）。
+- 两轴复审报告：Standards `.scratch/board-channel-and-marks/reviews/04-standards-review.md`、Spec `04-spec-review.md`。

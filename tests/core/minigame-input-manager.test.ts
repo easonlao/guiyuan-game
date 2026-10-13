@@ -94,6 +94,24 @@ describe('Minigame InputManager: touch dispatch', () => {
     expect(taps).toEqual([]);
   });
 
+  it('finger moves out of the node and lifts elsewhere: release still reaches the pressed node', () => {
+    // 按下后移出再抬指也要复位按压态（取消预览 / 按压缩放）。
+    const stage = new Container();
+    const node = createInteractiveNode();
+    const ends: [number, number][] = [];
+    const taps: [number, number][] = [];
+    node.onTouchEnd = (x, y) => ends.push([x, y]);
+    node.onTap = (x, y) => taps.push([x, y]);
+    stage.addChild(node);
+    const input = new InputManager(stage);
+
+    input.handleTouchStart(120, 110);
+    input.handleTouchEnd(0, 0);
+
+    expect(ends).toEqual([[0, 0]]);
+    expect(taps).toEqual([]);
+  });
+
   it('does not fire onTap when the touch starts outside the node', () => {
     const stage = new Container();
     const node = createInteractiveNode();

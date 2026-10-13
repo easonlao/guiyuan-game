@@ -2486,6 +2486,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       /** 按下时的缩放系数。 */
       __publicField(this, "pressScale");
       __publicField(this, "tapHandler");
+      __publicField(this, "pressHandler");
+      __publicField(this, "releaseHandler");
       __publicField(this, "_disabled");
       __publicField(this, "_width");
       __publicField(this, "_height");
@@ -2493,6 +2495,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.subLabel = options.subLabel ?? "";
       this.color = options.color ?? DEFAULT_COLOR;
       this.tapHandler = options.onTap;
+      this.pressHandler = options.onPress;
+      this.releaseHandler = options.onRelease;
       this.pressScale = options.pressScale ?? DEFAULT_PRESS_SCALE;
       this._disabled = options.disabled ?? false;
       this._width = options.width ?? autoWidth(this.label, this.subLabel);
@@ -2541,11 +2545,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       this.scaleX = this.pressScale;
       this.scaleY = this.pressScale;
+      this.pressHandler?.(this);
     }
     /** 抬起（或取消）：恢复常态缩放。 */
     release() {
       this.scaleX = 1;
       this.scaleY = 1;
+      this.releaseHandler?.(this);
     }
     /** 画一个底色方块 + 描边 + 标题/副标题；变换与透明度已由 `Node.render` 就位。 */
     renderSelf(ctx) {
@@ -2609,6 +2615,11 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       super();
       /** 面板是否允许玩家操作；改完需调用 `refresh()` 重新投影。 */
       __publicField(this, "interactive");
+      /**
+       * 按住 / 松开按钮的预览回调（票 04）：按下时传出该候选动作，松开或取消时传 `null`。
+       * 面板只负责「哪一个候选被按住」，预览的落点与幽灵态归 `GameScene` 处理。
+       */
+      __publicField(this, "onPreview");
       __publicField(this, "turnManager");
       __publicField(this, "availableWidth");
       __publicField(this, "maxColumns");
@@ -2686,6 +2697,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         label: formatted.label,
         subLabel: formatted.subLabel,
         color: formatted.color,
+        onPress: () => this.onPreview?.(action),
+        onRelease: () => this.onPreview?.(null),
         onTap: () => this.dispatch(action)
       });
     }
@@ -2788,6 +2801,20 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const CANDIDATE_BREATH_PERIOD = 2.6;
   const CANDIDATE_BREATH_MIN = 0.6;
   const CANDIDATE_BREATH_MAX = 1;
+  const PREVIEW_BREATH_SPEED = 3;
+  const GHOST_ALPHA = 0.85;
+  const GHOST_SCRIM_ALPHA = 0.5;
+  const PREVIEW_ARROW_INK = THEME.candidateLit;
+  const PREVIEW_ARROW_ALPHA = 0.95;
+  const PREVIEW_ARROW_WIDTH_RATIO = 0.11;
+  const PREVIEW_ARROW_WIDTH_MIN = 2;
+  const PREVIEW_ARROW_RING_OFFSET = 0.9;
+  const PREVIEW_ARROW_HEAD_RATIO = 0.4;
+  const PREVIEW_ARROW_HEAD_MIN = 6;
+  const PREVIEW_ARROW_BARB_RATIO = 0.7;
+  const PREVIEW_ARROW_SEAL_ANGLE_MAX = 0.85;
+  const PREVIEW_ARROW_PAD_RATIO = 0.35;
+  const PREVIEW_ARROW_GAP_RATIO = 0.35;
   const DEFAULT_BOARD_LAYOUT = {
     centerX: 0,
     centerY: 0,
@@ -2818,6 +2845,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "_activePaths", /* @__PURE__ */ new Set());
       /** 决策期的候选落点（键为 `player:element:polarity`）；弧与盘面等级、连线高亮都无关（票 03）。 */
       __publicField(this, "_candidates", []);
+      /** 按住按钮的预览（票 04）：按下时收窄连线高亮并叠加箭头 / 幽灵态，松开回到决策期。 */
+      __publicField(this, "_preview", null);
       /** 候选弧的呼吸相位（0..1）：所有候选共用一个节拍，做不到逐节点独立闪动（票 03）。 */
       __publicField(this, "_breathPhase", 0);
       /** 表现层时钟（秒），由 `tick` 推进；只驱动归一 / 亢极柔光，不参与任何投影。 */
@@ -2835,7 +2864,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
      */
     tick(dt) {
       this._clock += dt;
-      this._breathPhase = this._clock / CANDIDATE_BREATH_PERIOD % 1;
+      const speed = this._preview === null ? 1 : PREVIEW_BREATH_SPEED;
+      this._breathPhase = (this._breathPhase + dt * speed / CANDIDATE_BREATH_PERIOD) % 1;
     }
     /** 按视口自适应：圆心取视口中心，内外环半径与主印半径按短边等比缩放。 */
     resize(width, height, bounds) {
@@ -2935,6 +2965,18 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     get breathPhase() {
       return this._breathPhase;
     }
+    /**
+     * 设置 / 清除按住预览（票 04）：设置后连线高亮收窄到该动作的路径，并叠加路径箭头与目标侧幽灵态；
+     * 传 `null` 回到决策期口径（高亮恢复为 `setActivePaths` 给的全部候选）。
+     */
+    setPreview(preview) {
+      this._preview = preview;
+      this._rebuild();
+    }
+    /** 当前预览（`null` 表示未按住任何按钮）；返回内部引用，调用方只读。 */
+    get preview() {
+      return this._preview;
+    }
     /** 一次投影双方只读棋盘快照；只读不写回（LLD §4.1）。 */
     update(p1Board, p2Board) {
       this._boards[OWN_PLAYER] = p1Board;
@@ -3005,8 +3047,19 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         y1: source.y,
         x2: target.x,
         y2: target.y,
-        isActive: this._activePaths.has(connectionKey(kind, from))
+        isActive: this._isActivePath(kind, from)
       };
+    }
+    /**
+     * 一条连线当前是否被强调：按住预览时只强调被按住那一下的路径（`BoardPreview.path`），
+     * 其余候选静默；未预览时回到 `setActivePaths` 给的全部候选路径。
+     */
+    _isActivePath(kind, from) {
+      const preview = this._preview;
+      if (preview !== null) {
+        return preview.path !== null && preview.path.kind === kind && preview.path.from === from;
+      }
+      return this._activePaths.has(connectionKey(kind, from));
     }
     _elementView(player, element) {
       const view = this._elements.find(
@@ -3033,13 +3086,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         isKangJi: element.isKangJi
       };
     }
-    /** 先画环带与主印，再叠归一 / 亢极柔光，最后画候选弧与环归属标签（都压在最上层）。 */
+    /** 先画环带与主印，再叠归一 / 亢极柔光，最后画候选弧、幽灵态与路径箭头（都压在最上层）。 */
     renderSelf(ctx) {
       this._drawEngraving(ctx);
       this._drawRingBands(ctx);
       this._drawSeals(ctx);
       this._drawNodeMarks(ctx);
       this._drawCandidateMarks(ctx);
+      this._drawGhost(ctx);
+      this._drawPreviewArrow(ctx);
       this._drawRingLabels(ctx);
     }
     /** Quiet backing and one ownership guide per ring; decoration does not encode state. */
@@ -3099,6 +3154,96 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         const seal = this._elementView(candidate.player, candidate.element);
         drawCandidateMark(ctx, seal.x, seal.y, seal.sealSize, candidate.polarity, this._breathPhase);
       }
+    }
+    /**
+     * 按住预览的目标侧幽灵态（票 04）：只画**真的会变**的那几侧结算后的形态。
+     * 未变的半身一概不碰（否则升级 / 降级之外的半身也会被洗一层）。
+     */
+    _drawGhost(ctx) {
+      const ghost = this._preview?.ghost;
+      if (ghost === null || ghost === void 0) return;
+      const seal = this._elementView(ghost.player, ghost.element);
+      const before = this._boards[ghost.player]?.[ghost.element] ?? VOID_NODE;
+      for (const polarity of [Polarity.YIN, Polarity.YANG]) {
+        const after = polarity === Polarity.YIN ? ghost.yin : ghost.yang;
+        const prev = polarity === Polarity.YIN ? before.yin : before.yang;
+        if (after === prev) continue;
+        drawGhostHalf(ctx, seal.x, seal.y, seal.sealSize, seal.element, polarity, after);
+      }
+    }
+    /** 按住预览的路径箭头（票 04）：化 / 强化 = 内环顺时针弧箭，破 / 强破 = 跨环径向箭。 */
+    _drawPreviewArrow(ctx) {
+      if (this._preview === null) return;
+      const width = Math.max(
+        PREVIEW_ARROW_WIDTH_MIN,
+        this._layout.sealSize * PREVIEW_ARROW_WIDTH_RATIO
+      );
+      const head = Math.max(PREVIEW_ARROW_HEAD_MIN, this._layout.sealSize * PREVIEW_ARROW_HEAD_RATIO);
+      for (const line of this._connections) {
+        if (!line.isActive) continue;
+        if (line.kind === "generation") {
+          this._drawGenerationArrow(ctx, line, width, head);
+        } else {
+          this._drawRadialArrow(ctx, line, width, head);
+        }
+      }
+    }
+    /** 内环相生弧箭：沿内环顺时针扫到相生目标，箭尖指向环序的下一个节点。 */
+    _drawGenerationArrow(ctx, line, width, head) {
+      const { centerX, centerY } = this._layout;
+      const radius = this._layout.innerRadius + this._layout.sealSize * PREVIEW_ARROW_RING_OFFSET;
+      const startAngle = Math.atan2(line.y1 - centerY, line.x1 - centerX);
+      const endAngle = Math.atan2(line.y2 - centerY, line.x2 - centerX);
+      const sweep = ((endAngle - startAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+      const halfSealAngle = Math.asin(
+        Math.min(
+          PREVIEW_ARROW_SEAL_ANGLE_MAX,
+          this._layout.sealSize / Math.max(1, this._layout.innerRadius)
+        )
+      );
+      const pad = Math.min(halfSealAngle, sweep * PREVIEW_ARROW_PAD_RATIO);
+      const from = startAngle + pad;
+      const to = startAngle + sweep - pad;
+      if (to <= from) return;
+      ctx.save();
+      ctx.strokeStyle = withAlpha(PREVIEW_ARROW_INK, PREVIEW_ARROW_ALPHA);
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, from, to);
+      ctx.stroke();
+      const tipX = centerX + radius * Math.cos(to);
+      const tipY = centerY + radius * Math.sin(to);
+      drawArrowHead(ctx, tipX, tipY, -Math.sin(to), Math.cos(to), head);
+      ctx.restore();
+    }
+    /** 跨环径向箭：从己方主印外沿指向对方主印外沿，箭尖落在目标上。 */
+    _drawRadialArrow(ctx, line, width, head) {
+      const dx = line.x2 - line.x1;
+      const dy = line.y2 - line.y1;
+      const length = Math.hypot(dx, dy);
+      if (length === 0) return;
+      const ux = dx / length;
+      const uy = dy / length;
+      const gap = this._layout.sealSize * PREVIEW_ARROW_GAP_RATIO;
+      const startPad = this._layout.sealSize + gap;
+      const endPad = this._layout.sealSize * OPPONENT_SEAL_SCALE + gap + head;
+      const from = startPad;
+      const to = Math.max(from + 1, length - endPad);
+      const startX = line.x1 + ux * from;
+      const startY = line.y1 + uy * from;
+      const tipX = line.x1 + ux * to;
+      const tipY = line.y1 + uy * to;
+      ctx.save();
+      ctx.strokeStyle = withAlpha(PREVIEW_ARROW_INK, PREVIEW_ARROW_ALPHA);
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(tipX, tipY);
+      ctx.stroke();
+      drawArrowHead(ctx, tipX, tipY, ux, uy, head);
+      ctx.restore();
     }
     /** Each node owns two independent fish. Element labels sit outside the readable silhouette. */
     _drawSeals(ctx) {
@@ -3366,6 +3511,29 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     ctx.stroke();
     ctx.restore();
   }
+  function drawGhostHalf(ctx, x, y, radius, element, polarity, level) {
+    ctx.save();
+    traceFishHalf(ctx, x, y, radius, polarity);
+    ctx.clip();
+    ctx.globalAlpha = GHOST_SCRIM_ALPHA;
+    ctx.fillStyle = THEME.ink;
+    ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.globalAlpha = GHOST_ALPHA;
+    drawYinYangFish(ctx, x, y, radius, polarity, level, element);
+    ctx.restore();
+  }
+  function drawArrowHead(ctx, tipX, tipY, dirX, dirY, size) {
+    const barbs = size * PREVIEW_ARROW_BARB_RATIO;
+    const normalX = -dirY;
+    const normalY = dirX;
+    ctx.beginPath();
+    ctx.moveTo(tipX - dirX * size + normalX * barbs, tipY - dirY * size + normalY * barbs);
+    ctx.lineTo(tipX, tipY);
+    ctx.lineTo(tipX - dirX * size - normalX * barbs, tipY - dirY * size - normalY * barbs);
+    ctx.stroke();
+  }
   function traceFishHalf(ctx, x, y, radius, polarity) {
     const yin = polarity === Polarity.YIN;
     ctx.beginPath();
@@ -3455,6 +3623,25 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   }
   function opponentOf$1(player) {
     return player === "P1" ? "P2" : "P1";
+  }
+  const PREVIEW_RESOLVER = new ActionResolver();
+  function resolvePreviewGhost(action, state) {
+    const target = resolveCandidateTarget(action, {
+      tianGan: state.currentTianGan,
+      boards: {
+        P1: state.players.P1.board,
+        P2: state.players.P2.board
+      }
+    });
+    if (target === null) {
+      return null;
+    }
+    const before = state.players[target.player].board[target.element];
+    const after = PREVIEW_RESOLVER.resolve(state, action).nextState.players[target.player].board[target.element];
+    if (after.yin === before.yin && after.yang === before.yang) {
+      return null;
+    }
+    return { player: target.player, element: target.element, before, after };
   }
   const CHARACTER_ATLAS_PATH = "assets/characters.png";
   const CHARACTER_ATLAS_SIZE = { width: 1254, height: 1254 };
@@ -4680,6 +4867,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 切换表现阶段：连线高亮、候选落点弧与阶段一致（只有 `awaiting-player` 有待定动作）。 */
     setPhase(phase) {
       this._phase = phase;
+      this.board.setPreview(null);
       this.board.setActivePaths(this.activePathsFor(phase));
       this.board.setCandidates(this.candidatesFor(phase));
       this.placeResult();
@@ -5146,9 +5334,36 @@ ${prompt}`;
       );
     }
     buildActionBar(turnManager) {
-      return new ActionBarView({
+      const actionBar = new ActionBarView({
         turnManager,
         width: this.width - ACTION_BAR_MARGIN * 2
+      });
+      actionBar.onPreview = (action) => this.previewAction(action);
+      return actionBar;
+    }
+    /**
+     * 按住 / 松开按钮的预览（票 04）：按下时把连线高亮收窄到这一下的路径，并叠加路径箭头与
+     * 目标侧幽灵态；松开 / 取消（`action === null`）回到决策期。
+     *
+     * 幽灵态真跑一遍核心解析器（`resolvePreviewGhost`）取目标节点结算后的等级——
+     * 强化 / 强破的目标侧不在载荷里，只有解析结果才是真实落点，不能用近似落点。
+     */
+    previewAction(action) {
+      if (action === null || this._phase !== "awaiting-player") {
+        this.board.setPreview(null);
+        return;
+      }
+      const tianGan = this._turnManager.getCurrentTianGan();
+      const path = tianGan === null ? null : resolveActionPath(action.actionType, tianGan.element);
+      const ghost = resolvePreviewGhost(action, this._turnManager.getState());
+      this.board.setPreview({
+        path,
+        ghost: ghost === null ? null : {
+          player: ghost.player,
+          element: ghost.element,
+          yin: ghost.after.yin,
+          yang: ghost.after.yang
+        }
       });
     }
     buildRuneFlight() {
@@ -5412,9 +5627,9 @@ ${prompt}`;
     }
     handleTouchEnd(screenX, screenY) {
       const target = this.stage.hitTest(screenX, screenY);
-      target?.onTouchEnd?.(screenX, screenY);
       const pressed = this.pressedNode;
       this.pressedNode = null;
+      pressed?.onTouchEnd?.(screenX, screenY);
       if (pressed !== null && pressed === target) {
         pressed.onTap?.(screenX, screenY);
       }
