@@ -231,6 +231,27 @@ export class RecordingContext {
       addColorStop: (offset: number, color: string) => gradient.stops.push({ offset, color }),
     } as unknown as CanvasGradient;
   }
+  public readonly linearGradients: {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+    stops: { offset: number; color: string }[];
+  }[] = [];
+  public createLinearGradient(_x0: number, _y0: number, _x1: number, _y1: number): CanvasGradient {
+    this.calls.push('createLinearGradient');
+    const gradient = {
+      x0: _x0,
+      y0: _y0,
+      x1: _x1,
+      y1: _y1,
+      stops: [] as { offset: number; color: string }[],
+    };
+    this.linearGradients.push(gradient);
+    return {
+      addColorStop: (offset: number, color: string) => gradient.stops.push({ offset, color }),
+    } as unknown as CanvasGradient;
+  }
   public asContext(): CanvasRenderingContext2D {
     return this as unknown as CanvasRenderingContext2D;
   }

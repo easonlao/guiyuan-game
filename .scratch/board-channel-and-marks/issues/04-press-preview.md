@@ -28,7 +28,7 @@ Status: resolved
 
 - **交互**：`ActionBarView` 新增 `onPreview(action | null)`，由按钮按下 / 抬起驱动（`Button` 新增 `onPress` / `onRelease`）。`GameScene.previewAction` 在按下时调 `BoardView.setPreview`，松开 / 取消时传 `null`；`setPhase` 换阶段一并清空。抬指在按钮上仍是原有的「点击即结算」（预览在结算前先清），手指移出后抬起算取消、留在决策期。
 - **取消的底层修复**：`InputManager.handleTouchEnd` 改为把抬起回调恒定发给**按下时命中的节点**（此前只发给抬起时命中的节点）——否则手指移出按钮后抬起时按钮不收到 `onTouchEnd`，预览清不掉（正是 `Button` 注释里记的已知边界）。
-- **路径箭头**：`BoardConnectionView.isActive` 在按住时收窄到这一下的路径；相生（化 / 强化）画内环外侧顺时针弧箭、相克（破 / 强破）画从己方主印外沿直插、箭尖探出敌节点的径向贯穿箭，墨用候选强调紫；调息另在源节点内画换侧箭（见「设计修订」）。决策期不按住时不画。
+- **路径箭头**：`BoardConnectionView.isActive` 在按住时收窄到这一下的路径；相生（化 / 强化）画内环外侧顺时针弧箭，相克（破 / 强破）画一道弓起的能量弧刃（能量头 + 冲击波 + 迸射），调息画节点内流转环（见「设计修订」）。决策期不按住时不画。
 - **幽灵态**：`resolvePreviewGhost(action, state)`（新模块 `src/minigame/preview-target.ts`）**真跑一遍 `ActionResolver`** 取目标节点结算后的等级，只重画真的会变的那几侧（先压暗该半身再半透明画目标形态）。强化 / 强破的目标侧不在载荷里、各作用两次，只有解析结果才与结算逐侧一致；净零变化 / `PASS` / 见底即止返回 `null`，不画。
 - **加速**：按住时所有候选呼吸一起加快（`PREVIEW_BREATH_SPEED = 3`），复用 `BoardView.tick(dt)`；票 03 的「候选同相位」是硬约束，不能只加快被按住那一个，「是哪一下」由箭头与幽灵态指出。
 - 未动核心规则 / AI / 载荷契约；`minigame/game.js` 已重建。
@@ -36,14 +36,16 @@ Status: resolved
 
 落地后用户复核：「化的展示还可以，但是攻击的展示我觉得可以再考虑一下如何优化」「还有调息」。最终口径以上文实现为准：
 
-1. **相克（破 / 强破）改为贯穿箭**。原径向箭从己方主印外沿指向敌主印外沿，但两印净空只有约 0.8 × 主印半径（默认 18px），而两端缩进加箭头已超过它——实测只剩约 1px 线段、箭头退到自己主印上，实际上看不见完整箭。现改为从己方主印外沿**直插**、箭尖从敌节点外侧探出，线中部压在敌印面上：一条贯穿敌印的短兵。
-2. **调息补一条节点内换侧箭**。调息不跳节点，`resolveActionPath` 对它返回 `null`，按住时除了幽灵态没有任何方向提示。改为在源节点内画一条横向短箭（`BoardPreview.convert = {player, element, from, to}`，从当前点亮侧指向对侧，阴左阳右）。
+1. **相克（破 / 强破）由直线改为弧刃斩击**。第一版按票面画了一条径向直线——不只有几何缺陷（两印净空只有约 0.8 × 主印半径，两端缩进加箭头已超过它，实测只剩约 1px），用户也直接判「呆板的直线，没有设计感」。现改为一道弓起的新月形能量弧刃从本阵喷向敌节点：刃面渐变、刃口有循环流动的能量头、命中处有向外扩的冲击波与迸射（`_drawAttackSlash`）。
+2. **调息由横线改为节点内流转环**。调息不跳节点，`resolveActionPath` 对它返回 `null`；用户指「调息的含义就是内部流转转化」。现沿主印外一圈从当前点亮侧绕到对侧：一股能量拖渐隐的尾扫过去、尾端一个指向圆内的箭尖，到达时对侧半身泛亮（`_drawConvertFlow`）。
 
-验证：`reports/ui-design/p04-arrows.png` 三面板对照（化 / 破 / 调息，本地证据不入库）；BoardView 测试新增「径向箭贯穿至敌主印外沿之外」「换侧箭方向随 `to` 反转 / 无 convert 不画」；场景测试新增「调息预览带换侧方向，与结算后一致」。
+两条运动都挂在 `BoardView.tick(dt)` 上，与归一金环流光 / 亢极外溢共用同一条时钟。
+
+验证：`reports/ui-design/p04-options.png`（攻击 / 调息各三个候选方案对照）与 `reports/ui-design/p04-final.png`（最终形态，本地证据不入库）；BoardView 测试新增「弧刃是弓起的闭合填充（两个控制点同侧、外缘弓得更多）」「流转环沿主印外一圈、方向随 `from` 反转 / 无 convert 不画」；场景测试新增「调息预览带换侧方向，与结算后一致」。
 
 ## 验收
 
-- 行为测试：`tests/core/minigame-preview-target.test.ts`（幽灵态真跑解析器：破 / 化 / 强化同侧连加与跨侧、强破先阴后阳、净零 / 见底即止 / PASS 返回 `null`）+ `minigame-board-view.test.ts`（按住收窄高亮、相生弧箭与径向贯穿箭几何、调息换侧箭方向、幽灵只画会变半身、三尺寸不越主印、预览期呼吸加快与复原）+ `minigame-game-scene.test.ts`（按住 → 路径 + 幽灵 + 加速；取消回决策期；破 / 化 / 强化 / 强破 的幽灵态与结算后盘面逐侧一致；调息换侧方向；净零与见底即止不画幽灵）。
+- 行为测试：`tests/core/minigame-preview-target.test.ts`（幽灵态真跑解析器：破 / 化 / 强化同侧连加与跨侧、强破先阴后阳、净零 / 见底即止 / PASS 返回 `null`）+ `minigame-board-view.test.ts`（按住收窄高亮、相生弧箭与相克弧刃几何、调息流转环方向、幽灵只画会变半身、三尺寸不越主印、预览期呼吸加快与复原）+ `minigame-game-scene.test.ts`（按住 → 路径 + 幽灵 + 加速；取消回决策期；破 / 化 / 强化 / 强破 的幽灵态与结算后盘面逐侧一致；调息换侧方向；净零与见底即止不画幽灵）。
 - `check:quick`、`typecheck`、`test`（54 文件 989 测试）、`build:minigame`、`verify` 通过，`minigame/game.js` 与源码逐字节对账。
 - **微信开发者工具视觉验收（用户）**：加载入库产物 `minigame/game.js`，各按一次破 / 化 / 强化 / 强破 与结算后逐侧对照；本票的截图与色号由用户在该工具里目验拍板。agent 本机的浏览器预览只是自查，不算验收证据（口径见 `spec.md` 验收节）。
 - 两轴复审报告：Standards `.scratch/board-channel-and-marks/reviews/04-standards-review.md`、Spec `04-spec-review.md`。
