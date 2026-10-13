@@ -94,23 +94,38 @@ const KANGJI_RIPPLE_OUTER = NODE_AURA_OUTSET_RATIO - KANGJI_RIPPLE_THICKNESS;
 const SLOT_SIDE_RATIO = 0.7;
 
 /**
- * 归一金环的外沿（占主印半径的比例）：主印 → 金环（`NODE_RING_SCALE`）→ 候选弧，
- * 候选弧画在金环外沿之外，与它几乎贴着（票 03）。两步之外不再有别的外圈，法盘底晕因此不放大。
+ * 候选标记的尺度：直接染「会变的那半身」自己（不另画括号 / 弧）。
+ * 三条线索：**专属强调色**（不取五行色；靠色相而不是明暗，亮底上也读得出）、
+ * **一条薄轮廓**（勾住半身形状）、**随呼吸胀缩**（位移不受底色影响）。
  */
-const CANDIDATE_ARC_OFFSET = 0.2;
-/** 候选弧的线宽（占主印半径的比例）：比归一金环粗，才和「细一圈的金」分得开。 */
-const CANDIDATE_ARC_WIDTH_RATIO = 0.16;
-/** 候选弧的最小线宽（像素）：窄屏主印缩到 4px 半径时仍看得见。 */
-const CANDIDATE_ARC_WIDTH_MIN = 2;
-/** 候选弧的角长（弧度）：主印外沿上一段，短到不与整圈金环混淆、长到在半鱼旁读得出。 */
-const CANDIDATE_ARC_SWEEP = Math.PI / 3;
-/** 候选弧相对主印射线角的侧偏（弧度）：让弧心落在该侧的扇区，对应槽位点的左右偏移。 */
-const CANDIDATE_ARC_SIDE_BIAS = Math.PI / 6;
-/** 候选弧呼吸周期（秒）：慢呼吸，一次往返远长于归一金环流光的一圈（4.5s）。 */
+/**
+ * 半身染色（正常混合）的透明度与色号：**两端都用饱和紫**。
+ * 早前外圈用近白（`candidateLit`）会把半身洗成白，肉眼读不到紫；且白 / 淡紫与「加持」的暖白光晕仍会混。
+ * 现在外圈用 `candidateDeep`、内圈用 `candidate`，任何底色上都是明确的紫，且底层等级仍有 ~45% 透出来。
+ */
+const CANDIDATE_TINT_INNER_ALPHA = 0.5;
+const CANDIDATE_TINT_OUTER_ALPHA = 0.72;
+/**
+ * 半身轮廓只用**一条薄边**勾形：颜色改成饱和紫之后，色相自己就能读，
+ * 早前为救「淡白对比度」加的「外暗内亮双色粗边」不再需要——那会读成一条不自然的大粗边。
+ * 线宽取与鱼身自身描边同一档，看起来仍是这条鱼自己的边在呼吸。
+ */
+const CANDIDATE_OUTLINE_ALPHA = 0.95;
+const CANDIDATE_OUTLINE_WIDTH_RATIO = 0.07;
+const CANDIDATE_OUTLINE_WIDTH_MIN = 1.5;
+/** 柔光半径随呼吸伸缩的区间（占主印半径）。 */
+const CANDIDATE_GLOW_MIN_RATIO = 0.92;
+const CANDIDATE_GLOW_MAX_RATIO = 1.24;
+/**
+ * 半身标记随呼吸胀缩的比例：底色本来就亮的节点（归一后的金最明显）上，加色填充一加就打到
+ * 上限、明暗变化看不出来，于是再给一条不依赖底色的位移线索（仍在金环内侧）。 */
+const CANDIDATE_SWELL_MIN_RATIO = 1;
+const CANDIDATE_SWELL_MAX_RATIO = 1.08;
+/** 候选呼吸周期（秒）：慢呼吸，一次往返远长于归一金环流光的一圈（4.5s）。 */
 export const CANDIDATE_BREATH_PERIOD = 2.6;
-/** 候选弧呼吸的最低不透明度：全程可见，只是有节拍地强弱（不做逐节点闪动）。 */
-const CANDIDATE_BREATH_MIN = 0.4;
-/** 候选弧呼吸的最高不透明度。 */
+/** 呼吸的最低 / 最高不透明度：全程可见（低位也保持色相），只是有节拍地深浅。 */
+const CANDIDATE_BREATH_MIN = 0.6;
+/** 呼吸的最高不透明度。 */
 const CANDIDATE_BREATH_MAX = 1;
 
 export const DEFAULT_BOARD_LAYOUT: BoardViewLayout = {
@@ -477,7 +492,7 @@ export class BoardView extends Container {
     this._drawRingBands(ctx);
     this._drawSeals(ctx);
     this._drawNodeMarks(ctx);
-    this._drawCandidateArcs(ctx);
+    this._drawCandidateMarks(ctx);
     this._drawRingLabels(ctx);
   }
 
@@ -532,23 +547,14 @@ export class BoardView extends Container {
   }
 
   /**
-   * 决策期的候选落点弧（票 03）：每个候选在「会变的那一侧」外侧画一段元素色弧，
+   * 决策期的候选落点标记（票 03，rev）：每个候选把「会变的那半身」整片点亮，
    * 所有候选共用同一个呼吸节拍（不逐节点闪动）。与票 02 的节点级常驻流动区分开：
-   * 元素色 vs 金、半弧 vs 整圈、慢呼吸 vs 流动。
+   * 元素色 vs 金、半边 vs 整圈、慢呼吸 vs 流动。
    */
-  private _drawCandidateArcs(ctx: CanvasRenderingContext2D): void {
+  private _drawCandidateMarks(ctx: CanvasRenderingContext2D): void {
     for (const candidate of this._candidates) {
       const seal = this._elementView(candidate.player, candidate.element);
-      drawCandidateArc(
-        ctx,
-        seal.x,
-        seal.y,
-        seal.angle,
-        seal.sealSize,
-        seal.element,
-        candidate.polarity,
-        candidateBreathAlpha(this._breathPhase),
-      );
+      drawCandidateMark(ctx, seal.x, seal.y, seal.sealSize, candidate.polarity, this._breathPhase);
     }
   }
 
@@ -830,12 +836,7 @@ export function drawYinYangFish(
   const yin = polarity === Polarity.YIN;
   const palette = WUXING_PALETTE[element];
   ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(x, y - radius);
-  ctx.arc(x, y, radius, -Math.PI / 2, Math.PI / 2, yin);
-  ctx.arc(x, y + radius / 2, radius / 2, Math.PI / 2, -Math.PI / 2, true);
-  ctx.arc(x, y - radius / 2, radius / 2, Math.PI / 2, -Math.PI / 2);
-  ctx.closePath();
+  traceFishHalf(ctx, x, y, radius, polarity);
   // 裂纹（道损）与闪点（加持）裁进鱼身；虚空是空心，不需要裁剪。
   if (level === 2 || level === -1) ctx.clip();
   if (level !== 0) {
@@ -919,54 +920,76 @@ function connectionKey(kind: BoardConnectionKind, from: WuXing): string {
 }
 
 /**
- * 画一段候选落点弧（票 03）：与主印同圆心，半径钉在归一金环（`NODE_RING_SCALE`）之外，
- * 只取落点那一侧的一段。与金环的区分：元素色 vs 金、一段 vs 整圈、慢呼吸 vs 流动（票 03 的衔接要求）。
- * 暗底上的元素色弧必须加色混合才读得出（票 02 的柔光经验），故先叠一层宽而淡的光晕再描边。
+ * 画一个候选落点标记（票 03，rev）：**直接亮「会变的那半身」自己**——把该半身的鱼形
+ * 填一层元素色光（加色）、轮廓再描亮，随共享节拍慢呼吸。
+ *
+ * 不另画括号 / 弧：额外符号要先解码「这个括号代表什么」，而「阴鱼在闪 / 阳鱼在闪」
+ * 是直接可读的（与按钮上的「(阴)」「(阳)」一一对应）。
+ * 仍然只借「动」与「元素色」，不借亮度阶梯——鱼身的填充仍由等级决定（虚空依旧空心）；
+ * 标记只在决策期出现，与常驻的归一金环 / 亢极外溢靠「只亮半边 + 同相位呼吸」区分。
  */
-export function drawCandidateArc(
+export function drawCandidateMark(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  angle: number,
   sealSize: number,
-  element: WuXing,
   polarity: Polarity,
-  alpha: number,
+  phase: number,
 ): void {
-  const isYin = polarity === Polarity.YIN;
-  // 金环外沿（半径 + 半线宽）之外再让出一段间隙，弧才读成「外侧的另一环信息」。
-  const radius = sealSize * (NODE_RING_SCALE + NODE_RING_WIDTH_RATIO / 2 + CANDIDATE_ARC_OFFSET);
-  const lineWidth = Math.max(CANDIDATE_ARC_WIDTH_MIN, sealSize * CANDIDATE_ARC_WIDTH_RATIO);
-  // 主印左右两侧各偏同样一个角度（与槽位点的左右偏移同一侧），弧心因此落在该侧扇区内。
-  const center = angle + (isYin ? -CANDIDATE_ARC_SIDE_BIAS : CANDIDATE_ARC_SIDE_BIAS);
-  const start = center - CANDIDATE_ARC_SWEEP / 2;
-  const end = center + CANDIDATE_ARC_SWEEP / 2;
+  const wave = breathWave(phase);
+  const alpha = candidateBreathAlpha(phase);
+  const glowOuter =
+    sealSize *
+    (CANDIDATE_GLOW_MIN_RATIO + (CANDIDATE_GLOW_MAX_RATIO - CANDIDATE_GLOW_MIN_RATIO) * wave);
+  const swell =
+    CANDIDATE_SWELL_MIN_RATIO + (CANDIDATE_SWELL_MAX_RATIO - CANDIDATE_SWELL_MIN_RATIO) * wave;
   ctx.save();
   ctx.globalAlpha = alpha;
-  // 先叠一层宽而淡的同色光晕：暗底上细描边会被底晕吃掉，宽光晕把它托出来。
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.beginPath();
-  ctx.arc(x, y, radius, start, end);
-  ctx.strokeStyle = withAlpha(WUXING_PALETTE[element].light, 0.5);
-  ctx.lineWidth = lineWidth * 2.5;
-  ctx.lineCap = 'round';
-  ctx.stroke();
-  // 再描一段实边：光晕负责「亮」，实边负责「形状清楚」。
-  ctx.beginPath();
-  ctx.arc(x, y, radius, start, end);
-  ctx.strokeStyle = WUXING_PALETTE[element].light;
-  ctx.lineWidth = lineWidth;
+  // 整个标记裁在鱼半身以内：不碰主印外的归一金环 / 亢极外溢，也不改变与邻印的间距。
+  traceFishHalf(ctx, x, y, sealSize * swell, polarity);
+  ctx.clip();
+  // ① 整半身染上强调色。用正常混合而不是加色：加色在亮底上会洗成白，正是上一版与「加持」混淆的原因。
+  const tint = ctx.createRadialGradient(x, y, sealSize * 0.1, x, y, glowOuter);
+  tint.addColorStop(0, withAlpha(THEME.candidate, CANDIDATE_TINT_INNER_ALPHA));
+  tint.addColorStop(1, withAlpha(THEME.candidateDeep, CANDIDATE_TINT_OUTER_ALPHA));
+  ctx.fillStyle = tint;
+  ctx.fill();
+  // ② 一条薄边：勾住这半身的形状（与鱼身自身描边同一档线宽），不做粗边框。
+  ctx.strokeStyle = withAlpha(THEME.candidateLit, CANDIDATE_OUTLINE_ALPHA);
+  ctx.lineWidth =
+    Math.max(CANDIDATE_OUTLINE_WIDTH_MIN, sealSize * CANDIDATE_OUTLINE_WIDTH_RATIO) * swell;
   ctx.stroke();
   ctx.restore();
 }
 
+/** 阴阳鱼的半身轮廓（与 `drawYinYangFish` 同一套 S 形）：阴在左、阳在右。 */
+function traceFishHalf(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  polarity: Polarity,
+): void {
+  const yin = polarity === Polarity.YIN;
+  ctx.beginPath();
+  ctx.moveTo(x, y - radius);
+  ctx.arc(x, y, radius, -Math.PI / 2, Math.PI / 2, yin);
+  ctx.arc(x, y + radius / 2, radius / 2, Math.PI / 2, -Math.PI / 2, true);
+  ctx.arc(x, y - radius / 2, radius / 2, Math.PI / 2, -Math.PI / 2);
+  ctx.closePath();
+}
+
 /**
- * 同相位慢呼吸（票 03）：一次低位与满值之间的往返。
- * 所有候选共用一个相位，半周期正弦一次到位——没有逐节点独立闪动。
+ * 同相位慢呼吸（票 03）：一次低位与满值之间的往返。所有候选共用一个相位，
+ * 半周期正弦一次到位——没有逐节点独立闪动；透明度与柔光半径都从这条波推。
  */
+function breathWave(phase: number): number {
+  return (1 - Math.cos(phase * Math.PI * 2)) / 2;
+}
+
+/** 该相位下的标记不透明度；导出供测试直接验呼吸两端。 */
 export function candidateBreathAlpha(phase: number): number {
-  const wave = (1 - Math.cos(phase * Math.PI * 2)) / 2;
-  return CANDIDATE_BREATH_MIN + (CANDIDATE_BREATH_MAX - CANDIDATE_BREATH_MIN) * wave;
+  return CANDIDATE_BREATH_MIN + (CANDIDATE_BREATH_MAX - CANDIDATE_BREATH_MIN) * breathWave(phase);
 }
 
 /** 候选弧键：`player:element:polarity` 唯一确定一段弧（同一侧被多个候选共享时不叠成两段）。 */

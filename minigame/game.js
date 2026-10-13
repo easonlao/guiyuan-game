@@ -1655,6 +1655,14 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     jade: "#80d6ba",
     rival: "#86b8cb",
     damage: "#ee8d77",
+    /**
+     * 候选标记的专属强调色：故意**不取任何五行色、也不取节点级状态的金**。
+     * 之前用元素色加亮时，亮底（点亮 / 加持）上趋近白，与「加持」的径向光晕读成同一种东西（金最明显）；
+     * 换成一个盘面上不存在的色相，靠**色相**而不是明暗区分，任何底色上都读得出来。
+     */
+    candidate: "#8d76c9",
+    candidateDeep: "#6f5aa8",
+    candidateLit: "#cfc2ee",
     font: '"PingFang SC", "Microsoft YaHei", sans-serif'
   };
   function drawPanel(ctx, x, y, width, height, accent = THEME.edge, fill = THEME.panel) {
@@ -2768,13 +2776,17 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const NODE_AURA_OUTSET_RATIO = KANGJI_OVERFLOW_SCALE + AURA_FALLOFF;
   const KANGJI_RIPPLE_OUTER = NODE_AURA_OUTSET_RATIO - KANGJI_RIPPLE_THICKNESS;
   const SLOT_SIDE_RATIO = 0.7;
-  const CANDIDATE_ARC_OFFSET = 0.2;
-  const CANDIDATE_ARC_WIDTH_RATIO = 0.16;
-  const CANDIDATE_ARC_WIDTH_MIN = 2;
-  const CANDIDATE_ARC_SWEEP = Math.PI / 3;
-  const CANDIDATE_ARC_SIDE_BIAS = Math.PI / 6;
+  const CANDIDATE_TINT_INNER_ALPHA = 0.5;
+  const CANDIDATE_TINT_OUTER_ALPHA = 0.72;
+  const CANDIDATE_OUTLINE_ALPHA = 0.95;
+  const CANDIDATE_OUTLINE_WIDTH_RATIO = 0.07;
+  const CANDIDATE_OUTLINE_WIDTH_MIN = 1.5;
+  const CANDIDATE_GLOW_MIN_RATIO = 0.92;
+  const CANDIDATE_GLOW_MAX_RATIO = 1.24;
+  const CANDIDATE_SWELL_MIN_RATIO = 1;
+  const CANDIDATE_SWELL_MAX_RATIO = 1.08;
   const CANDIDATE_BREATH_PERIOD = 2.6;
-  const CANDIDATE_BREATH_MIN = 0.4;
+  const CANDIDATE_BREATH_MIN = 0.6;
   const CANDIDATE_BREATH_MAX = 1;
   const DEFAULT_BOARD_LAYOUT = {
     centerX: 0,
@@ -3027,7 +3039,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this._drawRingBands(ctx);
       this._drawSeals(ctx);
       this._drawNodeMarks(ctx);
-      this._drawCandidateArcs(ctx);
+      this._drawCandidateMarks(ctx);
       this._drawRingLabels(ctx);
     }
     /** Quiet backing and one ownership guide per ring; decoration does not encode state. */
@@ -3078,23 +3090,14 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
     }
     /**
-     * 决策期的候选落点弧（票 03）：每个候选在「会变的那一侧」外侧画一段元素色弧，
+     * 决策期的候选落点标记（票 03，rev）：每个候选把「会变的那半身」整片点亮，
      * 所有候选共用同一个呼吸节拍（不逐节点闪动）。与票 02 的节点级常驻流动区分开：
-     * 元素色 vs 金、半弧 vs 整圈、慢呼吸 vs 流动。
+     * 元素色 vs 金、半边 vs 整圈、慢呼吸 vs 流动。
      */
-    _drawCandidateArcs(ctx) {
+    _drawCandidateMarks(ctx) {
       for (const candidate of this._candidates) {
         const seal = this._elementView(candidate.player, candidate.element);
-        drawCandidateArc(
-          ctx,
-          seal.x,
-          seal.y,
-          seal.angle,
-          seal.sealSize,
-          seal.element,
-          candidate.polarity,
-          candidateBreathAlpha(this._breathPhase)
-        );
+        drawCandidateMark(ctx, seal.x, seal.y, seal.sealSize, candidate.polarity, this._breathPhase);
       }
     }
     /** Each node owns two independent fish. Element labels sit outside the readable silhouette. */
@@ -3276,12 +3279,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     const yin = polarity === Polarity.YIN;
     const palette = WUXING_PALETTE[element];
     ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(x, y - radius);
-    ctx.arc(x, y, radius, -Math.PI / 2, Math.PI / 2, yin);
-    ctx.arc(x, y + radius / 2, radius / 2, Math.PI / 2, -Math.PI / 2, true);
-    ctx.arc(x, y - radius / 2, radius / 2, Math.PI / 2, -Math.PI / 2);
-    ctx.closePath();
+    traceFishHalf(ctx, x, y, radius, polarity);
     if (level === 2 || level === -1) ctx.clip();
     if (level !== 0) {
       if (level === 2) {
@@ -3349,32 +3347,39 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   function connectionKey(kind, from) {
     return `${kind}:${from}`;
   }
-  function drawCandidateArc(ctx, x, y, angle, sealSize, element, polarity, alpha) {
-    const isYin = polarity === Polarity.YIN;
-    const radius = sealSize * (NODE_RING_SCALE + NODE_RING_WIDTH_RATIO / 2 + CANDIDATE_ARC_OFFSET);
-    const lineWidth = Math.max(CANDIDATE_ARC_WIDTH_MIN, sealSize * CANDIDATE_ARC_WIDTH_RATIO);
-    const center = angle + (isYin ? -CANDIDATE_ARC_SIDE_BIAS : CANDIDATE_ARC_SIDE_BIAS);
-    const start = center - CANDIDATE_ARC_SWEEP / 2;
-    const end = center + CANDIDATE_ARC_SWEEP / 2;
+  function drawCandidateMark(ctx, x, y, sealSize, polarity, phase) {
+    const wave = breathWave(phase);
+    const alpha = candidateBreathAlpha(phase);
+    const glowOuter = sealSize * (CANDIDATE_GLOW_MIN_RATIO + (CANDIDATE_GLOW_MAX_RATIO - CANDIDATE_GLOW_MIN_RATIO) * wave);
+    const swell = CANDIDATE_SWELL_MIN_RATIO + (CANDIDATE_SWELL_MAX_RATIO - CANDIDATE_SWELL_MIN_RATIO) * wave;
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.globalCompositeOperation = "lighter";
-    ctx.beginPath();
-    ctx.arc(x, y, radius, start, end);
-    ctx.strokeStyle = withAlpha(WUXING_PALETTE[element].light, 0.5);
-    ctx.lineWidth = lineWidth * 2.5;
-    ctx.lineCap = "round";
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(x, y, radius, start, end);
-    ctx.strokeStyle = WUXING_PALETTE[element].light;
-    ctx.lineWidth = lineWidth;
+    traceFishHalf(ctx, x, y, sealSize * swell, polarity);
+    ctx.clip();
+    const tint = ctx.createRadialGradient(x, y, sealSize * 0.1, x, y, glowOuter);
+    tint.addColorStop(0, withAlpha(THEME.candidate, CANDIDATE_TINT_INNER_ALPHA));
+    tint.addColorStop(1, withAlpha(THEME.candidateDeep, CANDIDATE_TINT_OUTER_ALPHA));
+    ctx.fillStyle = tint;
+    ctx.fill();
+    ctx.strokeStyle = withAlpha(THEME.candidateLit, CANDIDATE_OUTLINE_ALPHA);
+    ctx.lineWidth = Math.max(CANDIDATE_OUTLINE_WIDTH_MIN, sealSize * CANDIDATE_OUTLINE_WIDTH_RATIO) * swell;
     ctx.stroke();
     ctx.restore();
   }
+  function traceFishHalf(ctx, x, y, radius, polarity) {
+    const yin = polarity === Polarity.YIN;
+    ctx.beginPath();
+    ctx.moveTo(x, y - radius);
+    ctx.arc(x, y, radius, -Math.PI / 2, Math.PI / 2, yin);
+    ctx.arc(x, y + radius / 2, radius / 2, Math.PI / 2, -Math.PI / 2, true);
+    ctx.arc(x, y - radius / 2, radius / 2, Math.PI / 2, -Math.PI / 2);
+    ctx.closePath();
+  }
+  function breathWave(phase) {
+    return (1 - Math.cos(phase * Math.PI * 2)) / 2;
+  }
   function candidateBreathAlpha(phase) {
-    const wave = (1 - Math.cos(phase * Math.PI * 2)) / 2;
-    return CANDIDATE_BREATH_MIN + (CANDIDATE_BREATH_MAX - CANDIDATE_BREATH_MIN) * wave;
+    return CANDIDATE_BREATH_MIN + (CANDIDATE_BREATH_MAX - CANDIDATE_BREATH_MIN) * breathWave(phase);
   }
   function candidateKey(candidate) {
     return `${candidate.player}:${candidate.element}:${candidate.polarity}`;
