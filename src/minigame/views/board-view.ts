@@ -10,6 +10,7 @@ import {
   OVERCOMING_CYCLE,
 } from '../../core/types/domain.js';
 import { isNodeGuiYi, isNodeKangJi } from '../../core/logic/State.js';
+import { CandidateTarget } from '../candidate-target.js';
 import { isAttackAction } from '../action-semantics.js';
 import { WUXING_PALETTE } from '../pixel-art.js';
 import { THEME } from '../theme.js';
@@ -65,8 +66,9 @@ export const GUIYI_RING_INK = { main: '#d8b876', light: '#ffe4a0' } as const;
  * 表达「满溢 / 泄露 / 不稳」——环本身不变，只多一层往外漫的元素色。
  * `KANGJI_OVERFLOW_SCALE + AURA_FALLOFF` 是元素外溢相对主印中心的最大外沿（票 05 的 `resize` 避让口径）。
  */
-const NODE_RING_SCALE = 1.13;
-const NODE_RING_WIDTH_RATIO = 0.07;
+/** 归一金环半径占主印半径的比例：候选弧画在它之外（票 03）。导出供测试按同一口径筛弧，不手抄数字。 */
+export const NODE_RING_SCALE = 1.13;
+export const NODE_RING_WIDTH_RATIO = 0.07;
 const NODE_RING_WIDTH_MIN = 1;
 /** 金色高光绕环一圈的秒数与拖尾长度（弧度）：慢、长尾、淡，才自然。 */
 const GUIYI_FLOW_PERIOD = 4.5;
@@ -90,6 +92,26 @@ const KANGJI_RIPPLE_OUTER = NODE_AURA_OUTSET_RATIO - KANGJI_RIPPLE_THICKNESS;
 
 /** 阴阳槽位相对主印中心在阴/阳一侧的横向偏移（占主印半径的比例）。 */
 const SLOT_SIDE_RATIO = 0.7;
+
+/**
+ * 归一金环的外沿（占主印半径的比例）：主印 → 金环（`NODE_RING_SCALE`）→ 候选弧，
+ * 候选弧画在金环外沿之外，与它几乎贴着（票 03）。两步之外不再有别的外圈，法盘底晕因此不放大。
+ */
+const CANDIDATE_ARC_OFFSET = 0.2;
+/** 候选弧的线宽（占主印半径的比例）：比归一金环粗，才和「细一圈的金」分得开。 */
+const CANDIDATE_ARC_WIDTH_RATIO = 0.16;
+/** 候选弧的最小线宽（像素）：窄屏主印缩到 4px 半径时仍看得见。 */
+const CANDIDATE_ARC_WIDTH_MIN = 2;
+/** 候选弧的角长（弧度）：主印外沿上一段，短到不与整圈金环混淆、长到在半鱼旁读得出。 */
+const CANDIDATE_ARC_SWEEP = Math.PI / 3;
+/** 候选弧相对主印射线角的侧偏（弧度）：让弧心落在该侧的扇区，对应槽位点的左右偏移。 */
+const CANDIDATE_ARC_SIDE_BIAS = Math.PI / 6;
+/** 候选弧呼吸周期（秒）：慢呼吸，一次往返远长于归一金环流光的一圈（4.5s）。 */
+export const CANDIDATE_BREATH_PERIOD = 2.6;
+/** 候选弧呼吸的最低不透明度：全程可见，只是有节拍地强弱（不做逐节点闪动）。 */
+const CANDIDATE_BREATH_MIN = 0.4;
+/** 候选弧呼吸的最高不透明度。 */
+const CANDIDATE_BREATH_MAX = 1;
 
 export const DEFAULT_BOARD_LAYOUT: BoardViewLayout = {
   centerX: 0,
@@ -152,6 +174,12 @@ export interface BoardActivePath {
   readonly from: WuXing;
 }
 
+/**
+ * 一个候选动作的落点（票 03）：会变的那一侧。由 `resolveCandidateTarget` 从候选载荷与盘面解出，
+ * 与按钮文案的目标五行同源（`getActionTargetElement`），不从抽中天干的极性推导。
+ */
+export interface BoardCandidatePath extends CandidateTarget {}
+
 /** Ring ownership remains warm/solid and cool/dashed (ADR 0015). */
 const BOARD_BG_COLOR = THEME.deep;
 /**
@@ -193,6 +221,10 @@ export class BoardView extends Container {
   private readonly _boards: Record<PlayerId, BoardState | null> = { P1: null, P2: null };
   /** 当前动作会走的连线（键为 `kind:from`）；高亮与盘面等级无关（票 02）。 */
   private _activePaths = new Set<string>();
+  /** 决策期的候选落点（键为 `player:element:polarity`）；弧与盘面等级、连线高亮都无关（票 03）。 */
+  private _candidates: BoardCandidatePath[] = [];
+  /** 候选弧的呼吸相位（0..1）：所有候选共用一个节拍，做不到逐节点独立闪动（票 03）。 */
+  private _breathPhase = 0;
   /** 表现层时钟（秒），由 `tick` 推进；只驱动归一 / 亢极柔光，不参与任何投影。 */
   private _clock = 0;
 
@@ -208,11 +240,13 @@ export class BoardView extends Container {
   }
 
   /**
-   * 推进表现层时钟（秒）：只驱动归一 / 亢极柔光的流动。
+   * 推进表现层时钟（秒）：驱动归一 / 亢极的流动与候选弧的同相位慢呼吸。
    * 命名不叫 `update`——那个名字已被双盘快照投影占用（LLD §4.1）。
    */
   public tick(dt: number): void {
     this._clock += dt;
+    // 慢呼吸：共用一条相位曲线，所有候选弧同时亮 / 同时暗——玩家才分得清「这里能打」。
+    this._breathPhase = (this._clock / CANDIDATE_BREATH_PERIOD) % 1;
   }
 
   /** 按视口自适应：圆心取视口中心，内外环半径与主印半径按短边等比缩放。 */
@@ -294,6 +328,33 @@ export class BoardView extends Container {
   public setActivePaths(paths: readonly BoardActivePath[]): void {
     this._activePaths = new Set(paths.map((path) => connectionKey(path.kind, path.from)));
     this._rebuild();
+  }
+
+  /**
+   * 设置决策期的候选落点（票 03）：每个候选在「会变的那一侧」外侧画一段元素色弧。
+   * 同一侧被多个候选共享时只画一段（按 `player:element:polarity` 去重）；
+   * 传空数组清空（非抉择阶段、唯一候选的自动流转、PASS 都不画弧）。
+   */
+  public setCandidates(candidates: readonly BoardCandidatePath[]): void {
+    const seen = new Set<string>();
+    this._candidates = candidates.filter((candidate) => {
+      const key = candidateKey(candidate);
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  }
+
+  /** 当前候选落点（副本）：决策期才有内容，供行为测试断言「候选 → 弧的落点」映射。 */
+  public get candidates(): readonly BoardCandidatePath[] {
+    return [...this._candidates];
+  }
+
+  /** 候选弧呼吸相位（0..1）：由 `tick` 推进，与归一 / 亢极的流动共用同一个时钟。 */
+  public get breathPhase(): number {
+    return this._breathPhase;
   }
 
   /** 一次投影双方只读棋盘快照；只读不写回（LLD §4.1）。 */
@@ -410,12 +471,13 @@ export class BoardView extends Container {
     };
   }
 
-  /** 先画环带与主印，再叠归一 / 亢极柔光，最后加环归属标签（标签压在最上层）。 */
+  /** 先画环带与主印，再叠归一 / 亢极柔光，最后画候选弧与环归属标签（都压在最上层）。 */
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
     this._drawEngraving(ctx);
     this._drawRingBands(ctx);
     this._drawSeals(ctx);
     this._drawNodeMarks(ctx);
+    this._drawCandidateArcs(ctx);
     this._drawRingLabels(ctx);
   }
 
@@ -465,6 +527,27 @@ export class BoardView extends Container {
         entry.element,
         nodeMarkLayers(entry),
         this._clock,
+      );
+    }
+  }
+
+  /**
+   * 决策期的候选落点弧（票 03）：每个候选在「会变的那一侧」外侧画一段元素色弧，
+   * 所有候选共用同一个呼吸节拍（不逐节点闪动）。与票 02 的节点级常驻流动区分开：
+   * 元素色 vs 金、半弧 vs 整圈、慢呼吸 vs 流动。
+   */
+  private _drawCandidateArcs(ctx: CanvasRenderingContext2D): void {
+    for (const candidate of this._candidates) {
+      const seal = this._elementView(candidate.player, candidate.element);
+      drawCandidateArc(
+        ctx,
+        seal.x,
+        seal.y,
+        seal.angle,
+        seal.sealSize,
+        seal.element,
+        candidate.polarity,
+        candidateBreathAlpha(this._breathPhase),
       );
     }
   }
@@ -836,7 +919,63 @@ function connectionKey(kind: BoardConnectionKind, from: WuXing): string {
 }
 
 /**
- * 把一个动作映射成它在法盘上会走的连线路径；不沿连线走的动作返回 `null`。
+ * 画一段候选落点弧（票 03）：与主印同圆心，半径钉在归一金环（`NODE_RING_SCALE`）之外，
+ * 只取落点那一侧的一段。与金环的区分：元素色 vs 金、一段 vs 整圈、慢呼吸 vs 流动（票 03 的衔接要求）。
+ * 暗底上的元素色弧必须加色混合才读得出（票 02 的柔光经验），故先叠一层宽而淡的光晕再描边。
+ */
+export function drawCandidateArc(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  angle: number,
+  sealSize: number,
+  element: WuXing,
+  polarity: Polarity,
+  alpha: number,
+): void {
+  const isYin = polarity === Polarity.YIN;
+  // 金环外沿（半径 + 半线宽）之外再让出一段间隙，弧才读成「外侧的另一环信息」。
+  const radius = sealSize * (NODE_RING_SCALE + NODE_RING_WIDTH_RATIO / 2 + CANDIDATE_ARC_OFFSET);
+  const lineWidth = Math.max(CANDIDATE_ARC_WIDTH_MIN, sealSize * CANDIDATE_ARC_WIDTH_RATIO);
+  // 主印左右两侧各偏同样一个角度（与槽位点的左右偏移同一侧），弧心因此落在该侧扇区内。
+  const center = angle + (isYin ? -CANDIDATE_ARC_SIDE_BIAS : CANDIDATE_ARC_SIDE_BIAS);
+  const start = center - CANDIDATE_ARC_SWEEP / 2;
+  const end = center + CANDIDATE_ARC_SWEEP / 2;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  // 先叠一层宽而淡的同色光晕：暗底上细描边会被底晕吃掉，宽光晕把它托出来。
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.beginPath();
+  ctx.arc(x, y, radius, start, end);
+  ctx.strokeStyle = withAlpha(WUXING_PALETTE[element].light, 0.5);
+  ctx.lineWidth = lineWidth * 2.5;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  // 再描一段实边：光晕负责「亮」，实边负责「形状清楚」。
+  ctx.beginPath();
+  ctx.arc(x, y, radius, start, end);
+  ctx.strokeStyle = WUXING_PALETTE[element].light;
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * 同相位慢呼吸（票 03）：一次低位与满值之间的往返。
+ * 所有候选共用一个相位，半周期正弦一次到位——没有逐节点独立闪动。
+ */
+export function candidateBreathAlpha(phase: number): number {
+  const wave = (1 - Math.cos(phase * Math.PI * 2)) / 2;
+  return CANDIDATE_BREATH_MIN + (CANDIDATE_BREATH_MAX - CANDIDATE_BREATH_MIN) * wave;
+}
+
+/** 候选弧键：`player:element:polarity` 唯一确定一段弧（同一侧被多个候选共享时不叠成两段）。 */
+function candidateKey(candidate: BoardCandidatePath): string {
+  return `${candidate.player}:${candidate.element}:${candidate.polarity}`;
+}
+
+/**
+ * 把一个候选动作映射成它在法盘上的落点；不沿连线走的动作返回 `null`。
  * 起点是当前天干的五行：化 / 强化走内环相生边，攻击类（共享判定 `isAttackAction`）走跨环径向线。
  */
 export function resolveActionPath(actionType: ActionType, element: WuXing): BoardActivePath | null {

@@ -35,10 +35,12 @@ import { Container } from './scene/container.js';
 import { ActionBarView } from './views/action-bar-view.js';
 import {
   BoardActivePath,
+  BoardCandidatePath,
   BoardView,
   drawYinYangFish,
   resolveActionPath,
 } from './views/board-view.js';
+import { resolveCandidateTarget } from './candidate-target.js';
 import { CharacterView } from './views/character-view.js';
 import {
   ActionResultView,
@@ -263,10 +265,11 @@ export class GameScene extends Container {
     return this._phase;
   }
 
-  /** 切换表现阶段：连线高亮与阶段一致（只有 `awaiting-player` 的待定动作会点亮连线）。 */
+  /** 切换表现阶段：连线高亮、候选落点弧与阶段一致（只有 `awaiting-player` 有待定动作）。 */
   private setPhase(phase: GameScenePhase): void {
     this._phase = phase;
     this.board.setActivePaths(this.activePathsFor(phase));
+    this.board.setCandidates(this.candidatesFor(phase));
     this.placeResult();
   }
 
@@ -290,6 +293,35 @@ export class GameScene extends Container {
       }
     }
     return paths;
+  }
+
+  /**
+   * 当前阶段该画的候选落点弧（票 03）：只在玩家抉择期有内容，每个候选一段弧，
+   * 画在「会变的那一侧」外沿。落点解析与呼吸相位都归 `BoardView`，这里只负责按阶段喂候选。
+   */
+  private candidatesFor(phase: GameScenePhase): readonly BoardCandidatePath[] {
+    if (phase !== 'awaiting-player') {
+      return [];
+    }
+    const state = this._turnManager.getState();
+    const tianGan = this._turnManager.getCurrentTianGan();
+    if (tianGan === null) {
+      return [];
+    }
+    const candidates: BoardCandidatePath[] = [];
+    for (const action of this._turnManager.getAvailableActions()) {
+      const target = resolveCandidateTarget(action, {
+        tianGan,
+        boards: {
+          P1: state.players.P1.board,
+          P2: state.players.P2.board,
+        },
+      });
+      if (target !== null) {
+        candidates.push(target);
+      }
+    }
+    return candidates;
   }
 
   /**
