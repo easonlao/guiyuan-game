@@ -44,8 +44,9 @@ ADR 0018 文末勘误记录了三轮改口与被作废的措辞。
 - `check:quick`、`build:minigame`、`verify`（964 测试 + `minigame/game.js` 逐字节对账）通过。
 - 两轴复审报告：Standards `.scratch/board-channel-and-marks/reviews/03-standards-review.md`、Spec `03-spec-review.md`（无阻断；Spec 轴记的像素取舍以本节「设计修订」为准）。
 
-## 浏览器与真机视觉验收
+## 微信开发者工具视觉验收（用户）
 
-- 本地 Vite 预览注入测试局面并截图（临时页已删）；用户在**微信开发者工具**（加载 `minigame/game.js` 产物）里目验。
-- 教训：改 `src/` 后必须 `npm run build:minigame` 重建产物，否则微信开发者工具跑的还是旧包——本次因此让用户白看了一版白色发光（旧包）。`npm run dev:minigame` 可开 watch 减少这一步。
-- 微信模拟器与真机仍未跑，按 `docs/HLD.md` §4.6 由用户本地确认。
+- **用户的测试环境一直是微信开发者工具（模拟器）**，加载入库产物 `minigame/game.js`；本票最终态（半身染色 + 薄轮廓 + 呼吸）由用户在该工具里目验通过，色号也是用户看着该工具里的效果选定的（四色对比后定为内敛紫）。
+- agent 本机的浏览器预览（`.scratch` 里提到的本地 Vite 临时页，已删）只是 agent 的自查手段，**不是需求方的验收渠道**；截图不算验收证据，只是本地证据。
+- 勘误：本票早前版本写「微信模拟器与真机仍未跑」，那是 agent 的臆断而非事实——用户实际一直在微信开发者工具里测。真机（HLD §4.6 第 4 步扫码 Profiling）本票未涉及，未声称跑过。
+- 教训（流程）：需求方在微信开发者工具里看，所以**每次改 `src/` 都必须先 `npm run build:minigame`**（或开着 `npm run dev:minigame`）再让用户编译；`check:artifact` 只拦提交，拦不住用户手动编译的时机。本票因此让用户白看了一版白色发光（旧包）。

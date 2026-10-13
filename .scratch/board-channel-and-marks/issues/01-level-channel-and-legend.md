@@ -45,6 +45,8 @@ Status: resolved
 - 真实场景截图：`reports/ui-design/scene-{320,460}.png`，确认图例四档文案与上一招变化条一致、对手盘与己方盘亮度一致。
 - `reports/` 不入库，截图仅本地证据。微信模拟器与真机未运行，按 `docs/HLD.md` §4.6 由用户本地确认。
 
+> 勘误（票 03 收口时追加）：此处「微信模拟器未运行」是 agent 当时的臆断。用户的实际测试环境一直是**微信开发者工具（模拟器）**，加载入库产物 `minigame/game.js` 目验；浏览器预览只是 agent 的自查手段。
+
 ## 代码复审
 
 两轴报告：Standards `.scratch/board-channel-and-marks/reviews/01-standards-review.md`、Spec `.scratch/board-channel-and-marks/reviews/01-spec-review.md`。
