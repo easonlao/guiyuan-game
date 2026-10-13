@@ -8,7 +8,7 @@
  * 用法：`view.render(ctx.asContext())` 之后断言 `ctx.drawCallCount()` / `ctx.texts`。
  */
 export class RecordingContext {
-  public globalAlpha = 1;
+  private _globalAlpha = 1;
   public fillStyle: string | CanvasGradient | CanvasPattern = '#000';
   public strokeStyle: string | CanvasGradient | CanvasPattern = '#000';
   public lineWidth = 1;
@@ -31,6 +31,8 @@ export class RecordingContext {
   public shadowBlur = 0;
   /** 按调用顺序记录全部指令名（含 save / translate 这类状态指令）。 */
   public readonly calls: string[] = [];
+  /** 按赋值顺序记录每一次 `globalAlpha` 写入（呼吸节拍就是一条透明度轨迹）。 */
+  public readonly alphas: number[] = [];
   public readonly gradients: {
     x0: number;
     y0: number;
@@ -47,6 +49,8 @@ export class RecordingContext {
     start: number;
     end: number;
     anticlockwise: boolean;
+    /** 该弧落笔时的 `globalAlpha`（供「同相位呼吸」这类透明度断言使用）。 */
+    alpha: number;
   }[] = [];
   public readonly images: {
     image: CanvasImageSource;
@@ -116,6 +120,7 @@ export class RecordingContext {
       start: _start,
       end: _end,
       anticlockwise: _anticlockwise ?? false,
+      alpha: this.globalAlpha,
     });
   }
   public clip(): void {
@@ -191,6 +196,15 @@ export class RecordingContext {
     // 字号从 `font` 里粗读：'9px monospace' -> 9；'bold 12px monospace' 读不出数字时按 10 计。
     this.texts.push({ text, x, y, fontSize: Number.parseFloat(this.font) || 10 });
   }
+  /** 当前的全局不透明度；setter 把每次赋值记进 `alphas`（画布内部也是属性，测试要能读到赋值轨迹）。 */
+  public get globalAlpha(): number {
+    return this._globalAlpha;
+  }
+  public set globalAlpha(alpha: number) {
+    this._globalAlpha = alpha;
+    this.alphas.push(alpha);
+  }
+
   public setLineDash(_segments: number[]): void {
     this.calls.push('setLineDash');
   }

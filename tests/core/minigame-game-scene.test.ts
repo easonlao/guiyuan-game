@@ -750,6 +750,96 @@ describe('GameScene：连线高亮 = 当前动作会走的路径（票 02）', (
   });
 });
 
+/**
+ * 候选落点弧（票 03）：决策期为每个候选在「会变的那一侧」外沿画弧，让玩家一眼看到可作用的位置。
+ * 三种决策局面对齐 spec 验收：低位态（1 候选）、中位态未归一（2 候选）、归一非连动（3 候选 / 2 个落点）。
+ */
+describe('GameScene：候选落点弧（票 03）', () => {
+  /** 当前候选弧的落点，读作 `玩家:五行:极性`。 */
+  function arcTargets(scene: GameScene): string[] {
+    return scene.board.candidates.map(
+      (candidate) => `${candidate.player}:${candidate.element}:${candidate.polarity}`,
+    );
+  }
+
+  /** 推进到玩家抉择期。 */
+  function awaitingPlayer(scene: GameScene): void {
+    scene.start();
+    advance(scene, 0.15);
+    expect(scene.phase).toBe('awaiting-player');
+  }
+
+  it('低位态：唯一候选不画弧（自动流转，玩家没有抉择）', () => {
+    // 初盘抽中阳木：木阳虚空 -> 唯一【吸纳】，走 ADR 0008 的自动流转。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: createInitialGameState(),
+      prng: scriptedPrng([0]),
+    });
+    scene.start();
+    advanceUntil(scene, () => scene.phase === 'auto-pending');
+    expect(arcTargets(scene)).toEqual([]);
+  });
+
+  it('中位态未归一：两个候选各自落在自己会变的那一侧（2 候选 / 2 个落点）', () => {
+    // 乙木（木·阴）已点亮、对侧虚空、木未归一 -> 候选【调息】（转阳）与【化】（生火）。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 0 } },
+      }),
+      prng: scriptedPrng([1]),
+    });
+    awaitingPlayer(scene);
+    expect(scene.turnManager.getAvailableActions()).toHaveLength(2);
+    // 调息把木的阳侧从虚空抬起；化让火（相生目标）按阴优先落到阴侧。
+    expect(arcTargets(scene)).toEqual(['P1:WOOD:yang', 'P1:FIRE:yin']);
+  });
+
+  it('归一非连动：三个候选共享内环 / 外环两个落点，同侧不叠成两段', () => {
+    // 甲木（木·阳）归一 (1,1)、相生火虚空、对方土可破 -> 候选【破】【强化】【强破】。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 0, yang: 0 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    awaitingPlayer(scene);
+    expect(scene.turnManager.getAvailableActions().map((action) => action.actionType)).toEqual([
+      ActionType.ATK,
+      ActionType.BURST,
+      ActionType.BURST_ATK,
+    ]);
+    // 三个候选只有两个落点：破与强破都打对方土阴侧（同一段弧），强化打己方火阴侧。
+    expect(arcTargets(scene)).toEqual(['P2:EARTH:yin', 'P1:FIRE:yin']);
+  });
+
+  it('候选弧只在决策期存在：结算、自动流转与天道回合都不画', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 0, yang: 0 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    const input = new InputManager(scene);
+    awaitingPlayer(scene);
+    expect(arcTargets(scene)).toHaveLength(2);
+
+    // 玩家出手：弧立刻消失（同阶段只管当前回合，与连线高亮一致）。
+    tapButton(input, scene.actionBar.getButtons()[0]);
+    expect(scene.phase).toBe('flying');
+    expect(arcTargets(scene)).toEqual([]);
+
+    // 之后是天道回合，玩家侧仍无候选弧。
+    advanceUntil(scene, () => scene.phase === 'ai-thinking');
+    expect(arcTargets(scene)).toEqual([]);
+  });
+});
+
 describe('GameScene：终轮天命揭牌与终局', () => {
   /** 全五行归一的 P1 棋盘（10 侧点亮）。 */
   const fullGuiYuanBoard = boardWith({

@@ -2768,6 +2768,14 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const NODE_AURA_OUTSET_RATIO = KANGJI_OVERFLOW_SCALE + AURA_FALLOFF;
   const KANGJI_RIPPLE_OUTER = NODE_AURA_OUTSET_RATIO - KANGJI_RIPPLE_THICKNESS;
   const SLOT_SIDE_RATIO = 0.7;
+  const CANDIDATE_ARC_OFFSET = 0.2;
+  const CANDIDATE_ARC_WIDTH_RATIO = 0.16;
+  const CANDIDATE_ARC_WIDTH_MIN = 2;
+  const CANDIDATE_ARC_SWEEP = Math.PI / 3;
+  const CANDIDATE_ARC_SIDE_BIAS = Math.PI / 6;
+  const CANDIDATE_BREATH_PERIOD = 2.6;
+  const CANDIDATE_BREATH_MIN = 0.4;
+  const CANDIDATE_BREATH_MAX = 1;
   const DEFAULT_BOARD_LAYOUT = {
     centerX: 0,
     centerY: 0,
@@ -2796,6 +2804,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "_boards", { P1: null, P2: null });
       /** 当前动作会走的连线（键为 `kind:from`）；高亮与盘面等级无关（票 02）。 */
       __publicField(this, "_activePaths", /* @__PURE__ */ new Set());
+      /** 决策期的候选落点（键为 `player:element:polarity`）；弧与盘面等级、连线高亮都无关（票 03）。 */
+      __publicField(this, "_candidates", []);
+      /** 候选弧的呼吸相位（0..1）：所有候选共用一个节拍，做不到逐节点独立闪动（票 03）。 */
+      __publicField(this, "_breathPhase", 0);
       /** 表现层时钟（秒），由 `tick` 推进；只驱动归一 / 亢极柔光，不参与任何投影。 */
       __publicField(this, "_clock", 0);
       this._layout = { ...DEFAULT_BOARD_LAYOUT, ...layout };
@@ -2806,11 +2818,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       return { ...this._layout };
     }
     /**
-     * 推进表现层时钟（秒）：只驱动归一 / 亢极柔光的流动。
+     * 推进表现层时钟（秒）：驱动归一 / 亢极的流动与候选弧的同相位慢呼吸。
      * 命名不叫 `update`——那个名字已被双盘快照投影占用（LLD §4.1）。
      */
     tick(dt) {
       this._clock += dt;
+      this._breathPhase = this._clock / CANDIDATE_BREATH_PERIOD % 1;
     }
     /** 按视口自适应：圆心取视口中心，内外环半径与主印半径按短边等比缩放。 */
     resize(width, height, bounds) {
@@ -2885,6 +2898,30 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     setActivePaths(paths) {
       this._activePaths = new Set(paths.map((path) => connectionKey(path.kind, path.from)));
       this._rebuild();
+    }
+    /**
+     * 设置决策期的候选落点（票 03）：每个候选在「会变的那一侧」外侧画一段元素色弧。
+     * 同一侧被多个候选共享时只画一段（按 `player:element:polarity` 去重）；
+     * 传空数组清空（非抉择阶段、唯一候选的自动流转、PASS 都不画弧）。
+     */
+    setCandidates(candidates) {
+      const seen = /* @__PURE__ */ new Set();
+      this._candidates = candidates.filter((candidate) => {
+        const key = candidateKey(candidate);
+        if (seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
+    }
+    /** 当前候选落点（副本）：决策期才有内容，供行为测试断言「候选 → 弧的落点」映射。 */
+    get candidates() {
+      return [...this._candidates];
+    }
+    /** 候选弧呼吸相位（0..1）：由 `tick` 推进，与归一 / 亢极的流动共用同一个时钟。 */
+    get breathPhase() {
+      return this._breathPhase;
     }
     /** 一次投影双方只读棋盘快照；只读不写回（LLD §4.1）。 */
     update(p1Board, p2Board) {
@@ -2984,12 +3021,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         isKangJi: element.isKangJi
       };
     }
-    /** 先画环带与主印，再叠归一 / 亢极柔光，最后加环归属标签（标签压在最上层）。 */
+    /** 先画环带与主印，再叠归一 / 亢极柔光，最后画候选弧与环归属标签（都压在最上层）。 */
     renderSelf(ctx) {
       this._drawEngraving(ctx);
       this._drawRingBands(ctx);
       this._drawSeals(ctx);
       this._drawNodeMarks(ctx);
+      this._drawCandidateArcs(ctx);
       this._drawRingLabels(ctx);
     }
     /** Quiet backing and one ownership guide per ring; decoration does not encode state. */
@@ -3036,6 +3074,26 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           entry.element,
           nodeMarkLayers(entry),
           this._clock
+        );
+      }
+    }
+    /**
+     * 决策期的候选落点弧（票 03）：每个候选在「会变的那一侧」外侧画一段元素色弧，
+     * 所有候选共用同一个呼吸节拍（不逐节点闪动）。与票 02 的节点级常驻流动区分开：
+     * 元素色 vs 金、半弧 vs 整圈、慢呼吸 vs 流动。
+     */
+    _drawCandidateArcs(ctx) {
+      for (const candidate of this._candidates) {
+        const seal = this._elementView(candidate.player, candidate.element);
+        drawCandidateArc(
+          ctx,
+          seal.x,
+          seal.y,
+          seal.angle,
+          seal.sealSize,
+          seal.element,
+          candidate.polarity,
+          candidateBreathAlpha(this._breathPhase)
         );
       }
     }
@@ -3291,6 +3349,36 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   function connectionKey(kind, from) {
     return `${kind}:${from}`;
   }
+  function drawCandidateArc(ctx, x, y, angle, sealSize, element, polarity, alpha) {
+    const isYin = polarity === Polarity.YIN;
+    const radius = sealSize * (NODE_RING_SCALE + NODE_RING_WIDTH_RATIO / 2 + CANDIDATE_ARC_OFFSET);
+    const lineWidth = Math.max(CANDIDATE_ARC_WIDTH_MIN, sealSize * CANDIDATE_ARC_WIDTH_RATIO);
+    const center = angle + (isYin ? -CANDIDATE_ARC_SIDE_BIAS : CANDIDATE_ARC_SIDE_BIAS);
+    const start = center - CANDIDATE_ARC_SWEEP / 2;
+    const end = center + CANDIDATE_ARC_SWEEP / 2;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.globalCompositeOperation = "lighter";
+    ctx.beginPath();
+    ctx.arc(x, y, radius, start, end);
+    ctx.strokeStyle = withAlpha(WUXING_PALETTE[element].light, 0.5);
+    ctx.lineWidth = lineWidth * 2.5;
+    ctx.lineCap = "round";
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x, y, radius, start, end);
+    ctx.strokeStyle = WUXING_PALETTE[element].light;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+    ctx.restore();
+  }
+  function candidateBreathAlpha(phase) {
+    const wave = (1 - Math.cos(phase * Math.PI * 2)) / 2;
+    return CANDIDATE_BREATH_MIN + (CANDIDATE_BREATH_MAX - CANDIDATE_BREATH_MIN) * wave;
+  }
+  function candidateKey(candidate) {
+    return `${candidate.player}:${candidate.element}:${candidate.polarity}`;
+  }
   function resolveActionPath(actionType, element) {
     if (isAttackAction(actionType)) {
       return { kind: "attack", from: element };
@@ -3309,6 +3397,59 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         throw new Error(`未处理的动作类型：${String(unhandled)}`);
       }
     }
+  }
+  function resolveCandidateTarget(action, context) {
+    switch (action.actionType) {
+      case ActionType.PASS:
+        return null;
+      case ActionType.AUTO:
+      case ActionType.CONVERT:
+      case ActionType.DISSIPATE:
+      case ActionType.TRANS:
+      case ActionType.BURST:
+        return onOwnBoard(action, context);
+      case ActionType.ATK:
+      case ActionType.BURST_ATK:
+        return onOpponentBoard(action, context);
+      default: {
+        const unhandled = action.actionType;
+        throw new Error(`未处理的动作类型：${String(unhandled)}`);
+      }
+    }
+  }
+  function onOwnBoard(action, context) {
+    const element = getActionTargetElement(action, context.tianGan?.element);
+    const node = context.boards[action.player][element];
+    return {
+      player: action.player,
+      element,
+      polarity: action.polarity ?? ownSide(action, node, context)
+    };
+  }
+  function onOpponentBoard(action, context) {
+    const player = opponentOf$1(action.player);
+    const element = getActionTargetElement(action, context.tianGan?.element);
+    const node = context.boards[player][element];
+    const polarity = action.polarity ?? opponentSide(action, node);
+    if (polarity === null) {
+      return null;
+    }
+    return { player, element, polarity };
+  }
+  function ownSide(action, node, context) {
+    if (action.actionType === ActionType.BURST) {
+      return getPlusTargetPolarity(node) ?? Polarity.YIN;
+    }
+    return context.tianGan?.polarity ?? Polarity.YIN;
+  }
+  function opponentSide(action, node) {
+    if (action.actionType === ActionType.BURST_ATK) {
+      return getMinusTargetPolarity(node);
+    }
+    return action.polarity ?? Polarity.YIN;
+  }
+  function opponentOf$1(player) {
+    return player === "P1" ? "P2" : "P1";
   }
   const CHARACTER_ATLAS_PATH = "assets/characters.png";
   const CHARACTER_ATLAS_SIZE = { width: 1254, height: 1254 };
@@ -4531,10 +4672,11 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     get phase() {
       return this._phase;
     }
-    /** 切换表现阶段：连线高亮与阶段一致（只有 `awaiting-player` 的待定动作会点亮连线）。 */
+    /** 切换表现阶段：连线高亮、候选落点弧与阶段一致（只有 `awaiting-player` 有待定动作）。 */
     setPhase(phase) {
       this._phase = phase;
       this.board.setActivePaths(this.activePathsFor(phase));
+      this.board.setCandidates(this.candidatesFor(phase));
       this.placeResult();
     }
     /**
@@ -4557,6 +4699,34 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         }
       }
       return paths;
+    }
+    /**
+     * 当前阶段该画的候选落点弧（票 03）：只在玩家抉择期有内容，每个候选一段弧，
+     * 画在「会变的那一侧」外沿。落点解析与呼吸相位都归 `BoardView`，这里只负责按阶段喂候选。
+     */
+    candidatesFor(phase) {
+      if (phase !== "awaiting-player") {
+        return [];
+      }
+      const state = this._turnManager.getState();
+      const tianGan = this._turnManager.getCurrentTianGan();
+      if (tianGan === null) {
+        return [];
+      }
+      const candidates = [];
+      for (const action of this._turnManager.getAvailableActions()) {
+        const target = resolveCandidateTarget(action, {
+          tianGan,
+          boards: {
+            P1: state.players.P1.board,
+            P2: state.players.P2.board
+          }
+        });
+        if (target !== null) {
+          candidates.push(target);
+        }
+      }
+      return candidates;
     }
     /**
      * 视口自适应：法盘、角色卡与操作台重新排布。

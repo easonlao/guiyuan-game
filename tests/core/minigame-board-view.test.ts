@@ -5,12 +5,15 @@ import {
   drawYinYangFish,
   GUIYI_RING_INK,
   NODE_AURA_OUTSET_RATIO,
+  NODE_RING_SCALE,
+  NODE_RING_WIDTH_RATIO,
   resolveActionPath,
 } from '../../src/minigame/views/board-view.js';
 import { ActionType, NodeLevel, PlayerId, Polarity, WuXing } from '../../src/core/types/domain.js';
 import { WUXING_PALETTE } from '../../src/minigame/pixel-art.js';
 import { boardWith } from '../../tools/BoardFixture.js';
 import { RecordingContext } from './helpers/recording-context.js';
+import { CANDIDATE_BREATH_PERIOD } from '../../src/minigame/views/board-view.js';
 
 /**
  * 同心双环几何（ADR 0015 / LLD §4.1）：
@@ -50,6 +53,10 @@ const OVERCOMING_RAY_PAIRS: readonly [WuXing, WuXing][] = [
   [WuXing.WATER, WuXing.FIRE],
 ];
 
+/** 把角度差折到 (-π, π]，供「阳侧 / 阴侧朝哪偏」这类符号断言使用。 */
+function wrapDelta(delta: number): number {
+  return ((((delta + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
+}
 /** 相生环顺序（角度递增 = 屏幕顺时针）。 */
 const RING_ORDER: readonly WuXing[] = [
   WuXing.WOOD,
@@ -516,6 +523,199 @@ describe('Minigame BoardView: 归一金环流光与亢极元素外溢（票 02�
               `${where} ${seal.player}${seal.element} 金环`,
             ).toBeLessThanOrEqual(haloRadius + 1e-9);
           }
+        }
+      }
+    }
+  });
+});
+
+describe('Minigame BoardView: 候选落点弧与同相位慢呼吸（票 03）', () => {
+  /**
+   * 主印外沿那段候选弧：与主印同圆心、半径大于归一金环外沿（半径 + 半线宽）、
+   * 且不是一整圈（金环是 0..2π 的整圈，候选弧只是一段；一个候选画光晕 + 实边两遍）。
+   */
+  function candidateArcs(ctx: RecordingContext, view: BoardView) {
+    // 整圈的排除掉：那是票 02 的归一金环；候选弧永远只是一段。
+    const isFullCircle = (arc: { start: number; end: number }): boolean =>
+      arc.start === 0 && Math.abs(arc.end - Math.PI * 2) < 1e-9;
+    const seen = new Set<string>();
+    return ctx.arcs.filter((arc) => {
+      const seal = view.elements.find((entry) => entry.x === arc.x && entry.y === arc.y);
+      if (seal === undefined || isFullCircle(arc)) {
+        return false;
+      }
+      const ringOuter = seal.sealSize * (NODE_RING_SCALE + NODE_RING_WIDTH_RATIO / 2);
+      if (arc.radius <= ringOuter + 0.1 || arc.radius >= ringOuter + 5) {
+        return false;
+      }
+      // 同一个候选画两遍（光晕 + 实边），同圆心同半径同侧只算一段。
+      const key = `${arc.x.toFixed(6)},${arc.y.toFixed(6)},${arc.radius.toFixed(6)},${String(arc.start)},${String(arc.end)}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  }
+
+  /** 画当前的候选弧，返回落笔记录。 */
+  function render(view: BoardView): RecordingContext {
+    const ctx = new RecordingContext();
+    view.render(ctx.asContext());
+    return ctx;
+  }
+
+  it('只在会变的那一侧画弧：吸纳 / 散气落源节点，化 / 破落目标节点（不从天干极性推导）', () => {
+    // 同一根阳木天干（甲木）：抽中侧是阳，但三个候选各自落在自己要变的那一侧。
+    const view = new BoardView();
+    view.setCandidates([
+      { player: 'P1', element: WuXing.WOOD, polarity: Polarity.YANG }, // 吸纳：源节点阳侧
+      { player: 'P1', element: WuXing.FIRE, polarity: Polarity.YIN }, // 化：相生目标阴侧
+      { player: 'P2', element: WuXing.EARTH, polarity: Polarity.YIN }, // 破：对方相克目标阴侧
+    ]);
+    const arcs = candidateArcs(render(view), view);
+    const ctx = render(view);
+
+    // 弧与主印同圆心，一个候选一段；圆心即三枚主印的中心。
+    for (const [player, element] of [
+      ['P1', WuXing.WOOD],
+      ['P1', WuXing.FIRE],
+      ['P2', WuXing.EARTH],
+    ] as const) {
+      const seal = sealOf(view, player, element);
+      expect(
+        arcs.filter((arc) => arc.x === seal.x && arc.y === seal.y),
+        `${player} ${element} 外侧应有候选弧`,
+      ).toHaveLength(1);
+    }
+    // 没被候选点到的节点不画弧。
+    for (const [player, element] of [
+      ['P1', WuXing.METAL],
+      ['P2', WuXing.FIRE],
+    ] as const) {
+      const seal = sealOf(view, player, element);
+      expect(arcs.filter((arc) => arc.x === seal.x && arc.y === seal.y)).toHaveLength(0);
+    }
+
+    // 弧落在该侧：阳侧弧的角心朝槽位同侧（atan2(y-y, ±0.7·r)），阴侧相反。
+    // 用「弧心与主印射线角的符号差」断侧别，不重算像素。
+    const woodSeal = sealOf(view, 'P1', WuXing.WOOD);
+    const woodArc = arcs.find((arc) => arc.x === woodSeal.x && arc.y === woodSeal.y)!;
+    const woodCenter = (woodArc.start + woodArc.end) / 2;
+    // 阳侧：槽位点在主印右侧 => 弧心角度大于射线角（向右偏）。
+    expect(wrapDelta(woodCenter - woodSeal.angle)).toBeGreaterThan(0);
+    const fireSeal = sealOf(view, 'P1', WuXing.FIRE);
+    const fireArc = arcs.find((arc) => arc.x === fireSeal.x && arc.y === fireSeal.y)!;
+    // 阴侧：槽位点在主印左侧 => 弧心角度小于射线角（向左偏）。
+    expect(wrapDelta((fireArc.start + fireArc.end) / 2 - fireSeal.angle)).toBeLessThan(0);
+
+    // 弧色恒为该节点五行的元素色（色相只表身份，强弱只走透明度）。
+    const wood = WUXING_PALETTE[WuXing.WOOD];
+    expect(
+      ctx.paths.filter((path) => path.color === wood.light && path.strokeWidth > 0),
+      '木侧候选弧应是元素色描边',
+    ).toHaveLength(1);
+  });
+
+  it('同一节点被两个候选共享时不叠成两段（同侧去重）', () => {
+    const view = new BoardView();
+    view.setCandidates([
+      { player: 'P1', element: WuXing.WOOD, polarity: Polarity.YIN },
+      { player: 'P1', element: WuXing.WOOD, polarity: Polarity.YIN },
+    ]);
+
+    expect(view.candidates).toHaveLength(1);
+    const arcs = candidateArcs(render(view), view);
+    expect(arcs).toHaveLength(1);
+
+    // 同一节点的两侧各被一个候选点到时仍是两段（一个候选一段，不是一个节点一段）。
+    view.setCandidates([
+      { player: 'P1', element: WuXing.WOOD, polarity: Polarity.YIN },
+      { player: 'P1', element: WuXing.WOOD, polarity: Polarity.YANG },
+    ]);
+    expect(view.candidates).toHaveLength(2);
+    expect(candidateArcs(render(view), view)).toHaveLength(2);
+  });
+
+  it('setCandidates([]) 清空弧；弧与盘面快照、连线高亮互不影响', () => {
+    const view = new BoardView();
+    view.setCandidates([{ player: 'P1', element: WuXing.WOOD, polarity: Polarity.YANG }]);
+    expect(candidateArcs(render(view), view)).toHaveLength(1);
+
+    // 换盘面快照只换数据，不动候选（投影与候选解耦，与连线高亮同一约定）。
+    view.update(boardWith(), boardWith());
+    expect(candidateArcs(render(view), view)).toHaveLength(1);
+
+    view.setCandidates([]);
+    expect(candidateArcs(render(view), view)).toHaveLength(0);
+  });
+
+  it('同相位慢呼吸：所有候选弧共用一条透明度曲线，相位 0 / 0.5 分别是低位与满值', () => {
+    const view = new BoardView();
+    view.setCandidates([
+      { player: 'P1', element: WuXing.WOOD, polarity: Polarity.YANG },
+      { player: 'P2', element: WuXing.EARTH, polarity: Polarity.YIN },
+    ]);
+
+    view.tick(0);
+    expect(view.breathPhase).toBe(0);
+    const low = candidateArcs(render(view), view);
+    // 决策期全程可见：低位不是 0，玩家仍知道「这里能打」；两侧此刻透明度相同（同相位）。
+    for (const arc of low) {
+      expect(arc.alpha).toBeGreaterThan(0.35);
+      expect(arc.alpha).toBeLessThan(0.45);
+    }
+    expect(new Set(low.map((arc) => arc.alpha)).size).toBe(1);
+
+    // 半周期后到满值：同一个相位、同一个透明度（不是逐节点各走各的）。
+    view.tick(CANDIDATE_BREATH_PERIOD / 2);
+    expect(view.breathPhase).toBeCloseTo(0.5, 9);
+    for (const arc of candidateArcs(render(view), view)) {
+      expect(arc.alpha).toBeGreaterThan(0.9);
+    }
+
+    // 一整圈回到起点；相位按周期取模，不会无限增大。
+    view.tick(CANDIDATE_BREATH_PERIOD / 2);
+    expect(view.breathPhase).toBeCloseTo(0, 9);
+  });
+
+  it('候选弧不越出法盘底晕（三尺寸）', () => {
+    // 全亢极盘 + 决策期候选：金环、外溢与候选弧同时在场，取最坏情况。
+    const allKangJi = boardWith(
+      Object.fromEntries(Object.values(WuXing).map((element) => [element, { yin: 2, yang: 2 }])),
+    );
+    for (const [width, height] of [
+      [320, 568],
+      [390, 844],
+      [460, 900],
+    ] as const) {
+      const view = new BoardView();
+      view.resize(width, height);
+      view.update(allKangJi, allKangJi);
+      for (const polarity of [Polarity.YIN, Polarity.YANG]) {
+        view.setCandidates([{ player: 'P2', element: WuXing.WOOD, polarity }]);
+        const ctx = render(view);
+        const haloRadius = view.layout.outerRadius + view.layout.sealSize * NODE_AURA_OUTSET_RATIO;
+        expect(
+          candidateArcs(ctx, view),
+          `${String(width)}x${String(height)} 应画出一段候选弧`,
+        ).toHaveLength(1);
+        for (const arc of candidateArcs(ctx, view)) {
+          const seal = view.elements.find(
+            (entry) => Math.abs(entry.x - arc.x) < 1e-9 && Math.abs(entry.y - arc.y) < 1e-9,
+          );
+          expect(seal, '候选弧圆心应落在一枚主印上').toBeDefined();
+          const ink = WUXING_PALETTE[seal!.element].light;
+          // 描边线宽从实际落笔记录里读（RecordingContext 的 arcs 不记线宽）。
+          const strokeWidth = (ctx.paths.find((path) => path.color === ink)?.strokeWidth ?? 0) / 2;
+          const fromCenter = Math.hypot(
+            seal!.x - view.layout.centerX,
+            seal!.y - view.layout.centerY,
+          );
+          expect(
+            fromCenter + arc.radius + strokeWidth,
+            `${String(width)}x${String(height)} 候选弧越出底晕`,
+          ).toBeLessThanOrEqual(haloRadius + 1e-9);
         }
       }
     }
