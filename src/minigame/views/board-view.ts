@@ -66,9 +66,8 @@ export const GUIYI_RING_INK = { main: '#d8b876', light: '#ffe4a0' } as const;
  * 表达「满溢 / 泄露 / 不稳」——环本身不变，只多一层往外漫的元素色。
  * `KANGJI_OVERFLOW_SCALE + AURA_FALLOFF` 是元素外溢相对主印中心的最大外沿（票 05 的 `resize` 避让口径）。
  */
-/** 归一金环半径占主印半径的比例：候选弧画在它之外（票 03）。导出供测试按同一口径筛弧，不手抄数字。 */
-export const NODE_RING_SCALE = 1.13;
-export const NODE_RING_WIDTH_RATIO = 0.07;
+const NODE_RING_SCALE = 1.13;
+const NODE_RING_WIDTH_RATIO = 0.07;
 const NODE_RING_WIDTH_MIN = 1;
 /** 金色高光绕环一圈的秒数与拖尾长度（弧度）：慢、长尾、淡，才自然。 */
 const GUIYI_FLOW_PERIOD = 4.5;
@@ -94,19 +93,17 @@ const KANGJI_RIPPLE_OUTER = NODE_AURA_OUTSET_RATIO - KANGJI_RIPPLE_THICKNESS;
 const SLOT_SIDE_RATIO = 0.7;
 
 /**
- * 候选标记的尺度：直接染「会变的那半身」自己（不另画括号 / 弧）。
- * 三条线索：**专属强调色**（不取五行色；靠色相而不是明暗，亮底上也读得出）、
+ * 候选标记的尺度：直接染「会变的那半身」自己（不另画括号 / 弧）。三条线索——
+ * **专属强调色**（`THEME.candidate` 系；不取五行色，靠色相而不是明暗，亮底上也读得出）、
  * **一条薄轮廓**（勾住半身形状）、**随呼吸胀缩**（位移不受底色影响）。
- */
-/**
- * 半身染色（正常混合）的透明度与色号：**两端都用饱和紫**。
- * 早前外圈用近白（`candidateLit`）会把半身洗成白，肉眼读不到紫；且白 / 淡紫与「加持」的暖白光晕仍会混。
- * 现在外圈用 `candidateDeep`、内圈用 `candidate`，任何底色上都是明确的紫，且底层等级仍有 ~45% 透出来。
+ *
+ * 半身染色的透明度：两端都用强调紫，**外圈不能用近白**——近白会把半身洗白，肉眼读不到紫。
+ * 保留约一半透明度，底层等级（虚空 / 点亮 / 加持）仍透得出来。
  */
 const CANDIDATE_TINT_INNER_ALPHA = 0.5;
 const CANDIDATE_TINT_OUTER_ALPHA = 0.72;
 /**
- * 半身轮廓只用**一条薄边**勾形：颜色改成饱和紫之后，色相自己就能读，
+ * 半身轮廓只用**一条薄边**勾形：颜色换成专属强调色之后，色相自己就能读，
  * 早前为救「淡白对比度」加的「外暗内亮双色粗边」不再需要——那会读成一条不自然的大粗边。
  * 线宽取与鱼身自身描边同一档，看起来仍是这条鱼自己的边在呼吸。
  */
@@ -193,7 +190,7 @@ export interface BoardActivePath {
  * 一个候选动作的落点（票 03）：会变的那一侧。由 `resolveCandidateTarget` 从候选载荷与盘面解出，
  * 与按钮文案的目标五行同源（`getActionTargetElement`），不从抽中天干的极性推导。
  */
-export interface BoardCandidatePath extends CandidateTarget {}
+export type BoardCandidatePath = CandidateTarget;
 
 /** Ring ownership remains warm/solid and cool/dashed (ADR 0015). */
 const BOARD_BG_COLOR = THEME.deep;
