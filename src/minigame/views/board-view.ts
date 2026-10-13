@@ -48,12 +48,20 @@ export interface BoardViewLayout {
 const INNER_RADIUS_RATIO = 0.24;
 const OUTER_RADIUS_RATIO = 0.4;
 const SEAL_SIZE_RATIO = 0.062;
+/**
+ * 主印半径的可读性下限（像素）：可用高度宽裕时不再往小缩——再小鱼身上的等级就读不出来了。
+ * `MIN_SEAL_COMPACT` 是内容区极矮（只剩一条缝）时的下限。
+ */
+const MIN_SEAL_READABLE = 18;
+const MIN_SEAL_COMPACT = 4;
+/** 避让把主印挤小了也不能低于可读性下限的这个比例：再小就不成其为法盘了，宁可让外溢稍稍越界。 */
+const SEAL_READABILITY_FLOOR = 0.6;
 
 /**
- * 对方盘主印相对己方盘主印的缩放：外环更小，一眼分出主次（ADR 0015 的「环级区分」）。
+ * 对方盘主印相对己方盘主印的缩放：外环只比内环略小，仍一眼分得清主次（ADR 0015 的「环级区分」）。
  * 只改尺寸、不改亮度——「暗」已被等级通道征用（虚空 = 空心），归属由环带实线 / 虚线与标签承担（ADR 0018）。
  */
-const OPPONENT_SEAL_SCALE = 0.82;
+export const OPPONENT_SEAL_SCALE = 0.92;
 
 /** 虚空描边的不透明度：只描边不填充，元素色淡到仍能读出身份（ADR 0018 的亮度阶梯最低档）。 */
 const VOID_OUTLINE_ALPHA = 0.55;
@@ -83,14 +91,40 @@ const KANGJI_RIPPLE_THICKNESS = 0.16;
 const KANGJI_RIPPLE_INNER = 1.05;
 /**
  * 元素外溢相对主印半径的最大外沿：柔光渐变的淡出半径。
- * 法盘底晕（`_drawEngraving`）与票 05 的 `resize` 避让都拿它当口径。
+ * 法盘底晕（`_drawEngraving`）、盘面上下外沿与 `resize` 的高度预算都拿它当口径（票 05）。
  */
 export const NODE_AURA_OUTSET_RATIO = KANGJI_OVERFLOW_SCALE + AURA_FALLOFF;
 /** 亢极涟漪能扩到的最外半径：再叠上最大厚度也不超过 `NODE_AURA_OUTSET_RATIO`。 */
 const KANGJI_RIPPLE_OUTER = NODE_AURA_OUTSET_RATIO - KANGJI_RIPPLE_THICKNESS;
 
+/**
+ * 金环外沿相对主印半径的最大外沿（环半径 + 半线宽；线宽的 1px 下界最多再多 0.5px，按比例算即可）。
+ * `resize` 的环间距按它预留：环是实线，与相邻主印压不得（票 05）。
+ */
+export const NODE_RING_OUTSET_RATIO = NODE_RING_SCALE + NODE_RING_WIDTH_RATIO / 2;
+
 /** 阴阳槽位相对主印中心在阴/阳一侧的横向偏移（占主印半径的比例）。 */
 const SLOT_SIDE_RATIO = 0.7;
+
+/** 跨环最小间隙（像素）：两枚主印的环外沿之间留这一点，不留就贴着。 */
+const BOARD_RING_CLEARANCE = 3;
+
+/**
+ * 归元图例的基线位置与字号（占主印半径的比例与像素下界）：`_drawGuiYuanLegend` 与 `resize` 的高度预算共用，
+ * 免得「算高度」与「画在哪儿」各存一份。
+ */
+const LEGEND_BASELINE_RATIO = 1.9;
+const LEGEND_FONT_RATIO = 0.55;
+const LEGEND_FONT_MIN = 11;
+
+/**
+ * 图例文字下沿相对主印半径的外沿（比例部分；主印很小时字号有像素下界，实际下沿更靠外）。
+ * `resize` 的可用高度按它留底，图例才不会被操作栏或结果条压住。
+ */
+const LEGEND_OUTSET_RATIO = LEGEND_BASELINE_RATIO + LEGEND_FONT_RATIO / 2;
+
+/** 盘面上下各留的边距：法盘顶到内容区上沿、外沿到下沿（像素）。 */
+const BOARD_EDGE_PADDING = 14;
 
 /**
  * 候选标记的尺度：直接染「会变的那半身」自己（不另画括号 / 弧）。三条线索——
@@ -363,47 +397,76 @@ export class BoardView extends Container {
     this._breathPhase = (this._breathPhase + (dt * speed) / CANDIDATE_BREATH_PERIOD) % 1;
   }
 
-  /** 按视口自适应：圆心取视口中心，内外环半径与主印半径按短边等比缩放。 */
+  /**
+   * 按视口自适应：内外环半径与主印半径按短边等比缩放，盘心落在可用区域里。
+   *
+   * 预留的不只是主印本身：票 02 之后主印外还有归一金环与亢极元素外溢，只按主印预留就会让它们压到
+   * 相邻主印、盘外顶到操作栏或结果条。两套避让口径各司其职：
+   *
+   * 1. **环间距**按 `NODE_RING_OUTSET_RATIO` 预留：金环是实线，压不得。跨环直接推外环半径
+   *    （内环主印的环外沿 + 外环主印的环外沿 + 间隙）；同环不相交则由另外两个更大的下限兼管——
+   *    内环半径既不小于按短边算的值，也不小于可读性下限对应的值，两者都已远大于同环所需，
+   *    故不再单列一条同环公式（单列的那条永远取不到 max，会是死代码）。
+   * 2. **盘面外沿**按**最坏情况**预留：上下各留到标记最外缘（底部含归元图例），免得亢极外溢或图例
+   *    越出内容边界。元素外溢那圈是渐隐到 0 的柔光，与相邻主印交叠只读成更亮的一层晕，交叠本身
+   *    不算失败，故**不**拿它约束环间距（那会把主印压得看不清）——但盘外没有邻盘可交叠，越界就没得
+   *    让，故外沿仍按满额预留。只有对方盘真的没有节点级标记时才按金环外沿收（省下的高度归主印）。
+   * 3. **主印下限** `MIN_SEAL_READABLE`：高度宽裕时不再往小缩（再小鱼身上的等级就读不出来）；
+   *    装不下时按比例让位给避让，但不低于 `MIN_SEAL_READABLE * SEAL_READABILITY_FLOOR`——
+   *    再小就改不叫法盘了，宁可让外溢稍稍越界。
+   *
+   * 横向不另设约束：外环半径按短边比例算出，恒小于半宽（环带之外的部分才可能越界），
+   * 故外环最外两枚主印的本体不会越出视口——测得到才写，写不到就是死代码。
+   *
+   * `bounds` 是原生胶囊与操作区之间的内容边界（`GameScene.layoutBoard` 传入）；没传就按视口短边缩放。
+   */
   public resize(width: number, height: number, bounds?: { top: number; bottom: number }): void {
-    let span = Math.min(width, height);
-    let centerY = height / 2;
-    let sealSize = span * SEAL_SIZE_RATIO;
-    let innerRadius = span * INNER_RADIUS_RATIO;
-    let outerRadius = span * OUTER_RADIUS_RATIO;
-    if (bounds !== undefined) {
-      const available = Math.max(100, bounds.bottom - bounds.top);
-      const minInner = available < 244 ? Math.min(40, Math.max(30, (available - 80) / 3.3)) : 40;
-      const minSeal = available < 244 ? Math.max(4, (available - minInner * 2 - 46) / 6.54) : 18;
-      const dimensions = (size: number) => {
-        const seal = Math.max(minSeal, size * SEAL_SIZE_RATIO);
-        const inner = Math.max(minInner, size * INNER_RADIUS_RATIO);
-        const outer = Math.max(
-          size * OUTER_RADIUS_RATIO,
-          inner + seal * (1 + OPPONENT_SEAL_SCALE) + 3,
-        );
-        return { seal, inner, outer, height: outer * 2 + seal * 2.9 + 40 };
+    const span = Math.min(width, height);
+    const available = bounds === undefined ? height : Math.max(100, bounds.bottom - bounds.top);
+    const top = bounds?.top ?? 0;
+    const minInner = available < 244 ? Math.min(40, Math.max(30, (available - 80) / 3.3)) : 40;
+    const floor = available < 244 ? MIN_SEAL_COMPACT : MIN_SEAL_READABLE;
+    // 主印半径下限只管「再小就读不出来」：装不下时允许走到这个下限之下，
+    // 上面的二分自然会把主印缩到刚好放得下（下限高于它时就宁可让外溢稍稍越界）。
+    const sealFloor = floor * SEAL_READABILITY_FLOOR;
+    // 对方盘的标记外沿按最坏情况（整盘都亢极）预留，但只在它真的有节点级标记时才收这份高度。
+    const markOut = this._elements.some(
+      (entry) => entry.player === OPPONENT_PLAYER && (entry.isGuiYi || entry.isKangJi),
+    )
+      ? NODE_AURA_OUTSET_RATIO
+      : NODE_RING_OUTSET_RATIO;
+    const dimensions = (size: number) => {
+      const seal = Math.max(sealFloor, size * SEAL_SIZE_RATIO);
+      const inner = Math.max(minInner, size * INNER_RADIUS_RATIO);
+      const outer = Math.max(
+        size * OUTER_RADIUS_RATIO,
+        inner + seal * NODE_RING_OUTSET_RATIO * (1 + OPPONENT_SEAL_SCALE) + BOARD_RING_CLEARANCE,
+      );
+      const topEdge = outer + seal * OPPONENT_SEAL_SCALE * markOut;
+      const bottomEdge = outer + seal * LEGEND_OUTSET_RATIO;
+      return {
+        seal,
+        inner,
+        outer,
+        height: topEdge + bottomEdge + BOARD_EDGE_PADDING * 2,
       };
-      let low = 0;
-      let high = span;
-      for (let i = 0; i < 20; i++) {
-        const mid = (low + high) / 2;
-        if (dimensions(mid).height <= available) low = mid;
-        else high = mid;
-      }
-      span = low;
-      const fitted = dimensions(span);
-      sealSize = fitted.seal;
-      innerRadius = fitted.inner;
-      outerRadius = fitted.outer;
-      centerY = bounds.top + outerRadius + sealSize + 14;
+    };
+    let low = 0;
+    let high = span;
+    for (let i = 0; i < 20; i++) {
+      const mid = (low + high) / 2;
+      if (dimensions(mid).height <= available) low = mid;
+      else high = mid;
     }
+    const fitted = dimensions(low);
     this._layout = {
       ...this._layout,
       centerX: width / 2,
-      centerY,
-      innerRadius,
-      outerRadius,
-      sealSize,
+      // 盘心落在可用区域里：装得下就居中，装不下就贴上沿（宁可往操作区方向溢出，也不顶到胶囊）。
+      centerY: top + Math.max(fitted.height, available) / 2,
+      innerRadius: fitted.inner,
+      outerRadius: fitted.outer,
+      sealSize: fitted.seal,
     };
     this._rebuild();
   }
@@ -952,8 +1015,13 @@ export class BoardView extends Container {
    * 不放环带上：内环主印之间的空位只有 ~44px，放得下「己」一个字却放不下带数量的胶囊。
    */
   private _drawGuiYuanLegend(ctx: CanvasRenderingContext2D): void {
-    const fontSize = Math.round(Math.max(11, this._layout.sealSize * 0.55));
-    const y = this._layout.centerY + this._layout.outerRadius + this._layout.sealSize * 1.9;
+    const fontSize = Math.round(
+      Math.max(LEGEND_FONT_MIN, this._layout.sealSize * LEGEND_FONT_RATIO),
+    );
+    const y =
+      this._layout.centerY +
+      this._layout.outerRadius +
+      this._layout.sealSize * LEGEND_BASELINE_RATIO;
     const gap = this._layout.sealSize * 2.6;
     ctx.save();
     ctx.font = `bold ${String(fontSize)}px ${THEME.font}`;

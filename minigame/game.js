@@ -2773,7 +2773,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const INNER_RADIUS_RATIO = 0.24;
   const OUTER_RADIUS_RATIO = 0.4;
   const SEAL_SIZE_RATIO = 0.062;
-  const OPPONENT_SEAL_SCALE = 0.82;
+  const MIN_SEAL_READABLE = 18;
+  const MIN_SEAL_COMPACT = 4;
+  const SEAL_READABILITY_FLOOR = 0.6;
+  const OPPONENT_SEAL_SCALE = 0.92;
   const VOID_OUTLINE_ALPHA = 0.55;
   const GUIYI_RING_INK = { main: "#d8b876", light: "#ffe4a0" };
   const NODE_RING_SCALE = 1.13;
@@ -2788,7 +2791,14 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const KANGJI_RIPPLE_INNER = 1.05;
   const NODE_AURA_OUTSET_RATIO = KANGJI_OVERFLOW_SCALE + AURA_FALLOFF;
   const KANGJI_RIPPLE_OUTER = NODE_AURA_OUTSET_RATIO - KANGJI_RIPPLE_THICKNESS;
+  const NODE_RING_OUTSET_RATIO = NODE_RING_SCALE + NODE_RING_WIDTH_RATIO / 2;
   const SLOT_SIDE_RATIO = 0.7;
+  const BOARD_RING_CLEARANCE = 3;
+  const LEGEND_BASELINE_RATIO = 1.9;
+  const LEGEND_FONT_RATIO = 0.55;
+  const LEGEND_FONT_MIN = 11;
+  const LEGEND_OUTSET_RATIO = LEGEND_BASELINE_RATIO + LEGEND_FONT_RATIO / 2;
+  const BOARD_EDGE_PADDING = 14;
   const CANDIDATE_TINT_INNER_ALPHA = 0.5;
   const CANDIDATE_TINT_OUTER_ALPHA = 0.72;
   const CANDIDATE_OUTLINE_ALPHA = 0.95;
@@ -2881,47 +2891,71 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const speed = this._preview === null ? 1 : PREVIEW_BREATH_SPEED;
       this._breathPhase = (this._breathPhase + dt * speed / CANDIDATE_BREATH_PERIOD) % 1;
     }
-    /** 按视口自适应：圆心取视口中心，内外环半径与主印半径按短边等比缩放。 */
+    /**
+     * 按视口自适应：内外环半径与主印半径按短边等比缩放，盘心落在可用区域里。
+     *
+     * 预留的不只是主印本身：票 02 之后主印外还有归一金环与亢极元素外溢，只按主印预留就会让它们压到
+     * 相邻主印、盘外顶到操作栏或结果条。两套避让口径各司其职：
+     *
+     * 1. **环间距**按 `NODE_RING_OUTSET_RATIO` 预留：金环是实线，压不得。跨环直接推外环半径
+     *    （内环主印的环外沿 + 外环主印的环外沿 + 间隙）；同环不相交则由另外两个更大的下限兼管——
+     *    内环半径既不小于按短边算的值，也不小于可读性下限对应的值，两者都已远大于同环所需，
+     *    故不再单列一条同环公式（单列的那条永远取不到 max，会是死代码）。
+     * 2. **盘面外沿**按**最坏情况**预留：上下各留到标记最外缘（底部含归元图例），免得亢极外溢或图例
+     *    越出内容边界。元素外溢那圈是渐隐到 0 的柔光，与相邻主印交叠只读成更亮的一层晕，交叠本身
+     *    不算失败，故**不**拿它约束环间距（那会把主印压得看不清）——但盘外没有邻盘可交叠，越界就没得
+     *    让，故外沿仍按满额预留。只有对方盘真的没有节点级标记时才按金环外沿收（省下的高度归主印）。
+     * 3. **主印下限** `MIN_SEAL_READABLE`：高度宽裕时不再往小缩（再小鱼身上的等级就读不出来）；
+     *    装不下时按比例让位给避让，但不低于 `MIN_SEAL_READABLE * SEAL_READABILITY_FLOOR`——
+     *    再小就改不叫法盘了，宁可让外溢稍稍越界。
+     *
+     * 横向不另设约束：外环半径按短边比例算出，恒小于半宽（环带之外的部分才可能越界），
+     * 故外环最外两枚主印的本体不会越出视口——测得到才写，写不到就是死代码。
+     *
+     * `bounds` 是原生胶囊与操作区之间的内容边界（`GameScene.layoutBoard` 传入）；没传就按视口短边缩放。
+     */
     resize(width, height, bounds) {
-      let span = Math.min(width, height);
-      let centerY = height / 2;
-      let sealSize = span * SEAL_SIZE_RATIO;
-      let innerRadius = span * INNER_RADIUS_RATIO;
-      let outerRadius = span * OUTER_RADIUS_RATIO;
-      if (bounds !== void 0) {
-        const available = Math.max(100, bounds.bottom - bounds.top);
-        const minInner = available < 244 ? Math.min(40, Math.max(30, (available - 80) / 3.3)) : 40;
-        const minSeal = available < 244 ? Math.max(4, (available - minInner * 2 - 46) / 6.54) : 18;
-        const dimensions = (size) => {
-          const seal = Math.max(minSeal, size * SEAL_SIZE_RATIO);
-          const inner = Math.max(minInner, size * INNER_RADIUS_RATIO);
-          const outer = Math.max(
-            size * OUTER_RADIUS_RATIO,
-            inner + seal * (1 + OPPONENT_SEAL_SCALE) + 3
-          );
-          return { seal, inner, outer, height: outer * 2 + seal * 2.9 + 40 };
+      const span = Math.min(width, height);
+      const available = bounds === void 0 ? height : Math.max(100, bounds.bottom - bounds.top);
+      const top = bounds?.top ?? 0;
+      const minInner = available < 244 ? Math.min(40, Math.max(30, (available - 80) / 3.3)) : 40;
+      const floor = available < 244 ? MIN_SEAL_COMPACT : MIN_SEAL_READABLE;
+      const sealFloor = floor * SEAL_READABILITY_FLOOR;
+      const markOut = this._elements.some(
+        (entry) => entry.player === OPPONENT_PLAYER && (entry.isGuiYi || entry.isKangJi)
+      ) ? NODE_AURA_OUTSET_RATIO : NODE_RING_OUTSET_RATIO;
+      const dimensions = (size) => {
+        const seal = Math.max(sealFloor, size * SEAL_SIZE_RATIO);
+        const inner = Math.max(minInner, size * INNER_RADIUS_RATIO);
+        const outer = Math.max(
+          size * OUTER_RADIUS_RATIO,
+          inner + seal * NODE_RING_OUTSET_RATIO * (1 + OPPONENT_SEAL_SCALE) + BOARD_RING_CLEARANCE
+        );
+        const topEdge = outer + seal * OPPONENT_SEAL_SCALE * markOut;
+        const bottomEdge = outer + seal * LEGEND_OUTSET_RATIO;
+        return {
+          seal,
+          inner,
+          outer,
+          height: topEdge + bottomEdge + BOARD_EDGE_PADDING * 2
         };
-        let low = 0;
-        let high = span;
-        for (let i = 0; i < 20; i++) {
-          const mid = (low + high) / 2;
-          if (dimensions(mid).height <= available) low = mid;
-          else high = mid;
-        }
-        span = low;
-        const fitted = dimensions(span);
-        sealSize = fitted.seal;
-        innerRadius = fitted.inner;
-        outerRadius = fitted.outer;
-        centerY = bounds.top + outerRadius + sealSize + 14;
+      };
+      let low = 0;
+      let high = span;
+      for (let i = 0; i < 20; i++) {
+        const mid = (low + high) / 2;
+        if (dimensions(mid).height <= available) low = mid;
+        else high = mid;
       }
+      const fitted = dimensions(low);
       this._layout = {
         ...this._layout,
         centerX: width / 2,
-        centerY,
-        innerRadius,
-        outerRadius,
-        sealSize
+        // 盘心落在可用区域里：装得下就居中，装不下就贴上沿（宁可往操作区方向溢出，也不顶到胶囊）。
+        centerY: top + Math.max(fitted.height, available) / 2,
+        innerRadius: fitted.inner,
+        outerRadius: fitted.outer,
+        sealSize: fitted.seal
       };
       this._rebuild();
     }
@@ -3411,8 +3445,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
      * 不放环带上：内环主印之间的空位只有 ~44px，放得下「己」一个字却放不下带数量的胶囊。
      */
     _drawGuiYuanLegend(ctx) {
-      const fontSize = Math.round(Math.max(11, this._layout.sealSize * 0.55));
-      const y = this._layout.centerY + this._layout.outerRadius + this._layout.sealSize * 1.9;
+      const fontSize = Math.round(
+        Math.max(LEGEND_FONT_MIN, this._layout.sealSize * LEGEND_FONT_RATIO)
+      );
+      const y = this._layout.centerY + this._layout.outerRadius + this._layout.sealSize * LEGEND_BASELINE_RATIO;
       const gap = this._layout.sealSize * 2.6;
       ctx.save();
       ctx.font = `bold ${String(fontSize)}px ${THEME.font}`;
