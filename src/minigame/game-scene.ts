@@ -368,6 +368,8 @@ export class GameScene extends Container {
     const phaseBefore = this._phase;
     this.characters.updateTimers(dt);
     this.runeFlight.update(dt);
+    // 法盘只借时钟推进归一 / 亢极柔光；盘面投影仍由状态变更驱动（`board.update`）。
+    this.board.tick(dt);
     if (this._phase === 'result') {
       if (phaseBefore !== 'result') return;
       this.timer -= dt;

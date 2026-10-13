@@ -31,7 +31,15 @@ export class RecordingContext {
   public shadowBlur = 0;
   /** 按调用顺序记录全部指令名（含 save / translate 这类状态指令）。 */
   public readonly calls: string[] = [];
-  public readonly gradients: { stops: { offset: number; color: string }[] }[] = [];
+  public readonly gradients: {
+    x0: number;
+    y0: number;
+    r0: number;
+    x1: number;
+    y1: number;
+    r1: number;
+    stops: { offset: number; color: string }[];
+  }[] = [];
   public readonly arcs: {
     x: number;
     y: number;
@@ -195,7 +203,15 @@ export class RecordingContext {
     _r1: number,
   ): CanvasGradient {
     this.calls.push('createRadialGradient');
-    const gradient = { stops: [] as { offset: number; color: string }[] };
+    const gradient = {
+      x0: _x0,
+      y0: _y0,
+      r0: _r0,
+      x1: _x1,
+      y1: _y1,
+      r1: _r1,
+      stops: [] as { offset: number; color: string }[],
+    };
     this.gradients.push(gradient);
     return {
       addColorStop: (offset: number, color: string) => gradient.stops.push({ offset, color }),

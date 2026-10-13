@@ -2754,10 +2754,19 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const SEAL_SIZE_RATIO = 0.062;
   const OPPONENT_SEAL_SCALE = 0.82;
   const VOID_OUTLINE_ALPHA = 0.55;
-  const GUIYI_RING_WIDTH_RATIO = 0.07;
-  const GUIYI_RING_WIDTH_MIN = 1;
-  const GUIYI_RING_OUTSET_RATIO = 0.26;
-  const GUIYI_RING_COLOR = THEME.gold;
+  const GUIYI_RING_INK = { main: "#d8b876", light: "#ffe4a0" };
+  const NODE_RING_SCALE = 1.13;
+  const NODE_RING_WIDTH_RATIO = 0.07;
+  const NODE_RING_WIDTH_MIN = 1;
+  const GUIYI_FLOW_PERIOD = 4.5;
+  const GUIYI_FLOW_TAIL = Math.PI * 1.5;
+  const KANGJI_OVERFLOW_SCALE = 1.6;
+  const AURA_FALLOFF = 0.25;
+  const KANGJI_RIPPLE_SPEED = 1 / 7.5;
+  const KANGJI_RIPPLE_THICKNESS = 0.16;
+  const KANGJI_RIPPLE_INNER = 1.05;
+  const NODE_AURA_OUTSET_RATIO = KANGJI_OVERFLOW_SCALE + AURA_FALLOFF;
+  const KANGJI_RIPPLE_OUTER = NODE_AURA_OUTSET_RATIO - KANGJI_RIPPLE_THICKNESS;
   const SLOT_SIDE_RATIO = 0.7;
   const DEFAULT_BOARD_LAYOUT = {
     centerX: 0,
@@ -2787,12 +2796,21 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "_boards", { P1: null, P2: null });
       /** 当前动作会走的连线（键为 `kind:from`）；高亮与盘面等级无关（票 02）。 */
       __publicField(this, "_activePaths", /* @__PURE__ */ new Set());
+      /** 表现层时钟（秒），由 `tick` 推进；只驱动归一 / 亢极柔光，不参与任何投影。 */
+      __publicField(this, "_clock", 0);
       this._layout = { ...DEFAULT_BOARD_LAYOUT, ...layout };
       this._rebuild();
     }
     /** 当前生效的极坐标布局参数（快照副本）。 */
     get layout() {
       return { ...this._layout };
+    }
+    /**
+     * 推进表现层时钟（秒）：只驱动归一 / 亢极柔光的流动。
+     * 命名不叫 `update`——那个名字已被双盘快照投影占用（LLD §4.1）。
+     */
+    tick(dt) {
+      this._clock += dt;
     }
     /** 按视口自适应：圆心取视口中心，内外环半径与主印半径按短边等比缩放。 */
     resize(width, height, bounds) {
@@ -2966,12 +2984,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         isKangJi: element.isKangJi
       };
     }
-    /** 先画环带、归一金环与主印，最后叠加环归属标签（标签压在最上层）。 */
+    /** 先画环带与主印，再叠归一 / 亢极柔光，最后加环归属标签（标签压在最上层）。 */
     renderSelf(ctx) {
       this._drawEngraving(ctx);
       this._drawRingBands(ctx);
-      this._drawGuiYiRings(ctx);
       this._drawSeals(ctx);
+      this._drawNodeMarks(ctx);
       this._drawRingLabels(ctx);
     }
     /** Quiet backing and one ownership guide per ring; decoration does not encode state. */
@@ -2982,7 +3000,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.arc(
         this._layout.centerX,
         this._layout.centerY,
-        this._layout.outerRadius + this._layout.sealSize * 1.1,
+        this._layout.outerRadius + this._layout.sealSize * NODE_AURA_OUTSET_RATIO,
         0,
         Math.PI * 2
       );
@@ -3005,22 +3023,20 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
     }
     /**
-     * 归一 = 主印外一圈金环，亢极 = 再加一层（ADR 0018）：中性金、不脉动、内外两盘一视同仁。
-     * 环半径按各自主印半径等比缩放（外环主印更小，金环同步更小）。
+     * 归一 = 主印外一圈金环 + 沿环流动的金色高光；亢极 = 再叠元素色外溢（ADR 0018，票 02 修订）：
+     * 中性、内外两盘一视同仁；环半径与外溢尺度按各自主印半径等比缩放。
      */
-    _drawGuiYiRings(ctx) {
+    _drawNodeMarks(ctx) {
       for (const entry of this._elements) {
-        const { radii, width } = guiYiRingGeometry(entry.sealSize, guiYiRingLayers(entry));
-        if (radii.length === 0) continue;
-        ctx.save();
-        ctx.strokeStyle = GUIYI_RING_COLOR;
-        ctx.lineWidth = width;
-        for (const radius of radii) {
-          ctx.beginPath();
-          ctx.arc(entry.x, entry.y, radius, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-        ctx.restore();
+        drawNodeMark(
+          ctx,
+          entry.x,
+          entry.y,
+          entry.sealSize,
+          entry.element,
+          nodeMarkLayers(entry),
+          this._clock
+        );
       }
     }
     /** Each node owns two independent fish. Element labels sit outside the readable silhouette. */
@@ -3097,21 +3113,86 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       return this._elements.filter((entry) => entry.player === player && entry.isGuiYi).length;
     }
   }
-  function guiYiRingLayers(element) {
+  function nodeMarkLayers(element) {
     if (element.isKangJi) return 2;
     if (element.isGuiYi) return 1;
     return 0;
   }
-  function guiYiRingGeometry(sealSize, layers) {
-    const outsetPerLayer = GUIYI_RING_OUTSET_RATIO / 2;
-    const radii = [];
-    for (let layer = 0; layer < layers; layer += 1) {
-      radii.push(sealSize * (1 + outsetPerLayer * (layer + 1)));
+  function drawNodeMark(ctx, x, y, sealSize, element, layers, time) {
+    if (layers === 0) return;
+    const width = Math.max(NODE_RING_WIDTH_MIN, sealSize * NODE_RING_WIDTH_RATIO);
+    const radius = sealSize * NODE_RING_SCALE;
+    if (layers === 2) {
+      const ink = WUXING_PALETTE[element];
+      drawSoftAura(ctx, x, y, sealSize, ink, 0.85, KANGJI_OVERFLOW_SCALE, time);
+      drawOverflowRipples(ctx, x, y, sealSize, ink, time);
     }
-    return {
-      radii,
-      width: Math.max(GUIYI_RING_WIDTH_MIN, sealSize * GUIYI_RING_WIDTH_RATIO)
-    };
+    drawRing(ctx, x, y, radius, GUIYI_RING_INK.main, width);
+    drawRingFlow(ctx, x, y, radius, width, GUIYI_RING_INK.light, time);
+  }
+  function drawRing(ctx, x, y, radius, color, lineWidth) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+    ctx.restore();
+  }
+  function drawRingFlow(ctx, x, y, radius, lineWidth, color, time) {
+    const head = -Math.PI / 2 + time / GUIYI_FLOW_PERIOD % 1 * Math.PI * 2;
+    const steps = 48;
+    ctx.save();
+    for (let index = 0; index < steps; index += 1) {
+      const t = index / steps;
+      const a0 = head - GUIYI_FLOW_TAIL * t;
+      const a1 = head - GUIYI_FLOW_TAIL * ((index + 1) / steps);
+      ctx.beginPath();
+      ctx.arc(x, y, radius, a1, a0);
+      ctx.strokeStyle = withAlpha(color, (1 - t) ** 2 * 0.6);
+      ctx.lineWidth = lineWidth * (1.6 - t * 0.6);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function drawSoftAura(ctx, x, y, sealSize, ink, strength, scale, time) {
+    const offsetX = Math.cos(time * 0.23) * sealSize * 0.3;
+    const offsetY = Math.sin(time * 0.17) * sealSize * 0.3;
+    const outer = sealSize * (scale + AURA_FALLOFF);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const grad = ctx.createRadialGradient(x + offsetX, y + offsetY, sealSize * 0.78, x, y, outer);
+    grad.addColorStop(0, withAlpha(ink.light, 0));
+    grad.addColorStop(0.4, withAlpha(ink.light, 0.5 * strength));
+    grad.addColorStop(0.75, withAlpha(ink.main, 0.22 * strength));
+    grad.addColorStop(1, withAlpha(ink.main, 0));
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, outer, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  function drawOverflowRipples(ctx, x, y, sealSize, ink, time) {
+    const count = 1;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (let index = 0; index < count; index += 1) {
+      const progress = (time * KANGJI_RIPPLE_SPEED + index / count) % 1;
+      const eased = 1 - (1 - progress) ** 2;
+      const radius = sealSize * (KANGJI_RIPPLE_INNER + eased * (KANGJI_RIPPLE_OUTER - KANGJI_RIPPLE_INNER));
+      const alpha = 0.3 * Math.sin(Math.PI * progress) ** 1.2;
+      const thickness = sealSize * KANGJI_RIPPLE_THICKNESS * (1 - progress * 0.3);
+      const outer = radius + thickness;
+      const grad = ctx.createRadialGradient(x, y, Math.max(0.1, radius - thickness), x, y, outer);
+      grad.addColorStop(0, withAlpha(ink.main, 0));
+      grad.addColorStop(0.5, withAlpha(ink.light, alpha));
+      grad.addColorStop(1, withAlpha(ink.main, 0));
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, outer, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
   function drawPill(ctx, x, y, width, height, radius, fill, stroke) {
     ctx.beginPath();
@@ -4548,6 +4629,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const phaseBefore = this._phase;
       this.characters.updateTimers(dt);
       this.runeFlight.update(dt);
+      this.board.tick(dt);
       if (this._phase === "result") {
         if (phaseBefore !== "result") return;
         this.timer -= dt;

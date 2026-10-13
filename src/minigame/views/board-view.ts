@@ -57,17 +57,36 @@ const OPPONENT_SEAL_SCALE = 0.82;
 /** 虚空描边的不透明度：只描边不填充，元素色淡到仍能读出身份（ADR 0018 的亮度阶梯最低档）。 */
 const VOID_OUTLINE_ALPHA = 0.55;
 
-/** 金环线宽（占主印半径的比例，下限 1px 保证窄屏仍可分）。 */
-const GUIYI_RING_WIDTH_RATIO = 0.07;
-const GUIYI_RING_WIDTH_MIN = 1;
+/** 归一 / 亢极外圈：金环底色与沿环流动的高光色（高光比底色亮，才读成「光」）。 */
+export const GUIYI_RING_INK = { main: '#d8b876', light: '#ffe4a0' } as const;
 /**
- * 金环相对主印边缘的外扩总量（占主印半径的比例）：归一 = 半外扩处一圈，亢极 = 满外扩处再加一圈
- * （ADR 0018 的「多一层就是更满」）。这是归一 / 亢极金环与票 05 `resize` 环间距重算共用的唯一外扩常量；
- * 上界由法盘底晕（`_drawEngraving` 的 `sealSize * 1.1`，外环主印半径 0.82×）约束。
+ * 归一 / 亢极外圈：一个金环 + 沿环缓慢流动的金色高光。
+ * 归一只有这一层；亢极（`layers === 2`）再叠一层元素色柔光与外扩涟漪，
+ * 表达「满溢 / 泄露 / 不稳」——环本身不变，只多一层往外漫的元素色。
+ * `KANGJI_OVERFLOW_SCALE + AURA_FALLOFF` 是元素外溢相对主印中心的最大外沿（票 05 的 `resize` 避让口径）。
  */
-const GUIYI_RING_OUTSET_RATIO = 0.26;
-/** 金环用中性金：不用警示色、不脉动——亢极同时意味着归一到手与爆发可用（ADR 0018）。 */
-const GUIYI_RING_COLOR = THEME.gold;
+const NODE_RING_SCALE = 1.13;
+const NODE_RING_WIDTH_RATIO = 0.07;
+const NODE_RING_WIDTH_MIN = 1;
+/** 金色高光绕环一圈的秒数与拖尾长度（弧度）：慢、长尾、淡，才自然。 */
+const GUIYI_FLOW_PERIOD = 4.5;
+const GUIYI_FLOW_TAIL = Math.PI * 1.5;
+const KANGJI_OVERFLOW_SCALE = 1.6;
+/** 柔光渐变在 `scale + AURA_FALLOFF` 处淡到 0（额外的柔和外沿）。 */
+const AURA_FALLOFF = 0.25;
+/** 亢极外溢涟漪的扩张速度（圈 / 秒）：7.5s 一圈，更慢。 */
+const KANGJI_RIPPLE_SPEED = 1 / 7.5;
+/** 亢极涟漪带的最大厚度（相对主印半径）。 */
+const KANGJI_RIPPLE_THICKNESS = 0.16;
+/** 亢极涟漪从主印内缘扩起。 */
+const KANGJI_RIPPLE_INNER = 1.05;
+/**
+ * 元素外溢相对主印半径的最大外沿：柔光渐变的淡出半径。
+ * 法盘底晕（`_drawEngraving`）与票 05 的 `resize` 避让都拿它当口径。
+ */
+export const NODE_AURA_OUTSET_RATIO = KANGJI_OVERFLOW_SCALE + AURA_FALLOFF;
+/** 亢极涟漪能扩到的最外半径：再叠上最大厚度也不超过 `NODE_AURA_OUTSET_RATIO`。 */
+const KANGJI_RIPPLE_OUTER = NODE_AURA_OUTSET_RATIO - KANGJI_RIPPLE_THICKNESS;
 
 /** 阴阳槽位相对主印中心在阴/阳一侧的横向偏移（占主印半径的比例）。 */
 const SLOT_SIDE_RATIO = 0.7;
@@ -174,6 +193,8 @@ export class BoardView extends Container {
   private readonly _boards: Record<PlayerId, BoardState | null> = { P1: null, P2: null };
   /** 当前动作会走的连线（键为 `kind:from`）；高亮与盘面等级无关（票 02）。 */
   private _activePaths = new Set<string>();
+  /** 表现层时钟（秒），由 `tick` 推进；只驱动归一 / 亢极柔光，不参与任何投影。 */
+  private _clock = 0;
 
   public constructor(layout: Partial<BoardViewLayout> = {}) {
     super();
@@ -184,6 +205,14 @@ export class BoardView extends Container {
   /** 当前生效的极坐标布局参数（快照副本）。 */
   public get layout(): Readonly<BoardViewLayout> {
     return { ...this._layout };
+  }
+
+  /**
+   * 推进表现层时钟（秒）：只驱动归一 / 亢极柔光的流动。
+   * 命名不叫 `update`——那个名字已被双盘快照投影占用（LLD §4.1）。
+   */
+  public tick(dt: number): void {
+    this._clock += dt;
   }
 
   /** 按视口自适应：圆心取视口中心，内外环半径与主印半径按短边等比缩放。 */
@@ -381,12 +410,12 @@ export class BoardView extends Container {
     };
   }
 
-  /** 先画环带、归一金环与主印，最后叠加环归属标签（标签压在最上层）。 */
+  /** 先画环带与主印，再叠归一 / 亢极柔光，最后加环归属标签（标签压在最上层）。 */
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
     this._drawEngraving(ctx);
     this._drawRingBands(ctx);
-    this._drawGuiYiRings(ctx);
     this._drawSeals(ctx);
+    this._drawNodeMarks(ctx);
     this._drawRingLabels(ctx);
   }
 
@@ -398,7 +427,7 @@ export class BoardView extends Container {
     ctx.arc(
       this._layout.centerX,
       this._layout.centerY,
-      this._layout.outerRadius + this._layout.sealSize * 1.1,
+      this._layout.outerRadius + this._layout.sealSize * NODE_AURA_OUTSET_RATIO,
       0,
       Math.PI * 2,
     );
@@ -423,22 +452,20 @@ export class BoardView extends Container {
   }
 
   /**
-   * 归一 = 主印外一圈金环，亢极 = 再加一层（ADR 0018）：中性金、不脉动、内外两盘一视同仁。
-   * 环半径按各自主印半径等比缩放（外环主印更小，金环同步更小）。
+   * 归一 = 主印外一圈金环 + 沿环流动的金色高光；亢极 = 再叠元素色外溢（ADR 0018，票 02 修订）：
+   * 中性、内外两盘一视同仁；环半径与外溢尺度按各自主印半径等比缩放。
    */
-  private _drawGuiYiRings(ctx: CanvasRenderingContext2D): void {
+  private _drawNodeMarks(ctx: CanvasRenderingContext2D): void {
     for (const entry of this._elements) {
-      const { radii, width } = guiYiRingGeometry(entry.sealSize, guiYiRingLayers(entry));
-      if (radii.length === 0) continue;
-      ctx.save();
-      ctx.strokeStyle = GUIYI_RING_COLOR;
-      ctx.lineWidth = width;
-      for (const radius of radii) {
-        ctx.beginPath();
-        ctx.arc(entry.x, entry.y, radius, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.restore();
+      drawNodeMark(
+        ctx,
+        entry.x,
+        entry.y,
+        entry.sealSize,
+        entry.element,
+        nodeMarkLayers(entry),
+        this._clock,
+      );
     }
   }
 
@@ -528,31 +555,144 @@ export class BoardView extends Container {
   }
 }
 
-/** 主印的金环层数：亢极 2 层、归一 1 层、其余 0 层（ADR 0018）。 */
-function guiYiRingLayers(element: BoardElementView): 0 | 1 | 2 {
+/** 主印的节点级状态层数：亢极 2、归一 1、其余 0（ADR 0018）。 */
+function nodeMarkLayers(element: BoardElementView): 0 | 1 | 2 {
   if (element.isKangJi) return 2;
   if (element.isGuiYi) return 1;
   return 0;
 }
 
 /**
- * 一个主印的金环几何：从内到外的各圈半径与线宽（归一 1 圈、亢极 2 圈）。
- * 归一 / 亢极金环与票 05 `resize` 环间距重算共用这一个外扩口径；
- * 亢极最外沿（末圈半径 + 线宽一半）必须留在法盘底晕（`_drawEngraving`）以内。
+ * 画一个主印的节点级状态标记（ADR 0018，票 02 修订）：
+ * 0 层不画；1 层（归一）= 一圈金环 + 沿环缓慢流动的金色高光；
+ * 2 层（亢极）= 归一那一层之外再叠元素色柔光与外扩涟漪（满溢 / 泄露 / 不稳）。
  */
-export function guiYiRingGeometry(
+export function drawNodeMark(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
   sealSize: number,
+  element: WuXing,
   layers: 0 | 1 | 2,
-): { readonly radii: readonly number[]; readonly width: number } {
-  const outsetPerLayer = GUIYI_RING_OUTSET_RATIO / 2;
-  const radii: number[] = [];
-  for (let layer = 0; layer < layers; layer += 1) {
-    radii.push(sealSize * (1 + outsetPerLayer * (layer + 1)));
+  time: number,
+): void {
+  if (layers === 0) return;
+  const width = Math.max(NODE_RING_WIDTH_MIN, sealSize * NODE_RING_WIDTH_RATIO);
+  const radius = sealSize * NODE_RING_SCALE;
+  if (layers === 2) {
+    const ink = WUXING_PALETTE[element];
+    drawSoftAura(ctx, x, y, sealSize, ink, 0.85, KANGJI_OVERFLOW_SCALE, time);
+    drawOverflowRipples(ctx, x, y, sealSize, ink, time);
   }
-  return {
-    radii,
-    width: Math.max(GUIYI_RING_WIDTH_MIN, sealSize * GUIYI_RING_WIDTH_RATIO),
-  };
+  drawRing(ctx, x, y, radius, GUIYI_RING_INK.main, width);
+  drawRingFlow(ctx, x, y, radius, width, GUIYI_RING_INK.light, time);
+}
+
+/** 一圈金环。 */
+function drawRing(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  color: string,
+  lineWidth: number,
+): void {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * 沿环缓慢流动的金色高光：一段头部最亮、尾部渐隐的弧，绕环一圈 `GUIYI_FLOW_PERIOD` 秒。
+ * 用多段小弧拼出渐隐拖尾（不用 `lineDashOffset`，避开与归属环带虚线语义混淆）。
+ */
+function drawRingFlow(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  lineWidth: number,
+  color: string,
+  time: number,
+): void {
+  const head = -Math.PI / 2 + ((time / GUIYI_FLOW_PERIOD) % 1) * Math.PI * 2;
+  const steps = 48;
+  ctx.save();
+  for (let index = 0; index < steps; index += 1) {
+    const t = index / steps;
+    const a0 = head - GUIYI_FLOW_TAIL * t;
+    const a1 = head - GUIYI_FLOW_TAIL * ((index + 1) / steps);
+    ctx.beginPath();
+    ctx.arc(x, y, radius, a1, a0);
+    ctx.strokeStyle = withAlpha(color, (1 - t) ** 2 * 0.6);
+    ctx.lineWidth = lineWidth * (1.6 - t * 0.6);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** 一圈平滑径向柔光：光心随时间缓慢偏移（一侧偏亮），渐变淡到 0，没有硬边。 */
+function drawSoftAura(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  sealSize: number,
+  ink: { readonly main: string; readonly light: string },
+  strength: number,
+  scale: number,
+  time: number,
+): void {
+  const offsetX = Math.cos(time * 0.23) * sealSize * 0.3;
+  const offsetY = Math.sin(time * 0.17) * sealSize * 0.3;
+  const outer = sealSize * (scale + AURA_FALLOFF);
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const grad = ctx.createRadialGradient(x + offsetX, y + offsetY, sealSize * 0.78, x, y, outer);
+  grad.addColorStop(0, withAlpha(ink.light, 0));
+  grad.addColorStop(0.4, withAlpha(ink.light, 0.5 * strength));
+  grad.addColorStop(0.75, withAlpha(ink.main, 0.22 * strength));
+  grad.addColorStop(1, withAlpha(ink.main, 0));
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(x, y, outer, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** 亢极外溢：元素色软边光带一圈圈向外扩、淡入再淡出，像装不住往外漫。 */
+function drawOverflowRipples(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  sealSize: number,
+  ink: { readonly main: string; readonly light: string },
+  time: number,
+): void {
+  const count = 1;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (let index = 0; index < count; index += 1) {
+    const progress = (time * KANGJI_RIPPLE_SPEED + index / count) % 1;
+    const eased = 1 - (1 - progress) ** 2;
+    const radius =
+      sealSize * (KANGJI_RIPPLE_INNER + eased * (KANGJI_RIPPLE_OUTER - KANGJI_RIPPLE_INNER));
+    const alpha = 0.3 * Math.sin(Math.PI * progress) ** 1.2;
+    const thickness = sealSize * KANGJI_RIPPLE_THICKNESS * (1 - progress * 0.3);
+    const outer = radius + thickness;
+    const grad = ctx.createRadialGradient(x, y, Math.max(0.1, radius - thickness), x, y, outer);
+    grad.addColorStop(0, withAlpha(ink.main, 0));
+    grad.addColorStop(0.5, withAlpha(ink.light, alpha));
+    grad.addColorStop(1, withAlpha(ink.main, 0));
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, outer, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 /** 圆角胶囊：底板 + 描边（`roundRect` 在部分环境缺失时退回矩形）。 */
@@ -580,7 +720,7 @@ function drawPill(
 }
 
 /**
- * 把 `#rrggbb` 压到指定不透明度（只给虚空描边用，避免为每档新增调色板常量）。
+ * 把 `#rrggbb` 压到指定不透明度（归一流光、亢极柔光与涟漪共用，避免为每档新增调色板常量）。
  */
 function withAlpha(hex: string, alpha: number): string {
   const value = Number.parseInt(hex.slice(1), 16);
