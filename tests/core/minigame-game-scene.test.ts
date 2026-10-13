@@ -969,6 +969,44 @@ describe('GameScene：按住预览的路径箭头与幽灵态（票 04）', () =
     expect(settled).toEqual({ yin: preview.ghost!.yin, yang: preview.ghost!.yang });
   });
 
+  it('调息：预览带同节点换侧方向（源侧 → 对侧），与结算后一致', () => {
+    // 乙木（阴）：木阴已点亮、对侧虚空 -> 候选【调息】【化】。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1, yang: 0 } } }),
+      prng: scriptedPrng([1]),
+    });
+    const input = new InputManager(scene);
+    scene.start();
+    advance(scene, 0.15);
+    expect(scene.actionBar.getButtons().map((button) => button.label)).toEqual([
+      '【调息】',
+      '【化】',
+    ]);
+
+    // 调息不跳节点，没有连线：用换侧箭表达「阴 → 阳」。
+    pressButton(input, findButton(scene, '【调息】'));
+    expect(scene.board.preview?.path).toBeNull();
+    expect(scene.board.preview?.convert).toEqual({
+      player: 'P1',
+      element: WuXing.WOOD,
+      from: Polarity.YIN,
+      to: Polarity.YANG,
+    });
+    expect(scene.board.preview?.ghost).toEqual({
+      player: 'P1',
+      element: WuXing.WOOD,
+      yin: 1,
+      yang: 1,
+    });
+    input.handleTouchEnd(-1, -1);
+
+    // 真的调息一次，木从 (1,0) 变 (1,1)，与幽灵态一致。
+    pressThenSettle(scene, input, '【调息】');
+    const settled = scene.turnManager.getState().players.P1.board[WuXing.WOOD];
+    expect(settled).toEqual({ yin: 1, yang: 1 });
+  });
+
   it('强化：幽灵态是两次 +1 的真实结果（同侧连加），与结算后一致', () => {
     const scene = new GameScene({
       ...FAST_TIMING,

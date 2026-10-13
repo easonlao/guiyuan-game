@@ -153,10 +153,14 @@ const PREVIEW_ARROW_HEAD_MIN = 6;
 const PREVIEW_ARROW_BARB_RATIO = 0.7;
 /** 相生弧箭两端的主印缩进上限（弧度）：主印在盘心张角超过它时按它截断。 */
 const PREVIEW_ARROW_SEAL_ANGLE_MAX = 0.85;
-/** 弧箭两端从主印中心各自缩进的比例（乘主印张角），留出与鱼形的间隙。 */
+/** 相生弧箭两端从主印中心各自缩进的比例（乘主印张角），留出与鱼形的间隙。 */
 const PREVIEW_ARROW_PAD_RATIO = 0.35;
-/** 径向箭两端相对主印半径的额外间隙。 */
-const PREVIEW_ARROW_GAP_RATIO = 0.35;
+/** 径向箭尾部相对源主印半径的间隙。 */
+const PREVIEW_ATTACK_TAIL_GAP_RATIO = 0.15;
+/** 径向箭箭尖越过目标主印外沿的距离（占主印半径）：贯穿敌节点，箭头从它外侧探出。 */
+const PREVIEW_ATTACK_OVERSHOOT_RATIO = 0.45;
+/** 调息换侧箭的跨度（占主印半径，向两侧各半）：只在节点内，但足够读出方向。 */
+const PREVIEW_CONVERT_SPAN_RATIO = 0.55;
 
 export const DEFAULT_BOARD_LAYOUT: BoardViewLayout = {
   centerX: 0,
@@ -232,8 +236,23 @@ export type BoardCandidatePath = CandidateTarget;
 export interface BoardPreview {
   /** 这一下会走的连线（化 / 强化 = 内环相生弧；破 / 强破 = 跨环径向）；PASS 等无路径时为 `null`。 */
   readonly path: BoardActivePath | null;
+  /** 调息的同节点换侧（源侧 → 对侧）；非调息时不带（`null` / 缺省都表示不画）。 */
+  readonly convert?: BoardConvert | null;
   /** 目标侧「下一步」形态：结算后的目标节点；无落点 / 净零变化时为 `null`。 */
   readonly ghost: BoardGhost | null;
+}
+
+/**
+ * 调息的换侧方向（票 04 rev）：能量从当前点亮的一侧转到同节点的对侧。
+ * 与 `path` 不同，它不跨节点，没有连线可借，用节点内的横向箭单独表达。
+ */
+export interface BoardConvert {
+  readonly player: PlayerId;
+  readonly element: WuXing;
+  /** 能量从哪一侧转出（抽中天干所在、当前已点亮的那侧）。 */
+  readonly from: Polarity;
+  /** 转到哪一侧（幽灵态所在侧）。 */
+  readonly to: Polarity;
 }
 
 /** 目标侧的幽灵态：结算后的目标节点（由 `resolvePreviewGhost` 真跑解析器得到）。 */
@@ -565,7 +584,7 @@ export class BoardView extends Container {
     };
   }
 
-  /** 先画环带与主印，再叠归一 / 亢极柔光，最后画候选弧、幽灵态与路径箭头（都压在最上层）。 */
+  /** 先画环带与主印，再叠归一 / 亢极柔光，最后画候选弧、幽灵态与预览箭头（都压在最上层）。 */
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
     this._drawEngraving(ctx);
     this._drawRingBands(ctx);
@@ -574,6 +593,7 @@ export class BoardView extends Container {
     this._drawCandidateMarks(ctx);
     this._drawGhost(ctx);
     this._drawPreviewArrow(ctx);
+    this._drawConvertArrow(ctx);
     this._drawRingLabels(ctx);
   }
 
@@ -712,7 +732,10 @@ export class BoardView extends Container {
     ctx.restore();
   }
 
-  /** 跨环径向箭：从己方主印外沿指向对方主印外沿，箭尖落在目标上。 */
+  /**
+   * 跨环径向箭（票 04 rev）：从己方主印外沿直插敌节点，箭尖从它外侧探出——
+   * 相克是一条贯穿敌印的短兵，不是缩在两印缝里的一截。
+   */
   private _drawRadialArrow(
     ctx: CanvasRenderingContext2D,
     line: BoardConnectionView,
@@ -725,11 +748,11 @@ export class BoardView extends Container {
     if (length === 0) return;
     const ux = dx / length;
     const uy = dy / length;
-    const gap = this._layout.sealSize * PREVIEW_ARROW_GAP_RATIO;
-    const startPad = this._layout.sealSize + gap;
-    const endPad = this._layout.sealSize * OPPONENT_SEAL_SCALE + gap + head;
-    const from = startPad;
-    const to = Math.max(from + 1, length - endPad);
+    const sealSize = this._layout.sealSize;
+    const targetSeal = sealSize * OPPONENT_SEAL_SCALE;
+    const from = sealSize * (1 + PREVIEW_ATTACK_TAIL_GAP_RATIO);
+    const to = length + targetSeal + sealSize * PREVIEW_ATTACK_OVERSHOOT_RATIO;
+    if (to <= from) return;
     const startX = line.x1 + ux * from;
     const startY = line.y1 + uy * from;
     const tipX = line.x1 + ux * to;
@@ -743,6 +766,32 @@ export class BoardView extends Container {
     ctx.lineTo(tipX, tipY);
     ctx.stroke();
     drawArrowHead(ctx, tipX, tipY, ux, uy, head);
+    ctx.restore();
+  }
+
+  /**
+   * 调息换侧箭（票 04 rev）：调息不跳节点，没有连线可借；在源节点内画一条横向短箭，
+   * 从当前点亮的一侧指向对侧（阴在左、阳在右），把「转到另一侧」这件事读出来。
+   */
+  private _drawConvertArrow(ctx: CanvasRenderingContext2D): void {
+    const convert = this._preview?.convert;
+    if (convert === null || convert === undefined) return;
+    const seal = this._elementView(convert.player, convert.element);
+    const direction = convert.to === Polarity.YANG ? 1 : -1;
+    const span = seal.sealSize * PREVIEW_CONVERT_SPAN_RATIO;
+    const head = Math.max(PREVIEW_ARROW_HEAD_MIN, seal.sealSize * PREVIEW_ARROW_HEAD_RATIO * 0.75);
+    const width = Math.max(PREVIEW_ARROW_WIDTH_MIN, seal.sealSize * PREVIEW_ARROW_WIDTH_RATIO);
+    const startX = seal.x - direction * span;
+    const tipX = seal.x + direction * span;
+    ctx.save();
+    ctx.strokeStyle = withAlpha(PREVIEW_ARROW_INK, PREVIEW_ARROW_ALPHA);
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(startX, seal.y);
+    ctx.lineTo(tipX, seal.y);
+    ctx.stroke();
+    drawArrowHead(ctx, tipX, seal.y, direction, 0, head);
     ctx.restore();
   }
 

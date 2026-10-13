@@ -26,6 +26,7 @@ import {
   Polarity,
   TianGanInfo,
   WuXing,
+  getOppositePolarity,
 } from '../core/types/domain.js';
 import { getActionTargetElement } from './action-button-formatter.js';
 import { isAttackAction } from './action-semantics.js';
@@ -839,6 +840,15 @@ export class GameScene extends Container {
     const ghost = resolvePreviewGhost(action, this._turnManager.getState());
     this.board.setPreview({
       path,
+      convert:
+        action.actionType === ActionType.CONVERT && action.polarity !== undefined
+          ? {
+              player: action.player,
+              element: getActionTargetElement(action, tianGan?.element),
+              from: getOppositePolarity(action.polarity),
+              to: action.polarity,
+            }
+          : null,
       ghost:
         ghost === null
           ? null

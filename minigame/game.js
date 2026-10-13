@@ -2814,7 +2814,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const PREVIEW_ARROW_BARB_RATIO = 0.7;
   const PREVIEW_ARROW_SEAL_ANGLE_MAX = 0.85;
   const PREVIEW_ARROW_PAD_RATIO = 0.35;
-  const PREVIEW_ARROW_GAP_RATIO = 0.35;
+  const PREVIEW_ATTACK_TAIL_GAP_RATIO = 0.15;
+  const PREVIEW_ATTACK_OVERSHOOT_RATIO = 0.45;
+  const PREVIEW_CONVERT_SPAN_RATIO = 0.55;
   const DEFAULT_BOARD_LAYOUT = {
     centerX: 0,
     centerY: 0,
@@ -3086,7 +3088,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         isKangJi: element.isKangJi
       };
     }
-    /** 先画环带与主印，再叠归一 / 亢极柔光，最后画候选弧、幽灵态与路径箭头（都压在最上层）。 */
+    /** 先画环带与主印，再叠归一 / 亢极柔光，最后画候选弧、幽灵态与预览箭头（都压在最上层）。 */
     renderSelf(ctx) {
       this._drawEngraving(ctx);
       this._drawRingBands(ctx);
@@ -3095,6 +3097,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this._drawCandidateMarks(ctx);
       this._drawGhost(ctx);
       this._drawPreviewArrow(ctx);
+      this._drawConvertArrow(ctx);
       this._drawRingLabels(ctx);
     }
     /** Quiet backing and one ownership guide per ring; decoration does not encode state. */
@@ -3217,7 +3220,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       drawArrowHead(ctx, tipX, tipY, -Math.sin(to), Math.cos(to), head);
       ctx.restore();
     }
-    /** 跨环径向箭：从己方主印外沿指向对方主印外沿，箭尖落在目标上。 */
+    /**
+     * 跨环径向箭（票 04 rev）：从己方主印外沿直插敌节点，箭尖从它外侧探出——
+     * 相克是一条贯穿敌印的短兵，不是缩在两印缝里的一截。
+     */
     _drawRadialArrow(ctx, line, width, head) {
       const dx = line.x2 - line.x1;
       const dy = line.y2 - line.y1;
@@ -3225,11 +3231,11 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       if (length === 0) return;
       const ux = dx / length;
       const uy = dy / length;
-      const gap = this._layout.sealSize * PREVIEW_ARROW_GAP_RATIO;
-      const startPad = this._layout.sealSize + gap;
-      const endPad = this._layout.sealSize * OPPONENT_SEAL_SCALE + gap + head;
-      const from = startPad;
-      const to = Math.max(from + 1, length - endPad);
+      const sealSize = this._layout.sealSize;
+      const targetSeal = sealSize * OPPONENT_SEAL_SCALE;
+      const from = sealSize * (1 + PREVIEW_ATTACK_TAIL_GAP_RATIO);
+      const to = length + targetSeal + sealSize * PREVIEW_ATTACK_OVERSHOOT_RATIO;
+      if (to <= from) return;
       const startX = line.x1 + ux * from;
       const startY = line.y1 + uy * from;
       const tipX = line.x1 + ux * to;
@@ -3243,6 +3249,31 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.lineTo(tipX, tipY);
       ctx.stroke();
       drawArrowHead(ctx, tipX, tipY, ux, uy, head);
+      ctx.restore();
+    }
+    /**
+     * 调息换侧箭（票 04 rev）：调息不跳节点，没有连线可借；在源节点内画一条横向短箭，
+     * 从当前点亮的一侧指向对侧（阴在左、阳在右），把「转到另一侧」这件事读出来。
+     */
+    _drawConvertArrow(ctx) {
+      const convert = this._preview?.convert;
+      if (convert === null || convert === void 0) return;
+      const seal = this._elementView(convert.player, convert.element);
+      const direction = convert.to === Polarity.YANG ? 1 : -1;
+      const span = seal.sealSize * PREVIEW_CONVERT_SPAN_RATIO;
+      const head = Math.max(PREVIEW_ARROW_HEAD_MIN, seal.sealSize * PREVIEW_ARROW_HEAD_RATIO * 0.75);
+      const width = Math.max(PREVIEW_ARROW_WIDTH_MIN, seal.sealSize * PREVIEW_ARROW_WIDTH_RATIO);
+      const startX = seal.x - direction * span;
+      const tipX = seal.x + direction * span;
+      ctx.save();
+      ctx.strokeStyle = withAlpha(PREVIEW_ARROW_INK, PREVIEW_ARROW_ALPHA);
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(startX, seal.y);
+      ctx.lineTo(tipX, seal.y);
+      ctx.stroke();
+      drawArrowHead(ctx, tipX, seal.y, direction, 0, head);
       ctx.restore();
     }
     /** Each node owns two independent fish. Element labels sit outside the readable silhouette. */
@@ -5358,6 +5389,12 @@ ${prompt}`;
       const ghost = resolvePreviewGhost(action, this._turnManager.getState());
       this.board.setPreview({
         path,
+        convert: action.actionType === ActionType.CONVERT && action.polarity !== void 0 ? {
+          player: action.player,
+          element: getActionTargetElement(action, tianGan?.element),
+          from: getOppositePolarity(action.polarity),
+          to: action.polarity
+        } : null,
         ghost: ghost === null ? null : {
           player: ghost.player,
           element: ghost.element,
