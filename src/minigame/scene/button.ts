@@ -6,8 +6,8 @@
  * `x` / `y` 即按钮中心。
  * 命中检测、局部变换与渲染顺序由 `Node` 提供，见 `docs/HLD.md` §2 Layer 3。
  *
- * 已知边界：`InputManager` 在手指移出按钮后抬起时不会给按钮任何回调，此时按钮会停在按下
- * 缩放态；调用方（如 `ActionBarView`）可在适当时机调用 `release()` 手动复位。
+ * 抬起回调由 `InputManager` 恒定回给**按下时命中的节点**，因此手指移出按钮后抬起也会复位按压态；
+ * 调用方仍可在需要时手动调用 `release()`（例如预览宿主在指针取消时兜底）。
  */
 
 import { estimateTextWidth } from '../text-metrics.js';
@@ -49,6 +49,10 @@ export interface ButtonOptions {
   readonly disabled?: boolean;
   /** 按下时的缩放系数，默认 0.92。 */
   readonly pressScale?: number;
+  /** 按下回调（命中并按下时触发，禁用态不触发）；用于「按住预览」这类交互。 */
+  readonly onPress?: (button: Button) => void;
+  /** 抬起 / 取消回调（与 `onPress` 配对，含手指移出后抬起的手动 / 自动复位）。 */
+  readonly onRelease?: (button: Button) => void;
   readonly onTap?: (button: Button) => void;
 }
 
@@ -60,6 +64,8 @@ export class Button extends Node {
   public pressScale: number;
 
   private readonly tapHandler?: (button: Button) => void;
+  private readonly pressHandler?: (button: Button) => void;
+  private readonly releaseHandler?: (button: Button) => void;
   private _disabled: boolean;
   private _width: number;
   private _height: number;
@@ -70,6 +76,8 @@ export class Button extends Node {
     this.subLabel = options.subLabel ?? '';
     this.color = options.color ?? DEFAULT_COLOR;
     this.tapHandler = options.onTap;
+    this.pressHandler = options.onPress;
+    this.releaseHandler = options.onRelease;
     this.pressScale = options.pressScale ?? DEFAULT_PRESS_SCALE;
     this._disabled = options.disabled ?? false;
     this._width = options.width ?? autoWidth(this.label, this.subLabel);
@@ -127,12 +135,14 @@ export class Button extends Node {
     }
     this.scaleX = this.pressScale;
     this.scaleY = this.pressScale;
+    this.pressHandler?.(this);
   }
 
   /** 抬起（或取消）：恢复常态缩放。 */
   public release(): void {
     this.scaleX = 1;
     this.scaleY = 1;
+    this.releaseHandler?.(this);
   }
 
   /** 画一个底色方块 + 描边 + 标题/副标题；变换与透明度已由 `Node.render` 就位。 */

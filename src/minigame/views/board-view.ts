@@ -125,6 +125,39 @@ const CANDIDATE_BREATH_MIN = 0.6;
 /** 呼吸的最高不透明度。 */
 const CANDIDATE_BREATH_MAX = 1;
 
+/**
+ * 按住预览时候选标记的呼吸倍率（票 04）：加快节拍，在节点级常驻流动之上仍读得出「我正在预览这一下」。
+ * 所有候选共用一条相位，做不到只加快被按住那一个；「是哪一下」由路径箭头与目标侧幽灵态指出。
+ */
+export const PREVIEW_BREATH_SPEED = 3;
+/**
+ * 幽灵态的绘制不透明度：明显低于实心等级，玩家一眼能分出「这是结算后的样子，不是现在的样子」。
+ * 先把目标半身压暗再画目标形态，否则「降级到虚空」会压在仍然实心的当前形态上看不出来。
+ */
+const GHOST_ALPHA = 0.85;
+const GHOST_SCRIM_ALPHA = 0.5;
+/**
+ * 路径箭头的墨与线宽：复用候选标记的专属强调色（紫），与节点级状态的金色流光 / 元素外溢分开——
+ * 箭头答的是「这一下走哪条线」，和「这里能打」（半身紫）属于同一层临时提示。
+ */
+const PREVIEW_ARROW_INK = THEME.candidateLit;
+const PREVIEW_ARROW_ALPHA = 0.95;
+const PREVIEW_ARROW_WIDTH_RATIO = 0.11;
+const PREVIEW_ARROW_WIDTH_MIN = 2;
+/** 内环相生弧箭相对内环外推的距离（占主印半径）：走到两环之间，不压主印也不压环带。 */
+const PREVIEW_ARROW_RING_OFFSET = 0.9;
+/** 箭头长度相对主印半径的区间（像素下界兜底）。 */
+const PREVIEW_ARROW_HEAD_RATIO = 0.4;
+const PREVIEW_ARROW_HEAD_MIN = 6;
+/** 箭头的两撇相对箭尖长度的比例。 */
+const PREVIEW_ARROW_BARB_RATIO = 0.7;
+/** 相生弧箭两端的主印缩进上限（弧度）：主印在盘心张角超过它时按它截断。 */
+const PREVIEW_ARROW_SEAL_ANGLE_MAX = 0.85;
+/** 弧箭两端从主印中心各自缩进的比例（乘主印张角），留出与鱼形的间隙。 */
+const PREVIEW_ARROW_PAD_RATIO = 0.35;
+/** 径向箭两端相对主印半径的额外间隙。 */
+const PREVIEW_ARROW_GAP_RATIO = 0.35;
+
 export const DEFAULT_BOARD_LAYOUT: BoardViewLayout = {
   centerX: 0,
   centerY: 0,
@@ -192,6 +225,25 @@ export interface BoardActivePath {
  */
 export type BoardCandidatePath = CandidateTarget;
 
+/**
+ * 按住按钮的预览（票 04）：这一下会走的连线 + 目标侧结算后的幽灵态。
+ * 由 `GameScene` 在按下 / 松开时整体设置；`null` 表示回到决策期口径。
+ */
+export interface BoardPreview {
+  /** 这一下会走的连线（化 / 强化 = 内环相生弧；破 / 强破 = 跨环径向）；PASS 等无路径时为 `null`。 */
+  readonly path: BoardActivePath | null;
+  /** 目标侧「下一步」形态：结算后的目标节点；无落点 / 净零变化时为 `null`。 */
+  readonly ghost: BoardGhost | null;
+}
+
+/** 目标侧的幽灵态：结算后的目标节点（由 `resolvePreviewGhost` 真跑解析器得到）。 */
+export interface BoardGhost {
+  readonly player: PlayerId;
+  readonly element: WuXing;
+  readonly yin: NodeLevel;
+  readonly yang: NodeLevel;
+}
+
 /** Ring ownership remains warm/solid and cool/dashed (ADR 0015). */
 const BOARD_BG_COLOR = THEME.deep;
 /**
@@ -235,6 +287,8 @@ export class BoardView extends Container {
   private _activePaths = new Set<string>();
   /** 决策期的候选落点（键为 `player:element:polarity`）；弧与盘面等级、连线高亮都无关（票 03）。 */
   private _candidates: BoardCandidatePath[] = [];
+  /** 按住按钮的预览（票 04）：按下时收窄连线高亮并叠加箭头 / 幽灵态，松开回到决策期。 */
+  private _preview: BoardPreview | null = null;
   /** 候选弧的呼吸相位（0..1）：所有候选共用一个节拍，做不到逐节点独立闪动（票 03）。 */
   private _breathPhase = 0;
   /** 表现层时钟（秒），由 `tick` 推进；只驱动归一 / 亢极柔光，不参与任何投影。 */
@@ -258,7 +312,9 @@ export class BoardView extends Container {
   public tick(dt: number): void {
     this._clock += dt;
     // 慢呼吸：共用一条相位曲线，所有候选弧同时亮 / 同时暗——玩家才分得清「这里能打」。
-    this._breathPhase = (this._clock / CANDIDATE_BREATH_PERIOD) % 1;
+    // 预览期整盘候选一起加快（同一条相位），「是哪一下」交给路径箭头与幽灵态。
+    const speed = this._preview === null ? 1 : PREVIEW_BREATH_SPEED;
+    this._breathPhase = (this._breathPhase + (dt * speed) / CANDIDATE_BREATH_PERIOD) % 1;
   }
 
   /** 按视口自适应：圆心取视口中心，内外环半径与主印半径按短边等比缩放。 */
@@ -369,6 +425,20 @@ export class BoardView extends Container {
     return this._breathPhase;
   }
 
+  /**
+   * 设置 / 清除按住预览（票 04）：设置后连线高亮收窄到该动作的路径，并叠加路径箭头与目标侧幽灵态；
+   * 传 `null` 回到决策期口径（高亮恢复为 `setActivePaths` 给的全部候选）。
+   */
+  public setPreview(preview: BoardPreview | null): void {
+    this._preview = preview;
+    this._rebuild();
+  }
+
+  /** 当前预览（`null` 表示未按住任何按钮）；返回内部引用，调用方只读。 */
+  public get preview(): BoardPreview | null {
+    return this._preview;
+  }
+
   /** 一次投影双方只读棋盘快照；只读不写回（LLD §4.1）。 */
   public update(p1Board: BoardState, p2Board: BoardState): void {
     this._boards[OWN_PLAYER] = p1Board;
@@ -452,8 +522,20 @@ export class BoardView extends Container {
       y1: source.y,
       x2: target.x,
       y2: target.y,
-      isActive: this._activePaths.has(connectionKey(kind, from)),
+      isActive: this._isActivePath(kind, from),
     };
+  }
+
+  /**
+   * 一条连线当前是否被强调：按住预览时只强调被按住那一下的路径（`BoardPreview.path`），
+   * 其余候选静默；未预览时回到 `setActivePaths` 给的全部候选路径。
+   */
+  private _isActivePath(kind: BoardConnectionKind, from: WuXing): boolean {
+    const preview = this._preview;
+    if (preview !== null) {
+      return preview.path !== null && preview.path.kind === kind && preview.path.from === from;
+    }
+    return this._activePaths.has(connectionKey(kind, from));
   }
 
   private _elementView(player: PlayerId, element: WuXing): BoardElementView {
@@ -483,13 +565,15 @@ export class BoardView extends Container {
     };
   }
 
-  /** 先画环带与主印，再叠归一 / 亢极柔光，最后画候选弧与环归属标签（都压在最上层）。 */
+  /** 先画环带与主印，再叠归一 / 亢极柔光，最后画候选弧、幽灵态与路径箭头（都压在最上层）。 */
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
     this._drawEngraving(ctx);
     this._drawRingBands(ctx);
     this._drawSeals(ctx);
     this._drawNodeMarks(ctx);
     this._drawCandidateMarks(ctx);
+    this._drawGhost(ctx);
+    this._drawPreviewArrow(ctx);
     this._drawRingLabels(ctx);
   }
 
@@ -553,6 +637,113 @@ export class BoardView extends Container {
       const seal = this._elementView(candidate.player, candidate.element);
       drawCandidateMark(ctx, seal.x, seal.y, seal.sealSize, candidate.polarity, this._breathPhase);
     }
+  }
+
+  /**
+   * 按住预览的目标侧幽灵态（票 04）：只画**真的会变**的那几侧结算后的形态。
+   * 未变的半身一概不碰（否则升级 / 降级之外的半身也会被洗一层）。
+   */
+  private _drawGhost(ctx: CanvasRenderingContext2D): void {
+    const ghost = this._preview?.ghost;
+    if (ghost === null || ghost === undefined) return;
+    const seal = this._elementView(ghost.player, ghost.element);
+    const before = this._boards[ghost.player]?.[ghost.element] ?? VOID_NODE;
+    for (const polarity of [Polarity.YIN, Polarity.YANG]) {
+      const after = polarity === Polarity.YIN ? ghost.yin : ghost.yang;
+      const prev = polarity === Polarity.YIN ? before.yin : before.yang;
+      if (after === prev) continue;
+      drawGhostHalf(ctx, seal.x, seal.y, seal.sealSize, seal.element, polarity, after);
+    }
+  }
+
+  /** 按住预览的路径箭头（票 04）：化 / 强化 = 内环顺时针弧箭，破 / 强破 = 跨环径向箭。 */
+  private _drawPreviewArrow(ctx: CanvasRenderingContext2D): void {
+    if (this._preview === null) return;
+    const width = Math.max(
+      PREVIEW_ARROW_WIDTH_MIN,
+      this._layout.sealSize * PREVIEW_ARROW_WIDTH_RATIO,
+    );
+    const head = Math.max(PREVIEW_ARROW_HEAD_MIN, this._layout.sealSize * PREVIEW_ARROW_HEAD_RATIO);
+    for (const line of this._connections) {
+      if (!line.isActive) continue;
+      if (line.kind === 'generation') {
+        this._drawGenerationArrow(ctx, line, width, head);
+      } else {
+        this._drawRadialArrow(ctx, line, width, head);
+      }
+    }
+  }
+
+  /** 内环相生弧箭：沿内环顺时针扫到相生目标，箭尖指向环序的下一个节点。 */
+  private _drawGenerationArrow(
+    ctx: CanvasRenderingContext2D,
+    line: BoardConnectionView,
+    width: number,
+    head: number,
+  ): void {
+    const { centerX, centerY } = this._layout;
+    const radius = this._layout.innerRadius + this._layout.sealSize * PREVIEW_ARROW_RING_OFFSET;
+    const startAngle = Math.atan2(line.y1 - centerY, line.x1 - centerX);
+    const endAngle = Math.atan2(line.y2 - centerY, line.x2 - centerX);
+    // 内环顺时针 = 角度递增；相生目标恒在下一个环位，把差值归一到 (0, 2π)。
+    const sweep = (((endAngle - startAngle) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    // 弧两端的缩进：别伸进主印本体，留出与鱼形的间隙；弧太短时仍保住一段可见长度。
+    const halfSealAngle = Math.asin(
+      Math.min(
+        PREVIEW_ARROW_SEAL_ANGLE_MAX,
+        this._layout.sealSize / Math.max(1, this._layout.innerRadius),
+      ),
+    );
+    const pad = Math.min(halfSealAngle, sweep * PREVIEW_ARROW_PAD_RATIO);
+    const from = startAngle + pad;
+    const to = startAngle + sweep - pad;
+    if (to <= from) return;
+    ctx.save();
+    ctx.strokeStyle = withAlpha(PREVIEW_ARROW_INK, PREVIEW_ARROW_ALPHA);
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, from, to);
+    ctx.stroke();
+    // 箭尖：沿角度递增的切向，落在弧的终点上。
+    const tipX = centerX + radius * Math.cos(to);
+    const tipY = centerY + radius * Math.sin(to);
+    drawArrowHead(ctx, tipX, tipY, -Math.sin(to), Math.cos(to), head);
+    ctx.restore();
+  }
+
+  /** 跨环径向箭：从己方主印外沿指向对方主印外沿，箭尖落在目标上。 */
+  private _drawRadialArrow(
+    ctx: CanvasRenderingContext2D,
+    line: BoardConnectionView,
+    width: number,
+    head: number,
+  ): void {
+    const dx = line.x2 - line.x1;
+    const dy = line.y2 - line.y1;
+    const length = Math.hypot(dx, dy);
+    if (length === 0) return;
+    const ux = dx / length;
+    const uy = dy / length;
+    const gap = this._layout.sealSize * PREVIEW_ARROW_GAP_RATIO;
+    const startPad = this._layout.sealSize + gap;
+    const endPad = this._layout.sealSize * OPPONENT_SEAL_SCALE + gap + head;
+    const from = startPad;
+    const to = Math.max(from + 1, length - endPad);
+    const startX = line.x1 + ux * from;
+    const startY = line.y1 + uy * from;
+    const tipX = line.x1 + ux * to;
+    const tipY = line.y1 + uy * to;
+    ctx.save();
+    ctx.strokeStyle = withAlpha(PREVIEW_ARROW_INK, PREVIEW_ARROW_ALPHA);
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+    drawArrowHead(ctx, tipX, tipY, ux, uy, head);
+    ctx.restore();
   }
 
   /** Each node owns two independent fish. Element labels sit outside the readable silhouette. */
@@ -957,6 +1148,51 @@ export function drawCandidateMark(
     Math.max(CANDIDATE_OUTLINE_WIDTH_MIN, sealSize * CANDIDATE_OUTLINE_WIDTH_RATIO) * swell;
   ctx.stroke();
   ctx.restore();
+}
+
+/**
+ * 目标侧幽灵态的单个半身：先把当前半身压暗（否则降级到虚空时看不出变化），
+ * 再用半透明画结算后的等级形态——「下一步」是这个形状。
+ */
+function drawGhostHalf(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  element: WuXing,
+  polarity: Polarity,
+  level: NodeLevel,
+): void {
+  ctx.save();
+  traceFishHalf(ctx, x, y, radius, polarity);
+  ctx.clip();
+  ctx.globalAlpha = GHOST_SCRIM_ALPHA;
+  ctx.fillStyle = THEME.ink;
+  ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.globalAlpha = GHOST_ALPHA;
+  drawYinYangFish(ctx, x, y, radius, polarity, level, element);
+  ctx.restore();
+}
+
+/** 箭头头部：以 `(tipX, tipY)` 为尖、沿单位方向 `(dirX, dirY)` 退后 `size` 画两撇。 */
+function drawArrowHead(
+  ctx: CanvasRenderingContext2D,
+  tipX: number,
+  tipY: number,
+  dirX: number,
+  dirY: number,
+  size: number,
+): void {
+  const barbs = size * PREVIEW_ARROW_BARB_RATIO;
+  const normalX = -dirY;
+  const normalY = dirX;
+  ctx.beginPath();
+  ctx.moveTo(tipX - dirX * size + normalX * barbs, tipY - dirY * size + normalY * barbs);
+  ctx.lineTo(tipX, tipY);
+  ctx.lineTo(tipX - dirX * size - normalX * barbs, tipY - dirY * size - normalY * barbs);
+  ctx.stroke();
 }
 
 /** 阴阳鱼的半身轮廓（与 `drawYinYangFish` 同一套 S 形）：阴在左、阳在右。 */

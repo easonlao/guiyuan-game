@@ -40,6 +40,11 @@ export interface ActionBarViewOptions {
 export class ActionBarView extends Container {
   /** 面板是否允许玩家操作；改完需调用 `refresh()` 重新投影。 */
   public interactive: boolean;
+  /**
+   * 按住 / 松开按钮的预览回调（票 04）：按下时传出该候选动作，松开或取消时传 `null`。
+   * 面板只负责「哪一个候选被按住」，预览的落点与幽灵态归 `GameScene` 处理。
+   */
+  public onPreview?: (action: ActionPayload | null) => void;
 
   private readonly turnManager: TurnManager;
   private availableWidth: number;
@@ -131,6 +136,8 @@ export class ActionBarView extends Container {
       label: formatted.label,
       subLabel: formatted.subLabel,
       color: formatted.color,
+      onPress: () => this.onPreview?.(action),
+      onRelease: () => this.onPreview?.(null),
       onTap: () => this.dispatch(action),
     });
   }

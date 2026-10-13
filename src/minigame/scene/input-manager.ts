@@ -32,9 +32,11 @@ export class InputManager {
 
   public handleTouchEnd(screenX: number, screenY: number): void {
     const target = this.stage.hitTest(screenX, screenY);
-    target?.onTouchEnd?.(screenX, screenY);
     const pressed = this.pressedNode;
     this.pressedNode = null;
+    // 抬起事件恒定回给「按下时命中的节点」：手指移出按钮后抬起也要复位按压态（`Button` 的已知边界）。
+    // 命中 `target` 只在它与按下节点同一时才有意义，避免误给从未按下的节点发抬起。
+    pressed?.onTouchEnd?.(screenX, screenY);
     if (pressed !== null && pressed === target) {
       pressed.onTap?.(screenX, screenY);
     }

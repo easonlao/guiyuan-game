@@ -41,6 +41,7 @@ import {
   resolveActionPath,
 } from './views/board-view.js';
 import { resolveCandidateTarget } from './candidate-target.js';
+import { resolvePreviewGhost } from './preview-target.js';
 import { CharacterView } from './views/character-view.js';
 import {
   ActionResultView,
@@ -268,6 +269,8 @@ export class GameScene extends Container {
   /** 切换表现阶段：连线高亮、候选落点弧与阶段一致（只有 `awaiting-player` 有待定动作）。 */
   private setPhase(phase: GameScenePhase): void {
     this._phase = phase;
+    // 阶段一变，上一次按住留下的预览（箭头 / 幽灵态）立即作废；预览只在按住期间存在。
+    this.board.setPreview(null);
     this.board.setActivePaths(this.activePathsFor(phase));
     this.board.setCandidates(this.candidatesFor(phase));
     this.placeResult();
@@ -810,9 +813,41 @@ export class GameScene extends Container {
   }
 
   private buildActionBar(turnManager: TurnManager): ActionBarView {
-    return new ActionBarView({
+    const actionBar = new ActionBarView({
       turnManager,
       width: this.width - ACTION_BAR_MARGIN * 2,
+    });
+    // 按住 / 松开按钮驱动法盘预览（票 04）：面板只管「哪一个候选被按住」，落点与幽灵态在这里解。
+    actionBar.onPreview = (action) => this.previewAction(action);
+    return actionBar;
+  }
+
+  /**
+   * 按住 / 松开按钮的预览（票 04）：按下时把连线高亮收窄到这一下的路径，并叠加路径箭头与
+   * 目标侧幽灵态；松开 / 取消（`action === null`）回到决策期。
+   *
+   * 幽灵态真跑一遍核心解析器（`resolvePreviewGhost`）取目标节点结算后的等级——
+   * 强化 / 强破的目标侧不在载荷里，只有解析结果才是真实落点，不能用近似落点。
+   */
+  private previewAction(action: ActionPayload | null): void {
+    if (action === null || this._phase !== 'awaiting-player') {
+      this.board.setPreview(null);
+      return;
+    }
+    const tianGan = this._turnManager.getCurrentTianGan();
+    const path = tianGan === null ? null : resolveActionPath(action.actionType, tianGan.element);
+    const ghost = resolvePreviewGhost(action, this._turnManager.getState());
+    this.board.setPreview({
+      path,
+      ghost:
+        ghost === null
+          ? null
+          : {
+              player: ghost.player,
+              element: ghost.element,
+              yin: ghost.after.yin,
+              yang: ghost.after.yang,
+            },
     });
   }
 

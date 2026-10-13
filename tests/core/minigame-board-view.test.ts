@@ -6,6 +6,7 @@ import {
   drawYinYangFish,
   GUIYI_RING_INK,
   NODE_AURA_OUTSET_RATIO,
+  PREVIEW_BREATH_SPEED,
   resolveActionPath,
 } from '../../src/minigame/views/board-view.js';
 import { ActionType, NodeLevel, PlayerId, Polarity, WuXing } from '../../src/core/types/domain.js';
@@ -733,6 +734,201 @@ describe('Minigame BoardView: 候选落点半身标记与同相位慢呼吸（�
             fromCenter + arc.radius,
             `${String(width)}x${String(height)} 候选标记越出底晕`,
           ).toBeLessThanOrEqual(haloRadius + 1e-9);
+        }
+      }
+    }
+  });
+});
+
+describe('Minigame BoardView: 按住预览的路径箭头与幽灵态（票 04）', () => {
+  /** 幽灵态的压暗层：颜色就是 `THEME.ink`，盘面其他地方不用这个颜色。 */
+  function scrimFills(ctx: RecordingContext) {
+    return ctx.paths.filter((path) => path.color === THEME.ink && path.strokeWidth === 0);
+  }
+
+  /** `#rrggbb` → `r, g, b`，用来按颜色在落笔记录里找回箭头。 */
+  function rgbOf(hex: string): string {
+    const value = Number.parseInt(hex.slice(1), 16);
+    return `${String((value >> 16) & 0xff)}, ${String((value >> 8) & 0xff)}, ${String(value & 0xff)}`;
+  }
+
+  function render(view: BoardView): RecordingContext {
+    const ctx = new RecordingContext();
+    view.render(ctx.asContext());
+    return ctx;
+  }
+
+  it('按住时连线高亮收窄到这一下的路径，松开恢复决策期的全部候选', () => {
+    const view = new BoardView();
+    view.update(boardWith(), boardWith());
+    view.setActivePaths([
+      { kind: 'generation', from: WuXing.WOOD },
+      { kind: 'attack', from: WuXing.WOOD },
+    ]);
+    const active = () =>
+      view.connections.filter((line) => line.isActive).map((line) => `${line.kind}:${line.from}`);
+
+    expect(active()).toEqual(['generation:WOOD', 'attack:WOOD']);
+
+    view.setPreview({ path: { kind: 'attack', from: WuXing.WOOD }, ghost: null });
+    expect(active()).toEqual(['attack:WOOD']);
+
+    view.setPreview(null);
+    expect(active()).toEqual(['generation:WOOD', 'attack:WOOD']);
+  });
+
+  it('化 / 强化走内环顺时针弧箭：两环之间一段弧 + 箭尖', () => {
+    const view = new BoardView();
+    view.setPreview({ path: { kind: 'generation', from: WuXing.WOOD }, ghost: null });
+    const ctx = render(view);
+    const { centerX, centerY, innerRadius, outerRadius } = view.layout;
+
+    // 弧心是盘心、半径落在两环之间（环带本身在半径等于内外环处，不在区间内）。
+    const arc = ctx.arcs.find(
+      (entry) =>
+        entry.x === centerX &&
+        entry.y === centerY &&
+        entry.radius > innerRadius &&
+        entry.radius < outerRadius,
+    );
+    expect(arc, '内环相生弧箭').toBeDefined();
+    // 沿环顺时针（角度递增）从木扫到相生火，两端各给主印留一段缩进。
+    const woodAngle = sealOf(view, 'P1', WuXing.WOOD).angle;
+    const fireAngle = sealOf(view, 'P1', WuXing.FIRE).angle;
+    expect(arc!.end).toBeGreaterThan(arc!.start);
+    expect(arc!.start).toBeGreaterThan(woodAngle);
+    expect(arc!.end).toBeLessThan(fireAngle);
+    // 箭尖：三段折点（两撇）的强调色落笔。
+    const arrowHead = rgbOf(THEME.candidateLit);
+    expect(
+      ctx.paths.filter((path) => path.strokeWidth > 0 && path.color.includes(arrowHead)),
+      '弧线 + 两撇箭尖',
+    ).toHaveLength(2);
+  });
+
+  it('破 / 强破走径向箭：从己方主印外沿指向对方主印，箭尖在目标端', () => {
+    const view = new BoardView();
+    view.setPreview({ path: { kind: 'attack', from: WuXing.WOOD }, ghost: null });
+    const ctx = render(view);
+    const arrowHead = rgbOf(THEME.candidateLit);
+
+    const line = ctx.paths.find(
+      (path) => path.strokeWidth > 0 && path.color.includes(arrowHead) && path.points.length === 2,
+    );
+    expect(line, '跨环径向线').toBeDefined();
+    const { centerX, centerY } = view.layout;
+    const fromCenter = line!.points.map((point) =>
+      Math.hypot(point.x - centerX, point.y - centerY),
+    );
+    // 起点在己方环、终点更靠外（指向对方主印）。
+    expect(fromCenter[1]).toBeGreaterThan(fromCenter[0]);
+    // 没有内环弧箭：这条路径是径向而不是相生弧。
+    expect(
+      ctx.arcs.filter(
+        (entry) =>
+          entry.x === centerX &&
+          entry.y === centerY &&
+          entry.radius > view.layout.innerRadius &&
+          entry.radius < view.layout.outerRadius,
+      ),
+    ).toHaveLength(0);
+  });
+
+  it('未按住时不画任何路径箭头：决策期只靠候选半身标记', () => {
+    const view = new BoardView();
+    view.setActivePaths([
+      { kind: 'generation', from: WuXing.WOOD },
+      { kind: 'attack', from: WuXing.WOOD },
+    ]);
+    const arrowHead = rgbOf(THEME.candidateLit);
+    const ctx = render(view);
+
+    expect(ctx.paths.filter((path) => path.color.includes(arrowHead))).toHaveLength(0);
+  });
+
+  it('幽灵态只画真的会变的那几侧：未变的半身不压暗', () => {
+    const view = new BoardView();
+    view.update(boardWith(), boardWith());
+
+    // 火 (0,0) -> 阴侧升到点亮：只有阴半身被压暗。
+    view.setPreview({
+      path: null,
+      ghost: { player: 'P1', element: WuXing.FIRE, yin: 1, yang: 0 },
+    });
+    expect(scrimFills(render(view))).toHaveLength(1);
+
+    // 阳侧也变：两个半身都进幽灵态。
+    view.setPreview({
+      path: null,
+      ghost: { player: 'P1', element: WuXing.FIRE, yin: 1, yang: 1 },
+    });
+    expect(scrimFills(render(view))).toHaveLength(2);
+
+    // 结算前后完全相同：不画（净零变化不伪造预览）。
+    view.setPreview({
+      path: null,
+      ghost: { player: 'P1', element: WuXing.FIRE, yin: 0, yang: 0 },
+    });
+    expect(scrimFills(render(view))).toHaveLength(0);
+  });
+
+  it('预览期候选呼吸加快，松开后恢复原速，共用同一个时钟', () => {
+    const baseline = new BoardView();
+    baseline.tick(CANDIDATE_BREATH_PERIOD / 4);
+    expect(baseline.breathPhase).toBeCloseTo(0.25, 9);
+
+    const view = new BoardView();
+    view.setPreview({ path: null, ghost: null });
+    view.tick(CANDIDATE_BREATH_PERIOD / 4);
+    expect(view.breathPhase).toBeCloseTo(0.25 * PREVIEW_BREATH_SPEED, 9);
+
+    // 松开后从当前相位继续，按原速推进。
+    view.setPreview(null);
+    const phase = view.breathPhase;
+    view.tick(CANDIDATE_BREATH_PERIOD / 4);
+    expect(view.breathPhase).toBeCloseTo((phase + 0.25) % 1, 9);
+  });
+
+  it('setPreview(null) 清空箭头与幽灵态，不影响候选标记与盘面投影', () => {
+    const view = new BoardView();
+    view.update(boardWith(), boardWith());
+    view.setCandidates([{ player: 'P1', element: WuXing.WOOD, polarity: Polarity.YANG }]);
+    view.setPreview({
+      path: { kind: 'attack', from: WuXing.WOOD },
+      ghost: { player: 'P2', element: WuXing.EARTH, yin: -1, yang: 0 },
+    });
+    expect(view.preview).not.toBeNull();
+    expect(scrimFills(render(view)).length).toBeGreaterThan(0);
+
+    view.setPreview(null);
+    expect(view.preview).toBeNull();
+    expect(scrimFills(render(view))).toHaveLength(0);
+    // 候选标记是另一条通道，不受预览清除影响。
+    expect(view.candidates).toHaveLength(1);
+  });
+
+  it('幽灵态的压暗不越出主印自身轮廓（三尺寸）', () => {
+    for (const [width, height] of [
+      [320, 568],
+      [390, 844],
+      [460, 900],
+    ] as const) {
+      const view = new BoardView();
+      view.resize(width, height);
+      view.update(boardWith(), boardWith());
+      view.setPreview({
+        path: null,
+        ghost: { player: 'P2', element: WuXing.WOOD, yin: 2, yang: 2 },
+      });
+      const ctx = render(view);
+      const seal = sealOf(view, 'P2', WuXing.WOOD);
+      // 压暗层裁在半径 = 主印半径的鱼形里：落笔点到主印中心的距离不超过主印半径。
+      for (const path of scrimFills(ctx)) {
+        for (const point of path.points) {
+          expect(
+            Math.hypot(point.x - seal.x, point.y - seal.y),
+            `${String(width)}x${String(height)} 幽灵态越出主印`,
+          ).toBeLessThanOrEqual(seal.sealSize + 1e-9);
         }
       }
     }

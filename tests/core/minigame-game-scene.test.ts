@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { GameScene, describeAutoFlow } from '../../src/minigame/game-scene.js';
 import { LEVEL_LABEL } from '../../src/minigame/views/action-result-view.js';
+import {
+  CANDIDATE_BREATH_PERIOD,
+  PREVIEW_BREATH_SPEED,
+} from '../../src/minigame/views/board-view.js';
 import { InputManager } from '../../src/minigame/scene/input-manager.js';
 import { Button } from '../../src/minigame/scene/button.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
@@ -837,6 +841,224 @@ describe('GameScene：候选落点弧（票 03）', () => {
     // 之后是天道回合，玩家侧仍无候选弧。
     advanceUntil(scene, () => scene.phase === 'ai-thinking');
     expect(arcTargets(scene)).toEqual([]);
+  });
+});
+
+/**
+ * 按住预览（票 04）：按下按钮时收窄连线高亮、叠加路径箭头与目标侧幽灵态，松开或取消回决策期。
+ * 幽灵态必须真跑解析器：这里按下后读到的预览，与同一动作结算后的真实盘面逐侧对照。
+ */
+describe('GameScene：按住预览的路径箭头与幽灵态（票 04）', () => {
+  /** 当前点亮的连线，读作 `类型:起点->终点`。 */
+  function activeLines(scene: GameScene): string[] {
+    return scene.board.connections
+      .filter((line) => line.isActive)
+      .map((line) => `${line.kind}:${line.from}->${line.to}`);
+  }
+
+  function findButton(scene: GameScene, label: string): Button {
+    const button = scene.actionBar.getButtons().find((entry) => entry.label === label);
+    expect(button, `找不到按钮 ${label}`).toBeDefined();
+    return button as Button;
+  }
+
+  /** 按住按钮中心（不抬指）：触发预览。 */
+  function pressButton(input: InputManager, button: Button): void {
+    const point = buttonScreenPosition(button);
+    input.handleTouchStart(point.x, point.y);
+  }
+
+  /** 按住后把手指移出按钮再抬起：取消这一下，不结算。 */
+  function cancelPress(input: InputManager, button: Button): void {
+    const point = buttonScreenPosition(button);
+    input.handleTouchStart(point.x, point.y);
+    input.handleTouchEnd(-1, -1);
+  }
+
+  /** 按住按钮、记下预览，再在同一按钮上抬指结算；返回按下时的预览。 */
+  function pressThenSettle(
+    scene: GameScene,
+    input: InputManager,
+    label: string,
+  ): NonNullable<GameScene['board']['preview']> {
+    const button = findButton(scene, label);
+    const point = buttonScreenPosition(button);
+    input.handleTouchStart(point.x, point.y);
+    const preview = scene.board.preview;
+    expect(preview, `${label} 按下后应有预览`).not.toBeNull();
+    input.handleTouchEnd(point.x, point.y);
+    advanceUntil(scene, () => scene.phase === 'result' || scene.phase === 'game-over');
+    return preview as NonNullable<GameScene['board']['preview']>;
+  }
+
+  it('按住按钮：路径箭头收窄到这一下 + 目标侧幽灵态 + 候选呼吸加快；取消回到决策期', () => {
+    // 甲木（阳）：木归一 (1,1)、相生火虚空、对方土可破 -> 候选【破】【强化】【强破】。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 0, yang: 0 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    const input = new InputManager(scene);
+    scene.start();
+    advance(scene, 0.15);
+    expect(scene.phase).toBe('awaiting-player');
+
+    pressButton(input, findButton(scene, '【破】'));
+    const preview = scene.board.preview;
+    expect(preview).not.toBeNull();
+    expect(preview!.path).toEqual({ kind: 'attack', from: WuXing.WOOD });
+    expect(preview!.ghost).toEqual({
+      player: 'P2',
+      element: WuXing.EARTH,
+      yin: -1,
+      yang: 0,
+    });
+    // 只强调被按住那一下的路径：相生线静默。
+    expect(activeLines(scene)).toEqual(['attack:WOOD->EARTH']);
+
+    // 候选呼吸加快（共用票 02 的时钟，不另起）。
+    const before = scene.board.breathPhase;
+    scene.update(CANDIDATE_BREATH_PERIOD / 4);
+    expect(scene.board.breathPhase).toBeCloseTo((before + 0.25 * PREVIEW_BREATH_SPEED) % 1, 9);
+
+    // 取消：手指移出后抬起，不结算，预览清空且回到决策期口径。
+    input.handleTouchEnd(-1, -1);
+    expect(scene.board.preview).toBeNull();
+    expect(scene.phase).toBe('awaiting-player');
+    expect(activeLines(scene)).toEqual(['generation:WOOD->FIRE', 'attack:WOOD->EARTH']);
+  });
+
+  it('破：幽灵态与结算后的盘面逐侧一致', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 0, yang: 0 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    const input = new InputManager(scene);
+    scene.start();
+    advance(scene, 0.15);
+
+    const preview = pressThenSettle(scene, input, '【破】');
+    expect(preview.path).toEqual({ kind: 'attack', from: WuXing.WOOD });
+    const settled = scene.turnManager.getState().players.P2.board[WuXing.EARTH];
+    expect(settled).toEqual({ yin: preview.ghost!.yin, yang: preview.ghost!.yang });
+  });
+
+  it('化：幽灵态指向己方相生节点，与结算后一致', () => {
+    // 乙木（阴）：木归一、对侧已点亮禁调息 -> 候选【化】【强化】【强破】。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } } }),
+      prng: scriptedPrng([1]),
+    });
+    const input = new InputManager(scene);
+    scene.start();
+    advance(scene, 0.15);
+
+    const preview = pressThenSettle(scene, input, '【化】');
+    expect(preview.path).toEqual({ kind: 'generation', from: WuXing.WOOD });
+    expect(preview.ghost?.player).toBe('P1');
+    expect(preview.ghost?.element).toBe(WuXing.FIRE);
+    const settled = scene.turnManager.getState().players.P1.board[WuXing.FIRE];
+    expect(settled).toEqual({ yin: preview.ghost!.yin, yang: preview.ghost!.yang });
+  });
+
+  it('强化：幽灵态是两次 +1 的真实结果（同侧连加），与结算后一致', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 0, yang: 0 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    const input = new InputManager(scene);
+    scene.start();
+    advance(scene, 0.15);
+
+    const preview = pressThenSettle(scene, input, '【强化】');
+    expect(preview.ghost?.player).toBe('P1');
+    expect(preview.ghost?.element).toBe(WuXing.FIRE);
+    // 火 (0,0) 连抬两级落在阴侧，不是一次 +1 的 (1,0)。
+    expect(preview.ghost).toEqual({ player: 'P1', element: WuXing.FIRE, yin: 2, yang: 0 });
+    const settled = scene.turnManager.getState().players.P1.board[WuXing.FIRE];
+    expect(settled).toEqual({ yin: preview.ghost!.yin, yang: preview.ghost!.yang });
+  });
+
+  it('强破：幽灵态是两次 -1 的真实结果（先阴后阳），与结算后一致', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: 0, yang: 0 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    const input = new InputManager(scene);
+    scene.start();
+    advance(scene, 0.15);
+
+    const preview = pressThenSettle(scene, input, '【强破】');
+    expect(preview.path).toEqual({ kind: 'attack', from: WuXing.WOOD });
+    expect(preview.ghost).toEqual({ player: 'P2', element: WuXing.EARTH, yin: -1, yang: -1 });
+    const settled = scene.turnManager.getState().players.P2.board[WuXing.EARTH];
+    expect(settled).toEqual({ yin: preview.ghost!.yin, yang: preview.ghost!.yang });
+  });
+
+  it('净零变化不伪造幽灵态：强化打相生 (2,2) 时仍显示路径但不画幽灵态', () => {
+    // 相生火已亢极 (2,2)：强化两次 ±1 互相抵消，目标净零变化。
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: {
+          [WuXing.WOOD]: { yin: 1, yang: 1 },
+          [WuXing.FIRE]: { yin: 2, yang: 2 },
+        },
+        P2: { [WuXing.EARTH]: { yin: 0, yang: 0 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    const input = new InputManager(scene);
+    scene.start();
+    advance(scene, 0.15);
+
+    pressButton(input, findButton(scene, '【强化】'));
+    expect(scene.board.preview?.path).toEqual({ kind: 'generation', from: WuXing.WOOD });
+    expect(scene.board.preview?.ghost).toBeNull();
+  });
+
+  it('强破打双侧已道损的目标：有路径但无幽灵态（核心层见底即止）', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      initialState: gameStateWith({
+        P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } },
+        P2: { [WuXing.EARTH]: { yin: -1, yang: -1 } },
+      }),
+      prng: scriptedPrng([0]),
+    });
+    const input = new InputManager(scene);
+    scene.start();
+    advance(scene, 0.15);
+    // 破被封死，只剩【强化】【强破】。
+    expect(scene.actionBar.getButtons().map((button) => button.label)).toEqual([
+      '【强化】',
+      '【强破】',
+    ]);
+
+    pressButton(input, findButton(scene, '【强破】'));
+    expect(scene.board.preview?.path).toEqual({ kind: 'attack', from: WuXing.WOOD });
+    expect(scene.board.preview?.ghost).toBeNull();
+
+    // 取消后回到决策期。
+    cancelPress(input, findButton(scene, '【强破】'));
+    expect(scene.board.preview).toBeNull();
+    expect(scene.phase).toBe('awaiting-player');
   });
 });
 
