@@ -2753,6 +2753,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const OUTER_RADIUS_RATIO = 0.4;
   const SEAL_SIZE_RATIO = 0.062;
   const OPPONENT_SEAL_SCALE = 0.82;
+  const VOID_OUTLINE_ALPHA = 0.55;
   const SLOT_SIDE_RATIO = 0.7;
   const DEFAULT_BOARD_LAYOUT = {
     centerX: 0,
@@ -3085,6 +3086,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     ctx.lineWidth = 1.5;
     ctx.stroke();
   }
+  function withAlpha(hex, alpha) {
+    const value = Number.parseInt(hex.slice(1), 16);
+    const red = value >> 16 & 255;
+    const green = value >> 8 & 255;
+    const blue = value & 255;
+    return `rgba(${String(red)}, ${String(green)}, ${String(blue)}, ${String(alpha)})`;
+  }
   function drawYinYangFish(ctx, x, y, radius, polarity, level, element) {
     const yin = polarity === Polarity.YIN;
     const palette = WUXING_PALETTE[element];
@@ -3096,28 +3104,29 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     ctx.arc(x, y - radius / 2, radius / 2, Math.PI / 2, -Math.PI / 2);
     ctx.closePath();
     if (level === 2 || level === -1) ctx.clip();
-    ctx.fillStyle = level === -1 ? "#3e474a" : level === 0 ? "#182c34" : palette.main;
-    if (level === 2) {
-      const core = ctx.createRadialGradient(
-        x,
-        y + (yin ? 1 : -1) * radius / 2,
-        0,
-        x,
-        y + (yin ? 1 : -1) * radius / 2,
-        radius * 1.5
-      );
-      core.addColorStop(0, palette.light);
-      core.addColorStop(0.45, palette.light);
-      core.addColorStop(1, palette.main);
-      ctx.fillStyle = core;
+    if (level !== 0) {
+      if (level === 2) {
+        const core = ctx.createRadialGradient(
+          x,
+          y + (yin ? 1 : -1) * radius / 2,
+          0,
+          x,
+          y + (yin ? 1 : -1) * radius / 2,
+          radius * 1.5
+        );
+        core.addColorStop(0, palette.light);
+        core.addColorStop(0.45, palette.light);
+        core.addColorStop(1, palette.main);
+        ctx.fillStyle = core;
+        ctx.shadowColor = palette.main;
+        ctx.shadowBlur = 7;
+      } else {
+        ctx.fillStyle = level === -1 ? palette.dark : palette.main;
+      }
+      ctx.fill();
     }
-    ctx.strokeStyle = level === 2 ? palette.light : "#667b80";
-    ctx.lineWidth = level === 2 ? 2.2 : 1;
-    if (level === 2) {
-      ctx.shadowColor = palette.main;
-      ctx.shadowBlur = 7;
-    }
-    ctx.fill();
+    ctx.strokeStyle = level === 0 ? withAlpha(palette.main, VOID_OUTLINE_ALPHA) : level === -1 ? palette.dark : level === 1 ? palette.main : palette.light;
+    ctx.lineWidth = level === 2 ? 2.2 : level === 0 ? 1.4 : 1;
     ctx.stroke();
     ctx.shadowBlur = 0;
     const eyeY = y + (yin ? 1 : -1) * radius / 2;
@@ -3704,7 +3713,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     return `${chars.join("")}…`;
   }
   const LEVEL_LABEL = {
-    [-1]: "崩坏",
+    [-1]: "道损",
     0: "虚空",
     1: "点亮",
     2: "加持"
@@ -4912,8 +4921,11 @@ ${prompt}`;
         drawYinYangFish(ctx, column - 13, y + 13, 7, Polarity.YANG, level, WuXing.WOOD);
         ctx.fillStyle = THEME.ivory;
         ctx.textAlign = "left";
-        ctx.fillText(["崩坏", "虚空", "点亮", "发光"][index], column - 2, y + 13);
+        ctx.fillText(LEVEL_LABEL[level], column - 2, y + 13);
       }
+      ctx.fillStyle = THEME.muted;
+      ctx.textAlign = "center";
+      ctx.fillText("木示例", this.width * 0.5 / 4 - 13, y - 5);
     }
   }
   function opponentOf(player) {

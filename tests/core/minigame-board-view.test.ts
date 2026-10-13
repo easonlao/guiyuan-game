@@ -558,7 +558,12 @@ describe('Minigame BoardView: 渲染', () => {
 });
 
 describe('Minigame BoardView: independent yin-yang fish', () => {
-  it('uses complementary S outlines and independently styles all sixteen level pairs', () => {
+  /** 鱼身本体（`moveTo` 起步的闭合路径）的填充与描边，按落笔顺序：先填充后描边。 */
+  function bodyPaths(ctx: RecordingContext) {
+    return ctx.paths.filter((path) => path.points.length === 1);
+  }
+
+  it('uses complementary S outlines and clips cracks / sparks for all sixteen level pairs', () => {
     const levels = [-1, 0, 1, 2] as const;
     for (const yin of levels)
       for (const yang of levels) {
@@ -568,32 +573,61 @@ describe('Minigame BoardView: independent yin-yang fish', () => {
         const outer = ctx.arcs.filter((arc) => arc.radius === 20);
         expect(outer.map((arc) => arc.anticlockwise)).toEqual([true, false]);
         expect(ctx.arcs.filter((arc) => arc.radius === 10)).toHaveLength(4);
-        const bodyColors = ctx.paths
-          .filter((path) => path.points.length === 1 && path.strokeWidth === 0)
-          .map((path) => path.color);
-        expect(bodyColors).toEqual([
-          yin === -1
-            ? '#3e474a'
-            : yin === 0
-              ? '#182c34'
-              : yin === 2
-                ? '[object Object]'
-                : '#63ba8c',
-          yang === -1
-            ? '#3e474a'
-            : yang === 0
-              ? '#182c34'
-              : yang === 2
-                ? '[object Object]'
-                : '#63ba8c',
-        ]);
+        // 只有道损（裂纹）与加持（闪点）需要裁进鱼身；虚空 / 点亮不裁剪。
         expect(ctx.calls.filter((call) => call === 'clip')).toHaveLength(
           [yin, yang].filter((level) => level === -1 || level === 2).length,
         );
       }
   });
+
+  it('encodes the four levels as a brightness ladder, all keeping an elemental outline', () => {
+    const palette = WUXING_PALETTE[WuXing.WOOD];
+
+    // 道损：暗化的元素色填充 + 暗化元素色描边 + 裂纹。
+    const damaged = new RecordingContext();
+    drawYinYangFish(damaged.asContext(), 0, 0, 20, Polarity.YANG, -1, WuXing.WOOD);
+    expect(bodyPaths(damaged).map((path) => path.color)).toEqual([palette.dark, palette.dark]);
+    expect(bodyPaths(damaged)[0].strokeWidth).toBe(0);
+    expect(bodyPaths(damaged)[1].strokeWidth).toBeGreaterThan(0);
+    expect(damaged.paths.some((path) => path.color === '#0b1d24' && path.strokeWidth === 2.5)).toBe(
+      true,
+    );
+
+    // 虚空：空心，只有元素色淡描边；没有元素色实心填充（剩下的实心是阴阳对照眼）。
+    const empty = new RecordingContext();
+    drawYinYangFish(empty.asContext(), 0, 0, 20, Polarity.YANG, 0, WuXing.WOOD);
+    const emptyBody = bodyPaths(empty);
+    expect(emptyBody).toHaveLength(1);
+    expect(emptyBody[0].strokeWidth).toBeGreaterThan(0);
+    expect(emptyBody[0].color).toBe('rgba(99, 186, 140, 0.55)');
+    expect(empty.paths.filter((path) => path.strokeWidth === 0).map((path) => path.color)).toEqual([
+      '#e5eee4',
+    ]);
+
+    // 点亮：元素本色实心 + 本色描边。
+    const lit = new RecordingContext();
+    drawYinYangFish(lit.asContext(), 0, 0, 20, Polarity.YANG, 1, WuXing.WOOD);
+    expect(bodyPaths(lit).map((path) => path.color)).toEqual([palette.main, palette.main]);
+    expect(bodyPaths(lit)[0].strokeWidth).toBe(0);
+
+    // 加持：径向光晕填充 + 亮色描边 + 闪点。
+    const blessed = new RecordingContext();
+    drawYinYangFish(blessed.asContext(), 0, 0, 20, Polarity.YANG, 2, WuXing.WOOD);
+    expect(blessed.gradients).toHaveLength(1);
+    const stops = blessed.gradients[0].stops;
+    expect(stops[0].color).toBe(palette.light);
+    expect(stops.at(-1)!.color).toBe(palette.main);
+    const blessedBody = bodyPaths(blessed);
+    expect(blessedBody[0].color).toBe('[object Object]');
+    expect(blessedBody[1].color).toBe(palette.light);
+    expect(
+      blessed.paths.some((path) => path.color === palette.light && path.strokeWidth === 1.5),
+    ).toBe(true);
+  });
+
   it('keeps blessed colors elemental and leaves void fish without any elemental fill', () => {
-    const colors: string[] = [];
+    const blessedColors: string[] = [];
+    const voidOutlines: string[] = [];
     for (const element of Object.values(WuXing)) {
       const glow = new RecordingContext();
       drawYinYangFish(glow.asContext(), 0, 0, 20, Polarity.YANG, 2, element);
@@ -601,13 +635,20 @@ describe('Minigame BoardView: independent yin-yang fish', () => {
       const stops = glow.gradients[0].stops;
       expect(stops[0].color).toBe(WUXING_PALETTE[element].light);
       expect(stops.at(-1)!.color).toBe(WUXING_PALETTE[element].main);
-      colors.push(stops.at(-1)!.color);
+      blessedColors.push(stops.at(-1)!.color);
       const empty = new RecordingContext();
       drawYinYangFish(empty.asContext(), 0, 0, 20, Polarity.YANG, 0, element);
+      // 虚空只剩描边（元素色淡描边）与对照眼，没有元素色实心填充。
       expect(
         empty.paths.filter((path) => path.strokeWidth === 0).map((path) => path.color),
-      ).toEqual(['#182c34', '#e5eee4']);
+      ).toEqual(['#e5eee4']);
+      const voidBody = bodyPaths(empty);
+      expect(voidBody).toHaveLength(1);
+      expect(voidBody[0].strokeWidth).toBeGreaterThan(0);
+      expect(voidBody[0].color.startsWith('rgba(')).toBe(true);
+      voidOutlines.push(voidBody[0].color);
     }
-    expect(new Set(colors).size).toBe(5);
+    expect(new Set(blessedColors).size).toBe(5);
+    expect(new Set(voidOutlines).size).toBe(5);
   });
 });
