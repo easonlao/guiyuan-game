@@ -56,6 +56,8 @@ ADR 0018 文末「勘误」记录了这次取代（「亢极 = 双层金环」�
 
 - 真实 `GameScene` 预览注入盘面后截图：`reports/ui-design/game-final.png` / `game-final2.png`（木/水归一 → 金环 + 金色流光；火/土亢极 → 金色流光 + 元素色柔光）。确认流光沿环移动（手动推进 `BoardView.tick` 后像素改变）、亢极外溢更淡。`reports/` 不入库，截图仅本地证据。**用户已在浏览器里目验并确认效果可以**（微信模拟器与真机仍未跑，按 `docs/HLD.md` §4.6 由用户本地确认）。
 
+> 勘误（票 03 收口时追加）：此处「微信模拟器未运行」是 agent 当时的臆断。用户的实际测试环境一直是**微信开发者工具（模拟器）**，加载入库产物 `minigame/game.js` 目验；浏览器预览只是 agent 的自查手段。
+
 ## 代码复审
 
 修订后的两轴报告：Standards `.scratch/board-channel-and-marks/reviews/02-revised-standards-review.md`、Spec `.scratch/board-channel-and-marks/reviews/02-revised-spec-review.md`（初版「金环 / 双层环」的两份报告已被本设计修订取代）。
