@@ -806,41 +806,46 @@ describe('Minigame BoardView: 按住预览的路径箭头与幽灵态（票 04�
     ).toHaveLength(2);
   });
 
-  it('破 / 强破走一道弓起的能量弧刃：尾部出本阵、刀尖穿出敌印、刀面有弯', () => {
+  it('破 / 强破走贯穿突刺：能量尖锥从本阵刺向敌节点，两侧速度线 + 落点冲击波', () => {
     const view = new BoardView();
     view.setPreview({ path: { kind: 'attack', from: WuXing.WOOD }, ghost: null });
     const ctx = render(view);
     const { centerX, centerY, innerRadius, outerRadius, sealSize } = view.layout;
-
-    // 刀面是一个弯曲的闭合填充：moveTo(尾) + 两段二次曲线 + 回尾 = 5 个点。
-    const blade = ctx.paths.find((path) => path.strokeWidth === 0 && path.points.length === 5);
-    expect(blade, '弧刃刀面').toBeDefined();
-    const [tail, outerEdge, tip, innerEdge, backToTail] = blade!.points;
-    expect(backToTail.x).toBeCloseTo(tail.x, 6);
-    expect(backToTail.y).toBeCloseTo(tail.y, 6);
+    const target = view.connections.find(
+      (line) => line.kind === 'attack' && line.from === WuXing.WOOD,
+    )!;
     const distance = (point: { x: number; y: number }) =>
       Math.hypot(point.x - centerX, point.y - centerY);
-    // 尾部在己方主印外沿之外（不压自己的鱼），刀尖越过敌主印外沿（贯穿）。
+
+    // 尖锥本体：moveTo(尾) + 两腰 + 尖端 = 4 个点的闭合填充。
+    const body = ctx.paths.find((path) => path.strokeWidth === 0 && path.points.length === 4);
+    expect(body, '能量尖锥').toBeDefined();
+    const [tail, waistA, tip, waistB] = body!.points;
+    // 尾部在己方主印外沿之外（不压自己的鱼），尖端越过敌主印外沿（贯穿）。
     expect(distance(tail)).toBeGreaterThan(innerRadius + sealSize);
     expect(distance(tail)).toBeLessThan(innerRadius + sealSize * 1.6);
     expect(distance(tip)).toBeGreaterThan(outerRadius + sealSize * 0.82);
-    // 刀面不是直线：两个控制点在同侧、且外缘比内缘弓得更多（新月而非对称橄榄）。
-    const chordX = tip.x - tail.x;
-    const chordY = tip.y - tail.y;
-    const offset = (point: { x: number; y: number }) =>
-      chordX * (point.y - tail.y) - chordY * (point.x - tail.x);
-    expect(Math.sign(offset(outerEdge))).toBe(Math.sign(offset(innerEdge)));
-    expect(Math.abs(offset(outerEdge))).toBeGreaterThan(Math.abs(offset(innerEdge)));
-    expect(Math.abs(offset(outerEdge))).toBeGreaterThan(0);
-    // 刀面用渐变上色（不是一块单色）。
+    // 腰宽 = 2 × 0.42 主印半径，两个腰点关于轴面对称。
+    expect(Math.hypot(waistA.x - waistB.x, waistA.y - waistB.y)).toBeCloseTo(sealSize * 0.84, 4);
+    // 尖锥用渐变上色（不是一块单色）。
     expect(ctx.linearGradients.length).toBeGreaterThan(0);
-    // 刃口亮线 + 命中冲击波 + 三道火花：候选强调色的描边一共五条。
+    // 四条速度线 + 一道落点冲击波：候选强调色的描边一共五条。
     const arrowHead = rgbOf(THEME.candidateLit);
     expect(
       ctx.paths.filter((path) => path.strokeWidth > 0 && path.color.includes(arrowHead)),
     ).toHaveLength(5);
-
-    // 没有内环弧箭：这条路径是跨环斩击而不是相生弧。
+    // 冲击波是绕敌主印的圆弧。
+    expect(
+      ctx.arcs.some(
+        (entry) =>
+          entry.x === target.x2 &&
+          entry.y === target.y2 &&
+          entry.radius > sealSize * 0.82 * 0.69 &&
+          entry.radius < sealSize * 0.82 * 2.31,
+      ),
+      '落点冲击波',
+    ).toBe(true);
+    // 没有内环弧箭：这条路径是跨环突刺而不是相生弧。
     expect(
       ctx.arcs.filter(
         (entry) =>
@@ -852,50 +857,47 @@ describe('Minigame BoardView: 按住预览的路径箭头与幽灵态（票 04�
     ).toHaveLength(0);
   });
 
-  it('调息沿主印外一圈流转：从当前点亮侧绕半圈到对侧，尾端箭尖指向圆内', () => {
+  it('调息走漩涡：从当前点亮侧（大半径）螺旋卷入对侧（小半径）', () => {
     const view = new BoardView();
-    const arrowHead = rgbOf(THEME.candidateLit);
     const seal = sealOf(view, 'P1', WuXing.WOOD);
-    const ring = (ctx: RecordingContext) =>
-      ctx.arcs.find(
-        (entry) =>
-          entry.x === seal.x &&
-          entry.y === seal.y &&
-          Math.abs(entry.radius - seal.sealSize * 1.12) < 1e-9,
-      );
+    const vortexInk = [rgbOf(THEME.candidateDeep), rgbOf(THEME.candidateLit)];
+    const vortexPoints = (ctx: RecordingContext) =>
+      ctx.paths
+        .filter(
+          (path) => path.points.length === 2 && vortexInk.some((ink) => path.color.includes(ink)),
+        )
+        .flatMap((path) => path.points);
 
-    // 阴在左（π）→ 阳在右（2π）：从左侧上方绕半圈到右侧。
+    // 阴（左，大半径）-> 阳（右，小半径）。
     view.setPreview({
       path: null,
       convert: { player: 'P1', element: WuXing.WOOD, from: Polarity.YIN, to: Polarity.YANG },
       ghost: null,
     });
-    const right = ring(render(view));
-    expect(right, '调息流转环').toBeDefined();
-    expect(right!.start).toBeCloseTo(Math.PI, 6);
-    expect(right!.end).toBeCloseTo(Math.PI * 2, 6);
+    const points = vortexPoints(render(view));
+    expect(points.length).toBeGreaterThan(50);
+    const radii = points.map((point) => Math.hypot(point.x - seal.x, point.y - seal.y));
+    const maxRadius = Math.max(...radii);
+    const minRadius = Math.min(...radii);
+    expect(maxRadius).toBeCloseTo(seal.sealSize * 1.4, 1);
+    expect(minRadius).toBeCloseTo(seal.sealSize * 0.95, 1);
+    expect(points[radii.indexOf(maxRadius)].x).toBeLessThan(seal.x);
+    expect(points[radii.indexOf(minRadius)].x).toBeGreaterThan(seal.x);
 
-    // 阳（0）→ 阴（π）：反向绕。
+    // 阳（右）-> 阴（左）：方向反过来。
     view.setPreview({
       path: null,
       convert: { player: 'P1', element: WuXing.WOOD, from: Polarity.YANG, to: Polarity.YIN },
       ghost: null,
     });
-    const left = ring(render(view));
-    expect(left!.start).toBeCloseTo(0, 6);
-    expect(left!.end).toBeCloseTo(Math.PI, 6);
+    const flipped = vortexPoints(render(view));
+    const flippedRadii = flipped.map((point) => Math.hypot(point.x - seal.x, point.y - seal.y));
+    expect(flipped[flippedRadii.indexOf(Math.max(...flippedRadii))].x).toBeGreaterThan(seal.x);
+    expect(flipped[flippedRadii.indexOf(Math.min(...flippedRadii))].x).toBeLessThan(seal.x);
 
-    // 对侧箭尖是一条三段折点的强调色描边（流动尾是空点数的弧段，不计入）。
-    expect(
-      render(view).paths.filter(
-        (path) =>
-          path.strokeWidth > 0 && path.color.includes(arrowHead) && path.points.length === 3,
-      ),
-    ).toHaveLength(1);
-
-    // 没有调息就不画流转环。
+    // 没有调息就不画漩涡。
     view.setPreview({ path: null, ghost: null });
-    expect(ring(render(view))).toBeUndefined();
+    expect(vortexPoints(render(view))).toHaveLength(0);
   });
 
   it('未按住时不画任何路径箭头：决策期只靠候选半身标记', () => {

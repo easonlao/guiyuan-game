@@ -2815,17 +2815,20 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const PREVIEW_ARROW_SEAL_ANGLE_MAX = 0.85;
   const PREVIEW_ARROW_PAD_RATIO = 0.35;
   const PREVIEW_ATTACK_TAIL_GAP_RATIO = 0.15;
-  const PREVIEW_ATTACK_OVERSHOOT_RATIO = 0.45;
-  const PREVIEW_ATTACK_BOW_RATIO = 0.28;
-  const PREVIEW_ATTACK_INNER_BOW_RATIO = 0.25;
+  const PREVIEW_ATTACK_OVERSHOOT_RATIO = 0.7;
+  const PREVIEW_ATTACK_WAIST_RATIO = 0.42;
+  const PREVIEW_ATTACK_WAIST_AT = 0.32;
+  const PREVIEW_ATTACK_SPEED_OFFSET_RATIO = 1.7;
   const PREVIEW_ATTACK_FLOW_PERIOD = 1.1;
   const PREVIEW_ATTACK_HEAD_RATIO = 0.34;
-  const PREVIEW_ATTACK_SPARK_RATIO = 0.6;
-  const PREVIEW_ATTACK_SHOCK_SCALE = 1.9;
-  const PREVIEW_CONVERT_RING_RATIO = 1.12;
+  const PREVIEW_ATTACK_SHOCK_SCALE = 1.6;
+  const PREVIEW_CONVERT_VORTEX_OUTER_RATIO = 1.4;
+  const PREVIEW_CONVERT_VORTEX_INNER_RATIO = 0.95;
+  const PREVIEW_CONVERT_VORTEX_TURNS = 1;
   const PREVIEW_CONVERT_FLOW_PERIOD = 1.6;
-  const PREVIEW_CONVERT_TAIL_RATIO = 0.5;
-  const PREVIEW_CONVERT_RING_WIDTH_RATIO = 0.16;
+  const PREVIEW_CONVERT_TAIL_RATIO = 0.55;
+  const PREVIEW_CONVERT_WIDTH_RATIO = 0.11;
+  const PREVIEW_CONVERT_SAMPLES = 90;
   const DEFAULT_BOARD_LAYOUT = {
     centerX: 0,
     centerY: 0,
@@ -3106,7 +3109,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this._drawCandidateMarks(ctx);
       this._drawGhost(ctx);
       this._drawPreviewArrow(ctx);
-      this._drawConvertFlow(ctx);
+      this._drawConvertVortex(ctx);
       this._drawRingLabels(ctx);
     }
     /** Quiet backing and one ownership guide per ring; decoration does not encode state. */
@@ -3196,7 +3199,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         if (line.kind === "generation") {
           this._drawGenerationArrow(ctx, line, width, head);
         } else {
-          this._drawAttackSlash(ctx, line);
+          this._drawAttackThrust(ctx, line);
         }
       }
     }
@@ -3230,11 +3233,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.restore();
     }
     /**
-     * 相克的斩击（票 04 rev2）：一道弓起的能量弧刃从本阵喷向敌节点，刀尖穿出敌印；
-     * 刃口有一条循环流动的能量头，命中处迸出几道火花。弧刃朝环序下游弓，
-     * 和化 / 强化的顺时针弧箭同一个「流向」——不是一条呆板的直线。
+     * 相克的贯穿突刺（票 04 rev3，用户选定 B 方案）：一枚能量尖锥从本阵主印外沿刺向敌节点，
+     * 尖端穿出敌印；两侧拉出速度线，落点处有向外扩的冲击波，尖端有能量头。不是一条平直线。
      */
-    _drawAttackSlash(ctx, line) {
+    _drawAttackThrust(ctx, line) {
       const dx = line.x2 - line.x1;
       const dy = line.y2 - line.y1;
       const length = Math.hypot(dx, dy);
@@ -3252,141 +3254,128 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const tailY = line.y1 + uy * tail;
       const tipX = line.x1 + ux * tipDistance;
       const tipY = line.y1 + uy * tipDistance;
-      const midX = (tailX + tipX) / 2;
-      const midY = (tailY + tipY) / 2;
-      const bow = length * PREVIEW_ATTACK_BOW_RATIO;
-      const outerX = midX + nx * bow;
-      const outerY = midY + ny * bow;
-      const innerX = midX + nx * bow * PREVIEW_ATTACK_INNER_BOW_RATIO;
-      const innerY = midY + ny * bow * PREVIEW_ATTACK_INNER_BOW_RATIO;
+      const waistDistance = tail + (tipDistance - tail) * PREVIEW_ATTACK_WAIST_AT;
+      const waistX = line.x1 + ux * waistDistance;
+      const waistY = line.y1 + uy * waistDistance;
+      const waist = sealSize * PREVIEW_ATTACK_WAIST_RATIO;
+      const progress = this._clock / PREVIEW_ATTACK_FLOW_PERIOD % 1;
       ctx.save();
-      const blade = ctx.createLinearGradient(tailX, tailY, tipX, tipY);
-      blade.addColorStop(0, withAlpha(THEME.candidateDeep, 0.08));
-      blade.addColorStop(0.4, withAlpha(THEME.candidate, 0.55));
-      blade.addColorStop(0.8, withAlpha(THEME.candidateLit, 0.85));
-      blade.addColorStop(1, withAlpha("#ffffff", 0.95));
-      ctx.fillStyle = blade;
+      const body = ctx.createLinearGradient(tailX, tailY, tipX, tipY);
+      body.addColorStop(0, withAlpha(THEME.candidateDeep, 0.05));
+      body.addColorStop(0.45, withAlpha(THEME.candidate, 0.6));
+      body.addColorStop(1, withAlpha("#ffffff", 0.98));
+      ctx.fillStyle = body;
       ctx.beginPath();
       ctx.moveTo(tailX, tailY);
-      ctx.quadraticCurveTo(outerX, outerY, tipX, tipY);
-      ctx.quadraticCurveTo(innerX, innerY, tailX, tailY);
+      ctx.lineTo(waistX + nx * waist, waistY + ny * waist);
+      ctx.lineTo(tipX, tipY);
+      ctx.lineTo(waistX - nx * waist, waistY - ny * waist);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = withAlpha(THEME.candidateLit, 0.85);
-      ctx.lineWidth = Math.max(1, sealSize * 0.06);
-      ctx.beginPath();
-      ctx.moveTo(tailX, tailY);
-      ctx.quadraticCurveTo(outerX, outerY, tipX, tipY);
-      ctx.stroke();
-      const progress = this._clock / PREVIEW_ATTACK_FLOW_PERIOD % 1;
-      const comet = quadraticPoint(
-        progress,
-        { x: tailX, y: tailY },
-        { x: (outerX + innerX) / 2, y: (outerY + innerY) / 2 },
-        { x: tipX, y: tipY }
-      );
-      const cometRadius = sealSize * PREVIEW_ATTACK_HEAD_RATIO;
-      const glow = ctx.createRadialGradient(comet.x, comet.y, 0, comet.x, comet.y, cometRadius);
-      glow.addColorStop(0, withAlpha("#ffffff", 0.95));
-      glow.addColorStop(0.45, withAlpha(THEME.candidateLit, 0.6));
-      glow.addColorStop(1, withAlpha(THEME.candidate, 0));
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(comet.x, comet.y, cometRadius, 0, Math.PI * 2);
-      ctx.fill();
-      const wave = progress;
-      ctx.strokeStyle = withAlpha(THEME.candidateLit, 0.7 * (1 - wave));
+      ctx.strokeStyle = withAlpha(THEME.candidateLit, 0.5);
+      ctx.lineWidth = Math.max(1, sealSize * 0.05);
+      ctx.lineCap = "round";
+      for (const side of [-1, 1]) {
+        for (const [a, b] of [
+          [0.3, 0.95],
+          [0.15, 0.7]
+        ]) {
+          const s0 = tail + (tipDistance - tail) * a * (0.6 + 0.4 * progress);
+          const s1 = tail + (tipDistance - tail) * b * (0.6 + 0.4 * progress);
+          const offset = waist * PREVIEW_ATTACK_SPEED_OFFSET_RATIO * side;
+          ctx.beginPath();
+          ctx.moveTo(line.x1 + ux * s0 + nx * offset, line.y1 + uy * s0 + ny * offset);
+          ctx.lineTo(line.x1 + ux * s1 + nx * offset, line.y1 + uy * s1 + ny * offset);
+          ctx.stroke();
+        }
+      }
+      ctx.strokeStyle = withAlpha(THEME.candidateLit, 0.7 * (1 - progress));
       ctx.lineWidth = Math.max(1.2, sealSize * 0.09);
       ctx.beginPath();
       ctx.arc(
         line.x2,
         line.y2,
-        targetSeal * (0.7 + wave * PREVIEW_ATTACK_SHOCK_SCALE),
+        targetSeal * (0.7 + progress * PREVIEW_ATTACK_SHOCK_SCALE),
         0,
         Math.PI * 2
       );
       ctx.stroke();
-      const spark = 0.35 + 0.65 * progress;
-      const sparkLength = sealSize * PREVIEW_ATTACK_SPARK_RATIO * (0.6 + 0.4 * progress);
-      const impactX = line.x2 + ux * targetSeal * 0.85;
-      const impactY = line.y2 + uy * targetSeal * 0.85;
-      const baseAngle = Math.atan2(uy, ux);
-      ctx.strokeStyle = withAlpha(THEME.candidateLit, spark);
-      ctx.lineWidth = Math.max(1, sealSize * 0.07);
-      ctx.lineCap = "round";
-      for (const offset of [-0.8, 0, 0.8]) {
-        const angle = baseAngle + offset;
-        ctx.beginPath();
-        ctx.moveTo(impactX, impactY);
-        ctx.lineTo(impactX + Math.cos(angle) * sparkLength, impactY + Math.sin(angle) * sparkLength);
-        ctx.stroke();
-      }
+      const headRadius = sealSize * PREVIEW_ATTACK_HEAD_RATIO;
+      const glow = ctx.createRadialGradient(tipX, tipY, 0, tipX, tipY, headRadius);
+      glow.addColorStop(0, withAlpha("#ffffff", 0.95));
+      glow.addColorStop(0.5, withAlpha(THEME.candidateLit, 0.55));
+      glow.addColorStop(1, withAlpha(THEME.candidate, 0));
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, headRadius, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
     }
     /**
-     * 调息的内部流转（票 04 rev2）：一股能量沿主印外一圈从当前点亮侧绕到对侧，
-     * 拖一条渐隐的尾、尾端一个指向圆内的箭尖——「转化」是同节点内的循环，不是一条横线。
+     * 调息的内部流转（票 04 rev3，用户选定 B 方案漩涡）：一股能量从当前点亮侧（大半径）
+     * 螺旋一卷卷到对侧（小半径），拖一条渐隐的尾——「转化」是卷进节点里，不是横线也不是半环。
      */
-    _drawConvertFlow(ctx) {
+    _drawConvertVortex(ctx) {
       const convert = this._preview?.convert;
       if (convert === null || convert === void 0) return;
       const seal = this._elementView(convert.player, convert.element);
-      const radius = seal.sealSize * PREVIEW_CONVERT_RING_RATIO;
       const fromRight = convert.from === Polarity.YANG;
-      const start = fromRight ? 0 : Math.PI;
-      const end = fromRight ? Math.PI : Math.PI * 2;
-      const span = end - start;
-      const width = Math.max(
-        PREVIEW_ARROW_WIDTH_MIN,
-        seal.sealSize * PREVIEW_CONVERT_RING_WIDTH_RATIO
-      );
+      const sourceAngle = fromRight ? 0 : Math.PI;
+      const targetAngle = fromRight ? Math.PI : Math.PI * 2;
+      const sweep = targetAngle - sourceAngle + Math.PI * 2 * PREVIEW_CONVERT_VORTEX_TURNS;
+      const outer = seal.sealSize * PREVIEW_CONVERT_VORTEX_OUTER_RATIO;
+      const inner = seal.sealSize * PREVIEW_CONVERT_VORTEX_INNER_RATIO;
+      const width = Math.max(PREVIEW_ARROW_WIDTH_MIN, seal.sealSize * PREVIEW_CONVERT_WIDTH_RATIO);
       const progress = this._clock / PREVIEW_CONVERT_FLOW_PERIOD % 1;
-      const head = start + progress * span;
-      const tailLength = span * PREVIEW_CONVERT_TAIL_RATIO;
+      const samples = PREVIEW_CONVERT_SAMPLES;
+      const pointAt = (s) => {
+        const angle = sourceAngle + sweep * s;
+        const radius = outer + (inner - outer) * s;
+        return { x: seal.x + radius * Math.cos(angle), y: seal.y + radius * Math.sin(angle) };
+      };
       ctx.save();
       ctx.lineCap = "round";
       ctx.strokeStyle = withAlpha(THEME.candidateDeep, 0.4);
       ctx.lineWidth = width;
-      ctx.beginPath();
-      ctx.arc(seal.x, seal.y, radius, start, end);
-      ctx.stroke();
-      const steps = 24;
-      for (let index = 0; index < steps; index += 1) {
-        const t0 = index / steps;
-        const t1 = (index + 1) / steps;
-        const a0 = head - tailLength * t0;
-        const a1 = head - tailLength * t1;
-        if (a1 < start) break;
+      for (let index = 0; index < samples; index += 1) {
+        const a = pointAt(index / samples);
+        const b = pointAt((index + 1) / samples);
         ctx.beginPath();
-        ctx.arc(seal.x, seal.y, radius, Math.max(start, a1), Math.max(start, a0));
-        ctx.strokeStyle = withAlpha(THEME.candidateLit, (1 - t0) ** 2 * 0.9);
-        ctx.lineWidth = width * (1.6 - t0 * 0.6);
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
         ctx.stroke();
       }
-      const toRight = convert.to === Polarity.YANG;
-      const destX = seal.x + (toRight ? 1 : -1) * seal.sealSize * 0.5;
-      const pulse = Math.sin(Math.PI * progress) ** 2;
-      const pulseRadius = seal.sealSize * 0.7;
-      const destGlow = ctx.createRadialGradient(destX, seal.y, 0, destX, seal.y, pulseRadius);
-      destGlow.addColorStop(0, withAlpha(THEME.candidateLit, 0.5 * pulse));
-      destGlow.addColorStop(1, withAlpha(THEME.candidate, 0));
-      ctx.fillStyle = destGlow;
-      ctx.beginPath();
-      ctx.arc(destX, seal.y, pulseRadius, 0, Math.PI * 2);
-      ctx.fill();
-      const tipAngle = end - Math.PI * 0.12;
-      const tipX = seal.x + radius * Math.cos(tipAngle);
-      const tipY = seal.y + radius * Math.sin(tipAngle);
-      ctx.strokeStyle = withAlpha(THEME.candidateLit, PREVIEW_ARROW_ALPHA);
-      ctx.lineWidth = width;
-      drawArrowHead(
-        ctx,
-        tipX,
-        tipY,
-        -Math.cos(tipAngle),
-        -Math.sin(tipAngle),
-        Math.max(PREVIEW_ARROW_HEAD_MIN, seal.sealSize * PREVIEW_ARROW_HEAD_RATIO)
+      for (let index = 0; index < samples; index += 1) {
+        const s0 = index / samples;
+        const behind = progress - s0;
+        if (behind < 0 || behind >= PREVIEW_CONVERT_TAIL_RATIO) continue;
+        const a = pointAt(s0);
+        const b = pointAt((index + 1) / samples);
+        const falloff = 1 - behind / PREVIEW_CONVERT_TAIL_RATIO;
+        ctx.strokeStyle = withAlpha(THEME.candidateLit, falloff ** 1.5 * 0.95);
+        ctx.lineWidth = width * (0.6 + falloff);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+      const headPoint = pointAt(progress);
+      const headRadius = seal.sealSize * PREVIEW_ATTACK_HEAD_RATIO;
+      const glow = ctx.createRadialGradient(
+        headPoint.x,
+        headPoint.y,
+        0,
+        headPoint.x,
+        headPoint.y,
+        headRadius
       );
+      glow.addColorStop(0, withAlpha("#ffffff", 0.95));
+      glow.addColorStop(0.5, withAlpha(THEME.candidateLit, 0.55));
+      glow.addColorStop(1, withAlpha(THEME.candidate, 0));
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(headPoint.x, headPoint.y, headRadius, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
     }
     /** Each node owns two independent fish. Element labels sit outside the readable silhouette. */
@@ -3654,13 +3643,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     ctx.lineWidth = Math.max(CANDIDATE_OUTLINE_WIDTH_MIN, sealSize * CANDIDATE_OUTLINE_WIDTH_RATIO) * swell;
     ctx.stroke();
     ctx.restore();
-  }
-  function quadraticPoint(t, p0, control, p1) {
-    const inverse = 1 - t;
-    return {
-      x: inverse * inverse * p0.x + 2 * inverse * t * control.x + t * t * p1.x,
-      y: inverse * inverse * p0.y + 2 * inverse * t * control.y + t * t * p1.y
-    };
   }
   function drawGhostHalf(ctx, x, y, radius, element, polarity, level) {
     ctx.save();
