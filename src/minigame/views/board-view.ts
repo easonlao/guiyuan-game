@@ -48,8 +48,14 @@ const INNER_RADIUS_RATIO = 0.24;
 const OUTER_RADIUS_RATIO = 0.4;
 const SEAL_SIZE_RATIO = 0.062;
 
-/** 对方盘主印相对己方盘主印的缩放：外环更小、更暗，一眼分出主次（ADR 0015 的「环级区分」）。 */
+/**
+ * 对方盘主印相对己方盘主印的缩放：外环更小，一眼分出主次（ADR 0015 的「环级区分」）。
+ * 只改尺寸、不改亮度——「暗」已被等级通道征用（虚空 = 空心），归属由环带实线 / 虚线与标签承担（ADR 0018）。
+ */
 const OPPONENT_SEAL_SCALE = 0.82;
+
+/** 虚空描边的不透明度：只描边不填充，元素色淡到仍能读出身份（ADR 0018 的亮度阶梯最低档）。 */
+const VOID_OUTLINE_ALPHA = 0.55;
 
 /** 阴阳槽位相对主印中心在阴/阳一侧的横向偏移（占主印半径的比例）。 */
 const SLOT_SIDE_RATIO = 0.7;
@@ -513,7 +519,22 @@ function drawPill(
   ctx.stroke();
 }
 
-/** Draw one S-shaped fish, with an independent state and a contrasting eye. */
+/**
+ * 把 `#rrggbb` 压到指定不透明度（只给虚空描边用，避免为每档新增调色板常量）。
+ */
+function withAlpha(hex: string, alpha: number): string {
+  const value = Number.parseInt(hex.slice(1), 16);
+  const red = (value >> 16) & 0xff;
+  const green = (value >> 8) & 0xff;
+  const blue = value & 0xff;
+  return `rgba(${String(red)}, ${String(green)}, ${String(blue)}, ${String(alpha)})`;
+}
+
+/**
+ * 画一条 S 形阴阳鱼：色相恒表五行身份，等级只走亮度阶梯（ADR 0018）。
+ * 虚空 = 空心（元素色淡描边、无填充）、点亮 = 元素色实心、加持 = 实心 + 径向光晕 + 闪点、
+ * 道损 = 暗化元素色实心 + 裂纹；四档都保留元素色描边。
+ */
 export function drawYinYangFish(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -532,29 +553,40 @@ export function drawYinYangFish(
   ctx.arc(x, y + radius / 2, radius / 2, Math.PI / 2, -Math.PI / 2, true);
   ctx.arc(x, y - radius / 2, radius / 2, Math.PI / 2, -Math.PI / 2);
   ctx.closePath();
+  // 裂纹（道损）与闪点（加持）裁进鱼身；虚空是空心，不需要裁剪。
   if (level === 2 || level === -1) ctx.clip();
-  ctx.fillStyle = level === -1 ? '#3e474a' : level === 0 ? '#182c34' : palette.main;
-  if (level === 2) {
-    const core = ctx.createRadialGradient(
-      x,
-      y + ((yin ? 1 : -1) * radius) / 2,
-      0,
-      x,
-      y + ((yin ? 1 : -1) * radius) / 2,
-      radius * 1.5,
-    );
-    core.addColorStop(0, palette.light);
-    core.addColorStop(0.45, palette.light);
-    core.addColorStop(1, palette.main);
-    ctx.fillStyle = core;
+  if (level !== 0) {
+    // 三档实心填充：点亮 = 元素本色、加持 = 径向光晕、道损 = 暗化元素色。
+    if (level === 2) {
+      const core = ctx.createRadialGradient(
+        x,
+        y + ((yin ? 1 : -1) * radius) / 2,
+        0,
+        x,
+        y + ((yin ? 1 : -1) * radius) / 2,
+        radius * 1.5,
+      );
+      core.addColorStop(0, palette.light);
+      core.addColorStop(0.45, palette.light);
+      core.addColorStop(1, palette.main);
+      ctx.fillStyle = core;
+      ctx.shadowColor = palette.main;
+      ctx.shadowBlur = 7;
+    } else {
+      ctx.fillStyle = level === -1 ? palette.dark : palette.main;
+    }
+    ctx.fill();
   }
-  ctx.strokeStyle = level === 2 ? palette.light : '#667b80';
-  ctx.lineWidth = level === 2 ? 2.2 : 1;
-  if (level === 2) {
-    ctx.shadowColor = palette.main;
-    ctx.shadowBlur = 7;
-  }
-  ctx.fill();
+  // 四档都保留元素色描边：虚空最淡、道损暗化、点亮本色、加持亮色。
+  ctx.strokeStyle =
+    level === 0
+      ? withAlpha(palette.main, VOID_OUTLINE_ALPHA)
+      : level === -1
+        ? palette.dark
+        : level === 1
+          ? palette.main
+          : palette.light;
+  ctx.lineWidth = level === 2 ? 2.2 : level === 0 ? 1.4 : 1;
   ctx.stroke();
   ctx.shadowBlur = 0;
   const eyeY = y + ((yin ? 1 : -1) * radius) / 2;

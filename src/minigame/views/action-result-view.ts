@@ -18,7 +18,7 @@ export interface NodeChange {
   readonly after: NodeLevel;
 }
 export const LEVEL_LABEL: Record<NodeLevel, string> = {
-  [-1]: '崩坏',
+  [-1]: '道损',
   0: '虚空',
   1: '点亮',
   2: '加持',

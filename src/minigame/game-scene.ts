@@ -45,6 +45,7 @@ import {
   ACTION_LABEL,
   changedNodes,
   describeNodeChange,
+  LEVEL_LABEL,
   NodeChange,
 } from './views/action-result-view.js';
 import { RuneFlightView } from './views/rune-flight-view.js';
@@ -859,8 +860,13 @@ export class GameScene extends Container {
       drawYinYangFish(ctx, column - 13, y + 13, 7, Polarity.YANG, level, WuXing.WOOD);
       ctx.fillStyle = THEME.ivory;
       ctx.textAlign = 'left';
-      ctx.fillText(['崩坏', '虚空', '点亮', '发光'][index], column - 2, y + 13);
+      // 文案与上一招变化条共用同一张正名表，结构上保证一致（ADR 0018）。
+      ctx.fillText(LEVEL_LABEL[level], column - 2, y + 13);
     }
+    // 首格标「木示例」：四档样例都用木色，颜色只表身份、等级只看亮度（ADR 0018）。
+    ctx.fillStyle = THEME.muted;
+    ctx.textAlign = 'center';
+    ctx.fillText('木示例', (this.width * 0.5) / 4 - 13, y - 5);
   }
 }
 

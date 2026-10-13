@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { GameScene, describeAutoFlow } from '../../src/minigame/game-scene.js';
+import { LEVEL_LABEL } from '../../src/minigame/views/action-result-view.js';
 import { InputManager } from '../../src/minigame/scene/input-manager.js';
 import { Button } from '../../src/minigame/scene/button.js';
 import { createInitialGameState } from '../../src/core/logic/State.js';
@@ -1122,6 +1123,16 @@ describe('GameScene：视口自适应', () => {
     const ctx = new RecordingContext();
     scene.render(ctx.asContext());
     expect(ctx.texts.some((entry) => entry.text === '左阴 · 右阳')).toBe(true);
+    // 图例四档文案与盘面 / 上一招变化条共用同一套正名（ADR 0018），首格标「木示例」。
+    for (const label of ['道损', '虚空', '点亮', '加持', '木示例']) {
+      expect(ctx.texts.some((entry) => entry.text === label)).toBe(true);
+    }
+    expect([LEVEL_LABEL[-1], LEVEL_LABEL[0], LEVEL_LABEL[1], LEVEL_LABEL[2]]).toEqual([
+      '道损',
+      '虚空',
+      '点亮',
+      '加持',
+    ]);
     tapButton(new InputManager(scene), buttons[1]);
     expect(scene.phase).toBe('flying');
     scene.dispose();
