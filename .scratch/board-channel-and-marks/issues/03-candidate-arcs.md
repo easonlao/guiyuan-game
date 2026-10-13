@@ -21,19 +21,31 @@ Status: resolved
 ## 实施结果
 
 - 候选落点解析在 `src/minigame/candidate-target.ts`：`resolveCandidateTarget(action, {tianGan, boards})` 按动作类型分流——吸纳 / 调息 / 散气落源节点、化 / 破 / 爆发落目标节点；**极性取候选载荷**，只有爆发两类不带极性，按核心层同一套阴优先（`getPlusTargetPolarity` / `getMinusTargetPolarity`）从盘面推出第一次会变的一侧。目标五行与按钮文案共用 `getActionTargetElement`，不会分叉。强破打在双侧已道损的目标上返回 `null`（核心层见底即止）。
-- 绘制在 `BoardView`：`setCandidates()` 喂落点，同一 `player:element:polarity` 去重（不叠两段）；`drawCandidateArc()` 与主印同圆心、只取该侧一段，先叠 `lighter` 光晕再描实边（暗底上读得出，沿用票 02 的柔光经验）；`candidateBreathAlpha()` 是纯函数，`_breathPhase` 由 `tick(dt)` 推进——与归一 / 亢极共用一个时钟，且同相位意味着结构上做不到逐节点闪动。
+- 绘制在 `BoardView`：`setCandidates()` 喂落点，同一 `player:element:polarity` 去重（同侧不叠两层）；`drawCandidateMark()` 把「会变的那半身」整片染上**专属强调色**（`THEME.candidate` / `candidateDeep`，饱和紫——不是任何五行色、也不是节点级状态的金）+ 一条与鱼身同档线宽的薄轮廓，整个标记裁在放大后的鱼形以内（不碰归一金环）；`breathWave()` / `candidateBreathAlpha()` 是纯函数，`_breathPhase` 由 `tick(dt)` 推进——与归一 / 亢极共用一个时钟，且同相位意味着结构上做不到逐节点闪动。
 - 阶段驱动：`GameScene.setPhase` 顺带调 `setCandidates(candidatesFor(phase))`，非 `awaiting-player` 一律空；`PASS` 与净零变化无落点。
-- 与票 02 的区分靠三条：元素色 vs 金、一段 vs 整圈、慢呼吸（2.6s 往返）vs 环上流动（4.5s 一圈）；半径钉在金环（`NODE_RING_SCALE`）之外 `CANDIDATE_ARC_OFFSET`，像素取值以代码常量为真源。
 - 未动连线高亮语义、未动核心规则 / AI / 载荷契约。
-- 文档回写：ADR 0018 追加「候选落点弧的落地口径」勘误；`docs/LLD.md` §4.1 新增第 7 条契约；`docs/HLD.md` §2 Layer 3 改标「候选落点弧已落地（票 03）」、按住预览留待票 04。
+- 文档回写：ADR 0018 追加「候选标记从外侧挂弧改为半身染色闪烁」勘误（含专属强调色、标记常亮、撤掉双色粗边）；`docs/LLD.md` §4.1 第 7 条改为「候选落点半身标记」契约；`docs/HLD.md` §2 Layer 3 同步，按住预览留待票 04。
+
+## 设计修订（用户连续改口）
+
+票面原定「在会变那一侧外侧画一段元素色弧」。落地后用户连续三轮改口，最终口径以上文实现为准：
+
+1. 「旁边一小段弧（括号）看不懂」→ 改为**直接亮会变的那半身**（阴鱼 / 阳鱼整片），侧别与按钮上的「(阴)」「(阳)」一一对应。
+2. 「白色发光与 (2,2) 加持太像，金尤其」→ 改用**专属强调色**（紫），靠色相而不是明暗区分；染色两端都用紫，外圈不能用近白（会把半身洗白）。色号经四选一并排对比后定档为**内敛紫** `#8d76c9`（配 `#6f5aa8` / `#cfc2ee`），否决玫红（近「火」）与青绿（近「水」/对方环带）。
+3. 「一条大粗边很不自然」→ 撤掉为救淡白对比度加的「外暗内亮双色粗边」，只留一条薄轮廓。
+
+ADR 0018 文末勘误记录了三轮改口与被作废的措辞。
 
 ## 验收
 
-- 三种决策局面截图（`reports/ui-design/arc-{low,mid,guiyi}-phase{0,100}.png`，本地证据不入库）：低位态（唯一【吸纳】→ 无按钮无弧）、中位态未归一（2 候选 / 2 段）、归一非连动（3 候选 → 2 段：破与强破共享对方土阴侧，强化打己方火阴侧）。呼吸两端（低位 / 满值）对比可见。
-- 行为测试：`tests/core/minigame-candidate-arcs.test.ts`（候选 → 落点映射 6 条，含爆发两类的阴优先、PASS、净零变化）+ `minigame-board-view.test.ts` 5 条（只在会变侧画、同侧去重、清空、同相位慢呼吸、三尺寸不越底晕）+ `minigame-game-scene.test.ts` 4 条（三种局面的落点集合、非抉择期不画）。
+- 三种决策局面（`reports/ui-design/v2-*.png`、`reports/ui-design/v3-*.png`，本地证据不入库）：低位态（唯一【吸纳】→ 无按钮无标记）、中位态未归一（2 候选 / 2 个落点）、归一非连动（3 候选 → 2 个落点：破与强破共享对方土阴侧，强化打己方火阴侧）。呼吸两端（低位 / 满值）染色深浅对比可见。
+- 用像素采样（而非肉眼）逐级核对过标记可见性：虚空 / 道损（暗底）`12,34,42 → 81,53,159`；点亮（亮底）`203,213,205 → 155,123,221`；加持（暖白底）同样转紫。金最坏情况（金·归一）实测标记半身 `155,123,221`、同节点金环位置不受标记影响。
+- 行为测试：`tests/core/minigame-candidate-arcs.test.ts`（候选 → 落点映射 6 条，含爆发两类的阴优先、PASS、净零变化）+ `minigame-board-view.test.ts`（标记落在会变半身且侧别正确、同侧去重、清空、同相位慢呼吸、三尺寸不越底晕）+ `minigame-game-scene.test.ts` 4 条（三种局面的落点集合、非抉择期不画）。
 - `check:quick`、`build:minigame`、`verify`（964 测试 + `minigame/game.js` 逐字节对账）通过。
-- 两轴复审报告：Standards `.scratch/board-channel-and-marks/reviews/03-standards-review.md`、Spec `03-spec-review.md`（无阻断；Spec 轴记两处像素取舍：弧心取主印中心而非槽位点、多一层 `lighter` 光晕）。
+- 两轴复审报告：Standards `.scratch/board-channel-and-marks/reviews/03-standards-review.md`、Spec `03-spec-review.md`（无阻断；Spec 轴记的像素取舍以本节「设计修订」为准）。
 
-## 浏览器视觉验收
+## 浏览器与真机视觉验收
 
-- 本地 Vite 预览（`tools/minigame-preview/arcgrid.html`，临时文件已删）注入三种决策局面后截图；确认真实 `GameScene` 的 `awaiting-player` 期候选弧只出现在会变的一侧、同侧去重后不叠段、呼吸两端透明度变化可见。微信模拟器与真机仍未跑，按 `docs/HLD.md` §4.6 由用户本地确认。
+- 本地 Vite 预览注入测试局面并截图（临时页已删）；用户在**微信开发者工具**（加载 `minigame/game.js` 产物）里目验。
+- 教训：改 `src/` 后必须 `npm run build:minigame` 重建产物，否则微信开发者工具跑的还是旧包——本次因此让用户白看了一版白色发光（旧包）。`npm run dev:minigame` 可开 watch 减少这一步。
+- 微信模拟器与真机仍未跑，按 `docs/HLD.md` §4.6 由用户本地确认。
