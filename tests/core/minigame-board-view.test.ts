@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import {
   BoardView,
+  candidateBreathAlpha,
   drawNodeMark,
   drawYinYangFish,
   GUIYI_RING_INK,
   NODE_AURA_OUTSET_RATIO,
-  NODE_RING_SCALE,
-  NODE_RING_WIDTH_RATIO,
   resolveActionPath,
 } from '../../src/minigame/views/board-view.js';
 import { ActionType, NodeLevel, PlayerId, Polarity, WuXing } from '../../src/core/types/domain.js';
 import { WUXING_PALETTE } from '../../src/minigame/pixel-art.js';
+import { THEME } from '../../src/minigame/theme.js';
 import { boardWith } from '../../tools/BoardFixture.js';
 import { RecordingContext } from './helpers/recording-context.js';
 import { CANDIDATE_BREATH_PERIOD } from '../../src/minigame/views/board-view.js';
@@ -53,10 +53,6 @@ const OVERCOMING_RAY_PAIRS: readonly [WuXing, WuXing][] = [
   [WuXing.WATER, WuXing.FIRE],
 ];
 
-/** 把角度差折到 (-π, π]，供「阳侧 / 阴侧朝哪偏」这类符号断言使用。 */
-function wrapDelta(delta: number): number {
-  return ((((delta + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
-}
 /** 相生环顺序（角度递增 = 屏幕顺时针）。 */
 const RING_ORDER: readonly WuXing[] = [
   WuXing.WOOD,
@@ -529,43 +525,68 @@ describe('Minigame BoardView: 归一金环流光与亢极元素外溢（票 02�
   });
 });
 
-describe('Minigame BoardView: 候选落点弧与同相位慢呼吸（票 03）', () => {
+describe('Minigame BoardView: 候选落点半身标记与同相位慢呼吸（票 03）', () => {
   /**
-   * 主印外沿那段候选弧：与主印同圆心、半径大于归一金环外沿（半径 + 半线宽）、
-   * 且不是一整圈（金环是 0..2π 的整圈，候选弧只是一段；一个候选画光晕 + 实边两遍）。
+   * 半身标记的识别口径：鱼身外弧（半径 = 主印半径、圆心 = 主印中心）。
+   * 每个半身本体各一条（阴 anticlockwise、阳顺时针），被标记的那个半身会**多出同样一条上加色描边**，
+   * 因此「该侧两条 / 对侧一条」即「这一侧的鱼在闪」——不看颜色、不手抄半径。
    */
-  function candidateArcs(ctx: RecordingContext, view: BoardView) {
-    // 整圈的排除掉：那是票 02 的归一金环；候选弧永远只是一段。
-    const isFullCircle = (arc: { start: number; end: number }): boolean =>
-      arc.start === 0 && Math.abs(arc.end - Math.PI * 2) < 1e-9;
-    const seen = new Set<string>();
-    return ctx.arcs.filter((arc) => {
-      const seal = view.elements.find((entry) => entry.x === arc.x && entry.y === arc.y);
-      if (seal === undefined || isFullCircle(arc)) {
-        return false;
-      }
-      const ringOuter = seal.sealSize * (NODE_RING_SCALE + NODE_RING_WIDTH_RATIO / 2);
-      if (arc.radius <= ringOuter + 0.1 || arc.radius >= ringOuter + 5) {
-        return false;
-      }
-      // 同一个候选画两遍（光晕 + 实边），同圆心同半径同侧只算一段。
-      const key = `${arc.x.toFixed(6)},${arc.y.toFixed(6)},${arc.radius.toFixed(6)},${String(arc.start)},${String(arc.end)}`;
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    });
+  function halfOuterArcs(
+    ctx: RecordingContext,
+    view: BoardView,
+    player: 'P1' | 'P2',
+    element: WuXing,
+  ) {
+    const seal = view.elements.find(
+      (entry) => entry.player === player && entry.element === element,
+    );
+    if (seal === undefined) throw new Error(`找不到 ${player} 的 ${element} 主印`);
+    return ctx.arcs.filter(
+      (arc) => arc.x === seal.x && arc.y === seal.y && arc.radius === seal.sealSize,
+    );
   }
 
-  /** 画当前的候选弧，返回落笔记录。 */
+  /** 被标记的半身：外弧比本体多一条的那一侧；两侧一样多时返回 null。 */
+  function markedSide(
+    ctx: RecordingContext,
+    view: BoardView,
+    player: 'P1' | 'P2',
+    element: WuXing,
+  ): Polarity | null {
+    const arcs = halfOuterArcs(ctx, view, player, element);
+    const yin = arcs.filter((arc) => arc.anticlockwise).length;
+    const yang = arcs.length - yin;
+    if (yin === yang) return null;
+    return yin > yang ? Polarity.YIN : Polarity.YANG;
+  }
+
+  /** 标记层的落笔（加色描边的那些）：透明度的呼吸轨迹从它们的弧里读。 */
+  function markAlphas(
+    ctx: RecordingContext,
+    view: BoardView,
+    player: 'P1' | 'P2',
+    element: WuXing,
+  ): number[] {
+    return halfOuterArcs(ctx, view, player, element)
+      .filter((arc) => arc.alpha < 1)
+      .map((arc) => arc.alpha);
+  }
+
+  /** 画当前的候选标记，返回落笔记录。 */
+  /** 画当前的候选标记，返回落笔记录。 */
   function render(view: BoardView): RecordingContext {
     const ctx = new RecordingContext();
     view.render(ctx.asContext());
     return ctx;
   }
 
-  it('只在会变的那一侧画弧：吸纳 / 散气落源节点，化 / 破落目标节点（不从天干极性推导）', () => {
+  /** `#rrggbb` → `r, g, b`，用来在记录里按元素色找落笔。 */
+  function rgbOf(hex: string): string {
+    const value = Number.parseInt(hex.slice(1), 16);
+    return `${String((value >> 16) & 0xff)}, ${String((value >> 8) & 0xff)}, ${String(value & 0xff)}`;
+  }
+
+  it('阴 / 阳鱼本身在闪：标记落在会变的那半身，不从抽中天干的极性推导', () => {
     // 同一根阳木天干（甲木）：抽中侧是阳，但三个候选各自落在自己要变的那一侧。
     const view = new BoardView();
     view.setCandidates([
@@ -573,51 +594,43 @@ describe('Minigame BoardView: 候选落点弧与同相位慢呼吸（票 03）',
       { player: 'P1', element: WuXing.FIRE, polarity: Polarity.YIN }, // 化：相生目标阴侧
       { player: 'P2', element: WuXing.EARTH, polarity: Polarity.YIN }, // 破：对方相克目标阴侧
     ]);
-    const arcs = candidateArcs(render(view), view);
     const ctx = render(view);
 
-    // 弧与主印同圆心，一个候选一段；圆心即三枚主印的中心。
-    for (const [player, element] of [
-      ['P1', WuXing.WOOD],
-      ['P1', WuXing.FIRE],
-      ['P2', WuXing.EARTH],
+    for (const [player, element, polarity] of [
+      ['P1', WuXing.WOOD, Polarity.YANG],
+      ['P1', WuXing.FIRE, Polarity.YIN],
+      ['P2', WuXing.EARTH, Polarity.YIN],
     ] as const) {
-      const seal = sealOf(view, player, element);
-      expect(
-        arcs.filter((arc) => arc.x === seal.x && arc.y === seal.y),
-        `${player} ${element} 外侧应有候选弧`,
-      ).toHaveLength(1);
+      expect(markedSide(ctx, view, player, element), `${player} ${element} 闪的半身`).toBe(
+        polarity,
+      );
     }
-    // 没被候选点到的节点不画弧。
+    // 没被候选点到的节点两侧一样亮（没有多出来的标记层）。
     for (const [player, element] of [
       ['P1', WuXing.METAL],
       ['P2', WuXing.FIRE],
     ] as const) {
-      const seal = sealOf(view, player, element);
-      expect(arcs.filter((arc) => arc.x === seal.x && arc.y === seal.y)).toHaveLength(0);
+      expect(markedSide(ctx, view, player, element), `${player} ${element} 不该有标记`).toBeNull();
     }
 
-    // 弧落在该侧：阳侧弧的角心朝槽位同侧（atan2(y-y, ±0.7·r)），阴侧相反。
-    // 用「弧心与主印射线角的符号差」断侧别，不重算像素。
-    const woodSeal = sealOf(view, 'P1', WuXing.WOOD);
-    const woodArc = arcs.find((arc) => arc.x === woodSeal.x && arc.y === woodSeal.y)!;
-    const woodCenter = (woodArc.start + woodArc.end) / 2;
-    // 阳侧：槽位点在主印右侧 => 弧心角度大于射线角（向右偏）。
-    expect(wrapDelta(woodCenter - woodSeal.angle)).toBeGreaterThan(0);
-    const fireSeal = sealOf(view, 'P1', WuXing.FIRE);
-    const fireArc = arcs.find((arc) => arc.x === fireSeal.x && arc.y === fireSeal.y)!;
-    // 阴侧：槽位点在主印左侧 => 弧心角度小于射线角（向左偏）。
-    expect(wrapDelta((fireArc.start + fireArc.end) / 2 - fireSeal.angle)).toBeLessThan(0);
-
-    // 弧色恒为该节点五行的元素色（色相只表身份，强弱只走透明度）。
-    const wood = WUXING_PALETTE[WuXing.WOOD];
-    expect(
-      ctx.paths.filter((path) => path.color === wood.light && path.strokeWidth > 0),
-      '木侧候选弧应是元素色描边',
-    ).toHaveLength(1);
+    // 标记色是专属强调色，不取五行色（否则亮底上与「加持」混淆）：
+    // 三个不同五行的候选（木 / 火 / 土）都用同一个强调色，各一段亮边。
+    const markRgb = rgbOf(THEME.candidateLit);
+    const markStrokes = ctx.paths.filter(
+      (path) => path.strokeWidth > 0 && path.color.includes(markRgb),
+    );
+    expect(markStrokes, '每个候选一段强调色亮边，与五行无关').toHaveLength(3);
+    // 五行色不参与标记：没有哪个候选的半身是用元素色描边的（本轮之前正是那样）。
+    for (const element of [WuXing.WOOD, WuXing.FIRE, WuXing.EARTH]) {
+      const elementRgb = rgbOf(WUXING_PALETTE[element].light);
+      expect(
+        ctx.paths.filter((path) => path.strokeWidth > 0 && path.color.includes(elementRgb)),
+        `${element} 的元素色不该出现在标记里`,
+      ).toHaveLength(0);
+    }
   });
 
-  it('同一节点被两个候选共享时不叠成两段（同侧去重）', () => {
+  it('同一节点两侧各被一个候选点到时是两个半身；同侧重复候选不叠第二层', () => {
     const view = new BoardView();
     view.setCandidates([
       { player: 'P1', element: WuXing.WOOD, polarity: Polarity.YIN },
@@ -625,32 +638,37 @@ describe('Minigame BoardView: 候选落点弧与同相位慢呼吸（票 03）',
     ]);
 
     expect(view.candidates).toHaveLength(1);
-    const arcs = candidateArcs(render(view), view);
-    expect(arcs).toHaveLength(1);
+    const single = render(view);
+    expect(markedSide(single, view, 'P1', WuXing.WOOD)).toBe(Polarity.YIN);
+    // 同侧只叠一层：该侧外弧恰好比本体多一条。
+    expect(
+      halfOuterArcs(single, view, 'P1', WuXing.WOOD).filter((arc) => arc.anticlockwise),
+    ).toHaveLength(2);
 
-    // 同一节点的两侧各被一个候选点到时仍是两段（一个候选一段，不是一个节点一段）。
     view.setCandidates([
       { player: 'P1', element: WuXing.WOOD, polarity: Polarity.YIN },
       { player: 'P1', element: WuXing.WOOD, polarity: Polarity.YANG },
     ]);
     expect(view.candidates).toHaveLength(2);
-    expect(candidateArcs(render(view), view)).toHaveLength(2);
+    const both = render(view);
+    // 两侧都被标记时 `markedSide` 判不出单侧（两侧一样多），用计数直接断。
+    expect(halfOuterArcs(both, view, 'P1', WuXing.WOOD)).toHaveLength(4);
   });
 
-  it('setCandidates([]) 清空弧；弧与盘面快照、连线高亮互不影响', () => {
+  it('setCandidates([]) 清空标记；标记与盘面快照、连线高亮互不影响', () => {
     const view = new BoardView();
     view.setCandidates([{ player: 'P1', element: WuXing.WOOD, polarity: Polarity.YANG }]);
-    expect(candidateArcs(render(view), view)).toHaveLength(1);
+    expect(markedSide(render(view), view, 'P1', WuXing.WOOD)).toBe(Polarity.YANG);
 
     // 换盘面快照只换数据，不动候选（投影与候选解耦，与连线高亮同一约定）。
     view.update(boardWith(), boardWith());
-    expect(candidateArcs(render(view), view)).toHaveLength(1);
+    expect(markedSide(render(view), view, 'P1', WuXing.WOOD)).toBe(Polarity.YANG);
 
     view.setCandidates([]);
-    expect(candidateArcs(render(view), view)).toHaveLength(0);
+    expect(markedSide(render(view), view, 'P1', WuXing.WOOD)).toBeNull();
   });
 
-  it('同相位慢呼吸：所有候选弧共用一条透明度曲线，相位 0 / 0.5 分别是低位与满值', () => {
+  it('同相位慢呼吸：所有候选标记共用一条透明度曲线，相位 0 / 0.5 分别是低位与满值', () => {
     const view = new BoardView();
     view.setCandidates([
       { player: 'P1', element: WuXing.WOOD, polarity: Polarity.YANG },
@@ -659,19 +677,27 @@ describe('Minigame BoardView: 候选落点弧与同相位慢呼吸（票 03）',
 
     view.tick(0);
     expect(view.breathPhase).toBe(0);
-    const low = candidateArcs(render(view), view);
-    // 决策期全程可见：低位不是 0，玩家仍知道「这里能打」；两侧此刻透明度相同（同相位）。
-    for (const arc of low) {
-      expect(arc.alpha).toBeGreaterThan(0.35);
-      expect(arc.alpha).toBeLessThan(0.45);
+    const low = [
+      ...markAlphas(render(view), view, 'P1', WuXing.WOOD),
+      ...markAlphas(render(view), view, 'P2', WuXing.EARTH),
+    ];
+    // 决策期全程可见：低位不是 0，玩家仍知道「这里能打」；两处此刻透明度相同（同相位）。
+    expect(low.length).toBeGreaterThan(0);
+    for (const alpha of low) {
+      expect(alpha).toBeCloseTo(candidateBreathAlpha(0), 9);
+      expect(alpha).toBeGreaterThan(0.5);
     }
-    expect(new Set(low.map((arc) => arc.alpha)).size).toBe(1);
+    expect(new Set(low.map((alpha) => alpha.toFixed(9))).size).toBe(1);
 
     // 半周期后到满值：同一个相位、同一个透明度（不是逐节点各走各的）。
     view.tick(CANDIDATE_BREATH_PERIOD / 2);
     expect(view.breathPhase).toBeCloseTo(0.5, 9);
-    for (const arc of candidateArcs(render(view), view)) {
-      expect(arc.alpha).toBeGreaterThan(0.9);
+    for (const alpha of [
+      ...markAlphas(render(view), view, 'P1', WuXing.WOOD),
+      ...markAlphas(render(view), view, 'P2', WuXing.EARTH),
+    ]) {
+      expect(alpha).toBeCloseTo(candidateBreathAlpha(0.5), 9);
+      expect(alpha).toBeGreaterThan(low[0]);
     }
 
     // 一整圈回到起点；相位按周期取模，不会无限增大。
@@ -679,8 +705,8 @@ describe('Minigame BoardView: 候选落点弧与同相位慢呼吸（票 03）',
     expect(view.breathPhase).toBeCloseTo(0, 9);
   });
 
-  it('候选弧不越出法盘底晕（三尺寸）', () => {
-    // 全亢极盘 + 决策期候选：金环、外溢与候选弧同时在场，取最坏情况。
+  it('候选标记不越出法盘底晕（三尺寸）', () => {
+    // 全亢极盘 + 决策期候选：金环、外溢与候选标记同时在场，取最坏情况。
     const allKangJi = boardWith(
       Object.fromEntries(Object.values(WuXing).map((element) => [element, { yin: 2, yang: 2 }])),
     );
@@ -695,26 +721,17 @@ describe('Minigame BoardView: 候选落点弧与同相位慢呼吸（票 03）',
       for (const polarity of [Polarity.YIN, Polarity.YANG]) {
         view.setCandidates([{ player: 'P2', element: WuXing.WOOD, polarity }]);
         const ctx = render(view);
+        expect(markedSide(ctx, view, 'P2', WuXing.WOOD), `${String(width)}x${String(height)}`).toBe(
+          polarity,
+        );
+        // 标记只画在鱼身轮廓上（半径 = 主印半径），故不可能越出以主印外沿为口径的底晕。
         const haloRadius = view.layout.outerRadius + view.layout.sealSize * NODE_AURA_OUTSET_RATIO;
-        expect(
-          candidateArcs(ctx, view),
-          `${String(width)}x${String(height)} 应画出一段候选弧`,
-        ).toHaveLength(1);
-        for (const arc of candidateArcs(ctx, view)) {
-          const seal = view.elements.find(
-            (entry) => Math.abs(entry.x - arc.x) < 1e-9 && Math.abs(entry.y - arc.y) < 1e-9,
-          );
-          expect(seal, '候选弧圆心应落在一枚主印上').toBeDefined();
-          const ink = WUXING_PALETTE[seal!.element].light;
-          // 描边线宽从实际落笔记录里读（RecordingContext 的 arcs 不记线宽）。
-          const strokeWidth = (ctx.paths.find((path) => path.color === ink)?.strokeWidth ?? 0) / 2;
-          const fromCenter = Math.hypot(
-            seal!.x - view.layout.centerX,
-            seal!.y - view.layout.centerY,
-          );
+        for (const arc of halfOuterArcs(ctx, view, 'P2', WuXing.WOOD)) {
+          const seal = sealOf(view, 'P2', WuXing.WOOD);
+          const fromCenter = Math.hypot(seal.x - view.layout.centerX, seal.y - view.layout.centerY);
           expect(
-            fromCenter + arc.radius + strokeWidth,
-            `${String(width)}x${String(height)} 候选弧越出底晕`,
+            fromCenter + arc.radius,
+            `${String(width)}x${String(height)} 候选标记越出底晕`,
           ).toBeLessThanOrEqual(haloRadius + 1e-9);
         }
       }

@@ -12,6 +12,14 @@ export const THEME = {
   jade: '#80d6ba',
   rival: '#86b8cb',
   damage: '#ee8d77',
+  /**
+   * 候选标记的专属强调色：故意**不取任何五行色、也不取节点级状态的金**。
+   * 之前用元素色加亮时，亮底（点亮 / 加持）上趋近白，与「加持」的径向光晕读成同一种东西（金最明显）；
+   * 换成一个盘面上不存在的色相，靠**色相**而不是明暗区分，任何底色上都读得出来。
+   */
+  candidate: '#8d76c9',
+  candidateDeep: '#6f5aa8',
+  candidateLit: '#cfc2ee',
   font: '"PingFang SC", "Microsoft YaHei", sans-serif',
 } as const;
 
