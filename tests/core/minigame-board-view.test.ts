@@ -1,13 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   BoardView,
+  drawNodeMark,
   drawYinYangFish,
-  guiYiRingGeometry,
+  GUIYI_RING_INK,
+  NODE_AURA_OUTSET_RATIO,
   resolveActionPath,
 } from '../../src/minigame/views/board-view.js';
 import { ActionType, NodeLevel, PlayerId, Polarity, WuXing } from '../../src/core/types/domain.js';
 import { WUXING_PALETTE } from '../../src/minigame/pixel-art.js';
-import { THEME } from '../../src/minigame/theme.js';
 import { boardWith } from '../../tools/BoardFixture.js';
 import { RecordingContext } from './helpers/recording-context.js';
 
@@ -354,15 +355,8 @@ describe('Minigame BoardView: 归一分层与进度读数', () => {
   });
 });
 
-describe('Minigame BoardView: 归一金环与亢极双层环（票 02）', () => {
-  /** 金环 = 落在主印中心、比鱼身更大的同心圆弧（鱼身外弧半径恒等于主印半径）。 */
-  function ringArcs(ctx: RecordingContext, seal: { x: number; y: number; sealSize: number }) {
-    return ctx.arcs.filter(
-      (arc) => arc.x === seal.x && arc.y === seal.y && arc.radius > seal.sealSize,
-    );
-  }
-
-  /** 六种阴阳配对：只有两侧均 ≥1 才有环，只有 (2, 2) 才双层。 */
+describe('Minigame BoardView: 归一金环流光与亢极元素外溢（票 02）', () => {
+  /** 六种阴阳配对：只有两侧均 ≥1 才有金环，只有 (2, 2) 才外溢。 */
   const PAIRS: readonly (readonly [NodeLevel, NodeLevel, 0 | 1 | 2])[] = [
     [0, 0, 0],
     [2, 0, 0],
@@ -371,93 +365,156 @@ describe('Minigame BoardView: 归一金环与亢极双层环（票 02）', () =>
     [1, 2, 1],
     [2, 2, 2],
   ];
+  const GOLD = GUIYI_RING_INK;
+  const SEAL = 20;
 
-  /** 一个主印实际画出的金环半径（排序后），与几何真源逐圈对齐。 */
-  function ringRadii(ctx: RecordingContext, seal: { x: number; y: number; sealSize: number }) {
-    return ringArcs(ctx, seal)
-      .map((arc) => arc.radius)
-      .sort((a, b) => a - b);
+  function rgbOf(hex: string): string {
+    const value = Number.parseInt(hex.slice(1), 16);
+    return `${String((value >> 16) & 0xff)}, ${String((value >> 8) & 0xff)}, ${String(value & 0xff)}`;
   }
 
-  it('金环层数由节点级归一 / 亢极决定，内外两盘一视同仁', () => {
-    for (const [yin, yang, layers] of PAIRS) {
-      const view = new BoardView();
-      const node = { yin, yang };
-      view.update(boardWith({ [WuXing.WOOD]: node }), boardWith({ [WuXing.WOOD]: node }));
-      const ctx = new RecordingContext();
-      view.render(ctx.asContext());
+  /** 直接画一个节点的标记层（不含鱼身），隔离出它自己的落笔。 */
+  function mark(layers: 0 | 1 | 2, element: WuXing, time: number) {
+    const ctx = new RecordingContext();
+    drawNodeMark(ctx.asContext(), 0, 0, SEAL, element, layers, time);
+    return ctx;
+  }
 
-      for (const player of ['P1', 'P2'] as const) {
-        const seal = sealOf(view, player, WuXing.WOOD);
-        const expected = guiYiRingGeometry(seal.sealSize, layers).radii;
-        expect(
-          ringRadii(ctx, seal),
-          `${player} 在 (${String(yin)},${String(yang)}) 的金环半径`,
-        ).toEqual([...expected].sort((a, b) => a - b));
-      }
-      // 其余九个主印未归一 / 亢极，全盘金环数只由这一对节点贡献（两侧盘各算）；
-      // 金环是中性金（THEME.gold），不用警示色。
-      expect(
-        ctx.paths.filter((path) => path.color === THEME.gold && path.strokeWidth > 0),
-      ).toHaveLength(layers * 2);
-    }
+  /** 主印外那一圈金环的弧（鱼身外弧半径恒等于主印半径，故以 `> 主印半径` 筛出）。 */
+  function ringArcs(ctx: RecordingContext) {
+    return ctx.arcs.filter((arc) => arc.radius > SEAL && arc.radius < SEAL * 1.3);
+  }
+
+  it('标记层数由节点级归一 / 亢极决定：0 层不画、1 层金环、2 层金环 + 元素色外溢', () => {
+    expect(mark(0, WuXing.WOOD, 0).paths).toHaveLength(0);
+
+    // 归一 = 一圈金环 + 沿环流动的金色高光；没有元素色外溢。
+    const guiYi = mark(1, WuXing.WOOD, 0);
+    expect(ringArcs(guiYi).length).toBeGreaterThan(0);
+    expect(guiYi.paths.some((path) => path.color === GOLD.main && path.strokeWidth > 0)).toBe(true);
+    expect(guiYi.gradients).toHaveLength(0);
+
+    // 亢极 = 金环之外再叠元素色柔光 + 一圈涟漪。
+    const kangJi = mark(2, WuXing.WOOD, 0);
+    expect(ringArcs(kangJi).length).toBeGreaterThan(0);
+    expect(kangJi.paths.some((path) => path.color === GOLD.main && path.strokeWidth > 0)).toBe(
+      true,
+    );
+    const palette = WUXING_PALETTE[WuXing.WOOD];
+    expect(kangJi.gradients.length).toBeGreaterThan(0);
+    expect(
+      kangJi.gradients.some((gradient) =>
+        gradient.stops.some(
+          (stop) =>
+            stop.color.includes(rgbOf(palette.light)) || stop.color.includes(rgbOf(palette.main)),
+        ),
+      ),
+    ).toBe(true);
   });
 
-  it('亢极在归一的同一圈外再加一层：内圈半径不变，外圈更大', () => {
+  it('金环高光随时间沿环流动', () => {
+    // 高光是一串小弧，金环本身是一整圈（start 0 → end 2π）。
+    const flow = (ctx: RecordingContext) =>
+      ringArcs(ctx).filter((arc) => !(arc.start === 0 && arc.end === Math.PI * 2));
+    const at0 = flow(mark(1, WuXing.WOOD, 0));
+    const at2 = flow(mark(1, WuXing.WOOD, 2));
+    expect(at0.length).toBeGreaterThan(0);
+    expect(at2.length).toBe(at0.length);
+    // 头部小弧的终点随钟移到另一个方位。
+    expect(at2[0].end).not.toBeCloseTo(at0[0].end, 6);
+  });
+
+  it('盘面渲染：归一节点有金环无外溢、亢极节点有金环有元素外溢、虚空节点不画', () => {
     const view = new BoardView();
     view.update(
-      boardWith({ [WuXing.WOOD]: { yin: 1, yang: 1 } }),
-      boardWith({ [WuXing.WOOD]: { yin: 2, yang: 2 } }),
+      boardWith({ [WuXing.WOOD]: { yin: 1, yang: 1 }, [WuXing.FIRE]: { yin: 2, yang: 2 } }),
+      boardWith(),
     );
     const ctx = new RecordingContext();
     view.render(ctx.asContext());
 
-    const ownSeal = sealOf(view, 'P1', WuXing.WOOD).sealSize;
-    const opponentSeal = sealOf(view, 'P2', WuXing.WOOD).sealSize;
-    const guiYi = ringRadii(ctx, sealOf(view, 'P1', WuXing.WOOD));
-    const kangJi = ringRadii(ctx, sealOf(view, 'P2', WuXing.WOOD));
-    expect(guiYi).toEqual([guiYiRingGeometry(ownSeal, 1).radii[0]]);
-    expect(kangJi).toEqual([...guiYiRingGeometry(opponentSeal, 2).radii]);
-    // 归一那一圈与亢极内圈同为主印半径的等比缩放，亢极多出的一圈更大。
-    expect(kangJi[0] / opponentSeal).toBeCloseTo(guiYi[0] / ownSeal, 9);
-    expect(kangJi[1]).toBeGreaterThan(kangJi[0]);
+    const ringsAt = (seal: { x: number; y: number; sealSize: number }) =>
+      ctx.arcs.filter((arc) => arc.x === seal.x && arc.y === seal.y && arc.radius > seal.sealSize);
+    const aurasAt = (seal: { x: number; y: number }) =>
+      ctx.gradients.filter((gradient) => gradient.x1 === seal.x && gradient.y1 === seal.y);
+
+    // 归一木：金环在、无外溢。
+    const wood = sealOf(view, 'P1', WuXing.WOOD);
+    expect(ringsAt(wood).length).toBeGreaterThan(0);
+    expect(aurasAt(wood)).toHaveLength(0);
+
+    // 亢极火：金环在，另有元素色外溢渐变。
+    const fire = sealOf(view, 'P1', WuXing.FIRE);
+    expect(ringsAt(fire).length).toBeGreaterThan(0);
+    const firePalette = WUXING_PALETTE[WuXing.FIRE];
+    expect(
+      aurasAt(fire).some((gradient) =>
+        gradient.stops.some((stop) => stop.color.includes(rgbOf(firePalette.light))),
+      ),
+    ).toBe(true);
+
+    // 虚空土：金环与外溢都没有。
+    const earth = sealOf(view, 'P1', WuXing.EARTH);
+    expect(ringsAt(earth)).toHaveLength(0);
+    expect(aurasAt(earth)).toHaveLength(0);
   });
 
-  it('金环不越出法盘底晕、不压到相邻主印', () => {
-    const allGuiYi = boardWith(
+  it('六种配对在内外两盘得到相同的标记层数（一视同仁）', () => {
+    for (const [yin, yang, layers] of PAIRS) {
+      const node = { yin, yang };
+      const view = new BoardView();
+      view.update(boardWith({ [WuXing.WOOD]: node }), boardWith({ [WuXing.WOOD]: node }));
+      for (const player of ['P1', 'P2'] as const) {
+        const seal = sealOf(view, player, WuXing.WOOD);
+        const ctx = new RecordingContext();
+        drawNodeMark(ctx.asContext(), seal.x, seal.y, seal.sealSize, seal.element, layers, 0);
+        const hasRing = ctx.arcs.some(
+          (arc) => arc.x === seal.x && arc.y === seal.y && arc.radius > seal.sealSize,
+        );
+        expect(hasRing, `${player} 在 (${String(yin)},${String(yang)}) 有金环`).toBe(layers > 0);
+        expect(
+          ctx.gradients.length > 0,
+          `${player} 在 (${String(yin)},${String(yang)}) 的外溢层数`,
+        ).toBe(layers === 2);
+      }
+    }
+  });
+
+  it('亢极外溢整个周期都不越出法盘底晕（内外两盘、三尺寸）', () => {
+    const allKangJi = boardWith(
       Object.fromEntries(Object.values(WuXing).map((element) => [element, { yin: 2, yang: 2 }])),
     );
+    // 涟漪周期 7.5s；扫一个完整周期，不只采 `_clock = 0` 那个最内圈的瞬间。
+    const TIMES = Array.from({ length: 11 }, (_, index) => index * 0.75);
     for (const [width, height] of [
       [320, 568],
       [390, 844],
       [460, 900],
     ] as const) {
-      const view = new BoardView();
-      view.resize(width, height);
-      view.update(allGuiYi, allGuiYi);
-      const ctx = new RecordingContext();
-      view.render(ctx.asContext());
-      const where = `${String(width)}x${String(height)}`;
-
-      for (const seal of view.elements) {
-        const rings = ringArcs(ctx, seal);
-        const { radii, width: stroke } = guiYiRingGeometry(seal.sealSize, 2);
-        expect(ringRadii(ctx, seal), `${where} ${seal.player} ${seal.element} 亢极双层`).toEqual(
-          [...radii].sort((a, b) => a - b),
-        );
-        for (const ring of rings) {
-          const outerEdge = ring.radius + stroke / 2;
-          // 底晕是圆心在盘心、半径 `outerRadius + sealSize * 1.1` 的圆盘（`_drawEngraving`）。
-          const haloRadius = view.layout.outerRadius + view.layout.sealSize * 1.1;
+      for (const time of TIMES) {
+        const view = new BoardView();
+        view.resize(width, height);
+        view.update(allKangJi, allKangJi);
+        view.tick(time);
+        const ctx = new RecordingContext();
+        view.render(ctx.asContext());
+        const haloRadius = view.layout.outerRadius + view.layout.sealSize * NODE_AURA_OUTSET_RATIO;
+        const where = `${String(width)}x${String(height)} @${time.toFixed(2)}s`;
+        for (const seal of view.elements) {
           const fromCenter = Math.hypot(seal.x - view.layout.centerX, seal.y - view.layout.centerY);
-          expect(fromCenter + outerEdge, `${where} 金环越出底晕`).toBeLessThanOrEqual(haloRadius);
-          for (const other of view.elements) {
-            if (other === seal) continue;
-            const distance = Math.hypot(other.x - seal.x, other.y - seal.y);
+          for (const gradient of ctx.gradients) {
+            if (gradient.x1 !== seal.x || gradient.y1 !== seal.y) continue;
             expect(
-              distance,
-              `${where} ${seal.player}${seal.element} 金环压住 ${other.player}${other.element}`,
-            ).toBeGreaterThanOrEqual(outerEdge + other.sealSize);
+              fromCenter + gradient.r1,
+              `${where} ${seal.player}${seal.element}`,
+            ).toBeLessThanOrEqual(haloRadius + 1e-9);
+          }
+          for (const arc of ctx.arcs) {
+            if (arc.x !== seal.x || arc.y !== seal.y) continue;
+            expect(
+              fromCenter + arc.radius,
+              `${where} ${seal.player}${seal.element} 金环`,
+            ).toBeLessThanOrEqual(haloRadius + 1e-9);
           }
         }
       }
