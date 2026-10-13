@@ -155,34 +155,39 @@ const PREVIEW_ARROW_BARB_RATIO = 0.7;
 const PREVIEW_ARROW_SEAL_ANGLE_MAX = 0.85;
 /** 相生弧箭两端从主印中心各自缩进的比例（乘主印张角），留出与鱼形的间隙。 */
 const PREVIEW_ARROW_PAD_RATIO = 0.35;
-/** 斩击尾部相对源主印半径的间隙。 */
+/** 突刺尾部相对源主印半径的间隙。 */
 const PREVIEW_ATTACK_TAIL_GAP_RATIO = 0.15;
-/** 斩击刀尖越过目标主印外沿的距离（占主印半径）：贯穿敌节点，刀尖从它外侧探出。 */
-const PREVIEW_ATTACK_OVERSHOOT_RATIO = 0.45;
-/** 刀面弯弓的弓高（占两印心距）：让它是一条弧刃而不是呆板的直线。 */
-const PREVIEW_ATTACK_BOW_RATIO = 0.28;
-/** 刀面内缘的弓高比例（相对外缘）：内外缘弯曲程度不同才是新月，不是对称橄榄。 */
-const PREVIEW_ATTACK_INNER_BOW_RATIO = 0.25;
+/** 突刺尖端越过目标主印外沿的距离（占主印半径）：贯穿敌节点，尖端从它外侧探出。 */
+const PREVIEW_ATTACK_OVERSHOOT_RATIO = 0.7;
+/** 突刺最宽处相对主印半径的宽度。 */
+const PREVIEW_ATTACK_WAIST_RATIO = 0.42;
+/** 最宽处落在尾到尖的哪个比例。 */
+const PREVIEW_ATTACK_WAIST_AT = 0.32;
+/** 两侧速度线相对主印半径的横向偏移。 */
+const PREVIEW_ATTACK_SPEED_OFFSET_RATIO = 1.7;
 /** 能量头循环一圈的秒数（能量反复从本阵喷向敌阵）。 */
 const PREVIEW_ATTACK_FLOW_PERIOD = 1.1;
 /** 能量头半径（占主印半径）。 */
 const PREVIEW_ATTACK_HEAD_RATIO = 0.34;
-/** 命中迸射的射线长度（占主印半径）。 */
-const PREVIEW_ATTACK_SPARK_RATIO = 0.6;
 /** 命中冲击波的最大半径（占敌主印半径）：从敌节点往外扩、淡出，给出「打实了」的重感。 */
-const PREVIEW_ATTACK_SHOCK_SCALE = 1.9;
+const PREVIEW_ATTACK_SHOCK_SCALE = 1.6;
 
 /**
- * 调息流转环的半径（占主印半径）：调息节点不可能归一（对侧必 ≤ 0），
- * 主印外没有金环占位，所以可以贴到 0.82 倍主印外沿。
+ * 调息漩涡：从当前点亮侧（大半径）螺旋一卷到对侧（小半径），像能量被卷进节点里。
+ * 调息节点不可能归一（对侧必 ≤ 0），主印外没有金环占位，所以可以绕到 1.4 倍主印半径。
  */
-const PREVIEW_CONVERT_RING_RATIO = 1.12;
-/** 调息一股能量从源侧绕到对侧的秒数。 */
+const PREVIEW_CONVERT_VORTEX_OUTER_RATIO = 1.4;
+const PREVIEW_CONVERT_VORTEX_INNER_RATIO = 0.95;
+/** 除半圈位移外额外多绕的整圈数。 */
+const PREVIEW_CONVERT_VORTEX_TURNS = 1;
+/** 调息一股能量从源侧卷到对侧的秒数。 */
 const PREVIEW_CONVERT_FLOW_PERIOD = 1.6;
-/** 调息流动尾长（占半圈的比例）。 */
-const PREVIEW_CONVERT_TAIL_RATIO = 0.5;
-/** 流转环的线宽（占主印半径）：比细箭头粗，才看得出「转」。 */
-const PREVIEW_CONVERT_RING_WIDTH_RATIO = 0.16;
+/** 调息流动尾长（占整条螺旋的比例）。 */
+const PREVIEW_CONVERT_TAIL_RATIO = 0.55;
+/** 漩涡线宽（占主印半径）。 */
+const PREVIEW_CONVERT_WIDTH_RATIO = 0.11;
+/** 漩涡采样段数。 */
+const PREVIEW_CONVERT_SAMPLES = 90;
 
 export const DEFAULT_BOARD_LAYOUT: BoardViewLayout = {
   centerX: 0,
@@ -615,7 +620,7 @@ export class BoardView extends Container {
     this._drawCandidateMarks(ctx);
     this._drawGhost(ctx);
     this._drawPreviewArrow(ctx);
-    this._drawConvertFlow(ctx);
+    this._drawConvertVortex(ctx);
     this._drawRingLabels(ctx);
   }
 
@@ -711,7 +716,7 @@ export class BoardView extends Container {
       if (line.kind === 'generation') {
         this._drawGenerationArrow(ctx, line, width, head);
       } else {
-        this._drawAttackSlash(ctx, line);
+        this._drawAttackThrust(ctx, line);
       }
     }
   }
@@ -755,18 +760,16 @@ export class BoardView extends Container {
   }
 
   /**
-   * 相克的斩击（票 04 rev2）：一道弓起的能量弧刃从本阵喷向敌节点，刀尖穿出敌印；
-   * 刃口有一条循环流动的能量头，命中处迸出几道火花。弧刃朝环序下游弓，
-   * 和化 / 强化的顺时针弧箭同一个「流向」——不是一条呆板的直线。
+   * 相克的贯穿突刺（票 04 rev3，用户选定 B 方案）：一枚能量尖锥从本阵主印外沿刺向敌节点，
+   * 尖端穿出敌印；两侧拉出速度线，落点处有向外扩的冲击波，尖端有能量头。不是一条平直线。
    */
-  private _drawAttackSlash(ctx: CanvasRenderingContext2D, line: BoardConnectionView): void {
+  private _drawAttackThrust(ctx: CanvasRenderingContext2D, line: BoardConnectionView): void {
     const dx = line.x2 - line.x1;
     const dy = line.y2 - line.y1;
     const length = Math.hypot(dx, dy);
     if (length === 0) return;
     const ux = dx / length;
     const uy = dy / length;
-    // 顺时针侧法线：刃面朝环序下游弓。
     const nx = -uy;
     const ny = ux;
     const sealSize = this._layout.sealSize;
@@ -778,158 +781,139 @@ export class BoardView extends Container {
     const tailY = line.y1 + uy * tail;
     const tipX = line.x1 + ux * tipDistance;
     const tipY = line.y1 + uy * tipDistance;
-    const midX = (tailX + tipX) / 2;
-    const midY = (tailY + tipY) / 2;
-    const bow = length * PREVIEW_ATTACK_BOW_RATIO;
-    const outerX = midX + nx * bow;
-    const outerY = midY + ny * bow;
-    const innerX = midX + nx * bow * PREVIEW_ATTACK_INNER_BOW_RATIO;
-    const innerY = midY + ny * bow * PREVIEW_ATTACK_INNER_BOW_RATIO;
+    const waistDistance = tail + (tipDistance - tail) * PREVIEW_ATTACK_WAIST_AT;
+    const waistX = line.x1 + ux * waistDistance;
+    const waistY = line.y1 + uy * waistDistance;
+    const waist = sealSize * PREVIEW_ATTACK_WAIST_RATIO;
+    const progress = (this._clock / PREVIEW_ATTACK_FLOW_PERIOD) % 1;
 
     ctx.save();
-    // 刃面：从尾部的暗紫淡出到刀尖的亮紫白，中间鼓、两端尖。
-    const blade = ctx.createLinearGradient(tailX, tailY, tipX, tipY);
-    blade.addColorStop(0, withAlpha(THEME.candidateDeep, 0.08));
-    blade.addColorStop(0.4, withAlpha(THEME.candidate, 0.55));
-    blade.addColorStop(0.8, withAlpha(THEME.candidateLit, 0.85));
-    blade.addColorStop(1, withAlpha('#ffffff', 0.95));
-    ctx.fillStyle = blade;
+    // 尖锥本体：尾细、腰宽、尖端收成一点，渐变从尾部的暗紫到尖端的亮紫白。
+    const body = ctx.createLinearGradient(tailX, tailY, tipX, tipY);
+    body.addColorStop(0, withAlpha(THEME.candidateDeep, 0.05));
+    body.addColorStop(0.45, withAlpha(THEME.candidate, 0.6));
+    body.addColorStop(1, withAlpha('#ffffff', 0.98));
+    ctx.fillStyle = body;
     ctx.beginPath();
     ctx.moveTo(tailX, tailY);
-    ctx.quadraticCurveTo(outerX, outerY, tipX, tipY);
-    ctx.quadraticCurveTo(innerX, innerY, tailX, tailY);
+    ctx.lineTo(waistX + nx * waist, waistY + ny * waist);
+    ctx.lineTo(tipX, tipY);
+    ctx.lineTo(waistX - nx * waist, waistY - ny * waist);
     ctx.closePath();
     ctx.fill();
-    // 刃口亮线：把刀锋勾出来。
-    ctx.strokeStyle = withAlpha(THEME.candidateLit, 0.85);
-    ctx.lineWidth = Math.max(1, sealSize * 0.06);
-    ctx.beginPath();
-    ctx.moveTo(tailX, tailY);
-    ctx.quadraticCurveTo(outerX, outerY, tipX, tipY);
-    ctx.stroke();
-
-    // 能量头：沿刃口中线从本阵流向刀尖，到位后重新从尾部亮起（循环）。
-    const progress = (this._clock / PREVIEW_ATTACK_FLOW_PERIOD) % 1;
-    const comet = quadraticPoint(
-      progress,
-      { x: tailX, y: tailY },
-      { x: (outerX + innerX) / 2, y: (outerY + innerY) / 2 },
-      { x: tipX, y: tipY },
-    );
-    const cometRadius = sealSize * PREVIEW_ATTACK_HEAD_RATIO;
-    const glow = ctx.createRadialGradient(comet.x, comet.y, 0, comet.x, comet.y, cometRadius);
-    glow.addColorStop(0, withAlpha('#ffffff', 0.95));
-    glow.addColorStop(0.45, withAlpha(THEME.candidateLit, 0.6));
-    glow.addColorStop(1, withAlpha(THEME.candidate, 0));
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(comet.x, comet.y, cometRadius, 0, Math.PI * 2);
-    ctx.fill();
-
+    // 两侧速度线：随能量头前推而伸长。
+    ctx.strokeStyle = withAlpha(THEME.candidateLit, 0.5);
+    ctx.lineWidth = Math.max(1, sealSize * 0.05);
+    ctx.lineCap = 'round';
+    for (const side of [-1, 1]) {
+      for (const [a, b] of [
+        [0.3, 0.95],
+        [0.15, 0.7],
+      ] as const) {
+        const s0 = tail + (tipDistance - tail) * a * (0.6 + 0.4 * progress);
+        const s1 = tail + (tipDistance - tail) * b * (0.6 + 0.4 * progress);
+        const offset = waist * PREVIEW_ATTACK_SPEED_OFFSET_RATIO * side;
+        ctx.beginPath();
+        ctx.moveTo(line.x1 + ux * s0 + nx * offset, line.y1 + uy * s0 + ny * offset);
+        ctx.lineTo(line.x1 + ux * s1 + nx * offset, line.y1 + uy * s1 + ny * offset);
+        ctx.stroke();
+      }
+    }
     // 命中冲击波：从敌节点向外扩、淡出，每圈能量头抵敌时重来一次。
-    const wave = progress;
-    ctx.strokeStyle = withAlpha(THEME.candidateLit, 0.7 * (1 - wave));
+    ctx.strokeStyle = withAlpha(THEME.candidateLit, 0.7 * (1 - progress));
     ctx.lineWidth = Math.max(1.2, sealSize * 0.09);
     ctx.beginPath();
     ctx.arc(
       line.x2,
       line.y2,
-      targetSeal * (0.7 + wave * PREVIEW_ATTACK_SHOCK_SCALE),
+      targetSeal * (0.7 + progress * PREVIEW_ATTACK_SHOCK_SCALE),
       0,
       Math.PI * 2,
     );
     ctx.stroke();
-
-    // 命中迸射：能量头越接近刀尖，敌节点上的火花越亮。
-    const spark = 0.35 + 0.65 * progress;
-    const sparkLength = sealSize * PREVIEW_ATTACK_SPARK_RATIO * (0.6 + 0.4 * progress);
-    const impactX = line.x2 + ux * targetSeal * 0.85;
-    const impactY = line.y2 + uy * targetSeal * 0.85;
-    const baseAngle = Math.atan2(uy, ux);
-    ctx.strokeStyle = withAlpha(THEME.candidateLit, spark);
-    ctx.lineWidth = Math.max(1, sealSize * 0.07);
-    ctx.lineCap = 'round';
-    for (const offset of [-0.8, 0, 0.8]) {
-      const angle = baseAngle + offset;
-      ctx.beginPath();
-      ctx.moveTo(impactX, impactY);
-      ctx.lineTo(impactX + Math.cos(angle) * sparkLength, impactY + Math.sin(angle) * sparkLength);
-      ctx.stroke();
-    }
+    // 尖端能量头。
+    const headRadius = sealSize * PREVIEW_ATTACK_HEAD_RATIO;
+    const glow = ctx.createRadialGradient(tipX, tipY, 0, tipX, tipY, headRadius);
+    glow.addColorStop(0, withAlpha('#ffffff', 0.95));
+    glow.addColorStop(0.5, withAlpha(THEME.candidateLit, 0.55));
+    glow.addColorStop(1, withAlpha(THEME.candidate, 0));
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, headRadius, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 
   /**
-   * 调息的内部流转（票 04 rev2）：一股能量沿主印外一圈从当前点亮侧绕到对侧，
-   * 拖一条渐隐的尾、尾端一个指向圆内的箭尖——「转化」是同节点内的循环，不是一条横线。
+   * 调息的内部流转（票 04 rev3，用户选定 B 方案漩涡）：一股能量从当前点亮侧（大半径）
+   * 螺旋一卷卷到对侧（小半径），拖一条渐隐的尾——「转化」是卷进节点里，不是横线也不是半环。
    */
-  private _drawConvertFlow(ctx: CanvasRenderingContext2D): void {
+  private _drawConvertVortex(ctx: CanvasRenderingContext2D): void {
     const convert = this._preview?.convert;
     if (convert === null || convert === undefined) return;
     const seal = this._elementView(convert.player, convert.element);
-    const radius = seal.sealSize * PREVIEW_CONVERT_RING_RATIO;
     const fromRight = convert.from === Polarity.YANG;
-    // 阴在左（π）、阳在右（0 / 2π）：从源侧上方绕半圈到对侧。
-    const start = fromRight ? 0 : Math.PI;
-    const end = fromRight ? Math.PI : Math.PI * 2;
-    const span = end - start;
-    const width = Math.max(
-      PREVIEW_ARROW_WIDTH_MIN,
-      seal.sealSize * PREVIEW_CONVERT_RING_WIDTH_RATIO,
-    );
+    // 阴在左（π）、阳在右（0 / 2π）。
+    const sourceAngle = fromRight ? 0 : Math.PI;
+    const targetAngle = fromRight ? Math.PI : Math.PI * 2;
+    const sweep = targetAngle - sourceAngle + Math.PI * 2 * PREVIEW_CONVERT_VORTEX_TURNS;
+    const outer = seal.sealSize * PREVIEW_CONVERT_VORTEX_OUTER_RATIO;
+    const inner = seal.sealSize * PREVIEW_CONVERT_VORTEX_INNER_RATIO;
+    const width = Math.max(PREVIEW_ARROW_WIDTH_MIN, seal.sealSize * PREVIEW_CONVERT_WIDTH_RATIO);
     const progress = (this._clock / PREVIEW_CONVERT_FLOW_PERIOD) % 1;
-    const head = start + progress * span;
-    const tailLength = span * PREVIEW_CONVERT_TAIL_RATIO;
+    const samples = PREVIEW_CONVERT_SAMPLES;
+    const pointAt = (s: number) => {
+      const angle = sourceAngle + sweep * s;
+      const radius = outer + (inner - outer) * s;
+      return { x: seal.x + radius * Math.cos(angle), y: seal.y + radius * Math.sin(angle) };
+    };
 
     ctx.save();
     ctx.lineCap = 'round';
-    // 底弧：淡淡的整段，先把流转路径交代清楚。
+    // 底螺旋：淡淡的整条，先把「卷进去」的路径交代清楚。
     ctx.strokeStyle = withAlpha(THEME.candidateDeep, 0.4);
     ctx.lineWidth = width;
-    ctx.beginPath();
-    ctx.arc(seal.x, seal.y, radius, start, end);
-    ctx.stroke();
-    // 尾：从能量头往后渐隐；头还没走完一圈时尾巴尚未出现。
-    const steps = 24;
-    for (let index = 0; index < steps; index += 1) {
-      const t0 = index / steps;
-      const t1 = (index + 1) / steps;
-      const a0 = head - tailLength * t0;
-      const a1 = head - tailLength * t1;
-      if (a1 < start) break;
+    for (let index = 0; index < samples; index += 1) {
+      const a = pointAt(index / samples);
+      const b = pointAt((index + 1) / samples);
       ctx.beginPath();
-      ctx.arc(seal.x, seal.y, radius, Math.max(start, a1), Math.max(start, a0));
-      ctx.strokeStyle = withAlpha(THEME.candidateLit, (1 - t0) ** 2 * 0.9);
-      ctx.lineWidth = width * (1.6 - t0 * 0.6);
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
       ctx.stroke();
     }
-    // 对侧脉动：能量落进哪一侧，那一侧就泛一下亮。
-    const toRight = convert.to === Polarity.YANG;
-    const destX = seal.x + (toRight ? 1 : -1) * seal.sealSize * 0.5;
-    const pulse = Math.sin(Math.PI * progress) ** 2;
-    const pulseRadius = seal.sealSize * 0.7;
-    const destGlow = ctx.createRadialGradient(destX, seal.y, 0, destX, seal.y, pulseRadius);
-    destGlow.addColorStop(0, withAlpha(THEME.candidateLit, 0.5 * pulse));
-    destGlow.addColorStop(1, withAlpha(THEME.candidate, 0));
-    ctx.fillStyle = destGlow;
-    ctx.beginPath();
-    ctx.arc(destX, seal.y, pulseRadius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 对侧箭尖：指向主印内部，表示能量落进那一侧。
-    const tipAngle = end - Math.PI * 0.12;
-    const tipX = seal.x + radius * Math.cos(tipAngle);
-    const tipY = seal.y + radius * Math.sin(tipAngle);
-    ctx.strokeStyle = withAlpha(THEME.candidateLit, PREVIEW_ARROW_ALPHA);
-    ctx.lineWidth = width;
-    drawArrowHead(
-      ctx,
-      tipX,
-      tipY,
-      -Math.cos(tipAngle),
-      -Math.sin(tipAngle),
-      Math.max(PREVIEW_ARROW_HEAD_MIN, seal.sealSize * PREVIEW_ARROW_HEAD_RATIO),
+    // 亮尾：从头往后渐隐，随能量头一起卷。
+    for (let index = 0; index < samples; index += 1) {
+      const s0 = index / samples;
+      const behind = progress - s0;
+      if (behind < 0 || behind >= PREVIEW_CONVERT_TAIL_RATIO) continue;
+      const a = pointAt(s0);
+      const b = pointAt((index + 1) / samples);
+      const falloff = 1 - behind / PREVIEW_CONVERT_TAIL_RATIO;
+      ctx.strokeStyle = withAlpha(THEME.candidateLit, falloff ** 1.5 * 0.95);
+      ctx.lineWidth = width * (0.6 + falloff);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+    // 卷入末端的能量头。
+    const headPoint = pointAt(progress);
+    const headRadius = seal.sealSize * PREVIEW_ATTACK_HEAD_RATIO;
+    const glow = ctx.createRadialGradient(
+      headPoint.x,
+      headPoint.y,
+      0,
+      headPoint.x,
+      headPoint.y,
+      headRadius,
     );
+    glow.addColorStop(0, withAlpha('#ffffff', 0.95));
+    glow.addColorStop(0.5, withAlpha(THEME.candidateLit, 0.55));
+    glow.addColorStop(1, withAlpha(THEME.candidate, 0));
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(headPoint.x, headPoint.y, headRadius, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 
@@ -1335,20 +1319,6 @@ export function drawCandidateMark(
     Math.max(CANDIDATE_OUTLINE_WIDTH_MIN, sealSize * CANDIDATE_OUTLINE_WIDTH_RATIO) * swell;
   ctx.stroke();
   ctx.restore();
-}
-
-/** 二次贝塞尔在参数 `t`（0..1）处的点。 */
-function quadraticPoint(
-  t: number,
-  p0: { x: number; y: number },
-  control: { x: number; y: number },
-  p1: { x: number; y: number },
-): { x: number; y: number } {
-  const inverse = 1 - t;
-  return {
-    x: inverse * inverse * p0.x + 2 * inverse * t * control.x + t * t * p1.x,
-    y: inverse * inverse * p0.y + 2 * inverse * t * control.y + t * t * p1.y,
-  };
 }
 
 /**
