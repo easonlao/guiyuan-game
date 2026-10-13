@@ -2,10 +2,12 @@ import { describe, it, expect } from 'vitest';
 import {
   BoardView,
   drawYinYangFish,
+  guiYiRingGeometry,
   resolveActionPath,
 } from '../../src/minigame/views/board-view.js';
-import { ActionType, PlayerId, Polarity, WuXing } from '../../src/core/types/domain.js';
+import { ActionType, NodeLevel, PlayerId, Polarity, WuXing } from '../../src/core/types/domain.js';
 import { WUXING_PALETTE } from '../../src/minigame/pixel-art.js';
+import { THEME } from '../../src/minigame/theme.js';
 import { boardWith } from '../../tools/BoardFixture.js';
 import { RecordingContext } from './helpers/recording-context.js';
 
@@ -349,6 +351,117 @@ describe('Minigame BoardView: 归一分层与进度读数', () => {
     // 环级归属徽记：己方盘与对方盘各一个（不是主印上的五行名）。
     expect(ctx.texts.map((entry) => entry.text)).toContain('你');
     expect(ctx.texts.map((entry) => entry.text)).toContain('天道');
+  });
+});
+
+describe('Minigame BoardView: 归一金环与亢极双层环（票 02）', () => {
+  /** 金环 = 落在主印中心、比鱼身更大的同心圆弧（鱼身外弧半径恒等于主印半径）。 */
+  function ringArcs(ctx: RecordingContext, seal: { x: number; y: number; sealSize: number }) {
+    return ctx.arcs.filter(
+      (arc) => arc.x === seal.x && arc.y === seal.y && arc.radius > seal.sealSize,
+    );
+  }
+
+  /** 六种阴阳配对：只有两侧均 ≥1 才有环，只有 (2, 2) 才双层。 */
+  const PAIRS: readonly (readonly [NodeLevel, NodeLevel, 0 | 1 | 2])[] = [
+    [0, 0, 0],
+    [2, 0, 0],
+    [1, 1, 1],
+    [2, 1, 1],
+    [1, 2, 1],
+    [2, 2, 2],
+  ];
+
+  /** 一个主印实际画出的金环半径（排序后），与几何真源逐圈对齐。 */
+  function ringRadii(ctx: RecordingContext, seal: { x: number; y: number; sealSize: number }) {
+    return ringArcs(ctx, seal)
+      .map((arc) => arc.radius)
+      .sort((a, b) => a - b);
+  }
+
+  it('金环层数由节点级归一 / 亢极决定，内外两盘一视同仁', () => {
+    for (const [yin, yang, layers] of PAIRS) {
+      const view = new BoardView();
+      const node = { yin, yang };
+      view.update(boardWith({ [WuXing.WOOD]: node }), boardWith({ [WuXing.WOOD]: node }));
+      const ctx = new RecordingContext();
+      view.render(ctx.asContext());
+
+      for (const player of ['P1', 'P2'] as const) {
+        const seal = sealOf(view, player, WuXing.WOOD);
+        const expected = guiYiRingGeometry(seal.sealSize, layers).radii;
+        expect(
+          ringRadii(ctx, seal),
+          `${player} 在 (${String(yin)},${String(yang)}) 的金环半径`,
+        ).toEqual([...expected].sort((a, b) => a - b));
+      }
+      // 其余九个主印未归一 / 亢极，全盘金环数只由这一对节点贡献（两侧盘各算）；
+      // 金环是中性金（THEME.gold），不用警示色。
+      expect(
+        ctx.paths.filter((path) => path.color === THEME.gold && path.strokeWidth > 0),
+      ).toHaveLength(layers * 2);
+    }
+  });
+
+  it('亢极在归一的同一圈外再加一层：内圈半径不变，外圈更大', () => {
+    const view = new BoardView();
+    view.update(
+      boardWith({ [WuXing.WOOD]: { yin: 1, yang: 1 } }),
+      boardWith({ [WuXing.WOOD]: { yin: 2, yang: 2 } }),
+    );
+    const ctx = new RecordingContext();
+    view.render(ctx.asContext());
+
+    const ownSeal = sealOf(view, 'P1', WuXing.WOOD).sealSize;
+    const opponentSeal = sealOf(view, 'P2', WuXing.WOOD).sealSize;
+    const guiYi = ringRadii(ctx, sealOf(view, 'P1', WuXing.WOOD));
+    const kangJi = ringRadii(ctx, sealOf(view, 'P2', WuXing.WOOD));
+    expect(guiYi).toEqual([guiYiRingGeometry(ownSeal, 1).radii[0]]);
+    expect(kangJi).toEqual([...guiYiRingGeometry(opponentSeal, 2).radii]);
+    // 归一那一圈与亢极内圈同为主印半径的等比缩放，亢极多出的一圈更大。
+    expect(kangJi[0] / opponentSeal).toBeCloseTo(guiYi[0] / ownSeal, 9);
+    expect(kangJi[1]).toBeGreaterThan(kangJi[0]);
+  });
+
+  it('金环不越出法盘底晕、不压到相邻主印', () => {
+    const allGuiYi = boardWith(
+      Object.fromEntries(Object.values(WuXing).map((element) => [element, { yin: 2, yang: 2 }])),
+    );
+    for (const [width, height] of [
+      [320, 568],
+      [390, 844],
+      [460, 900],
+    ] as const) {
+      const view = new BoardView();
+      view.resize(width, height);
+      view.update(allGuiYi, allGuiYi);
+      const ctx = new RecordingContext();
+      view.render(ctx.asContext());
+      const where = `${String(width)}x${String(height)}`;
+
+      for (const seal of view.elements) {
+        const rings = ringArcs(ctx, seal);
+        const { radii, width: stroke } = guiYiRingGeometry(seal.sealSize, 2);
+        expect(ringRadii(ctx, seal), `${where} ${seal.player} ${seal.element} 亢极双层`).toEqual(
+          [...radii].sort((a, b) => a - b),
+        );
+        for (const ring of rings) {
+          const outerEdge = ring.radius + stroke / 2;
+          // 底晕是圆心在盘心、半径 `outerRadius + sealSize * 1.1` 的圆盘（`_drawEngraving`）。
+          const haloRadius = view.layout.outerRadius + view.layout.sealSize * 1.1;
+          const fromCenter = Math.hypot(seal.x - view.layout.centerX, seal.y - view.layout.centerY);
+          expect(fromCenter + outerEdge, `${where} 金环越出底晕`).toBeLessThanOrEqual(haloRadius);
+          for (const other of view.elements) {
+            if (other === seal) continue;
+            const distance = Math.hypot(other.x - seal.x, other.y - seal.y);
+            expect(
+              distance,
+              `${where} ${seal.player}${seal.element} 金环压住 ${other.player}${other.element}`,
+            ).toBeGreaterThanOrEqual(outerEdge + other.sealSize);
+          }
+        }
+      }
+    }
   });
 });
 

@@ -57,6 +57,18 @@ const OPPONENT_SEAL_SCALE = 0.82;
 /** 虚空描边的不透明度：只描边不填充，元素色淡到仍能读出身份（ADR 0018 的亮度阶梯最低档）。 */
 const VOID_OUTLINE_ALPHA = 0.55;
 
+/** 金环线宽（占主印半径的比例，下限 1px 保证窄屏仍可分）。 */
+const GUIYI_RING_WIDTH_RATIO = 0.07;
+const GUIYI_RING_WIDTH_MIN = 1;
+/**
+ * 金环相对主印边缘的外扩总量（占主印半径的比例）：归一 = 半外扩处一圈，亢极 = 满外扩处再加一圈
+ * （ADR 0018 的「多一层就是更满」）。这是归一 / 亢极金环与票 05 `resize` 环间距重算共用的唯一外扩常量；
+ * 上界由法盘底晕（`_drawEngraving` 的 `sealSize * 1.1`，外环主印半径 0.82×）约束。
+ */
+const GUIYI_RING_OUTSET_RATIO = 0.26;
+/** 金环用中性金：不用警示色、不脉动——亢极同时意味着归一到手与爆发可用（ADR 0018）。 */
+const GUIYI_RING_COLOR = THEME.gold;
+
 /** 阴阳槽位相对主印中心在阴/阳一侧的横向偏移（占主印半径的比例）。 */
 const SLOT_SIDE_RATIO = 0.7;
 
@@ -369,10 +381,11 @@ export class BoardView extends Container {
     };
   }
 
-  /** 先画环带与连线，再画主印，最后叠加环归属标签（标签压在最上层）。 */
+  /** 先画环带、归一金环与主印，最后叠加环归属标签（标签压在最上层）。 */
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
     this._drawEngraving(ctx);
     this._drawRingBands(ctx);
+    this._drawGuiYiRings(ctx);
     this._drawSeals(ctx);
     this._drawRingLabels(ctx);
   }
@@ -405,6 +418,26 @@ export class BoardView extends Container {
       ctx.lineWidth = 1;
       ctx.setLineDash([...dash]);
       ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  /**
+   * 归一 = 主印外一圈金环，亢极 = 再加一层（ADR 0018）：中性金、不脉动、内外两盘一视同仁。
+   * 环半径按各自主印半径等比缩放（外环主印更小，金环同步更小）。
+   */
+  private _drawGuiYiRings(ctx: CanvasRenderingContext2D): void {
+    for (const entry of this._elements) {
+      const { radii, width } = guiYiRingGeometry(entry.sealSize, guiYiRingLayers(entry));
+      if (radii.length === 0) continue;
+      ctx.save();
+      ctx.strokeStyle = GUIYI_RING_COLOR;
+      ctx.lineWidth = width;
+      for (const radius of radii) {
+        ctx.beginPath();
+        ctx.arc(entry.x, entry.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
       ctx.restore();
     }
   }
@@ -493,6 +526,33 @@ export class BoardView extends Container {
   private _countGuiYi(player: PlayerId): number {
     return this._elements.filter((entry) => entry.player === player && entry.isGuiYi).length;
   }
+}
+
+/** 主印的金环层数：亢极 2 层、归一 1 层、其余 0 层（ADR 0018）。 */
+function guiYiRingLayers(element: BoardElementView): 0 | 1 | 2 {
+  if (element.isKangJi) return 2;
+  if (element.isGuiYi) return 1;
+  return 0;
+}
+
+/**
+ * 一个主印的金环几何：从内到外的各圈半径与线宽（归一 1 圈、亢极 2 圈）。
+ * 归一 / 亢极金环与票 05 `resize` 环间距重算共用这一个外扩口径；
+ * 亢极最外沿（末圈半径 + 线宽一半）必须留在法盘底晕（`_drawEngraving`）以内。
+ */
+export function guiYiRingGeometry(
+  sealSize: number,
+  layers: 0 | 1 | 2,
+): { readonly radii: readonly number[]; readonly width: number } {
+  const outsetPerLayer = GUIYI_RING_OUTSET_RATIO / 2;
+  const radii: number[] = [];
+  for (let layer = 0; layer < layers; layer += 1) {
+    radii.push(sealSize * (1 + outsetPerLayer * (layer + 1)));
+  }
+  return {
+    radii,
+    width: Math.max(GUIYI_RING_WIDTH_MIN, sealSize * GUIYI_RING_WIDTH_RATIO),
+  };
 }
 
 /** 圆角胶囊：底板 + 描边（`roundRect` 在部分环境缺失时退回矩形）。 */

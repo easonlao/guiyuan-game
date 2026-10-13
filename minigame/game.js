@@ -2754,6 +2754,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const SEAL_SIZE_RATIO = 0.062;
   const OPPONENT_SEAL_SCALE = 0.82;
   const VOID_OUTLINE_ALPHA = 0.55;
+  const GUIYI_RING_WIDTH_RATIO = 0.07;
+  const GUIYI_RING_WIDTH_MIN = 1;
+  const GUIYI_RING_OUTSET_RATIO = 0.26;
+  const GUIYI_RING_COLOR = THEME.gold;
   const SLOT_SIDE_RATIO = 0.7;
   const DEFAULT_BOARD_LAYOUT = {
     centerX: 0,
@@ -2962,10 +2966,11 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         isKangJi: element.isKangJi
       };
     }
-    /** 先画环带与连线，再画主印，最后叠加环归属标签（标签压在最上层）。 */
+    /** 先画环带、归一金环与主印，最后叠加环归属标签（标签压在最上层）。 */
     renderSelf(ctx) {
       this._drawEngraving(ctx);
       this._drawRingBands(ctx);
+      this._drawGuiYiRings(ctx);
       this._drawSeals(ctx);
       this._drawRingLabels(ctx);
     }
@@ -2996,6 +3001,25 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         ctx.lineWidth = 1;
         ctx.setLineDash([...dash]);
         ctx.stroke();
+        ctx.restore();
+      }
+    }
+    /**
+     * 归一 = 主印外一圈金环，亢极 = 再加一层（ADR 0018）：中性金、不脉动、内外两盘一视同仁。
+     * 环半径按各自主印半径等比缩放（外环主印更小，金环同步更小）。
+     */
+    _drawGuiYiRings(ctx) {
+      for (const entry of this._elements) {
+        const { radii, width } = guiYiRingGeometry(entry.sealSize, guiYiRingLayers(entry));
+        if (radii.length === 0) continue;
+        ctx.save();
+        ctx.strokeStyle = GUIYI_RING_COLOR;
+        ctx.lineWidth = width;
+        for (const radius of radii) {
+          ctx.beginPath();
+          ctx.arc(entry.x, entry.y, radius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
         ctx.restore();
       }
     }
@@ -3072,6 +3096,22 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     _countGuiYi(player) {
       return this._elements.filter((entry) => entry.player === player && entry.isGuiYi).length;
     }
+  }
+  function guiYiRingLayers(element) {
+    if (element.isKangJi) return 2;
+    if (element.isGuiYi) return 1;
+    return 0;
+  }
+  function guiYiRingGeometry(sealSize, layers) {
+    const outsetPerLayer = GUIYI_RING_OUTSET_RATIO / 2;
+    const radii = [];
+    for (let layer = 0; layer < layers; layer += 1) {
+      radii.push(sealSize * (1 + outsetPerLayer * (layer + 1)));
+    }
+    return {
+      radii,
+      width: Math.max(GUIYI_RING_WIDTH_MIN, sealSize * GUIYI_RING_WIDTH_RATIO)
+    };
   }
   function drawPill(ctx, x, y, width, height, radius, fill, stroke) {
     ctx.beginPath();
