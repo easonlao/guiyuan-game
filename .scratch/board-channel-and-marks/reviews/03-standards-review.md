@@ -24,3 +24,12 @@ Fixed point: `dbe20f2`（票 02 提交）。范围：`git diff dbe20f2...HEAD` �
 ## 硬违规
 
 无。
+
+## 修订说明（最终形态：半身染色）
+
+本文写于「外侧挂弧」那一版。用户随后连续改口，最终形态是**把会变的那半身整片染上专属强调色 + 一条薄轮廓 + 随呼吸胀缩**（见 ADR 0018 文末勘误、票 03「设计修订」）。最终形态由作者自查（未再过独立子代理）：
+
+- 形状与 `drawYinYangFish` 共用 `traceFishHalf`，仍是单点真源。
+- 强调色集中在 `THEME.candidate / candidateDeep / candidateLit`，绘制处只读常量。
+- 自查发现并修掉的三处：① `NODE_RING_SCALE` / `NODE_RING_WIDTH_RATIO` 已无外部使用者却仍 `export`（收回模块内）；② `interface BoardCandidatePath extends CandidateTarget {}` 空接口（改为类型别名）；③ 一处悬空且口径过期的文档注释（合并并改成「专属强调色」说法）。
+- 仍未采用（继承本文原判断）：把 `drawCandidateMark` 的调参拆成更多参数、把标注算法抽出到独立模块。
