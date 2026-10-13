@@ -6,6 +6,8 @@ import {
   drawYinYangFish,
   GUIYI_RING_INK,
   NODE_AURA_OUTSET_RATIO,
+  NODE_RING_OUTSET_RATIO,
+  OPPONENT_SEAL_SCALE as OPPONENT_SCALE,
   PREVIEW_BREATH_SPEED,
   resolveActionPath,
 } from '../../src/minigame/views/board-view.js';
@@ -824,7 +826,7 @@ describe('Minigame BoardView: 按住预览的路径箭头与幽灵态（票 04�
     // 尾部在己方主印外沿之外（不压自己的鱼），尖端越过敌主印外沿（贯穿）。
     expect(distance(tail)).toBeGreaterThan(innerRadius + sealSize);
     expect(distance(tail)).toBeLessThan(innerRadius + sealSize * 1.6);
-    expect(distance(tip)).toBeGreaterThan(outerRadius + sealSize * 0.82);
+    expect(distance(tip)).toBeGreaterThan(outerRadius + sealSize * OPPONENT_SCALE);
     // 腰宽 = 2 × 0.42 主印半径，两个腰点关于轴面对称。
     expect(Math.hypot(waistA.x - waistB.x, waistA.y - waistB.y)).toBeCloseTo(sealSize * 0.84, 4);
     // 尖锥用渐变上色（不是一块单色）。
@@ -840,8 +842,8 @@ describe('Minigame BoardView: 按住预览的路径箭头与幽灵态（票 04�
         (entry) =>
           entry.x === target.x2 &&
           entry.y === target.y2 &&
-          entry.radius > sealSize * 0.82 * 0.69 &&
-          entry.radius < sealSize * 0.82 * 2.31,
+          entry.radius > sealSize * OPPONENT_SCALE * 0.69 &&
+          entry.radius < sealSize * OPPONENT_SCALE * 2.31,
       ),
       '落点冲击波',
     ).toBe(true);
@@ -1014,17 +1016,19 @@ describe('Minigame BoardView: 自适应视口布局', () => {
     expect(view.layout.outerRadius).toBe(110);
   });
 
-  it('resize 后法盘居中、双环按短边缩放，主印半径达到可读性下限且不溢出', () => {
+  it('resize 后法盘居中、按可用高度缩放，主印够大且不溢出视口', () => {
     const view = new BoardView();
     view.resize(375, 667);
 
     expect(view.layout.centerX).toBe(187.5);
     expect(view.layout.centerY).toBe(333.5);
-    expect(view.layout.innerRadius).toBeCloseTo(90, 5);
-    expect(view.layout.outerRadius).toBeCloseTo(150, 5);
-    // spec 可读性下限：375px 宽下主印半径 ≥ ~22px；外环加主印不得溢出半宽。
+    // 盘面缩放：环半径按短边等比缩放（0.24 / 0.4），主印不再被环间距挤到可读性下限附近。
+    expect(view.layout.innerRadius).toBeCloseTo(375 * 0.24, 3);
+    // 外环半径要跨得开内外两环的主印（具体口径在下一条），且不小于按短边算的值。
+    expect(view.layout.outerRadius).toBeCloseTo(375 * 0.4, 3);
+    // spec 可读性下限：375px 宽下主印半径 ≥ ~22px；外环不得把对方主印本体推出半宽。
     expect(view.layout.sealSize).toBeGreaterThanOrEqual(22);
-    expect(view.layout.outerRadius + view.layout.sealSize).toBeLessThan(375 / 2);
+    expect(view.layout.outerRadius + view.layout.sealSize * OPPONENT_SCALE).toBeLessThan(375 / 2);
 
     for (const point of [...view.elements, ...view.slots]) {
       expect(point.x).toBeGreaterThanOrEqual(0);
@@ -1048,13 +1052,194 @@ describe('Minigame BoardView: 自适应视口布局', () => {
 
     expect(view.layout.centerX).toBe(150);
     expect(view.layout.centerY).toBe(450);
-    expect(view.layout.outerRadius + view.layout.sealSize).toBeLessThan(150);
+    // 横向不越界：外环上最外两枚主印的本体在视口内。
+    expect(view.layout.outerRadius + view.layout.sealSize * OPPONENT_SCALE).toBeLessThanOrEqual(
+      150,
+    );
     for (const point of [...view.elements, ...view.slots]) {
       expect(point.x).toBeGreaterThanOrEqual(0);
       expect(point.x).toBeLessThanOrEqual(300);
       expect(point.y).toBeGreaterThanOrEqual(0);
       expect(point.y).toBeLessThanOrEqual(900);
     }
+  });
+});
+
+describe('Minigame BoardView: 外环放大与环间距重算（票 05）', () => {
+  /** 验收视口：320×568（微信胶囊吃掉的窄屏）、390×844、460×900。 */
+  const VIEWPORTS: readonly (readonly [number, number])[] = [
+    [320, 568],
+    [390, 844],
+    [460, 900],
+  ];
+  /** `GameScene.layoutBoard` 在窄屏 / 有胶囊时给的内容边界（法盘只许用这一段）。 */
+  const BOUNDS: Record<string, { top: number; bottom: number }> = {
+    '320x568': { top: 188, bottom: 484 },
+    '390x844': { top: 175, bottom: 746 },
+    '460x900': { top: 216, bottom: 802 },
+  };
+
+  /** 全亢极盘：节点级标记（归一金环 + 元素外溢）画到最大，避让按最坏情况算。 */
+  const allKangJi = boardWith(
+    Object.fromEntries(Object.values(WuXing).map((element) => [element, { yin: 2, yang: 2 }])),
+  );
+
+  it('外环主印放大到接近内环（≈0.92），内外仍然一眼分得开', () => {
+    for (const [width, height] of VIEWPORTS) {
+      const view = new BoardView();
+      view.resize(width, height, BOUNDS[`${String(width)}x${String(height)}`]);
+      const own = sealOf(view, 'P1', WuXing.WOOD);
+      const opponent = sealOf(view, 'P2', WuXing.WOOD);
+
+      // 「接近内环」：对方主印仍有 0.9 倍上下，不是一眼看去小一圈。
+      expect(opponent.sealSize / own.sealSize).toBeGreaterThan(0.88);
+      expect(opponent.sealSize / own.sealSize).toBeLessThan(1);
+      // 主次仍在：对方盘不会被放到与己方一样大。
+      expect(opponent.sealSize).toBeLessThan(own.sealSize);
+    }
+  });
+
+  it('外环最外的两枚主印本体不越出视口半宽（三尺寸 + 无边界路径）', () => {
+    // 横向不靠 `resize` 的显式约束，而是靠外环半径按短边比例（恒小于半宽）自洽；
+    // 这里钉住这个事实，免得有人把比例调大后盘面默默溢出。
+    for (const [width, height] of [...VIEWPORTS, [300, 900], [375, 667], [200, 900]] as const) {
+      const bounds = BOUNDS[`${String(width)}x${String(height)}`];
+      const withBounds = new BoardView();
+      const withoutBounds = new BoardView();
+      if (bounds !== undefined) withBounds.resize(width, height, bounds);
+      else withBounds.resize(width, height);
+      withoutBounds.resize(width, height);
+      for (const layout of [withBounds, withoutBounds]) {
+        const where = `${String(width)}x${String(height)}`;
+        // 直接量投影出来的十个主印（不拿三角函数猜哪个角度最靠边，那才是真越界的地方）。
+        for (const seal of layout.elements) {
+          const right = Math.abs(seal.x - layout.layout.centerX) + seal.sealSize;
+          expect(right, `${where} ${seal.player}${seal.element} 越出半宽`).toBeLessThanOrEqual(
+            width / 2 + 1e-6,
+          );
+        }
+      }
+    }
+  });
+
+  it('resize 后环间距按金环外沿预留：同环相邻主印与跨环主印的环都不相交', () => {
+    const SIN_STEP = Math.sin(RING_STEP / 2);
+    for (const [width, height] of VIEWPORTS) {
+      const view = new BoardView();
+      view.resize(width, height, BOUNDS[`${String(width)}x${String(height)}`]);
+      const { sealSize } = view.layout;
+      const own = view.elements.filter((entry) => entry.player === 'P1');
+      const opponent = view.elements.filter((entry) => entry.player === 'P2');
+      const where = `${String(width)}x${String(height)}`;
+
+      // 同环：相邻两枚主印中心的弦长 ≥ 两枚金环的外沿之和。
+      for (const ring of [own, opponent]) {
+        for (let i = 0; i < ring.length; i += 1) {
+          const a = ring[i]!;
+          const b = ring[(i + 1) % ring.length]!;
+          const chord = Math.hypot(a.x - b.x, a.y - b.y);
+          const outset = (a.sealSize + b.sealSize) * NODE_RING_OUTSET_RATIO;
+          expect(chord, `${where} 同环金环相交`).toBeGreaterThanOrEqual(outset - 1e-6);
+        }
+      }
+      // 跨环：每根射线上，内环主印的环外沿 ≤ 外环主印的环外沿（最近的一对就是同射线）。
+      for (const inner of own) {
+        const outer = opponent.reduce((best, entry) =>
+          Math.hypot(entry.x - inner.x, entry.y - inner.y) <
+          Math.hypot(best.x - inner.x, best.y - inner.y)
+            ? entry
+            : best,
+        );
+        expect(inner.sealSize, `${where} 内环缩放`).toBe(sealSize);
+        expect(outer.sealSize, `${where} 外环缩放`).toBeCloseTo(sealSize * OPPONENT_SCALE, 9);
+        const gap =
+          Math.hypot(outer.x - inner.x, outer.y - inner.y) -
+          (inner.sealSize + outer.sealSize) * NODE_RING_OUTSET_RATIO;
+        expect(gap, `${where} 跨环金环相交`).toBeGreaterThan(0);
+      }
+      // 弦长口径（`sin(π/5)`）就是同环相邻的充分条件：环半径不小于它，两枚金环就不相交。
+      // 上面逐对量的是结果，这里钉的是口径本身——改动环半径口径时这条会先红。
+      expect(view.layout.innerRadius).toBeGreaterThanOrEqual(
+        (sealSize * NODE_RING_OUTSET_RATIO) / SIN_STEP - 1e-6,
+      );
+      expect(view.layout.outerRadius).toBeGreaterThanOrEqual(
+        (sealSize * OPPONENT_SCALE * NODE_RING_OUTSET_RATIO) / SIN_STEP - 1e-6,
+      );
+    }
+  });
+
+  it('resize 后法盘整体落在内容边界内：标记外沿与归元图例都不越出上下沿', () => {
+    for (const [width, height] of VIEWPORTS) {
+      const view = new BoardView();
+      const bounds = BOUNDS[`${String(width)}x${String(height)}`]!;
+      view.resize(width, height, bounds);
+      view.update(allKangJi, allKangJi);
+      const ctx = new RecordingContext();
+      view.render(ctx.asContext());
+      const { centerX, centerY, outerRadius, sealSize } = view.layout;
+      const where = `${String(width)}x${String(height)}`;
+      // 上沿：最外一圈的亢极元素外溢（`NODE_AURA_OUTSET_RATIO`）。
+      const top = centerY - outerRadius - sealSize * OPPONENT_SCALE * NODE_AURA_OUTSET_RATIO;
+      expect(top, `${where} 顶部外溢越界`).toBeGreaterThanOrEqual(bounds.top - 1e-6);
+      // 下沿：盘下的归元图例「你 x/5」「天道 y/5」。
+      for (const text of ctx.texts.filter((entry) => /^你 \d\/5$/.test(entry.text))) {
+        expect(text.y, `${where} 归元图例越界`).toBeLessThanOrEqual(bounds.bottom + 1e-6);
+      }
+      // 盘面横向也不越出视口。
+      for (const seal of view.elements) {
+        expect(seal.x, `${where} 主印越出左边界`).toBeGreaterThanOrEqual(0);
+        expect(seal.x, `${where} 主印越出右边界`).toBeLessThanOrEqual(width);
+      }
+      expect(centerX).toBeCloseTo(width / 2, 9);
+    }
+  });
+
+  it('可用高度变小时主印等比缩小，但环间距的保证不破（三档可用高度）', () => {
+    const SIN_STEP = Math.sin(RING_STEP / 2);
+    const CONTENT_TOP = 200;
+    const sizes: number[] = [];
+    // 最紧的一档：内容区只剩一条缝，内环半径被可读性下限顶住，环间距公式成为 `outer` 的获胜项
+    // （宽裕时 `OUTER_RADIUS_RATIO` 单独就够，测不到跨环公式）。
+    for (const available of [586, 400, 240, 150, 130]) {
+      const view = new BoardView();
+      view.resize(390, 900, { top: CONTENT_TOP, bottom: CONTENT_TOP + available });
+      const { sealSize, innerRadius, outerRadius } = view.layout;
+      sizes.push(sealSize);
+
+      const chord = 2 * innerRadius * SIN_STEP;
+      expect(chord, `可用 ${String(available)} 同环金环相交`).toBeGreaterThanOrEqual(
+        2 * sealSize * NODE_RING_OUTSET_RATIO - 1e-6,
+      );
+      expect(
+        outerRadius - sealSize * OPPONENT_SCALE - (innerRadius + sealSize * NODE_RING_OUTSET_RATIO),
+        `可用 ${String(available)} 跨环金环相交`,
+      ).toBeGreaterThan(0);
+    }
+    // 高度越大主印越大：缩放仍是单调的，不是被某个下限卡成一样大。
+    expect(sizes[0]).toBeGreaterThan(sizes[1]!);
+    expect(sizes[1]).toBeGreaterThan(sizes[2]!);
+    // 再紧也不缩到零：可读性下限打过折仍要留住一个能认的盘面（低于它宁可让标记越界）。
+    // 最后两档都由内环半径下限接管，不再保证单调——那里的主印已经小到只是「还在」而已。
+    expect(sizes[3]).toBeGreaterThan(0);
+    expect(sizes[4]).toBeGreaterThan(0);
+  });
+
+  it('对方盘没有节点级标记时，盘外沿只按金环预留（省下的高度归主印）', () => {
+    const bounds = { top: 188, bottom: 484 };
+    // 对方盘有亢极节点时：按最坏情况预留，外沿不越界。
+    const marked = new BoardView();
+    marked.update(boardWith(), boardWith({ [WuXing.WOOD]: { yin: 2, yang: 2 } }));
+    marked.resize(320, 568, bounds);
+    expect(
+      marked.layout.centerY -
+        marked.layout.outerRadius -
+        marked.layout.sealSize * OPPONENT_SCALE * NODE_AURA_OUTSET_RATIO,
+    ).toBeGreaterThanOrEqual(bounds.top - 1e-6);
+    // 对方盘还没有归一 / 亢极节点时：只需避开金环，主印因此更大而不是一样大。
+    const unmarked = new BoardView();
+    unmarked.update(boardWith(), boardWith());
+    unmarked.resize(320, 568, bounds);
+    expect(unmarked.layout.sealSize).toBeGreaterThan(marked.layout.sealSize);
   });
 });
 
