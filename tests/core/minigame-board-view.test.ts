@@ -806,7 +806,7 @@ describe('Minigame BoardView: 按住预览的路径箭头与幽灵态（票 04�
     ).toHaveLength(2);
   });
 
-  it('破 / 强破走径向箭：从己方主印外沿指向对方主印，箭尖在目标端', () => {
+  it('破 / 强破走径向箭：从己方主印外沿直插，箭尖从敌节点外侧探出', () => {
     const view = new BoardView();
     view.setPreview({ path: { kind: 'attack', from: WuXing.WOOD }, ghost: null });
     const ctx = render(view);
@@ -816,22 +816,61 @@ describe('Minigame BoardView: 按住预览的路径箭头与幽灵态（票 04�
       (path) => path.strokeWidth > 0 && path.color.includes(arrowHead) && path.points.length === 2,
     );
     expect(line, '跨环径向线').toBeDefined();
-    const { centerX, centerY } = view.layout;
+    const { centerX, centerY, innerRadius, outerRadius, sealSize } = view.layout;
     const fromCenter = line!.points.map((point) =>
       Math.hypot(point.x - centerX, point.y - centerY),
     );
-    // 起点在己方环、终点更靠外（指向对方主印）。
-    expect(fromCenter[1]).toBeGreaterThan(fromCenter[0]);
+    // 尾部在己方主印外沿之外（不压自己的鱼）。
+    expect(fromCenter[0]).toBeGreaterThan(innerRadius + sealSize);
+    expect(fromCenter[0]).toBeLessThan(innerRadius + sealSize * 1.5);
+    // 箭尖越过敌主印外沿（贯穿，而不是缩在两印之间）。
+    expect(fromCenter[1]).toBeGreaterThan(outerRadius + sealSize * 0.82);
     // 没有内环弧箭：这条路径是径向而不是相生弧。
     expect(
       ctx.arcs.filter(
         (entry) =>
           entry.x === centerX &&
           entry.y === centerY &&
-          entry.radius > view.layout.innerRadius &&
-          entry.radius < view.layout.outerRadius,
+          entry.radius > innerRadius &&
+          entry.radius < outerRadius,
       ),
     ).toHaveLength(0);
+  });
+
+  it('调息在源节点内画换侧箭：从当前点亮侧指向对侧，阴左阳右', () => {
+    const view = new BoardView();
+    const arrowHead = rgbOf(THEME.candidateLit);
+    const arrowLines = (ctx: RecordingContext) =>
+      ctx.paths.filter(
+        (path) =>
+          path.strokeWidth > 0 && path.color.includes(arrowHead) && path.points.length === 2,
+      );
+    const seal = sealOf(view, 'P1', WuXing.WOOD);
+
+    // 阴 -> 阳：箭尖在右半边。
+    view.setPreview({
+      path: null,
+      convert: { player: 'P1', element: WuXing.WOOD, from: Polarity.YIN, to: Polarity.YANG },
+      ghost: null,
+    });
+    const right = arrowLines(render(view))[0];
+    expect(right).toBeDefined();
+    expect(right.points[0].x).toBeLessThan(seal.x);
+    expect(right.points[1].x).toBeGreaterThan(seal.x);
+
+    // 阳 -> 阴：方向反过来。
+    view.setPreview({
+      path: null,
+      convert: { player: 'P1', element: WuXing.WOOD, from: Polarity.YANG, to: Polarity.YIN },
+      ghost: null,
+    });
+    const left = arrowLines(render(view))[0];
+    expect(left.points[0].x).toBeGreaterThan(seal.x);
+    expect(left.points[1].x).toBeLessThan(seal.x);
+
+    // 没有调息换侧就不画。
+    view.setPreview({ path: null, ghost: null });
+    expect(arrowLines(render(view))).toHaveLength(0);
   });
 
   it('未按住时不画任何路径箭头：决策期只靠候选半身标记', () => {
