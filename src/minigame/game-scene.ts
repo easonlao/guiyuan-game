@@ -468,10 +468,9 @@ export class GameScene extends Container {
       return;
     }
     this.setPhase('entrance');
-    const isExtraTurn = this._turnManager.isExtraTurnActive();
     this.runeFlight.playEntrance(tianGan, {
       owner: state.currentPlayer,
-      duration: isExtraTurn ? 0.4 : this.entranceDuration,
+      duration: this.entranceDuration,
       onComplete: () => this.afterEntrance(),
     });
   }
