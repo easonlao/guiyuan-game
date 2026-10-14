@@ -40,6 +40,7 @@ import {
   BoardView,
   drawYinYangFish,
   resolveActionPath,
+  LEGEND_BASELINE_RATIO,
 } from './views/board-view.js';
 import { resolveCandidateTarget } from './candidate-target.js';
 import { resolvePreviewGhost } from './preview-target.js';
@@ -121,8 +122,9 @@ const DEFAULT_AUTO_EXECUTE_DELAY = 0.75;
 const DEFAULT_AI_THINK_DELAY = 0.55;
 const DEFAULT_EXPRESSION_HOLD = 0.6;
 const DEFAULT_CELEBRATE_HOLD = 1.2;
-/** 底部操作台高度（含按钮最多两行）。 */
+/** 底部操作台边距与满额双行按钮预留高度（最多 4 个动作，2 列 2 行共 110px）。 */
 const ACTION_BAR_MARGIN = 14;
+const ACTION_BAR_RESERVED_HEIGHT = 110;
 /** 震屏时长与幅度（像素）。 */
 
 /**
@@ -237,7 +239,7 @@ export class GameScene extends Container {
     this.characters = new CharacterView({
       width: this.width,
       safeTop: this.safeTop,
-      compact: this.height < 650 && this.safeTop > 24,
+      compact: this.height < 650 || this.safeTop > 24,
     });
     this.actionBar = this.buildActionBar(this._turnManager);
     this.actionBar.visible = false;
@@ -340,7 +342,7 @@ export class GameScene extends Container {
     this.actionBar.resize(width - ACTION_BAR_MARGIN * 2);
     this.layoutBoard();
     this.runeFlight.syncCenter();
-    this.characters.resize(width, this.safeTop, this.height < 650 && this.safeTop > 24);
+    this.characters.resize(width, this.safeTop, this.height < 650 || this.safeTop > 24);
     this.placeActionBar();
     if (this._phase === 'idle' || this._phase === 'game-over') {
       this.replaceRuneFlight();
@@ -442,12 +444,6 @@ export class GameScene extends Container {
       this.replaceRuneFlight();
       this.runeFlightStale = false;
     }
-    this.layoutBoard();
-    if (
-      Math.abs(this.runeFlight.position.x - this.board.layout.centerX) > 0.1 ||
-      Math.abs(this.runeFlight.position.y - this.board.layout.centerY) > 0.1
-    )
-      this.replaceRuneFlight();
     const before = this._turnManager.getState();
     const actions = this._turnManager.startTurn();
     const state = this._turnManager.getState();
@@ -465,8 +461,6 @@ export class GameScene extends Container {
     this.projectBoards(state);
     this.hideActionBar();
     if (actions.length > 1) this.actionBar.refresh();
-    this.layoutBoard();
-    this.replaceRuneFlight();
     this.announceTurnStart(state, tianGan, actions);
 
     if (tianGan === null) {
@@ -800,14 +794,16 @@ export class GameScene extends Container {
 
   private layoutBoard(): void {
     const compact = this.height < 650 || this.safeTop > 24;
-    const buttonHeight = Math.max(58, this.actionBar?.contentHeight ?? 0);
+    const buttonHeight = compact
+      ? ACTION_BAR_RESERVED_HEIGHT
+      : Math.max(ACTION_BAR_RESERVED_HEIGHT, this.actionBar?.contentHeight ?? 0);
     this.board.resize(
       this.width,
       this.height,
       compact
         ? {
-            top: this.safeTop + (this.height < 650 && this.safeTop > 24 ? 100 : 128),
-            bottom: this.height - this.safeBottom - buttonHeight - 64,
+            top: this.safeTop + (compact ? 88 : 128),
+            bottom: this.height - this.safeBottom - buttonHeight - (compact ? 94 : 72),
           }
         : undefined,
     );
@@ -910,6 +906,12 @@ export class GameScene extends Container {
     ctx.fillStyle = THEME.gold;
     ctx.font = `bold 18px ${THEME.font}`;
     ctx.fillText('归元弈', 18, this.safeTop + 13);
+    ctx.restore();
+  }
+
+  public override render(ctx: CanvasRenderingContext2D): void {
+    super.render(ctx);
+    ctx.save();
     this.drawDecisionGuide(ctx);
     ctx.restore();
   }
@@ -917,8 +919,11 @@ export class GameScene extends Container {
   private placeResult(): void {
     if (this.lastAction === undefined) return;
     this.lastAction.resize(this.width - 20);
-    this.lastAction.y =
-      this.height - this.safeBottom - Math.max(58, this.actionBar.contentHeight) - 42;
+    const compact = this.height < 650 || this.safeTop > 24;
+    const buttonHeight = compact
+      ? ACTION_BAR_RESERVED_HEIGHT
+      : Math.max(ACTION_BAR_RESERVED_HEIGHT, this.actionBar?.contentHeight ?? 0);
+    this.lastAction.y = this.height - this.safeBottom - buttonHeight - 42;
   }
 
   /** One permanent legend; the readable last-action strip owns the remaining footer. */
@@ -927,25 +932,22 @@ export class GameScene extends Container {
     ctx.textBaseline = 'middle';
     ctx.fillStyle = THEME.muted;
     ctx.font = `11px ${THEME.font}`;
-    const y =
-      this.board.layout.centerY +
-      this.board.layout.outerRadius +
-      this.board.layout.sealSize * 1.9 +
-      18;
-    ctx.fillText('左阴 · 右阳', this.width / 2, y - 5);
+    const b = this.board.layout;
+    const yGui = b.centerY + b.outerRadius + b.sealSize * LEGEND_BASELINE_RATIO;
+    // 「木示例」与「左阴 · 右阳」在 yGui 行与归元进度同排分列，省出一行垂直空间避让上一招
+    ctx.fillText('木示例', (this.width * 0.5) / 4 - 13, yGui);
+    ctx.fillText('左阴 · 右阳', this.width / 2, yGui);
+
+    const yLevels = yGui + 20;
     for (const [index, level] of ([-1, 0, 1, 2] as const).entries()) {
       const column = (this.width * (index + 0.5)) / 4;
-      drawYinYangFish(ctx, column - 13, y + 13, 7, Polarity.YIN, level, WuXing.WOOD);
-      drawYinYangFish(ctx, column - 13, y + 13, 7, Polarity.YANG, level, WuXing.WOOD);
+      drawYinYangFish(ctx, column - 13, yLevels, 7, Polarity.YIN, level, WuXing.WOOD);
+      drawYinYangFish(ctx, column - 13, yLevels, 7, Polarity.YANG, level, WuXing.WOOD);
       ctx.fillStyle = THEME.ivory;
       ctx.textAlign = 'left';
       // 文案与上一招变化条共用同一张正名表，结构上保证一致（ADR 0018）。
-      ctx.fillText(LEVEL_LABEL[level], column - 2, y + 13);
+      ctx.fillText(LEVEL_LABEL[level], column - 2, yLevels);
     }
-    // 首格标「木示例」：四档样例都用木色，颜色只表身份、等级只看亮度（ADR 0018）。
-    ctx.fillStyle = THEME.muted;
-    ctx.textAlign = 'center';
-    ctx.fillText('木示例', (this.width * 0.5) / 4 - 13, y - 5);
   }
 }
 

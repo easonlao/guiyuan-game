@@ -2794,7 +2794,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const NODE_RING_OUTSET_RATIO = NODE_RING_SCALE + NODE_RING_WIDTH_RATIO / 2;
   const SLOT_SIDE_RATIO = 0.7;
   const BOARD_RING_CLEARANCE = 3;
-  const LEGEND_BASELINE_RATIO = 1.9;
+  const LEGEND_BASELINE_RATIO = 2.2;
   const LEGEND_FONT_RATIO = 0.55;
   const LEGEND_FONT_MIN = 11;
   const LEGEND_OUTSET_RATIO = LEGEND_BASELINE_RATIO + LEGEND_FONT_RATIO / 2;
@@ -2951,8 +2951,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this._layout = {
         ...this._layout,
         centerX: width / 2,
-        // 盘心落在可用区域里：装得下就居中，装不下就贴上沿（宁可往操作区方向溢出，也不顶到胶囊）。
-        centerY: top + Math.max(fitted.height, available) / 2,
+        // 盘心落在可用区域里：装得下就居中（bounds === undefined 时严格为视口中点）。
+        centerY: bounds === void 0 ? height / 2 : top + Math.max(fitted.height, available) / 2,
         innerRadius: fitted.inner,
         outerRadius: fitted.outer,
         sealSize: fitted.seal
@@ -3154,7 +3154,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.arc(
         this._layout.centerX,
         this._layout.centerY,
-        this._layout.outerRadius + this._layout.sealSize * NODE_AURA_OUTSET_RATIO,
+        this._layout.outerRadius + this._layout.sealSize * NODE_RING_OUTSET_RATIO,
         0,
         Math.PI * 2
       );
@@ -3412,10 +3412,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.fill();
       ctx.restore();
     }
-    /** Each node owns two independent fish. Element labels sit outside the readable silhouette. */
+    /** Each node owns two independent fish. Element labels sit radially outside each ring's readable silhouette. */
     _drawSeals(ctx) {
       for (const entry of this._elements) {
         const radius = entry.sealSize;
+        const isInner = entry.player === OWN_PLAYER;
+        const dir = isInner ? -1 : 1;
+        const offset = Math.max(7, radius * 0.55);
+        const labelX = entry.x + dir * Math.cos(entry.angle) * (radius + offset);
+        const labelY = entry.y + dir * Math.sin(entry.angle) * (radius + offset);
         ctx.save();
         drawYinYangFish(ctx, entry.x, entry.y, radius, Polarity.YIN, entry.yin, entry.element);
         drawYinYangFish(ctx, entry.x, entry.y, radius, Polarity.YANG, entry.yang, entry.element);
@@ -3423,7 +3428,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         ctx.font = `bold ${Math.round(Math.max(11, radius * 0.5))}px ${THEME.font}`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(WUXING_PALETTE[entry.element].name, entry.x, entry.y - radius - 10);
+        ctx.fillText(WUXING_PALETTE[entry.element].name, labelX, labelY);
         ctx.restore();
       }
     }
@@ -3449,7 +3454,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         Math.max(LEGEND_FONT_MIN, this._layout.sealSize * LEGEND_FONT_RATIO)
       );
       const y = this._layout.centerY + this._layout.outerRadius + this._layout.sealSize * LEGEND_BASELINE_RATIO;
-      const gap = this._layout.sealSize * 2.6;
+      const gap = Math.max(76, this._layout.sealSize * 4.4);
       ctx.save();
       ctx.font = `bold ${String(fontSize)}px ${THEME.font}`;
       ctx.textAlign = "center";
@@ -4617,7 +4622,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     syncCenter() {
       this.rune.radius = Math.max(
         8,
-        Math.min(25, this.board.layout.innerRadius - this.board.layout.sealSize - 3)
+        Math.min(25, this.board.layout.innerRadius - this.board.layout.sealSize - 16)
       );
       this.centerX = this.board.layout.centerX;
       this.centerY = this.board.layout.centerY;
@@ -4710,7 +4715,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this._haloStyle = tianGan.polarity === Polarity.YANG ? "corona" : "moonlight";
       this.rune.tianGan = tianGan;
       this.rune.owner = options.owner ?? null;
-      this.rune.showOwner = this.board.layout.innerRadius >= 70;
+      this.rune.showOwner = false;
       this.rune.haloStyle = this._haloStyle;
       this.rune.x = this.centerX;
       this.rune.y = this.centerY;
@@ -4931,6 +4936,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const DEFAULT_EXPRESSION_HOLD = 0.6;
   const DEFAULT_CELEBRATE_HOLD = 1.2;
   const ACTION_BAR_MARGIN = 14;
+  const ACTION_BAR_RESERVED_HEIGHT = 110;
   function describeEndReason(endReason) {
     switch (endReason) {
       case "GUI_YUAN":
@@ -5007,7 +5013,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.characters = new CharacterView({
         width: this.width,
         safeTop: this.safeTop,
-        compact: this.height < 650 && this.safeTop > 24
+        compact: this.height < 650 || this.safeTop > 24
       });
       this.actionBar = this.buildActionBar(this._turnManager);
       this.actionBar.visible = false;
@@ -5102,7 +5108,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.actionBar.resize(width - ACTION_BAR_MARGIN * 2);
       this.layoutBoard();
       this.runeFlight.syncCenter();
-      this.characters.resize(width, this.safeTop, this.height < 650 && this.safeTop > 24);
+      this.characters.resize(width, this.safeTop, this.height < 650 || this.safeTop > 24);
       this.placeActionBar();
       if (this._phase === "idle" || this._phase === "game-over") {
         this.replaceRuneFlight();
@@ -5196,9 +5202,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         this.replaceRuneFlight();
         this.runeFlightStale = false;
       }
-      this.layoutBoard();
-      if (Math.abs(this.runeFlight.position.x - this.board.layout.centerX) > 0.1 || Math.abs(this.runeFlight.position.y - this.board.layout.centerY) > 0.1)
-        this.replaceRuneFlight();
       const before = this._turnManager.getState();
       const actions = this._turnManager.startTurn();
       const state = this._turnManager.getState();
@@ -5215,8 +5218,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.projectBoards(state);
       this.hideActionBar();
       if (actions.length > 1) this.actionBar.refresh();
-      this.layoutBoard();
-      this.replaceRuneFlight();
       this.announceTurnStart(state, tianGan, actions);
       if (tianGan === null) {
         this.afterEntrance();
@@ -5492,13 +5493,13 @@ ${prompt}`;
     }
     layoutBoard() {
       const compact = this.height < 650 || this.safeTop > 24;
-      const buttonHeight = Math.max(58, this.actionBar?.contentHeight ?? 0);
+      const buttonHeight = compact ? ACTION_BAR_RESERVED_HEIGHT : Math.max(ACTION_BAR_RESERVED_HEIGHT, this.actionBar?.contentHeight ?? 0);
       this.board.resize(
         this.width,
         this.height,
         compact ? {
-          top: this.safeTop + (this.height < 650 && this.safeTop > 24 ? 100 : 128),
-          bottom: this.height - this.safeBottom - buttonHeight - 64
+          top: this.safeTop + (compact ? 88 : 128),
+          bottom: this.height - this.safeBottom - buttonHeight - (compact ? 94 : 72)
         } : void 0
       );
     }
@@ -5586,13 +5587,20 @@ ${prompt}`;
       ctx.fillStyle = THEME.gold;
       ctx.font = `bold 18px ${THEME.font}`;
       ctx.fillText("归元弈", 18, this.safeTop + 13);
+      ctx.restore();
+    }
+    render(ctx) {
+      super.render(ctx);
+      ctx.save();
       this.drawDecisionGuide(ctx);
       ctx.restore();
     }
     placeResult() {
       if (this.lastAction === void 0) return;
       this.lastAction.resize(this.width - 20);
-      this.lastAction.y = this.height - this.safeBottom - Math.max(58, this.actionBar.contentHeight) - 42;
+      const compact = this.height < 650 || this.safeTop > 24;
+      const buttonHeight = compact ? ACTION_BAR_RESERVED_HEIGHT : Math.max(ACTION_BAR_RESERVED_HEIGHT, this.actionBar?.contentHeight ?? 0);
+      this.lastAction.y = this.height - this.safeBottom - buttonHeight - 42;
     }
     /** One permanent legend; the readable last-action strip owns the remaining footer. */
     drawDecisionGuide(ctx) {
@@ -5600,19 +5608,19 @@ ${prompt}`;
       ctx.textBaseline = "middle";
       ctx.fillStyle = THEME.muted;
       ctx.font = `11px ${THEME.font}`;
-      const y = this.board.layout.centerY + this.board.layout.outerRadius + this.board.layout.sealSize * 1.9 + 18;
-      ctx.fillText("左阴 · 右阳", this.width / 2, y - 5);
+      const b = this.board.layout;
+      const yGui = b.centerY + b.outerRadius + b.sealSize * LEGEND_BASELINE_RATIO;
+      ctx.fillText("木示例", this.width * 0.5 / 4 - 13, yGui);
+      ctx.fillText("左阴 · 右阳", this.width / 2, yGui);
+      const yLevels = yGui + 20;
       for (const [index, level] of [-1, 0, 1, 2].entries()) {
         const column = this.width * (index + 0.5) / 4;
-        drawYinYangFish(ctx, column - 13, y + 13, 7, Polarity.YIN, level, WuXing.WOOD);
-        drawYinYangFish(ctx, column - 13, y + 13, 7, Polarity.YANG, level, WuXing.WOOD);
+        drawYinYangFish(ctx, column - 13, yLevels, 7, Polarity.YIN, level, WuXing.WOOD);
+        drawYinYangFish(ctx, column - 13, yLevels, 7, Polarity.YANG, level, WuXing.WOOD);
         ctx.fillStyle = THEME.ivory;
         ctx.textAlign = "left";
-        ctx.fillText(LEVEL_LABEL[level], column - 2, y + 13);
+        ctx.fillText(LEVEL_LABEL[level], column - 2, yLevels);
       }
-      ctx.fillStyle = THEME.muted;
-      ctx.textAlign = "center";
-      ctx.fillText("木示例", this.width * 0.5 / 4 - 13, y - 5);
     }
   }
   function opponentOf(player) {

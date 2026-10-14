@@ -1389,6 +1389,36 @@ describe('Minigame BoardView: 渲染', () => {
     expect(populatedTexts).toContain('你 1/5');
     expect(populatedTexts).toContain('天道 0/5');
   });
+
+  it('五行文字标签呈径向排列：内环向盘心收敛、外环向盘外发散，且不与任何主印重叠', () => {
+    const view = new BoardView();
+    view.resize(320, 568, { top: 148, bottom: 438 });
+    const ctx = new RecordingContext();
+    view.render(ctx.asContext());
+
+    const elementNames = new Set(RING_ORDER.map((elem) => WUXING_PALETTE[elem].name));
+    const labelTexts = ctx.texts.filter((entry) => elementNames.has(entry.text));
+    expect(labelTexts).toHaveLength(10);
+
+    const { centerX, centerY, innerRadius, outerRadius } = view.layout;
+    const innerLabels = labelTexts.filter(
+      (entry) => Math.hypot(entry.x - centerX, entry.y - centerY) < innerRadius,
+    );
+    const outerLabels = labelTexts.filter(
+      (entry) => Math.hypot(entry.x - centerX, entry.y - centerY) > outerRadius,
+    );
+    expect(innerLabels).toHaveLength(5);
+    expect(outerLabels).toHaveLength(5);
+
+    for (const label of labelTexts) {
+      for (const seal of view.elements) {
+        const dist = Math.hypot(label.x - seal.x, label.y - seal.y);
+        expect(dist, `${label.text} 标签距离 ${seal.player} ${seal.element} 主印`).toBeGreaterThan(
+          seal.sealSize,
+        );
+      }
+    }
+  });
 });
 
 describe('Minigame BoardView: independent yin-yang fish', () => {

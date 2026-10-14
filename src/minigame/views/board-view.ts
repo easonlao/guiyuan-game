@@ -113,15 +113,15 @@ const BOARD_RING_CLEARANCE = 3;
  * 归元图例的基线位置与字号（占主印半径的比例与像素下界）：`_drawGuiYuanLegend` 与 `resize` 的高度预算共用，
  * 免得「算高度」与「画在哪儿」各存一份。
  */
-const LEGEND_BASELINE_RATIO = 1.9;
-const LEGEND_FONT_RATIO = 0.55;
-const LEGEND_FONT_MIN = 11;
+export const LEGEND_BASELINE_RATIO = 2.2;
+export const LEGEND_FONT_RATIO = 0.55;
+export const LEGEND_FONT_MIN = 11;
 
 /**
  * 图例文字下沿相对主印半径的外沿（比例部分；主印很小时字号有像素下界，实际下沿更靠外）。
  * `resize` 的可用高度按它留底，图例才不会被操作栏或结果条压住。
  */
-const LEGEND_OUTSET_RATIO = LEGEND_BASELINE_RATIO + LEGEND_FONT_RATIO / 2;
+export const LEGEND_OUTSET_RATIO = LEGEND_BASELINE_RATIO + LEGEND_FONT_RATIO / 2;
 
 /** 盘面上下各留的边距：法盘顶到内容区上沿、外沿到下沿（像素）。 */
 const BOARD_EDGE_PADDING = 14;
@@ -462,8 +462,8 @@ export class BoardView extends Container {
     this._layout = {
       ...this._layout,
       centerX: width / 2,
-      // 盘心落在可用区域里：装得下就居中，装不下就贴上沿（宁可往操作区方向溢出，也不顶到胶囊）。
-      centerY: top + Math.max(fitted.height, available) / 2,
+      // 盘心落在可用区域里：装得下就居中（bounds === undefined 时严格为视口中点）。
+      centerY: bounds === undefined ? height / 2 : top + Math.max(fitted.height, available) / 2,
       innerRadius: fitted.inner,
       outerRadius: fitted.outer,
       sealSize: fitted.seal,
@@ -695,7 +695,7 @@ export class BoardView extends Container {
     ctx.arc(
       this._layout.centerX,
       this._layout.centerY,
-      this._layout.outerRadius + this._layout.sealSize * NODE_AURA_OUTSET_RATIO,
+      this._layout.outerRadius + this._layout.sealSize * NODE_RING_OUTSET_RATIO,
       0,
       Math.PI * 2,
     );
@@ -980,10 +980,15 @@ export class BoardView extends Container {
     ctx.restore();
   }
 
-  /** Each node owns two independent fish. Element labels sit outside the readable silhouette. */
+  /** Each node owns two independent fish. Element labels sit radially outside each ring's readable silhouette. */
   private _drawSeals(ctx: CanvasRenderingContext2D): void {
     for (const entry of this._elements) {
       const radius = entry.sealSize;
+      const isInner = entry.player === OWN_PLAYER;
+      const dir = isInner ? -1 : 1;
+      const offset = Math.max(7, radius * 0.55);
+      const labelX = entry.x + dir * Math.cos(entry.angle) * (radius + offset);
+      const labelY = entry.y + dir * Math.sin(entry.angle) * (radius + offset);
       ctx.save();
       drawYinYangFish(ctx, entry.x, entry.y, radius, Polarity.YIN, entry.yin, entry.element);
       drawYinYangFish(ctx, entry.x, entry.y, radius, Polarity.YANG, entry.yang, entry.element);
@@ -991,7 +996,7 @@ export class BoardView extends Container {
       ctx.font = `bold ${Math.round(Math.max(11, radius * 0.5))}px ${THEME.font}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(WUXING_PALETTE[entry.element].name, entry.x, entry.y - radius - 10);
+      ctx.fillText(WUXING_PALETTE[entry.element].name, labelX, labelY);
       ctx.restore();
     }
   }
@@ -1022,7 +1027,7 @@ export class BoardView extends Container {
       this._layout.centerY +
       this._layout.outerRadius +
       this._layout.sealSize * LEGEND_BASELINE_RATIO;
-    const gap = this._layout.sealSize * 2.6;
+    const gap = Math.max(76, this._layout.sealSize * 4.4);
     ctx.save();
     ctx.font = `bold ${String(fontSize)}px ${THEME.font}`;
     ctx.textAlign = 'center';
