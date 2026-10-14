@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>归元弈 · 天干汇聚动效原型对比 (Prototype)</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #080f14;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        color: #e6e8e2;
+        user-select: none;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+
+      /* 主对局画布 */
+      #canvas-wrapper {
+        position: relative;
+        width: min(100vw, 480px);
+        height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at center, #0e1e28 0%, #080f14 70%);
+      }
+
+      /* 顶部交互控制栏 */
+      .top-panel {
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(92vw, 450px);
+        background: rgba(14, 26, 34, 0.88);
+        border: 1px solid rgba(215, 184, 121, 0.35);
+        border-radius: 12px;
+        padding: 10px 14px;
+        backdrop-filter: blur(8px);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 20;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      }
+      .top-panel .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 13px;
+      }
+      .pill-group {
+        display: flex;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 6px;
+        padding: 2px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .pill-btn {
+        background: transparent;
+        border: none;
+        color: #9cb1bc;
+        padding: 4px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s;
+      }
+      .pill-btn.active {
+        background: #d7b879;
+        color: #080f14;
+        font-weight: bold;
+      }
+      .action-btn {
+        background: linear-gradient(135deg, #2a4352 0%, #172935 100%);
+        border: 1px solid #d7b879;
+        color: #f5f1de;
+        padding: 5px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: bold;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .action-btn:active {
+        transform: scale(0.96);
+      }
+      .back-link {
+        color: #75b4cb;
+        text-decoration: none;
+        font-size: 11px;
+      }
+
+      /* 方案说明卡片 */
+      .variant-info {
+        position: absolute;
+        top: 118px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(92vw, 450px);
+        background: rgba(10, 18, 24, 0.75);
+        border-left: 3px solid #d7b879;
+        padding: 6px 12px;
+        border-radius: 0 6px 6px 0;
+        font-size: 12px;
+        line-height: 1.4;
+        color: #cbd5cd;
+        pointer-events: none;
+        z-index: 10;
+      }
+      .variant-info b {
+        color: #ffe4a0;
+      }
+
+      /* 底部浮动切换胶囊 (Prototype Switcher) */
+      .bottom-switcher {
+        position: absolute;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(18, 30, 40, 0.95);
+        border: 1px solid #d7b879;
+        border-radius: 30px;
+        padding: 6px 16px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 12px rgba(215, 184, 121, 0.2);
+        z-index: 30;
+      }
+      .switcher-btn {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(215, 184, 121, 0.4);
+        color: #ffe4a0;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 16px;
+        transition: all 0.2s;
+      }
+      .switcher-btn:hover {
+        background: #d7b879;
+        color: #080f14;
+      }
+      .switcher-label {
+        font-size: 14px;
+        font-weight: bold;
+        color: #f5f1de;
+        min-width: 180px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="canvas-wrapper">
+      <!-- 顶部控制面板 -->
+      <div class="top-panel">
+        <div class="row">
+          <div style="font-weight: bold; color: #ffe4a0;">天干汇聚动效 · 原型对比</div>
+          <a class="back-link" href="index.html">返回小游戏 ↗</a>
+        </div>
+        <div class="row">
+          <span>行动方:</span>
+          <div class="pill-group">
+            <button class="pill-btn active" id="btn-p1">己方 (内环)</button>
+            <button class="pill-btn" id="btn-p2">天道 (外环)</button>
+          </div>
+          <span>时长:</span>
+          <div class="pill-group">
+            <button class="pill-btn" id="btn-spd-03">0.3s</button>
+            <button class="pill-btn active" id="btn-spd-05">0.5s</button>
+            <button class="pill-btn" id="btn-spd-08">0.8s</button>
+          </div>
+        </div>
+        <div class="row">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <input type="checkbox" id="chk-text" style="accent-color: #d7b879;" />
+            <label for="chk-text" style="font-size: 12px; cursor: pointer;">显示旧版文字说明</label>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button class="action-btn" id="btn-replay">▶ 重新播放 (空格)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 方案说明卡片 -->
+      <div class="variant-info" id="variant-info">
+        <b>方案描述</b>：加载中...
+      </div>
+
+      <!-- 画布 -->
+      <canvas id="game-canvas"></canvas>
+
+      <!-- 底部浮动切换胶囊 -->
+      <div class="bottom-switcher">
+        <button class="switcher-btn" id="prev-btn" title="上一个方案 (←)">←</button>
+        <div class="switcher-label" id="current-label">方案 A (彗星弧光)</div>
+        <button class="switcher-btn" id="next-btn" title="下一个方案 (→)">→</button>
+      </div>
+    </div>
+
+    <script>
+      // 五行调色板
+      const WUXING = {
+        WOOD: { name: '木', main: '#63ba8c', light: '#b4e7be', dark: '#294f42' },
+        FIRE: { name: '火', main: '#e38c70', light: '#ffd0aa', dark: '#653e37' },
+        EARTH: { name: '土', main: '#c3a16a', light: '#ecdbab', dark: '#60543a' },
+        METAL: { name: '金', main: '#cbd5cd', light: '#f5f1de', dark: '#5e7378' },
+        WATER: { name: '水', main: '#75b4cb', light: '#bce4eb', dark: '#315363' },
+      };
+      const WUXING_KEYS = ['WOOD', 'FIRE', 'EARTH', 'METAL', 'WATER'];
+      const WUXING_COUNT = 5;
+      const RING_STEP = (Math.PI * 2) / WUXING_COUNT;
+      const OUTER_OFFSET = 2; // ADR 0015: 外环逆时针偏移 2 格
+
+      // 十天干数据
+      const TIAN_GAN = [
+        { name: '甲', element: 'WOOD', polarity: '阳' },
+        { name: '乙', element: 'WOOD', polarity: '阴' },
+        { name: '丙', element: 'FIRE', polarity: '阳' },
+        { name: '丁', element: 'FIRE', polarity: '阴' },
+        { name: '戊', element: 'EARTH', polarity: '阳' },
+        { name: '己', element: 'EARTH', polarity: '阴' },
+        { name: '庚', element: 'METAL', polarity: '阳' },
+        { name: '辛', element: 'METAL', polarity: '阴' },
+        { name: '壬', element: 'WATER', polarity: '阳' },
+        { name: '癸', element: 'WATER', polarity: '阴' },
+      ];
+
+      // 原型方案配置
+      const VARIANTS = [
+        {
+          id: 'A',
+          name: '方案 A：彗星弧光 (Comet Arc)',
+          desc: '<b>彗星拖尾弧光</b>：5 个主印脉冲爆闪，5 道携带五行原色的彗星光弧呈微弧螺线向中心收拢（己方顺时针微弧，天道逆时针微弧）。汇聚瞬间中心炸开五彩光环，天干自然浮现。<b>推荐：气劲纯正、动作利落。</b>',
+        },
+        {
+          id: 'B',
+          name: '方案 B：灵气光旋 (Qi Vortex)',
+          desc: '<b>灵动粒子旋涡</b>：5 个主印同时释放灵气光尘群，粒子在向心吸力与旋涡流场中盘旋聚拢（己方顺时针内吸，天道逆时针内吸），在天元凝结成气旋后化为天干。<b>特点：仙侠呼吸感、轻盈灵动。</b>',
+        },
+        {
+          id: 'C',
+          name: '方案 C：阵法激射 (Geomantic Array)',
+          desc: '<b>星轨激光穿刺</b>：5 个主印亮起八卦阵眼光圈，5 道高亮星轨光束瞬间向天元交汇，交点迸发五角星芒收束，符文破空而出。<b>特点：阵法感极强、击发迅猛、极度清晰的方位感。</b>',
+        },
+      ];
+
+      // 状态
+      let currentVariantIndex = 0;
+      let currentOwner = 'P1'; // 'P1' 或 'P2'
+      let duration = 0.5; // 秒
+      let showOldText = false;
+      let animProgress = 0; // 0 ~ 1
+      let animPlaying = true;
+      let currentTianGan = TIAN_GAN[0]; // 默认甲木
+
+      // 读取 URL 中的 variant
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlVariant = urlParams.get('variant');
+      if (urlVariant) {
+        const found = VARIANTS.findIndex(v => v.id.toUpperCase() === urlVariant.toUpperCase());
+        if (found !== -1) currentVariantIndex = found;
+      }
+
+      // 获取 DOM 元素
+      const canvas = document.getElementById('game-canvas');
+      const ctx = canvas.getContext('2d');
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
+      const currentLabel = document.getElementById('current-label');
+      const variantInfo = document.getElementById('variant-info');
+      const btnP1 = document.getElementById('btn-p1');
+      const btnP2 = document.getElementById('btn-p2');
+      const btnSpd03 = document.getElementById('btn-spd-03');
+      const btnSpd05 = document.getElementById('btn-spd-05');
+      const btnSpd08 = document.getElementById('btn-spd-08');
+      const btnReplay = document.getElementById('btn-replay');
+      const chkText = document.getElementById('chk-text');
+
+      function syncUI() {
+        const v = VARIANTS[currentVariantIndex];
+        currentLabel.textContent = v.name;
+        variantInfo.innerHTML = v.desc;
+        btnP1.classList.toggle('active', currentOwner === 'P1');
+        btnP2.classList.toggle('active', currentOwner === 'P2');
+        btnSpd03.classList.toggle('active', duration === 0.3);
+        btnSpd05.classList.toggle('active', duration === 0.5);
+        btnSpd08.classList.toggle('active', duration === 0.8);
+        chkText.checked = showOldText;
+
+        // 更新 URL 参数而不刷新
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('variant', v.id);
+        window.history.replaceState({}, '', newUrl);
+      }
+
+      function switchVariant(delta) {
+        currentVariantIndex = (currentVariantIndex + delta + VARIANTS.length) % VARIANTS.length;
+        syncUI();
+        restartAnimation();
+      }
+
+      prevBtn.onclick = () => switchVariant(-1);
+      nextBtn.onclick = () => switchVariant(1);
+      btnP1.onclick = () => { currentOwner = 'P1'; syncUI(); restartAnimation(); };
+      btnP2.onclick = () => { currentOwner = 'P2'; syncUI(); restartAnimation(); };
+      btnSpd03.onclick = () => { duration = 0.3; syncUI(); restartAnimation(); };
+      btnSpd05.onclick = () => { duration = 0.5; syncUI(); restartAnimation(); };
+      btnSpd08.onclick = () => { duration = 0.8; syncUI(); restartAnimation(); };
+      chkText.onchange = (e) => { showOldText = e.target.checked; };
+      btnReplay.onclick = () => restartAnimation();
+
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'ArrowLeft') switchVariant(-1);
+        if (e.code === 'ArrowRight') switchVariant(1);
+        if (e.code === 'Space') { e.preventDefault(); restartAnimation(); }
+      });
+
+      function restartAnimation() {
+        animProgress = 0;
+        animPlaying = true;
+        // 随机抽一个天干体验不同属性
+        currentTianGan = TIAN_GAN[Math.floor(Math.random() * TIAN_GAN.length)];
+        initParticles();
+      }
+
+      // 粒子系统数据 (方案 B)
+      let particles = [];
+      function initParticles() {
+        particles = [];
+        const countPerElement = 18;
+        for (let i = 0; i < WUXING_COUNT; i++) {
+          for (let k = 0; k < countPerElement; k++) {
+            particles.push({
+              elementIndex: i,
+              progressOffset: (k / countPerElement) * 0.35 + (Math.random() - 0.5) * 0.1,
+              spreadAngle: (Math.random() - 0.5) * 0.8,
+              speedMult: 0.8 + Math.random() * 0.4,
+              size: 1.5 + Math.random() * 2.5,
+              opacity: 0.6 + Math.random() * 0.4,
+            });
+          }
+        }
+      }
+
+      // 布局尺寸
+      let width = 0;
+      let height = 0;
+      let centerX = 0;
+      let centerY = 0;
+      let innerRadius = 90;
+      let outerRadius = 155;
+      let sealSize = 22;
+
+      function resize() {
+        const bounds = canvas.getBoundingClientRect();
+        const ratio = window.devicePixelRatio || 1;
+        width = bounds.width;
+        height = bounds.height;
+        canvas.width = Math.round(width * ratio);
+        canvas.height = Math.round(height * ratio);
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+        centerX = width / 2;
+        centerY = height / 2 + 10;
+        const shortEdge = Math.min(width, height);
+        innerRadius = shortEdge * 0.23;
+        outerRadius = shortEdge * 0.38;
+        sealSize = shortEdge * 0.058;
+      }
+      window.addEventListener('resize', resize);
+      resize();
+      syncUI();
+      restartAnimation();
+
+      // 计算节点几何坐标
+      function getNodePos(player, elementIndex) {
+        const isP1 = player === 'P1';
+        const radius = isP1 ? innerRadius : outerRadius;
+        const rayIndex = isP1 ? elementIndex : (elementIndex - OUTER_OFFSET + WUXING_COUNT) % WUXING_COUNT;
+        const angle = -Math.PI / 2 + rayIndex * RING_STEP;
+        return {
+          x: centerX + radius * Math.cos(angle),
+          y: centerY + radius * Math.sin(angle),
+          angle: angle,
+          element: WUXING_KEYS[elementIndex],
+        };
+      }
+
+      // 基础棋盘绘制
+      function drawBoard() {
+        // 1. 同心双环底轨
+        ctx.save();
+        ctx.lineWidth = 1.2;
+
+        // 内环（己方盘·实线）
+        ctx.strokeStyle = 'rgba(215, 184, 121, 0.4)';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, innerRadius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 外环（天道盘·虚线）
+        ctx.strokeStyle = 'rgba(117, 180, 203, 0.35)';
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 中心天元基座
+        ctx.strokeStyle = 'rgba(215, 184, 121, 0.25)';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 28, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        // 2. 绘制双方 5 行主印
+        ['P2', 'P1'].forEach(player => {
+          const isP1 = player === 'P1';
+          const size = isP1 ? sealSize : sealSize * 0.92;
+          for (let i = 0; i < WUXING_COUNT; i++) {
+            const pos = getNodePos(player, i);
+            const elemCfg = WUXING[pos.element];
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, size, 0, Math.PI * 2);
+            ctx.fillStyle = isP1 ? 'rgba(14, 26, 34, 0.95)' : 'rgba(10, 18, 24, 0.95)';
+            ctx.fill();
+            ctx.strokeStyle = isP1 ? elemCfg.main : 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // 主印文字
+            ctx.fillStyle = elemCfg.light;
+            ctx.font = `bold ${Math.round(size * 0.8)}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(elemCfg.name, pos.x, pos.y);
+            ctx.restore();
+          }
+        });
+      }
+
+      // ==========================================
+      // 动效方案 A：彗星弧光 (Comet Tail Arc)
+      // ==========================================
+      function renderVariantA(t) {
+        // 前 0.5 时长为汇聚，后 0.5 时长为天干生成浮空
+        const gatherProgress = Math.min(1, t / 0.55);
+        const runeProgress = Math.max(0, (t - 0.45) / 0.55);
+
+        // 1. 起点圆环脉冲 (0 ~ 0.4)
+        if (t < 0.45) {
+          const pulse = t / 0.45;
+          for (let i = 0; i < WUXING_COUNT; i++) {
+            const pos = getNodePos(currentOwner, i);
+            const elemCfg = WUXING[pos.element];
+            ctx.save();
+            ctx.strokeStyle = elemCfg.light;
+            ctx.lineWidth = 2 * (1 - pulse);
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, sealSize + pulse * 14, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+
+        // 2. 5 束彗星流光汇聚
+        if (gatherProgress > 0 && gatherProgress < 1) {
+          const isP1 = currentOwner === 'P1';
+          const curlDirection = isP1 ? 1 : -1; // 己方顺时针微弧，天道逆时针微弧
+
+          for (let i = 0; i < WUXING_COUNT; i++) {
+            const start = getNodePos(currentOwner, i);
+            const elemCfg = WUXING[start.element];
+
+            // 轨迹曲线：从 start 到 center，中间控制点偏移产生弧度
+            const midX = (start.x + centerX) / 2;
+            const midY = (start.y + centerY) / 2;
+            const dx = centerX - start.x;
+            const dy = centerY - start.y;
+            const dist = Math.hypot(dx, dy);
+            const normalX = -dy / dist;
+            const normalY = dx / dist;
+
+            // 控制点沿法线推开产生旋涡感弧度
+            const curveOffset = dist * 0.32 * curlDirection;
+            const ctrlX = midX + normalX * curveOffset;
+            const ctrlY = midY + normalY * curveOffset;
+
+            // 彗星头部与尾部插值 (二次贝塞尔采样)
+            const headT = Math.min(1, gatherProgress * 1.15);
+            const tailT = Math.max(0, headT - 0.32);
+
+            ctx.save();
+            ctx.lineCap = 'round';
+            const segments = 16;
+            for (let s = 0; s < segments; s++) {
+              const segT1 = tailT + ((headT - tailT) * s) / segments;
+              const segT2 = tailT + ((headT - tailT) * (s + 1)) / segments;
+
+              const p1 = bezierPoint(start.x, start.y, ctrlX, ctrlY, centerX, centerY, segT1);
+              const p2 = bezierPoint(start.x, start.y, ctrlX, ctrlY, centerX, centerY, segT2);
+
+              const alpha = (s / segments) * 0.95;
+              const lineWidth = 1 + (s / segments) * 4.2;
+
+              ctx.strokeStyle = elemCfg.light;
+              ctx.globalAlpha = alpha;
+              ctx.lineWidth = lineWidth;
+              ctx.beginPath();
+              ctx.moveTo(p1.x, p1.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.stroke();
+            }
+
+            // 彗星头部高亮光点
+            const headP = bezierPoint(start.x, start.y, ctrlX, ctrlY, centerX, centerY, headT);
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(headP.x, headP.y, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+
+        // 3. 中心汇聚碰撞微爆 (0.45 ~ 0.8)
+        if (t >= 0.45 && t <= 0.8) {
+          const impactP = (t - 0.45) / 0.35;
+          ctx.save();
+          ctx.strokeStyle = WUXING[currentTianGan.element].light;
+          ctx.lineWidth = 3 * (1 - impactP);
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, impactP * 36, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // 4. 中央天干符文浮现
+        if (runeProgress > 0) {
+          drawTianGanRune(runeProgress);
+        }
+      }
+
+      // ==========================================
+      // 动效方案 B：灵气光旋 (Qi Vortex)
+      // ==========================================
+      function renderVariantB(t) {
+        const gatherProgress = Math.min(1, t / 0.6);
+        const runeProgress = Math.max(0, (t - 0.45) / 0.55);
+        const isP1 = currentOwner === 'P1';
+        const curlDir = isP1 ? 1 : -1;
+
+        // 1. 起点主印柔光闪烁
+        if (t < 0.5) {
+          const glow = Math.sin((t / 0.5) * Math.PI);
+          for (let i = 0; i < WUXING_COUNT; i++) {
+            const pos = getNodePos(currentOwner, i);
+            const elemCfg = WUXING[pos.element];
+            ctx.save();
+            ctx.fillStyle = elemCfg.light;
+            ctx.globalAlpha = glow * 0.4;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, sealSize * 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+
+        // 2. 灵气微粒群旋涡运动
+        if (t < 0.75) {
+          particles.forEach(p => {
+            const rawProgress = (t / 0.6) - p.progressOffset;
+            if (rawProgress <= 0 || rawProgress >= 1) return;
+
+            const start = getNodePos(currentOwner, p.elementIndex);
+            const elemCfg = WUXING[start.element];
+
+            // 沿对数螺旋 / 弧线逼近中心
+            const progress = easeInQuad(rawProgress * p.speedMult);
+            if (progress >= 1) return;
+
+            const baseAngle = start.angle + progress * Math.PI * 1.1 * curlDir + p.spreadAngle * (1 - progress);
+            const baseDist = Math.hypot(start.x - centerX, start.y - centerY) * (1 - progress);
+
+            const px = centerX + baseDist * Math.cos(baseAngle);
+            const py = centerY + baseDist * Math.sin(baseAngle);
+
+            ctx.save();
+            ctx.fillStyle = elemCfg.light;
+            ctx.globalAlpha = p.opacity * Math.sin(rawProgress * Math.PI);
+            ctx.beginPath();
+            ctx.arc(px, py, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          });
+        }
+
+        // 3. 中心气旋凝核
+        if (t >= 0.4 && t <= 0.7) {
+          const vortexP = (t - 0.4) / 0.3;
+          ctx.save();
+          ctx.translate(centerX, centerY);
+          ctx.rotate(t * 12 * curlDir);
+          ctx.strokeStyle = WUXING[currentTianGan.element].main;
+          ctx.lineWidth = 2;
+          ctx.globalAlpha = (1 - vortexP) * 0.7;
+          ctx.beginPath();
+          ctx.arc(0, 0, 22 * (1 - vortexP), 0, Math.PI * 1.5);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // 4. 中央符文生成
+        if (runeProgress > 0) {
+          drawTianGanRune(runeProgress);
+        }
+      }
+
+      // ==========================================
+      // 动效方案 C：阵法激射 (Geomantic Array)
+      // ==========================================
+      function renderVariantC(t) {
+        const rayProgress = Math.min(1, t / 0.4);
+        const runeProgress = Math.max(0, (t - 0.3) / 0.7);
+
+        // 1. 主印激活阵眼八卦圈 (0 ~ 0.5)
+        if (t < 0.5) {
+          const spin = t * 6;
+          for (let i = 0; i < WUXING_COUNT; i++) {
+            const pos = getNodePos(currentOwner, i);
+            const elemCfg = WUXING[pos.element];
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            ctx.rotate(spin);
+            ctx.strokeStyle = elemCfg.light;
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(-sealSize * 1.1, -sealSize * 1.1, sealSize * 2.2, sealSize * 2.2);
+            ctx.restore();
+          }
+        }
+
+        // 2. 5 束阵法经纬激光直接贯穿天元
+        if (t < 0.55) {
+          const beamP = Math.min(1, t / 0.35);
+          const fadeP = t > 0.35 ? (0.55 - t) / 0.2 : 1;
+
+          for (let i = 0; i < WUXING_COUNT; i++) {
+            const start = getNodePos(currentOwner, i);
+            const elemCfg = WUXING[start.element];
+            const endX = start.x + (centerX - start.x) * beamP;
+            const endY = start.y + (centerY - start.y) * beamP;
+
+            ctx.save();
+            ctx.strokeStyle = elemCfg.light;
+            ctx.globalAlpha = fadeP * 0.9;
+            ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            // 内芯纯白高亮
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+
+        // 3. 中心五角星芒闪烁
+        if (t >= 0.3 && t <= 0.6) {
+          const starP = (t - 0.3) / 0.3;
+          ctx.save();
+          ctx.translate(centerX, centerY);
+          ctx.rotate(t * 8);
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2 * (1 - starP);
+          ctx.globalAlpha = 1 - starP;
+          drawStar(ctx, 0, 0, 5, 26 * (1 - starP * 0.4), 12 * (1 - starP * 0.4));
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // 4. 中央符文破空而出
+        if (runeProgress > 0) {
+          drawTianGanRune(runeProgress);
+        }
+      }
+
+      // 绘制天干符文与旧版文本对照
+      function drawTianGanRune(progress) {
+        const scale = 0.3 + 0.7 * easeOutBack(progress);
+        const alpha = Math.min(1, progress * 1.5);
+        const radius = 25 * scale;
+        const elemCfg = WUXING[currentTianGan.element];
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(centerX, centerY);
+
+        // 两仪金环底座
+        ctx.fillStyle = '#080f14';
+        ctx.strokeStyle = elemCfg.main;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // 外层柔光日冕
+        ctx.strokeStyle = elemCfg.light;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius + 4, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 符文大字 (甲/乙/丙...)
+        ctx.fillStyle = '#e6e8e2';
+        ctx.font = `bold ${Math.round(22 * scale)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(currentTianGan.name, 0, -4 * scale);
+
+        // 属性标签
+        if (radius >= 18) {
+          ctx.fillStyle = elemCfg.light;
+          ctx.font = `${Math.round(10 * scale)}px sans-serif`;
+          ctx.fillText(`${elemCfg.name} · ${currentTianGan.polarity}`, 0, 13 * scale);
+        }
+
+        // 旧版文本对照：符文顶部文字标注
+        if (showOldText) {
+          ctx.fillStyle = '#f5f1de';
+          ctx.font = '11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const ownerText = currentOwner === 'P1' ? '你的天干' : '天道的天干';
+          ctx.fillText(ownerText, 0, -36);
+        }
+
+        ctx.restore();
+      }
+
+      // 辅助数学工具
+      function bezierPoint(p0x, p0y, p1x, p1y, p2x, p2y, t) {
+        const u = 1 - t;
+        return {
+          x: u * u * p0x + 2 * u * t * p1x + t * t * p2x,
+          y: u * u * p0y + 2 * u * t * p1y + t * t * p2y,
+        };
+      }
+      function easeInQuad(x) { return x * x; }
+      function easeOutBack(x) {
+        const c1 = 1.70158;
+        const c3 = c1 + 1;
+        return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+      }
+      function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+        let rot = (Math.PI / 2) * 3;
+        let x = cx;
+        let y = cy;
+        const step = Math.PI / spikes;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - outerRadius);
+        for (let i = 0; i < spikes; i++) {
+          x = cx + Math.cos(rot) * outerRadius;
+          y = cy + Math.sin(rot) * outerRadius;
+          ctx.lineTo(x, y);
+          rot += step;
+          x = cx + Math.cos(rot) * innerRadius;
+          y = cy + Math.sin(rot) * innerRadius;
+          ctx.lineTo(x, y);
+          rot += step;
+        }
+        ctx.lineTo(cx, cy - outerRadius);
+        ctx.closePath();
+      }
+
+      // 主动效驱动循环
+      let lastTime = performance.now();
+      let autoRestartTimer = 0;
+
+      function loop(now) {
+        const dt = (now - lastTime) / 1000;
+        lastTime = now;
+
+        if (animPlaying) {
+          animProgress += dt / duration;
+          if (animProgress >= 1) {
+            animProgress = 1;
+            animPlaying = false;
+            autoRestartTimer = 1.2; // 停顿 1.2s 后自动循环重播
+          }
+        } else {
+          autoRestartTimer -= dt;
+          if (autoRestartTimer <= 0) {
+            restartAnimation();
+          }
+        }
+
+        // 清屏
+        ctx.clearRect(0, 0, width, height);
+
+        // 绘制棋盘底盘与主印
+        drawBoard();
+
+        // 绘制当前选中的原型动效
+        const v = VARIANTS[currentVariantIndex].id;
+        if (v === 'A') renderVariantA(animProgress);
+        else if (v === 'B') renderVariantB(animProgress);
+        else if (v === 'C') renderVariantC(animProgress);
+
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+    </script>
+  </body>
+</html>

@@ -16,7 +16,6 @@
 import { ActionType, PlayerId, Polarity, TianGanInfo, WuXing } from '../../core/types/domain.js';
 import { BoardView, BoardSlotView } from './board-view.js';
 import { drawCenterTianGanRune, WUXING_PALETTE } from '../pixel-art.js';
-import { THEME } from '../theme.js';
 import { Container } from '../scene/container.js';
 import { Node } from '../scene/node.js';
 import { EASINGS, Tween, TweenSequence } from '../scene/tween.js';
@@ -33,7 +32,7 @@ export interface RuneFlightViewOptions {
   /** 入场与飞行的起点（父坐标系），通常是屏幕中心；默认 (0, 0)。 */
   readonly centerX?: number;
   readonly centerY?: number;
-  /** 入场动效时长（秒），默认 0.44。 */
+  /** 入场动效时长（秒），默认 0.8。 */
   readonly entranceDuration?: number;
   /** 符文飞行动效时长（秒），默认 0.55。 */
   readonly flightDuration?: number;
@@ -41,12 +40,19 @@ export interface RuneFlightViewOptions {
   readonly impactDuration?: number;
 }
 
-const DEFAULT_ENTRANCE_DURATION = 0.44;
+/** 入场播放选项。 */
+export interface PlayEntranceOptions {
+  /** 入场播放完成回调。 */
+  readonly onComplete?: () => void;
+  /** 抽签归属方（P1 己方内环 / P2 对方外环）。 */
+  readonly owner?: PlayerId;
+  /** 自定义入场时长（秒），缺省时使用实例的 entranceDuration。 */
+  readonly duration?: number;
+}
+
+const DEFAULT_ENTRANCE_DURATION = 0.8;
 const DEFAULT_FLIGHT_DURATION = 0.55;
 const DEFAULT_IMPACT_DURATION = 0.35;
-
-/** 入场起手的缩放（由 0.55 放大到 1）。 */
-const ENTRANCE_START_SCALE = 0.55;
 
 /** 每秒钟折算的动画帧计数：复用 `pixel-art` 的帧驱动绘制例程（其呼吸/旋转按 60fps 调参）。 */
 const TICK_RATE = 60;
@@ -69,6 +75,7 @@ export class RuneFlightView extends Container {
   private readonly flightDuration: number;
   private readonly impactDuration: number;
 
+  private readonly vortex: QiVortexNode;
   private readonly rune: RuneNode;
   private readonly ripple: ImpactNode;
   /** 入场补间写入的进度（0~1），符文透明度与缩放是它的纯投影。 */
@@ -167,6 +174,9 @@ export class RuneFlightView extends Container {
     this.entranceDuration = options.entranceDuration ?? DEFAULT_ENTRANCE_DURATION;
     this.flightDuration = options.flightDuration ?? DEFAULT_FLIGHT_DURATION;
     this.impactDuration = options.impactDuration ?? DEFAULT_IMPACT_DURATION;
+    this.vortex = new QiVortexNode();
+    this.vortex.visible = false;
+    this.addChild(this.vortex);
     this.rune = new RuneNode();
     this.rune.radius = Math.max(
       8,
@@ -180,6 +190,11 @@ export class RuneFlightView extends Container {
     this.ripple = new ImpactNode();
     this.ripple.visible = false;
     this.addChild(this.ripple);
+  }
+
+  /** 获取当前灵气光旋节点。 */
+  public get vortexNode(): QiVortexNode {
+    return this.vortex;
   }
 
   /** 当前动效阶段。 */
@@ -211,10 +226,7 @@ export class RuneFlightView extends Container {
    * 回合启动：设定本回合天干并从屏幕中央浮空降临。
    * 入场结束后回调 `onComplete`，此时阶段回到 `ready`（可以接受 `flyTo`）。
    */
-  public playEntrance(
-    tianGan: TianGanInfo,
-    options: { onComplete?: () => void; owner?: PlayerId } = {},
-  ): void {
+  public playEntrance(tianGan: TianGanInfo, options: PlayEntranceOptions = {}): void {
     // 新回合直接打断上一段未跑完的飞行动效：旧序列停步、旧回调作废（不再交回控制权）。
     this.flight = null;
     this.flightOnComplete = undefined;
@@ -224,25 +236,29 @@ export class RuneFlightView extends Container {
     this._tianGan = tianGan;
     this._haloStyle = tianGan.polarity === Polarity.YANG ? 'corona' : 'moonlight';
     this.rune.tianGan = tianGan;
-    this.rune.owner = options.owner ?? null;
-    this.rune.showOwner = false;
+    const owner = options.owner ?? 'P1';
+    this.rune.owner = owner;
     this.rune.haloStyle = this._haloStyle;
     this.rune.x = this.centerX;
     this.rune.y = this.centerY;
     this.rune.alpha = 0;
-    this.rune.scaleX = ENTRANCE_START_SCALE;
-    this.rune.scaleY = ENTRANCE_START_SCALE;
+    this.rune.scaleX = 0.2;
+    this.rune.scaleY = 0.2;
     this.rune.visible = true;
     this.ripple.visible = false;
     this.entranceState.progress = 0;
     this.entranceOnComplete = options.onComplete;
     this._phase = 'entering';
+
+    this.vortex.setup(this.board, owner, tianGan.element, this.centerX, this.centerY);
+
+    const duration = options.duration ?? this.entranceDuration;
     this.entrance = new Tween(
       this.entranceState,
       { progress: 1 },
       {
-        duration: this.entranceDuration,
-        easing: EASINGS.outCubic,
+        duration,
+        easing: EASINGS.linear,
         onUpdate: (progress) => this.applyEntrance(progress),
         onComplete: () => {
           this.finishEntrance();
@@ -294,7 +310,6 @@ export class RuneFlightView extends Container {
     }
     this.actionType = options.actionType ?? null;
     this.rune.actionType = this.actionType;
-    this.rune.showOwner = false;
     this.ripple.actionType = this.actionType;
     this.ripple.showImpact = options.showImpact ?? true;
     const isPass = this.actionType === ActionType.PASS;
@@ -413,14 +428,18 @@ export class RuneFlightView extends Container {
   /** 结束入场：符文落到待机态（补间正常跑完与被动作抢跑两条路径共用）。 */
   private finishEntrance(): void {
     this.entrance = null;
+    this.vortex.reset();
     this.applyEntrance(1);
     this._phase = 'ready';
   }
 
-  /** 入场进度的投影：透明度与缩放。 */
+  /** 入场进度的投影：灵气光旋粒子推进 + 天元符文展开。 */
   private applyEntrance(progress: number): void {
-    this.rune.alpha = progress;
-    const scale = ENTRANCE_START_SCALE + (1 - ENTRANCE_START_SCALE) * progress;
+    this.vortex.progress = progress;
+    // 天元符文在气旋凝聚后展开 (0.45 ~ 1.0)
+    const runeP = Math.max(0, (progress - 0.45) / 0.55);
+    this.rune.alpha = Math.min(1, runeP * 1.8);
+    const scale = 0.2 + 0.8 * easeOutBack(runeP);
     this.rune.scaleX = scale;
     this.rune.scaleY = scale;
   }
@@ -447,18 +466,10 @@ class RuneNode extends Node {
   public progress = 0;
   public owner: PlayerId | null = null;
   public radius = 25;
-  public showOwner = true;
 
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
     if (this.tianGan === null) return;
     drawCenterTianGanRune(ctx, 0, 0, this.tianGan, this.tick, this.radius);
-    if (this.owner !== null && this.showOwner) {
-      ctx.fillStyle = THEME.ivory;
-      ctx.font = `11px ${THEME.font}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(this.owner === 'P1' ? '你的天干' : '天道的天干', 0, -36);
-    }
   }
 }
 
@@ -477,5 +488,171 @@ class ImpactNode extends Node {
     ctx.beginPath();
     ctx.arc(0, 0, 5 + this.progress * 11, 0, Math.PI * 2);
     ctx.stroke();
+  }
+}
+
+function easeOutBack(x: number): number {
+  if (x >= 1) return 1;
+  if (x <= 0) return 0;
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+}
+
+export interface QiParticle {
+  element: WuXing;
+  lightColor: string;
+  startX: number;
+  startY: number;
+  startAngle: number;
+  startDist: number;
+  progressOffset: number;
+  speedMult: number;
+  spreadAngle: number;
+  size: number;
+  opacity: number;
+}
+
+export interface QiSourceInfo {
+  x: number;
+  y: number;
+  element: WuXing;
+  sealSize: number;
+}
+
+/** 灵气光旋节点：在天干降临前，从行动方五行主印释放灵气光尘，呈正/反向旋涡汇向中心。 */
+export class QiVortexNode extends Node {
+  public progress = 0;
+  public owner: PlayerId = 'P1';
+  public targetElement: WuXing = WuXing.WOOD;
+  public centerX = 0;
+  public centerY = 0;
+  public particles: QiParticle[] = [];
+  public sources: QiSourceInfo[] = [];
+
+  /** 初始化粒子群（每主印 14 颗，共 70 颗）与发射源坐标。 */
+  public setup(
+    board: BoardView,
+    owner: PlayerId,
+    targetElement: WuXing,
+    centerX: number,
+    centerY: number,
+  ): void {
+    this.owner = owner;
+    this.targetElement = targetElement;
+    this.centerX = centerX;
+    this.centerY = centerY;
+    this.progress = 0;
+    this.visible = true;
+
+    // 过滤出当前行动方的 5 个五行主印
+    const matched = board.elements.filter((e) => e.player === owner);
+    this.sources = matched.map((e) => ({
+      x: e.x,
+      y: e.y,
+      element: e.element,
+      sealSize: e.sealSize,
+    }));
+
+    // 初始化粒子群
+    this.particles = [];
+    const countPerElement = 14;
+    for (let i = 0; i < matched.length; i++) {
+      const src = matched[i];
+      const palette = WUXING_PALETTE[src.element];
+      const startAngle = src.angle;
+      const startDist = Math.hypot(src.x - centerX, src.y - centerY);
+
+      for (let k = 0; k < countPerElement; k++) {
+        this.particles.push({
+          element: src.element,
+          lightColor: palette.light,
+          startX: src.x,
+          startY: src.y,
+          startAngle,
+          startDist,
+          progressOffset: (k / countPerElement) * 0.35 + (k % 3) * 0.03,
+          speedMult: 0.9 + ((k * 7) % 5) * 0.08,
+          spreadAngle: (((k * 13) % 9) - 4) * 0.08,
+          size: 1.5 + ((k * 3) % 4) * 0.6,
+          opacity: 0.6 + ((k * 5) % 5) * 0.08,
+        });
+      }
+    }
+  }
+
+  public reset(): void {
+    this.visible = false;
+    this.progress = 0;
+    this.particles = [];
+    this.sources = [];
+  }
+
+  protected override renderSelf(ctx: CanvasRenderingContext2D): void {
+    if (!this.visible || this.progress <= 0 || this.progress >= 1) return;
+    const t = this.progress;
+    const isP1 = this.owner === 'P1';
+    const curlDir = isP1 ? 1 : -1;
+
+    // 1. 起点主印柔光脉冲 (0 ~ 0.45)
+    if (t < 0.45) {
+      const pulse = t / 0.45;
+      for (let i = 0; i < this.sources.length; i++) {
+        const src = this.sources[i];
+        const palette = WUXING_PALETTE[src.element];
+        ctx.save();
+        ctx.strokeStyle = palette.light;
+        ctx.globalAlpha = (1 - pulse) * 0.75;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(src.x, src.y, src.sealSize + pulse * 12, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // 2. 灵气微粒向心旋涡流场 (0 ~ 0.75)
+    if (t < 0.75) {
+      for (let i = 0; i < this.particles.length; i++) {
+        const p = this.particles[i];
+        const rawP = t / 0.6 - p.progressOffset;
+        if (rawP <= 0 || rawP >= 1) continue;
+
+        const progress = rawP * rawP * p.speedMult;
+        if (progress >= 1) continue;
+
+        const curAngle =
+          p.startAngle + progress * Math.PI * 1.1 * curlDir + p.spreadAngle * (1 - progress);
+        const curDist = p.startDist * (1 - progress);
+
+        const px = this.centerX + curDist * Math.cos(curAngle);
+        const py = this.centerY + curDist * Math.sin(curAngle);
+        const alpha = p.opacity * Math.sin(rawP * Math.PI);
+
+        ctx.save();
+        ctx.fillStyle = p.lightColor;
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.beginPath();
+        ctx.arc(px, py, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // 3. 中心天元气旋凝核 (0.4 ~ 0.75)
+    if (t >= 0.4 && t <= 0.75) {
+      const vortexP = (t - 0.4) / 0.35;
+      const targetPalette = WUXING_PALETTE[this.targetElement];
+      ctx.save();
+      ctx.translate(this.centerX, this.centerY);
+      ctx.rotate(t * 12 * curlDir);
+      ctx.strokeStyle = targetPalette.main;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = (1 - vortexP) * 0.8;
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(1, 20 * (1 - vortexP)), 0, Math.PI * 1.5);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 }

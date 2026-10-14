@@ -4561,10 +4561,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
     }
   }
-  const DEFAULT_ENTRANCE_DURATION = 0.44;
+  const DEFAULT_ENTRANCE_DURATION = 0.8;
   const DEFAULT_FLIGHT_DURATION = 0.55;
   const DEFAULT_IMPACT_DURATION = 0.35;
-  const ENTRANCE_START_SCALE = 0.55;
   const TICK_RATE = 60;
   const METEOR_ARC = 34;
   const SERPENTINE_AMPLITUDE = 16;
@@ -4580,6 +4579,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "entranceDuration");
       __publicField(this, "flightDuration");
       __publicField(this, "impactDuration");
+      __publicField(this, "vortex");
       __publicField(this, "rune");
       __publicField(this, "ripple");
       /** 入场补间写入的进度（0~1），符文透明度与缩放是它的纯投影。 */
@@ -4605,6 +4605,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.entranceDuration = options.entranceDuration ?? DEFAULT_ENTRANCE_DURATION;
       this.flightDuration = options.flightDuration ?? DEFAULT_FLIGHT_DURATION;
       this.impactDuration = options.impactDuration ?? DEFAULT_IMPACT_DURATION;
+      this.vortex = new QiVortexNode();
+      this.vortex.visible = false;
+      this.addChild(this.vortex);
       this.rune = new RuneNode();
       this.rune.radius = Math.max(
         8,
@@ -4681,6 +4684,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     get owner() {
       return this.rune.owner;
     }
+    /** 获取当前灵气光旋节点。 */
+    get vortexNode() {
+      return this.vortex;
+    }
     /** 当前动效阶段。 */
     get phase() {
       return this._phase;
@@ -4714,25 +4721,27 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this._tianGan = tianGan;
       this._haloStyle = tianGan.polarity === Polarity.YANG ? "corona" : "moonlight";
       this.rune.tianGan = tianGan;
-      this.rune.owner = options.owner ?? null;
-      this.rune.showOwner = false;
+      const owner = options.owner ?? "P1";
+      this.rune.owner = owner;
       this.rune.haloStyle = this._haloStyle;
       this.rune.x = this.centerX;
       this.rune.y = this.centerY;
       this.rune.alpha = 0;
-      this.rune.scaleX = ENTRANCE_START_SCALE;
-      this.rune.scaleY = ENTRANCE_START_SCALE;
+      this.rune.scaleX = 0.2;
+      this.rune.scaleY = 0.2;
       this.rune.visible = true;
       this.ripple.visible = false;
       this.entranceState.progress = 0;
       this.entranceOnComplete = options.onComplete;
       this._phase = "entering";
+      this.vortex.setup(this.board, owner, tianGan.element, this.centerX, this.centerY);
+      const duration = options.duration ?? this.entranceDuration;
       this.entrance = new Tween(
         this.entranceState,
         { progress: 1 },
         {
-          duration: this.entranceDuration,
-          easing: EASINGS.outCubic,
+          duration,
+          easing: EASINGS.linear,
           onUpdate: (progress) => this.applyEntrance(progress),
           onComplete: () => {
             this.finishEntrance();
@@ -4770,7 +4779,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
       this.actionType = options.actionType ?? null;
       this.rune.actionType = this.actionType;
-      this.rune.showOwner = false;
       this.ripple.actionType = this.actionType;
       this.ripple.showImpact = options.showImpact ?? true;
       const isPass = this.actionType === ActionType.PASS;
@@ -4864,13 +4872,16 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 结束入场：符文落到待机态（补间正常跑完与被动作抢跑两条路径共用）。 */
     finishEntrance() {
       this.entrance = null;
+      this.vortex.reset();
       this.applyEntrance(1);
       this._phase = "ready";
     }
-    /** 入场进度的投影：透明度与缩放。 */
+    /** 入场进度的投影：灵气光旋粒子推进 + 天元符文展开。 */
     applyEntrance(progress) {
-      this.rune.alpha = progress;
-      const scale = ENTRANCE_START_SCALE + (1 - ENTRANCE_START_SCALE) * progress;
+      this.vortex.progress = progress;
+      const runeP = Math.max(0, (progress - 0.45) / 0.55);
+      this.rune.alpha = Math.min(1, runeP * 1.8);
+      const scale = 0.2 + 0.8 * easeOutBack(runeP);
       this.rune.scaleX = scale;
       this.rune.scaleY = scale;
     }
@@ -4896,18 +4907,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "progress", 0);
       __publicField(this, "owner", null);
       __publicField(this, "radius", 25);
-      __publicField(this, "showOwner", true);
     }
     renderSelf(ctx) {
       if (this.tianGan === null) return;
       drawCenterTianGanRune(ctx, 0, 0, this.tianGan, this.tick, this.radius);
-      if (this.owner !== null && this.showOwner) {
-        ctx.fillStyle = THEME.ivory;
-        ctx.font = `11px ${THEME.font}`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(this.owner === "P1" ? "你的天干" : "天道的天干", 0, -36);
-      }
     }
   }
   class ImpactNode extends Node {
@@ -4927,6 +4930,126 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.beginPath();
       ctx.arc(0, 0, 5 + this.progress * 11, 0, Math.PI * 2);
       ctx.stroke();
+    }
+  }
+  function easeOutBack(x) {
+    if (x >= 1) return 1;
+    if (x <= 0) return 0;
+    const c1 = 1.70158;
+    const c3 = c1 + 1;
+    return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+  }
+  class QiVortexNode extends Node {
+    constructor() {
+      super(...arguments);
+      __publicField(this, "progress", 0);
+      __publicField(this, "owner", "P1");
+      __publicField(this, "targetElement", WuXing.WOOD);
+      __publicField(this, "centerX", 0);
+      __publicField(this, "centerY", 0);
+      __publicField(this, "particles", []);
+      __publicField(this, "sources", []);
+    }
+    /** 初始化粒子群（每主印 14 颗，共 70 颗）与发射源坐标。 */
+    setup(board, owner, targetElement, centerX, centerY) {
+      this.owner = owner;
+      this.targetElement = targetElement;
+      this.centerX = centerX;
+      this.centerY = centerY;
+      this.progress = 0;
+      this.visible = true;
+      const matched = board.elements.filter((e) => e.player === owner);
+      this.sources = matched.map((e) => ({
+        x: e.x,
+        y: e.y,
+        element: e.element,
+        sealSize: e.sealSize
+      }));
+      this.particles = [];
+      const countPerElement = 14;
+      for (let i = 0; i < matched.length; i++) {
+        const src = matched[i];
+        const palette = WUXING_PALETTE[src.element];
+        const startAngle = src.angle;
+        const startDist = Math.hypot(src.x - centerX, src.y - centerY);
+        for (let k = 0; k < countPerElement; k++) {
+          this.particles.push({
+            element: src.element,
+            lightColor: palette.light,
+            startX: src.x,
+            startY: src.y,
+            startAngle,
+            startDist,
+            progressOffset: k / countPerElement * 0.35 + k % 3 * 0.03,
+            speedMult: 0.9 + k * 7 % 5 * 0.08,
+            spreadAngle: (k * 13 % 9 - 4) * 0.08,
+            size: 1.5 + k * 3 % 4 * 0.6,
+            opacity: 0.6 + k * 5 % 5 * 0.08
+          });
+        }
+      }
+    }
+    reset() {
+      this.visible = false;
+      this.progress = 0;
+      this.particles = [];
+      this.sources = [];
+    }
+    renderSelf(ctx) {
+      if (!this.visible || this.progress <= 0 || this.progress >= 1) return;
+      const t = this.progress;
+      const isP1 = this.owner === "P1";
+      const curlDir = isP1 ? 1 : -1;
+      if (t < 0.45) {
+        const pulse = t / 0.45;
+        for (let i = 0; i < this.sources.length; i++) {
+          const src = this.sources[i];
+          const palette = WUXING_PALETTE[src.element];
+          ctx.save();
+          ctx.strokeStyle = palette.light;
+          ctx.globalAlpha = (1 - pulse) * 0.75;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(src.x, src.y, src.sealSize + pulse * 12, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+      if (t < 0.75) {
+        for (let i = 0; i < this.particles.length; i++) {
+          const p = this.particles[i];
+          const rawP = t / 0.6 - p.progressOffset;
+          if (rawP <= 0 || rawP >= 1) continue;
+          const progress = rawP * rawP * p.speedMult;
+          if (progress >= 1) continue;
+          const curAngle = p.startAngle + progress * Math.PI * 1.1 * curlDir + p.spreadAngle * (1 - progress);
+          const curDist = p.startDist * (1 - progress);
+          const px = this.centerX + curDist * Math.cos(curAngle);
+          const py = this.centerY + curDist * Math.sin(curAngle);
+          const alpha = p.opacity * Math.sin(rawP * Math.PI);
+          ctx.save();
+          ctx.fillStyle = p.lightColor;
+          ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+          ctx.beginPath();
+          ctx.arc(px, py, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+      if (t >= 0.4 && t <= 0.75) {
+        const vortexP = (t - 0.4) / 0.35;
+        const targetPalette = WUXING_PALETTE[this.targetElement];
+        ctx.save();
+        ctx.translate(this.centerX, this.centerY);
+        ctx.rotate(t * 12 * curlDir);
+        ctx.strokeStyle = targetPalette.main;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = (1 - vortexP) * 0.8;
+        ctx.beginPath();
+        ctx.arc(0, 0, Math.max(1, 20 * (1 - vortexP)), 0, Math.PI * 1.5);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
   }
   const DEFAULT_SAFE_TOP = 24;
@@ -4998,7 +5121,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.aiThinkDelay = options.aiThinkDelay ?? DEFAULT_AI_THINK_DELAY;
       this.expressionHold = options.expressionHold ?? DEFAULT_EXPRESSION_HOLD;
       this.celebrateHold = options.celebrateHold ?? DEFAULT_CELEBRATE_HOLD;
-      this.entranceDuration = options.entranceDuration ?? 0.44;
+      this.entranceDuration = options.entranceDuration ?? 0.8;
       this.flightDuration = options.flightDuration ?? 0.55;
       this.impactDuration = options.impactDuration ?? 0.35;
       this.resultHold = options.resultHold ?? 0.65;
@@ -5224,8 +5347,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         return;
       }
       this.setPhase("entrance");
+      const isExtraTurn = this._turnManager.isExtraTurnActive();
       this.runeFlight.playEntrance(tianGan, {
         owner: state.currentPlayer,
+        duration: isExtraTurn ? 0.4 : this.entranceDuration,
         onComplete: () => this.afterEntrance()
       });
     }
@@ -5428,6 +5553,7 @@ ${event.actionType === ActionType.PASS ? "原地消散 · 无节点变化" : `${
         this.characters.update(state, { actingPlayer: "P2" });
         this.runeFlight.playEntrance(showdown.tianGan, {
           owner: "P2",
+          duration: this.entranceDuration,
           onComplete: () => {
             this.runeFlight.flyTo("P2", element, polarity, {
               onImpact: () => {

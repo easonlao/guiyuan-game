@@ -100,7 +100,7 @@ export interface GameSceneOptions {
   readonly expressionHold?: number;
   /** 归一庆祝的持续时间（秒），默认 1.2。 */
   readonly celebrateHold?: number;
-  /** 天干降临动效时长（秒），默认 0.44。 */
+  /** 天干降临动效时长（秒），默认 0.8。 */
   readonly entranceDuration?: number;
   /** 符文飞行动效时长（秒），默认 0.55。 */
   readonly flightDuration?: number;
@@ -220,7 +220,7 @@ export class GameScene extends Container {
     this.aiThinkDelay = options.aiThinkDelay ?? DEFAULT_AI_THINK_DELAY;
     this.expressionHold = options.expressionHold ?? DEFAULT_EXPRESSION_HOLD;
     this.celebrateHold = options.celebrateHold ?? DEFAULT_CELEBRATE_HOLD;
-    this.entranceDuration = options.entranceDuration ?? 0.44;
+    this.entranceDuration = options.entranceDuration ?? 0.8;
     this.flightDuration = options.flightDuration ?? 0.55;
     this.impactDuration = options.impactDuration ?? 0.35;
     this.resultHold = options.resultHold ?? 0.65;
@@ -468,8 +468,10 @@ export class GameScene extends Container {
       return;
     }
     this.setPhase('entrance');
+    const isExtraTurn = this._turnManager.isExtraTurnActive();
     this.runeFlight.playEntrance(tianGan, {
       owner: state.currentPlayer,
+      duration: isExtraTurn ? 0.4 : this.entranceDuration,
       onComplete: () => this.afterEntrance(),
     });
   }
@@ -711,6 +713,7 @@ export class GameScene extends Container {
       this.characters.update(state, { actingPlayer: 'P2' });
       this.runeFlight.playEntrance(showdown.tianGan, {
         owner: 'P2',
+        duration: this.entranceDuration,
         onComplete: () => {
           this.runeFlight.flyTo('P2', element, polarity, {
             onImpact: () => {
