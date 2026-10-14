@@ -554,9 +554,9 @@ export class QiVortexNode extends Node {
       sealSize: e.sealSize,
     }));
 
-    // 初始化粒子群
+    // 初始化粒子群（对齐 prototype 的 18 颗/主印、宽散布、自然有机流场）
     this.particles = [];
-    const countPerElement = 14;
+    const countPerElement = 18;
     for (let i = 0; i < matched.length; i++) {
       const src = matched[i];
       const palette = WUXING_PALETTE[src.element];
@@ -571,11 +571,11 @@ export class QiVortexNode extends Node {
           startY: src.y,
           startAngle,
           startDist,
-          progressOffset: (k / countPerElement) * 0.35 + (k % 3) * 0.03,
-          speedMult: 0.9 + ((k * 7) % 5) * 0.08,
-          spreadAngle: (((k * 13) % 9) - 4) * 0.08,
-          size: 1.5 + ((k * 3) % 4) * 0.6,
-          opacity: 0.6 + ((k * 5) % 5) * 0.08,
+          progressOffset: (k / countPerElement) * 0.35 + (Math.random() - 0.5) * 0.1,
+          speedMult: 0.8 + Math.random() * 0.4,
+          spreadAngle: (Math.random() - 0.5) * 0.8,
+          size: 1.2 + Math.random() * 1.8,
+          opacity: 0.5 + Math.random() * 0.4,
         });
       }
     }
@@ -594,24 +594,23 @@ export class QiVortexNode extends Node {
     const isP1 = this.owner === 'P1';
     const curlDir = isP1 ? 1 : -1;
 
-    // 1. 起点主印柔光脉冲 (0 ~ 0.45)
-    if (t < 0.45) {
-      const pulse = t / 0.45;
+    // 1. 起点主印柔光闪烁（对齐 prototype 的柔和呼吸光晕，去除空心气泡圈）
+    if (t < 0.5) {
+      const glow = Math.sin((t / 0.5) * Math.PI);
       for (let i = 0; i < this.sources.length; i++) {
         const src = this.sources[i];
         const palette = WUXING_PALETTE[src.element];
         ctx.save();
-        ctx.strokeStyle = palette.light;
-        ctx.globalAlpha = (1 - pulse) * 0.75;
-        ctx.lineWidth = 1.5;
+        ctx.fillStyle = palette.light;
+        ctx.globalAlpha = glow * 0.38;
         ctx.beginPath();
-        ctx.arc(src.x, src.y, src.sealSize + pulse * 12, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.arc(src.x, src.y, src.sealSize * 1.5, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
       }
     }
 
-    // 2. 灵气微粒向心旋涡流场 (0 ~ 0.75)
+    // 2. 灵气微粒向心旋涡流场（短尾彗星火花流，彻底消除气泡球感）
     if (t < 0.75) {
       for (let i = 0; i < this.particles.length; i++) {
         const p = this.particles[i];
@@ -629,28 +628,50 @@ export class QiVortexNode extends Node {
         const py = this.centerY + curDist * Math.sin(curAngle);
         const alpha = p.opacity * Math.sin(rawP * Math.PI);
 
+        // 彗星短尾
+        const tailP = Math.max(0, rawP - 0.05);
+        const tailProgress = tailP * tailP * p.speedMult;
+        const tailAngle =
+          p.startAngle +
+          tailProgress * Math.PI * 1.1 * curlDir +
+          p.spreadAngle * (1 - tailProgress);
+        const tailDist = p.startDist * (1 - tailProgress);
+        const tx = this.centerX + tailDist * Math.cos(tailAngle);
+        const ty = this.centerY + tailDist * Math.sin(tailAngle);
+
         ctx.save();
+        ctx.strokeStyle = p.lightColor;
         ctx.fillStyle = p.lightColor;
         ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.lineWidth = p.size;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.arc(px, py, p.size, 0, Math.PI * 2);
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(px, py);
+        ctx.stroke();
+
+        // 头部微亮光核
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.9));
+        ctx.beginPath();
+        ctx.arc(px, py, p.size * 0.45, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
     }
 
-    // 3. 中心天元气旋凝核 (0.4 ~ 0.75)
-    if (t >= 0.4 && t <= 0.75) {
-      const vortexP = (t - 0.4) / 0.35;
+    // 3. 中心天元气旋凝核 (0.4 ~ 0.7)
+    if (t >= 0.4 && t <= 0.7) {
+      const vortexP = (t - 0.4) / 0.3;
       const targetPalette = WUXING_PALETTE[this.targetElement];
       ctx.save();
       ctx.translate(this.centerX, this.centerY);
       ctx.rotate(t * 12 * curlDir);
       ctx.strokeStyle = targetPalette.main;
       ctx.lineWidth = 2;
-      ctx.globalAlpha = (1 - vortexP) * 0.8;
+      ctx.globalAlpha = (1 - vortexP) * 0.7;
       ctx.beginPath();
-      ctx.arc(0, 0, Math.max(1, 20 * (1 - vortexP)), 0, Math.PI * 1.5);
+      ctx.arc(0, 0, Math.max(1, 22 * (1 - vortexP)), 0, Math.PI * 1.5);
       ctx.stroke();
       ctx.restore();
     }
