@@ -465,6 +465,87 @@ describe('Minigame BoardView: 归一金环流光与亢极元素外溢（票 02�
     expect(aurasAt(earth)).toHaveLength(0);
   });
 
+  it('归一节点流光采用独立起转时钟：不同时机归一的节点相位错开，失去重置，进阶亢极平滑延续', () => {
+    const view = new BoardView();
+    // 初始木节点归一（clock = 0）
+    view.update(boardWith({ [WuXing.WOOD]: { yin: 1, yang: 1 } }), boardWith());
+    expect(view.getGuiYiFormedAt('P1', WuXing.WOOD)).toBe(0);
+    expect(view.getGuiYiNodeTime('P1', WuXing.WOOD)).toBe(0);
+
+    // 时间推进 2 秒后，火节点达成归一（clock = 2）
+    view.tick(2);
+    view.update(
+      boardWith({
+        [WuXing.WOOD]: { yin: 1, yang: 1 },
+        [WuXing.FIRE]: { yin: 1, yang: 1 },
+      }),
+      boardWith(),
+    );
+    expect(view.getGuiYiFormedAt('P1', WuXing.WOOD)).toBe(0);
+    expect(view.getGuiYiNodeTime('P1', WuXing.WOOD)).toBe(2);
+    expect(view.getGuiYiFormedAt('P1', WuXing.FIRE)).toBe(2);
+    expect(view.getGuiYiNodeTime('P1', WuXing.FIRE)).toBe(0);
+
+    // 渲染时两节点的流光头部弧角度错开（木节点已转动 2s，火节点刚从 -π/2 起转）
+    const ctx = new RecordingContext();
+    view.render(ctx.asContext());
+    const woodSeal = sealOf(view, 'P1', WuXing.WOOD);
+    const fireSeal = sealOf(view, 'P1', WuXing.FIRE);
+    const flowArcsAt = (seal: { x: number; y: number; sealSize: number }) =>
+      ctx.arcs.filter(
+        (arc) =>
+          arc.x === seal.x &&
+          arc.y === seal.y &&
+          arc.radius > seal.sealSize &&
+          !(arc.start === 0 && arc.end === Math.PI * 2),
+      );
+    const woodFlow = flowArcsAt(woodSeal);
+    const fireFlow = flowArcsAt(fireSeal);
+    expect(woodFlow.length).toBeGreaterThan(0);
+    expect(fireFlow.length).toBeGreaterThan(0);
+    expect(woodFlow[0].end).not.toBeCloseTo(fireFlow[0].end, 4);
+
+    // 火节点进阶至亢极（clock 推进到 3.5s 时）：formedAt 保留，平滑延续
+    view.tick(1.5);
+    view.update(
+      boardWith({
+        [WuXing.WOOD]: { yin: 1, yang: 1 },
+        [WuXing.FIRE]: { yin: 2, yang: 2 },
+      }),
+      boardWith(),
+    );
+    expect(view.getGuiYiFormedAt('P1', WuXing.FIRE)).toBe(2);
+    expect(view.getGuiYiNodeTime('P1', WuXing.FIRE)).toBeCloseTo(1.5);
+
+    // 木节点失去归一（受到攻击）：记录移除
+    view.update(
+      boardWith({
+        [WuXing.WOOD]: { yin: 0, yang: 1 },
+        [WuXing.FIRE]: { yin: 2, yang: 2 },
+      }),
+      boardWith(),
+    );
+    expect(view.getGuiYiFormedAt('P1', WuXing.WOOD)).toBeUndefined();
+    expect(view.getGuiYiNodeTime('P1', WuXing.WOOD)).toBe(0);
+
+    // 时间推进到 6s，木节点重新达成归一：从 6s 重新起转
+    view.tick(2.5);
+    view.update(
+      boardWith({
+        [WuXing.WOOD]: { yin: 1, yang: 1 },
+        [WuXing.FIRE]: { yin: 2, yang: 2 },
+      }),
+      boardWith(),
+    );
+    expect(view.getGuiYiFormedAt('P1', WuXing.WOOD)).toBe(6);
+    expect(view.getGuiYiNodeTime('P1', WuXing.WOOD)).toBe(0);
+
+    // resetGuiYiTimes 清空
+    view.resetGuiYiTimes();
+    expect(view.getGuiYiFormedAt('P1', WuXing.WOOD)).toBeUndefined();
+    expect(view.getGuiYiFormedAt('P1', WuXing.FIRE)).toBeUndefined();
+  });
+
   it('六种配对在内外两盘得到相同的标记层数（一视同仁）', () => {
     for (const [yin, yang, layers] of PAIRS) {
       const node = { yin, yang };
