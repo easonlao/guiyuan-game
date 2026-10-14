@@ -119,7 +119,7 @@ describe('Minigame RuneFlightView: 天干入场浮空', () => {
     expect(view.vortexNode.visible).toBe(true);
     expect(view.vortexNode.owner).toBe('P1');
     expect(view.vortexNode.sources).toHaveLength(5);
-    expect(view.vortexNode.particles).toHaveLength(70);
+    expect(view.vortexNode.particles).toHaveLength(90);
 
     // 验证 P1 粒子源半径对应内环 (100)
     for (const src of view.vortexNode.sources) {
