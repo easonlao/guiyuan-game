@@ -373,6 +373,8 @@ export class BoardView extends Container {
   private _breathPhase = 0;
   /** 表现层时钟（秒），由 `tick` 推进；只驱动归一 / 亢极柔光，不参与任何投影。 */
   private _clock = 0;
+  /** 各节点达成归一的形成时刻（秒，键为 `${player}:${element}`），驱动光环独立起转时间。 */
+  private readonly _guiYiFormedAt = new Map<string, number>();
 
   public constructor(layout: Partial<BoardViewLayout> = {}) {
     super();
@@ -552,7 +554,50 @@ export class BoardView extends Container {
   public update(p1Board: BoardState, p2Board: BoardState): void {
     this._boards[OWN_PLAYER] = p1Board;
     this._boards[OPPONENT_PLAYER] = p2Board;
+    this._syncGuiYiTimes();
     this._rebuild();
+  }
+
+  /**
+   * 同步各节点归一形成时刻：
+   * - 首次由未归一变为归一时，记录当下的表现层时钟；
+   * - 失去归一时移除记录（后续重获归一将重新从零起转）；
+   * - 进阶亢极或降级但仍归一时，保留既有时钟平滑延续。
+   */
+  private _syncGuiYiTimes(): void {
+    const ring = buildGenerationRing();
+    for (const player of BOARD_PLAYERS) {
+      const board = this._boards[player];
+      for (const element of ring) {
+        const node = board?.[element];
+        const isGuiYi = node !== undefined && isNodeGuiYi(node);
+        const key = `${player}:${element}`;
+        if (isGuiYi) {
+          if (!this._guiYiFormedAt.has(key)) {
+            this._guiYiFormedAt.set(key, this._clock);
+          }
+        } else {
+          this._guiYiFormedAt.delete(key);
+        }
+      }
+    }
+  }
+
+  /** 清空各节点归一形成时刻（重开对局或全盘重置时调用）。 */
+  public resetGuiYiTimes(): void {
+    this._guiYiFormedAt.clear();
+  }
+
+  /** 查询指定节点达成归一的形成时刻（秒）；未达成归一返回 undefined。 */
+  public getGuiYiFormedAt(player: PlayerId, element: WuXing): number | undefined {
+    return this._guiYiFormedAt.get(`${player}:${element}`);
+  }
+
+  /** 查询指定节点自达成归一以来的独立历时（秒）；未达成归一返回 0。 */
+  public getGuiYiNodeTime(player: PlayerId, element: WuXing): number {
+    const formedAt = this.getGuiYiFormedAt(player, element);
+    if (formedAt === undefined) return 0;
+    return Math.max(0, this._clock - formedAt);
   }
 
   private _rebuild(): void {
@@ -722,9 +767,13 @@ export class BoardView extends Container {
   /**
    * 归一 = 主印外一圈金环 + 沿环流动的金色高光；亢极 = 再叠元素色外溢（ADR 0018，票 02 修订）：
    * 中性、内外两盘一视同仁；环半径与外溢尺度按各自主印半径等比缩放。
+   * 旋转流光与亢极外溢采用各节点自达成归一以来的独立时钟，相位自然错开。
    */
   private _drawNodeMarks(ctx: CanvasRenderingContext2D): void {
     for (const entry of this._elements) {
+      const key = `${entry.player}:${entry.element}`;
+      const formedAt = this._guiYiFormedAt.get(key) ?? this._clock;
+      const nodeTime = Math.max(0, this._clock - formedAt);
       drawNodeMark(
         ctx,
         entry.x,
@@ -732,7 +781,7 @@ export class BoardView extends Container {
         entry.sealSize,
         entry.element,
         nodeMarkLayers(entry),
-        this._clock,
+        nodeTime,
       );
     }
   }

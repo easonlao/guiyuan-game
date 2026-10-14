@@ -375,6 +375,7 @@ export class GameScene extends Container {
     // 终局胜 / 负的持续姿势不跨局残留。
     this.characters.resetFeedback();
     this.lastAction.reset();
+    this.board.resetGuiYiTimes();
     this.visualStem = null;
     this.visualActor = null;
     this.actionBar.dispose();
