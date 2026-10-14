@@ -90,6 +90,84 @@ describe('Minigame RuneFlightView: 天干入场浮空', () => {
     expect(view.haloStyle).toBe('moonlight');
     expect(view.tianGan).toEqual(TIAN_GAN_YI);
   });
+
+  it('支持传入 options.duration 动态覆盖默认入场时长（连动加速）', () => {
+    const view = new RuneFlightView({ board: makeBoardView(), entranceDuration: 0.8 });
+    const completions: string[] = [];
+
+    view.playEntrance(TIAN_GAN_JIA, {
+      duration: 0.4,
+      onComplete: () => completions.push('done'),
+    });
+    expect(view.phase).toBe('entering');
+
+    view.update(0.39);
+    expect(view.phase).toBe('entering');
+    expect(completions).toEqual([]);
+
+    view.update(0.02);
+    expect(view.phase).toBe('ready');
+    expect(completions).toEqual(['done']);
+  });
+
+  it('五行灵气光旋粒子系统依据行动方正确初始化并在 update 中推进', () => {
+    const board = makeBoardView();
+    const view = new RuneFlightView({ board, entranceDuration: 0.8 });
+
+    // 己方 P1
+    view.playEntrance(TIAN_GAN_JIA, { owner: 'P1' });
+    expect(view.vortexNode.visible).toBe(true);
+    expect(view.vortexNode.owner).toBe('P1');
+    expect(view.vortexNode.sources).toHaveLength(5);
+    expect(view.vortexNode.particles).toHaveLength(70);
+
+    // 验证 P1 粒子源半径对应内环 (100)
+    for (const src of view.vortexNode.sources) {
+      const dist = Math.hypot(src.x, src.y);
+      expect(dist).toBeCloseTo(100, 1);
+    }
+
+    // 推进 0.4 秒 (progress = 0.5)
+    view.update(0.4);
+    expect(view.vortexNode.progress).toBeCloseTo(0.5, 2);
+    expect(view.vortexNode.visible).toBe(true);
+
+    // 推进到完成 (0.8 秒)
+    view.update(0.4);
+    expect(view.phase).toBe('ready');
+    expect(view.vortexNode.visible).toBe(false);
+    expect(view.vortexNode.particles).toHaveLength(0);
+  });
+
+  it('对方 P2 触发时粒子源对齐外环半径且旋向为逆时针', () => {
+    const board = makeBoardView();
+    const view = new RuneFlightView({ board, entranceDuration: 0.8 });
+
+    view.playEntrance(TIAN_GAN_YI, { owner: 'P2' });
+    expect(view.vortexNode.owner).toBe('P2');
+    expect(view.vortexNode.sources).toHaveLength(5);
+
+    // 验证 P2 粒子源半径对应外环 (200)
+    for (const src of view.vortexNode.sources) {
+      const dist = Math.hypot(src.x, src.y);
+      expect(dist).toBeCloseTo(200, 1);
+    }
+  });
+
+  it('提前打断时粒子系统立即回收并归零', () => {
+    const board = makeBoardView();
+    const view = new RuneFlightView({ board, entranceDuration: 0.8 });
+
+    view.playEntrance(TIAN_GAN_JIA, { owner: 'P1' });
+    view.update(0.2);
+    expect(view.vortexNode.visible).toBe(true);
+
+    // 提前起飞打断入场
+    view.flyTo('P1', WuXing.WOOD, Polarity.YIN);
+    expect(view.phase).toBe('flying');
+    expect(view.vortexNode.visible).toBe(false);
+    expect(view.vortexNode.particles).toHaveLength(0);
+  });
 });
 
 describe('Minigame RuneFlightView: 渲染', () => {
