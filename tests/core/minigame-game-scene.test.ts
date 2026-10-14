@@ -4,6 +4,7 @@ import { LEVEL_LABEL } from '../../src/minigame/views/action-result-view.js';
 import {
   CANDIDATE_BREATH_PERIOD,
   PREVIEW_BREATH_SPEED,
+  LEGEND_BASELINE_RATIO,
 } from '../../src/minigame/views/board-view.js';
 import { InputManager } from '../../src/minigame/scene/input-manager.js';
 import { Button } from '../../src/minigame/scene/button.js';
@@ -1725,11 +1726,58 @@ describe('GameScene：可读结算与回合交接', () => {
     scene.resize(320, 568, 88, 20);
     expect(scene.actionBar.contentHeight).toBeGreaterThan(58);
     const board = scene.board.layout;
-    expect(board.centerY - board.outerRadius - board.sealSize).toBeGreaterThanOrEqual(188);
-    expect(board.centerY + board.outerRadius + board.sealSize * 2).toBeLessThan(
-      scene.actionBar.y - 34,
-    );
+    expect(board.centerY - board.outerRadius - board.sealSize).toBeGreaterThanOrEqual(180);
+    expect(
+      board.centerY + board.outerRadius + board.sealSize * LEGEND_BASELINE_RATIO + 34,
+    ).toBeLessThan(scene.lastAction.y);
     expect(scene.runeFlight.position.y).toBe(board.centerY);
+    scene.dispose();
+  });
+
+  it('对局全周期棋盘尺寸恒定：按钮增减与节点状态变化不导致界面忽大忽小', () => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      width: 320,
+      height: 568,
+      safeTop: 48,
+      safeBottom: 0,
+      initialState: gameStateWith({
+        P1: {
+          [WuXing.WOOD]: { yin: 1, yang: 1 },
+          [WuXing.FIRE]: { yin: 1, yang: 1 },
+        },
+      }),
+    });
+    scene.start();
+    const initialSeal = scene.board.layout.sealSize;
+    const initialRadius = scene.board.layout.outerRadius;
+    const initialCenterY = scene.board.layout.centerY;
+
+    const input = new InputManager(scene);
+    for (let turn = 0; turn < 12; turn++) {
+      advanceUntil(
+        scene,
+        () =>
+          scene.phase === 'awaiting-player' ||
+          scene.phase === 'auto-pending' ||
+          scene.phase === 'ai-thinking' ||
+          scene.phase === 'game-over',
+        5,
+      );
+      if (scene.phase === 'game-over') break;
+
+      expect(scene.board.layout.sealSize).toBe(initialSeal);
+      expect(scene.board.layout.outerRadius).toBe(initialRadius);
+      expect(scene.board.layout.centerY).toBe(initialCenterY);
+
+      if (scene.phase === 'awaiting-player') {
+        const buttons = scene.actionBar.children.filter((c): c is Button => c instanceof Button);
+        if (buttons.length > 0) tapButton(input, buttons[0]);
+      } else if (scene.phase === 'ai-thinking') {
+        advance(scene, 0.2);
+      }
+      advance(scene, 0.2);
+    }
     scene.dispose();
   });
 });

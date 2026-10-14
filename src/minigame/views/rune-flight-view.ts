@@ -95,7 +95,7 @@ export class RuneFlightView extends Container {
   public syncCenter(): void {
     this.rune.radius = Math.max(
       8,
-      Math.min(25, this.board.layout.innerRadius - this.board.layout.sealSize - 3),
+      Math.min(25, this.board.layout.innerRadius - this.board.layout.sealSize - 16),
     );
     this.centerX = this.board.layout.centerX;
     this.centerY = this.board.layout.centerY;
@@ -225,7 +225,7 @@ export class RuneFlightView extends Container {
     this._haloStyle = tianGan.polarity === Polarity.YANG ? 'corona' : 'moonlight';
     this.rune.tianGan = tianGan;
     this.rune.owner = options.owner ?? null;
-    this.rune.showOwner = this.board.layout.innerRadius >= 70;
+    this.rune.showOwner = false;
     this.rune.haloStyle = this._haloStyle;
     this.rune.x = this.centerX;
     this.rune.y = this.centerY;
