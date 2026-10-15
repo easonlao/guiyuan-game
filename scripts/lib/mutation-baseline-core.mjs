@@ -1,4 +1,4 @@
-// 变异基线（mutation baseline）的核心逻辑，供 `mutation:baseline` 与 `mutation:check` 共用。
+// 突变基线（mutation baseline）的核心逻辑，供 `mutation:baseline` 与 `mutation:check` 共用。
 //
 // 为什么单独抽一层：
 //   - 生成与对比必须用**完全相同**的身份键，否则会出现「基线明明有、check 却报新增」的漂移。
@@ -50,7 +50,7 @@ export function entryKey(entry) {
 }
 
 /**
- * 「疑似只是移位」的宽松签名：同一文件、同一变异类型、同一替换文本，只是行列变了。
+ * 「疑似只是移位」的宽松签名：同一文件、同一突变类型、同一替换文本，只是行列变了。
  * 这类新增通常只是上方插入/删除了代码，不是新引入的测试缺口。
  */
 export function looseSignature(entry) {
@@ -99,7 +99,7 @@ export function readReportEntriesStrict(reportPath) {
   }
   const { entries, mutantCount } = collectReportEntries(raw);
   if (mutantCount === 0) {
-    throw new TypeError("报告内没有任何突变体（'files' 下 mutant 总数为 0），不是有效的变异结果");
+    throw new TypeError("报告内没有任何突变体（'files' 下 mutant 总数为 0），不是有效的突变结果");
   }
   return entries;
 }
@@ -125,7 +125,7 @@ export function readConfigMutate(configPath) {
  * （已实测：全量报告的 config.mutate 等于配置文件的两项 glob；单文件 `--mutate State.ts` 的报告
  *  config.mutate 只有那一项。）
  *
- * 为什么门禁必须拒绝子集报告：Stryker 的 perTest 覆盖按**被变异文件集**选测试，子集跑出的
+ * 为什么门禁必须拒绝子集报告：Stryker 的 perTest 覆盖按**被注入突变的文件集**选测试，子集跑出的
  * 存活/无覆盖集合与全量跑不同，直接喂给棘轮会报出**假的新增存活**。
  */
 export function assertReportIsFullRun(reportPath, configMutate) {
