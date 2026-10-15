@@ -2,7 +2,7 @@
 // 排序后写入基线文件（默认 `mutation-baseline.jsonl`，入库、可 diff）。
 //
 // 用法：
-//   npm run mutation:baseline                 # 读 reports/mutation/mutation.json，写 mutation-baseline.jsonl
+//   npm run mutation:baseline                 # 读 artifacts/mutation/mutation.json，写 mutation-baseline.jsonl
 //   node scripts/mutation-baseline.mjs <report.json> [baseline.jsonl]
 //
 // 前置：**必须先跑一次全量** `npm run mutation` 生成报告。与 `mutation:check` 一样，

@@ -18,7 +18,7 @@
 | 安装布局 | 根 `node_modules/` 无 `@guiyuan/`；`src/node_modules/@guiyuan/`、`tools/node_modules/@guiyuan/` 各自存在（声明式边界的前提成立） |
 | `npm run verify` | 退出 0，11.1s：`fmt:check` 95 文件、`lint` 干净、`check:boundary` 退 0、`check:deps` 46 modules / 129 dependencies / 0 violation、`tsc --noEmit` 干净、39 文件 / 728 用例全绿、`check:artifact` 逐字节一致 |
 | `npm run check:quick`（主仓） | 退出 0，1.76s（「秒级」属实） |
-| `npm run mutation:check`（主仓） | 退出 0，报告 `reports/mutation/mutation.json`（2026-10-11 10:39，全量跑）34 条存活/无覆盖全在基线内——**spec 决定 6 的「spec 收尾由 agent 跑全量 + 棘轮」有实据** |
+| `npm run mutation:check`（主仓） | 退出 0，报告 `artifacts/mutation/mutation.json`（2026-10-11 10:39，全量跑）34 条存活/无覆盖全在基线内——**spec 决定 6 的「spec 收尾由 agent 跑全量 + 棘轮」有实据** |
 
 红/绿探针（全部在克隆里做，做完还原，`git status` 干净）：
 

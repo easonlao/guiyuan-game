@@ -5,7 +5,7 @@
 // 子集跑的覆盖集不同，直接对比会报出假的新增存活。
 //
 // 用法：
-//   npm run mutation:check                    # 读 reports/mutation/mutation.json + mutation-baseline.jsonl
+//   npm run mutation:check                    # 读 artifacts/mutation/mutation.json + mutation-baseline.jsonl
 //   node scripts/mutation-check.mjs <report.json> [baseline.jsonl]
 //
 // 为什么退出码由本脚本算：

@@ -16,6 +16,10 @@
     "dist/**"
   ],
   "reporters": ["progress", "clear-text", "json"],
+  "_jsonReporterComment": "JSON 报告默认落点是 Stryker 自带的 reports/mutation/mutation.json；本仓库工具产物统一放 artifacts/，此处置到 artifacts/ 下，与 scripts/lib/mutation-baseline-core.mjs 的 DEFAULT_REPORT 保持一致。",
+  "jsonReporter": {
+    "fileName": "artifacts/mutation/mutation.json"
+  },
   "timeoutMS": 30000,
   "concurrency": 4,
   "coverageAnalysis": "off",

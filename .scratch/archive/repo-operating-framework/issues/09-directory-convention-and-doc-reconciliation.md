@@ -28,7 +28,7 @@
 
 实现：
 
-- **目录约定**：`AGENTS.md` 新增「## 目录约定」表——`src/`（核心，进 `game.js`）、`tools/`（开发工具，跑 Node）、`scripts/`（仓库基建脚本，共享实现 `scripts/lib/`）、`tests/`、`docs/`（含 `docs/adr/` / `docs/agents/`）、实验报告 `docs/headless/`、归档文档 `docs/archive/`、任务 `.scratch/<feature>/`（完成归档 `.scratch/archive/<feature>/`）、交付产物 `minigame/`、工具报告 `reports/`、其他构建输出 `dist/`；「什么不进库」指针指向 `.gitignore`。
+- **目录约定**：`AGENTS.md` 新增「## 目录约定」表——`src/`（核心，进 `game.js`）、`tools/`（开发工具，跑 Node）、`scripts/`（仓库基建脚本，共享实现 `scripts/lib/`）、`tests/`、`docs/`（含 `docs/adr/` / `docs/agents/`）、实验报告 `docs/headless/`、归档文档 `docs/archive/`、任务 `.scratch/<feature>/`（完成归档 `.scratch/archive/<feature>/`）、交付产物 `minigame/`、工具产物 `artifacts/`、其他构建输出 `dist/`；「什么不进库」指针指向 `.gitignore`。
 - **`CONTRIBUTING.md` §1 对齐**：选「真正执行」而非收回。新增根目录 `.oxlintrc.json`，对 `src/core/**/*.ts` 开 `no-restricted-globals`（拦 `window` / `document`）与 `no-restricted-imports`（拦 `cc`）；§1 改为陈述这条由 `npm run lint` 执行、真源是配置文件，并把 depcruise 的职责精确成「依赖方向」（列三类规则，真源 `.dependency-cruiser.js`）。`docs/HLD.md` §4.1 补 `.oxlintrc.json` 指针。
 - **`docs/HLD.md` §4.3 矛盾**：按「修矛盾的一方」，采信 `docs/MUTATION-TESTING.md` §2.1（后来的落地结论）。§4.3 的「定位于发布前…不介入高频的日常开发循环」改为两条路径（`mutation:changed` 在 `implement` 收尾 / `mutation:milestone` 在 spec 收尾与发版前），节奏与门禁口径指向 `docs/MUTATION-TESTING.md`（唯一规则来源）。
 - **`docs/HLD.md` §4.2**：复核（06 已对齐）。它列的是真实存在的两条分区规则（`game-side-not-to-local-outside-src` / `game-side-not-to-node-builtins`），未声称拦 `core → minigame`——那条现有规则确实不拦，故无失真，未改。

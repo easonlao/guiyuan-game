@@ -49,6 +49,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: mutation-milestone-report
-          path: reports/
+          path: artifacts/
           if-no-files-found: warn
           retention-days: 30

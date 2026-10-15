@@ -18,16 +18,16 @@
 3. 强化（BURST）动作自耗本命加持产生的“削弱加持”事件，在统计中被错误地归入了“攻击（Attack）”大类，污染了攻击类得分的真实性。
 
 **Desired behavior:**
-开发一个轻量级的再分析脚本，直接读取 `reports/balance-diagnostics/score-unity-overlap/data.json` 中的数据并输出一份补充报告。补充分析需要：
+开发一个轻量级的再分析脚本，直接读取 `artifacts/balance-diagnostics/score-unity-overlap/data.json` 中的数据并输出一份补充报告。补充分析需要：
 1. **限定样本**：仅提取通过“回合上限（Turn Limit）”结算的对局。
 2. **重算胜负分差**：在这个限定样本内，重新计算胜方与输方在各项得分（建设、攻击、行为、亢极分红、道损扣分、稀有度）上的均值差。
 3. **修正强化（BURST）归属**：将强化（BURST）及强破（BURST_ATK）所导致的自我“削弱加持”从攻击类得分中剔除，归入建设/防守成本。
 4. **稀有度溯源**：将稀有度加成分数拆解到触发它的具体动作上（强化、强破、调息、化等），找出真正的加成大头。
 
-结果需以 markdown 形式写入 `reports/balance-diagnostics/score-unity-overlap/08-reanalysis-report.md`。
+结果需以 markdown 形式写入 `artifacts/balance-diagnostics/score-unity-overlap/08-reanalysis-report.md`。
 
 **Key interfaces:**
-- 数据源：读取现有的 `reports/balance-diagnostics/score-unity-overlap/data.json`。无需运行新的对局模拟。
+- 数据源：读取现有的 `artifacts/balance-diagnostics/score-unity-overlap/data.json`。无需运行新的对局模拟。
 - 脚本路径：可以新建 `scripts/analyze-score-rarity.js` 或类似脚本进行纯数据处理。
 
 **Acceptance criteria:**
