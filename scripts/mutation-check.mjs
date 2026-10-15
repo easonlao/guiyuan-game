@@ -54,7 +54,7 @@ try {
 }
 
 // 子集报告防护（门禁完整性）：棘轮只对**全量**跑有效。
-// `mutation:changed` 用 `--mutate <子集>` 只变异改动文件，Stryker 的 perTest 覆盖随之按子集选测试，
+// `mutation:changed` 用 `--mutate <子集>` 只对改动文件注入突变，Stryker 的 perTest 覆盖随之按子集选测试，
 // 跑出的存活/无覆盖集合与全量跑不同——直接对比会报出**假的新增存活**。
 // 判定依据：报告 `config.mutate` 是 CLI 覆盖后的最终值，子集跑会与 stryker.config.json 的 `mutate` 不一致。
 if (!existsSync(DEFAULT_STRYKER_CONFIG)) {

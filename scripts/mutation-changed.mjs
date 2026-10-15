@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
-// 对「相对某个 git ref 改动的核心逻辑文件」跑 Stryker 变异测试。
+// 对「相对某个 git ref 改动的核心逻辑文件」跑 Stryker 突变测试。
 //
 // 为什么需要这个包装：
 //   - Stryker 10 没有 `--since` / 按 git ref 增量的能力（只有基于上次结果文件的
@@ -18,7 +18,7 @@ import { resolve } from 'node:path';
 // 说明：无改动文件时以退出码 0 退出。见下方注释。
 
 const LOGIC_DIR = 'src/core/logic';
-// 纯 re-export 的入口 barrel 不参与变异（与 stryker.config.json 的 `!` 排除保持一致）。
+// 纯 re-export 的入口 barrel 不参与突变测试（与 stryker.config.json 的 `!` 排除保持一致）。
 const BARREL = `${LOGIC_DIR}/index.ts`;
 
 function git(args) {
@@ -47,17 +47,17 @@ const changedFiles = [...new Set([...trackedChanges, ...untrackedFiles])]
 
 if (changedFiles.length === 0) {
   // 无改动是合法状态（干净工作树 / 该 ref 未触及核心逻辑），不是失败。
-  // 退出 0 以免 CI 或自动化把「没有东西可变异」误判为报错；输出足以让人区分
+  // 退出 0 以免 CI 或自动化把「没有东西可注入突变」误判为报错；输出足以让人区分
   // 「跑过了但没目标」和「真的跑过并全部存活」。
   process.stdout.write(
     `mutation:changed: 相对 '${ref}' 没有改动的 TypeScript 文件（目录 ${LOGIC_DIR}/，已排除 ${BARREL}）。\n`,
   );
-  process.stdout.write('没有可变异的目标，退出 0。\n');
+  process.stdout.write('没有可注入突变的目标，退出 0。\n');
   process.exit(0);
 }
 
 process.stdout.write(
-  `mutation:changed: 相对 '${ref}' 共 ${changedFiles.length} 个改动文件，开始变异：\n`,
+  `mutation:changed: 相对 '${ref}' 共 ${changedFiles.length} 个改动文件，开始注入突变：\n`,
 );
 for (const file of changedFiles) {
   process.stdout.write(`  - ${file}\n`);

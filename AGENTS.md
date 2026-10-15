@@ -38,7 +38,7 @@
 |---|---|---|
 | 游戏核心 | `src/` | |
 | 开发工具与 CLI | `tools/` | |
-| 仓库基建脚本 | `scripts/`（共享实现 `scripts/lib/`） | 构建、门禁、变异对比 |
+| 仓库基建脚本 | `scripts/`（共享实现 `scripts/lib/`） | 构建、门禁、突变测试对比 |
 | 测试 | `tests/` | |
 | 设计文档 | `docs/` | 含 `docs/adr/`、`docs/agents/` |
 | 实验报告 | `docs/headless/` | 报告类 |
@@ -76,7 +76,7 @@ Single-context. See `docs/agents/domain.md`.
 
 门禁与做法见 `docs/MUTATION-TESTING.md`。
 
-全量变异 + 棘轮对比（`npm run mutation:milestone`）不挂 CI 定时、需求方不会去按按钮，**实际触发者只能是 agent**；何时跑、门禁口径见 `docs/MUTATION-TESTING.md`。
+全量突变测试 + 棘轮对比（`npm run mutation:milestone`）不挂 CI 定时、需求方不会去按按钮，**实际触发者只能是 agent**；何时跑、门禁口径见 `docs/MUTATION-TESTING.md`。
 
 ### Subagents
 

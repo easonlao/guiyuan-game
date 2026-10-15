@@ -1,13 +1,14 @@
-# 里程碑：全量变异 + 棘轮对比，**只能手动触发**。
+# 里程碑：全量突变测试 + 棘轮对比，**只能手动触发**。
 #
 # 工程方案与「为什么不挂定时」见 `docs/HLD.md` §4.5 与 ADR 0012。
 #
 # ── 谁来按这个按钮 ──
-# 需求方不是开发者、不会手动触发，实际触发者只能是 agent：每个 spec 收尾时由 agent
-# 跑一次全量 + 棘轮。这条写进了 `AGENTS.md`，对应命令 `npm run mutation:milestone`。
+# 需求方不是开发者、不会手动触发，实际触发者只能是 agent。什么时候跑由
+# `docs/MUTATION-TESTING.md` §2.2 定义（这条规则只在那里有一份），对应命令
+# `npm run mutation:milestone`。
 #
 # ── 只调命名脚本 ──
-# 唯一的执行步是 `npm run mutation:milestone`（= 全量变异 + 棘轮对比），yaml 里不写裸命令。
+# 唯一的执行步是 `npm run mutation:milestone`（= 全量突变测试 + 棘轮对比），yaml 里不写裸命令。
 
 name: mutation-milestone
 
@@ -20,7 +21,7 @@ permissions:
 
 jobs:
   milestone:
-    name: 全量变异 + 棘轮 (mutation:milestone)
+    name: 全量突变测试 + 棘轮 (mutation:milestone)
     runs-on: ubuntu-latest
     # 全量耗时较长（见 `docs/MUTATION-TESTING.md`），超时给够。
     timeout-minutes: 120

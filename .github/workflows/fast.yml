@@ -54,7 +54,7 @@ jobs:
         run: npm run verify
 
   mutation-changed:
-    name: 改动变异观测项 (mutation:changed)
+    name: 改动突变测试观测项 (mutation:changed)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     # 观测项：job 红了不把整条流水线判红，但报告仍要落盘（见上面的「观测项」说明）。
