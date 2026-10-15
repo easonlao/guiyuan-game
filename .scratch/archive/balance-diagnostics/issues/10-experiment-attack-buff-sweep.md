@@ -19,7 +19,7 @@
 2. **支持动态倍乘**：扩展 `scoringConfig` 接受 `attackScoreMultiplier` 字段。针对纯攻击类状态变化（`CAUSE_DMG`, `BREAK_LIGHT`, `WEAKEN`），得分计算时需乘上该倍率。
 3. **参数扫描 (Parameter Sweep)**：在脚本前半段，使用较小样本（例如 50 种子、深1vs规则对局与深1自对弈）分别对倍率 1.5x, 2.0x, 2.5x 进行快速验证。
 4. **自动选取**：脚本需自动评估结果，选出能让护栏 2（强弱对阵强方胜率）重回 ≥65%，且让中盘背离胜率尽可能向 50% 靠拢的最优倍率。
-5. **全量报告**：使用选出的最优倍率，运行与之前一样的全量 200 种子诊断流程，生成最终的 Markdown 实验报告写入 `reports/balance-diagnostics/experiments/02-attack-buff-sweep.md`。报告中需附上参数扫描的简要决策过程。
+5. **全量报告**：使用选出的最优倍率，运行与之前一样的全量 200 种子诊断流程，生成最终的 Markdown 实验报告写入 `artifacts/balance-diagnostics/experiments/02-attack-buff-sweep.md`。报告中需附上参数扫描的简要决策过程。
 
 **Key interfaces:**
 - **配置系统**：`ScoringConfig.js` 需支持接收并透传 `attackScoreMultiplier`。

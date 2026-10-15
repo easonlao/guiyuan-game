@@ -21,7 +21,7 @@
 
 **实现要点：**
 
-- 基线文件 `mutation-baseline.jsonl`（入库、JSONL、每行一条）。行内字段 `{file, line, column, mutatorName, replacement}`，按 `file → line → column → mutatorName → replacement` 稳定排序；`git diff` 里新增/删除的行即"新出现/消失"的存活。`reports/` 保持 gitignore，不入库。
+- 基线文件 `mutation-baseline.jsonl`（入库、JSONL、每行一条）。行内字段 `{file, line, column, mutatorName, replacement}`，按 `file → line → column → mutatorName → replacement` 稳定排序；`git diff` 里新增/删除的行即"新出现/消失"的存活。`artifacts/` 保持 gitignore，不入库。
 - 身份键沿用 Stryker IncrementalDiffer 的 `{file, mutatorName, location.start.line, location.start.column, replacement}`（**不用** `mutants[].id`，它只在单次报告内唯一）。
 - 棘轮对象为 `status ∈ {Survived, NoCoverage}`——"故意加一段没被测到的行为"产出的是 `NoCoverage`，只盯 `Survived` 会漏。
 - `npm run mutation:baseline`：`scripts/mutation-baseline.mjs`，从报告抽键、去重、排序、写基线。

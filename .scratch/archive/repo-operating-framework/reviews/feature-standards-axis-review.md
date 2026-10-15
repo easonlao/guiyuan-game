@@ -2,7 +2,7 @@
 
 被审对象：`579cc16..HEAD`（23 提交）的**最终态**，不审机械噪声（`fbb45e5` 全仓格式化、23 个测试文件改引用、`legacy/` 删除）。范围：`AGENTS.md`、`CONTRIBUTING.md`、`docs/HLD.md`、`docs/MUTATION-TESTING.md`、`docs/DEVELOPMENT.md`、`docs/adr/0012-0014`、`.oxlintrc.json`、`.oxfmtrc.json`、`.dependency-cruiser.js`、`.gitignore`、`.npmrc`、`.githooks/commit-msg`、`package.json` scripts、`.github/workflows/*`、`scripts/*.mjs`。
 
-方法与证据：结论全部来自最终态文件 + 本机实测；被审工作未改——`git status --porcelain` 在本轮开始时为空，结束时除本复核报告与后台 memory 插件自己写入的 `.scratch/hindsight-survey/`（与本 feature 无关）外无任何变更。实测：`npm run fmt:check` 退 0（95 文件，`minigame/game.js` 被 `.oxfmtrc.json:3` 的 `ignorePatterns` 排除——单独 `npx oxfmt --check minigame/game.js` 退 2「全被忽略」证实排除生效）；`npm run check:quick` 退 0（46 模块 / 129 依赖）；`npm run check:artifact` 退 0。解析本机全量报告 `reports/mutation/mutation.json`（mtime 2026-10-11 10:39）：1073 突变体 / 993 计分 / Killed 954 / Timeout 5 / Survived 34 / NoCoverage 0 / Ignored 80 → 96.58%。引入者归属用 `git blame` + `git merge-base --is-ancestor` 判定，凡「本 feature 之前已存在」的都在条目里注明。
+方法与证据：结论全部来自最终态文件 + 本机实测；被审工作未改——`git status --porcelain` 在本轮开始时为空，结束时除本复核报告与后台 memory 插件自己写入的 `.scratch/hindsight-survey/`（与本 feature 无关）外无任何变更。实测：`npm run fmt:check` 退 0（95 文件，`minigame/game.js` 被 `.oxfmtrc.json:3` 的 `ignorePatterns` 排除——单独 `npx oxfmt --check minigame/game.js` 退 2「全被忽略」证实排除生效）；`npm run check:quick` 退 0（46 模块 / 129 依赖）；`npm run check:artifact` 退 0。解析本机全量报告 `artifacts/mutation/mutation.json`（mtime 2026-10-11 10:39）：1073 突变体 / 993 计分 / Killed 954 / Timeout 5 / Survived 34 / NoCoverage 0 / Ignored 80 → 96.58%。引入者归属用 `git blame` + `git merge-base --is-ancestor` 判定，凡「本 feature 之前已存在」的都在条目里注明。
 
 结论：**硬违规 4 条（A1–A4，其中 3 条是文档声称的事实与实际不符）、跨文档单一事实源 3 组（C1–C3，C1 价值最高）、判断项 7 条（B1–B7）**。工具链本身（lint 真会红、分档构成、depcruise 规则实名、产物逐字节对账、CI 只调命名脚本、`actions/*@v7` 存在）均复核为真，见末节。
 
@@ -69,7 +69,7 @@
 
 ## (b) 判断项与基线 smell
 
-1. **B1 快照数字漂移（判断项，与最后一个提交同主题）**：`docs/MUTATION-TESTING.md:82` 写「**Killed 957 / Timeout 2**」，本机最新全量报告（`reports/mutation/mutation.json`，mtime 2026-10-11 10:39）是 **Killed 954 / Timeout 5**；总分与 96.58% 完全一致。该文自己 `:89`（§3.4，标题 `:86`）声明这个拆分随负载翻转、对门禁无影响——那么把它写成精确数字就是同一类「会漂的精确值」，而 `623cfbf`（HEAD）刚专门去掉了会漂的「33 分钟」。建议只留「Killed+Timeout 合计 959」或定性表述。
+1. **B1 快照数字漂移（判断项，与最后一个提交同主题）**：`docs/MUTATION-TESTING.md:82` 写「**Killed 957 / Timeout 2**」，本机最新全量报告（`artifacts/mutation/mutation.json`，mtime 2026-10-11 10:39）是 **Killed 954 / Timeout 5**；总分与 96.58% 完全一致。该文自己 `:89`（§3.4，标题 `:86`）声明这个拆分随负载翻转、对门禁无影响——那么把它写成精确数字就是同一类「会漂的精确值」，而 `623cfbf`（HEAD）刚专门去掉了会漂的「33 分钟」。建议只留「Killed+Timeout 合计 959」或定性表述。
 2. **B2 基线文件格式描述与文件不符（判断项，低）**：`docs/MUTATION-TESTING.md:59`「每行一条 JSON」，而 `mutation-baseline.jsonl:1-4` 是 4 行 `#` 注释（共 38 行 = 4 注释 + 34 条 JSON，与 `:81` 的「34 条」一致；读取侧 `scripts/lib/mutation-baseline-core.mjs:149-155` 显式跳过空行与 `#`）。一句「允许 `#` 注释行」即可对齐。
 3. **B3 `AGENTS.md:19`「表外还有**两类**文档」下挂三个 bullet（判断项，pre-existing）**：真源类（`:21`）/ 报告类（`:22`）/ 入口类（`:23`）；且 `docs/DEVELOPMENT.md` 同时被 `:22` 与 `:23` 归入两个类别。blame 显示与 `579cc16` 相同（pre-existing），但与 C2 是同一个根因（DEVELOPMENT.md 的定位没定死）。
 4. **B4 永久文件里指向本 feature 票面的路径（判断项，低）**：`.npmrc:5` 指向 `.scratch/repo-operating-framework/issues/07-package-boundary.md`、`.githooks/commit-msg:7` 指向「spec 的 02 号票」。`AGENTS.md:46` 规定完成的 feature 归档到 `.scratch/archive/<feature>/`，归档即断链。指针应指向 `docs/HLD.md` §4.2 / `CONTRIBUTING.md` §3 这类稳定落点。

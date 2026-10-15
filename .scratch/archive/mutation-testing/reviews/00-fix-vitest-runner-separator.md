@@ -23,7 +23,7 @@
 | lint / deps | `npm run lint`、`npm run check:deps` | 均干净 |
 | 上游事实 | GitHub API `issues/6210`、`pulls/6214`、`npm view` | #6210 open；#6214 open（未合、未发版）；latest 仍 `10.0.0` |
 
-`reports/mutation/mutation.json`（补丁后 12:58 生成，4 文件全量）：ActionResolver 362 / ScoreCalculator 95 / TurnManager 292 / ActionCandidates 98，合计 614 Killed、132 Survived、97 NoCoverage、4 Timeout，分 72.49%；**存活突变体中 `testsCompleted == 0` 的个数为 0** —— 修复机制生效的直接证据。
+`artifacts/mutation/mutation.json`（补丁后 12:58 生成，4 文件全量）：ActionResolver 362 / ScoreCalculator 95 / TurnManager 292 / ActionCandidates 98，合计 614 Killed、132 Survived、97 NoCoverage、4 Timeout，分 72.49%；**存活突变体中 `testsCompleted == 0` 的个数为 0** —— 修复机制生效的直接证据。
 
 ## Standards
 

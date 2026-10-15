@@ -8,7 +8,7 @@
 
 - [x] 有一个命令能只对"相对某个 git ref 改动的文件"跑变异，并产出报告（`npm run mutation:changed [-- <ref>]`，默认 `HEAD`）
 - [x] 有一个命令能跑全量（`npm run mutation`）
-- [x] 报告给出每个存活突变体的文件、行号、变异类型与 diff（`clear-text` 控制台 + `reports/mutation/mutation.json`）
+- [x] 报告给出每个存活突变体的文件、行号、变异类型与 diff（`clear-text` 控制台 + `artifacts/mutation/mutation.json`）
 - [x] 只有 re-export 的入口文件不在变异范围内（`!src/core/logic/index.ts`）
 - [x] `npm test` 的行为与结果不变（实测 665 用例全绿；本票未触碰 `scripts/run-tests.mjs` / `vitest.config.ts` / `vitest.stryker.config.ts`）
 - [x] 全量跑不会像修复前那样在 dry run 阶段失败（`stryker run --dryRunOnly`：Found 6 files，Ran 609 tests，exit 0）

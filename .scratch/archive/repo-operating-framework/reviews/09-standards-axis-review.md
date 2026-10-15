@@ -7,7 +7,7 @@
 - **新 lint 规则真会红、且没有漏洞**：`.oxlintrc.json:5` 的 `src/core/**/*.ts` **能匹配顶层文件**（探针 `src/core/index.ts` 用 `window` → 报 `no-restricted-globals`，退 1）；`document`、`import "cc"`（副作用导入）与 `import { Node } from "cc"` 都报 `no-restricted-imports`。自动发现生效（不带 `--config` 同结果），且加配置**没有关掉默认规则**（`no-debugger` / `no-constant-condition` / `no-unused-vars` 与无配置时一致）。HEAD 上 `npm run lint` 退 0。
 - **`CONTRIBUTING.md:19` 的分档陈述属实**：`package.json:11` 的 `check:quick` = `fmt:check && lint && check:boundary && check:deps`（「前三项在内」成立），`package.json:12` 的 `verify` 含 `typecheck`。
 - **`CONTRIBUTING.md:17` 的三条 depcruise 规则实名存在**：`.dependency-cruiser.js:19`（`core-not-to-adapters`）、`:30`、`:51`。
-- **表里的落点事实对**：`.scratch/archive/<feature>/` 真存在（追踪 81 个文件）；`reports/`、无锚点 `dist/` 与 `.gitignore` 一致；`39 文件 / 728 用例` 实测一致（`npm test`）。
+- **表里的落点事实对**：`.scratch/archive/<feature>/` 真存在（追踪 81 个文件）；`artifacts/`、无锚点 `dist/` 与 `.gitignore` 一致；`39 文件 / 728 用例` 实测一致（`npm test`）。
 - **§4.3 改写与变异真源一致**：`docs/MUTATION-TESTING.md:31`（`mutation:changed` = implement 收尾）与 `:40`（`mutation:milestone` = spec 收尾 / 发版）逐条对得上；`docs/HLD.md:114` 指向的 §4.5 存在（`docs/HLD.md:127`）。
 
 ## (a) 违反成文规范

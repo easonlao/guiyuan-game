@@ -4,7 +4,7 @@
 
 ## 已核实做到（证据）
 
-- **目录表逐行核对为真**：`src/package.json` = `@guiyuan/game`、`tools/package.json` = `@guiyuan/devtools`；`scripts/lib/` 存在；`tests/core/*.test.ts:2` 走 `../../src/…`、`../../tools/…` 相对路径；`docs/agents/` 含 issue-tracker / triage / domain；`docs/headless/`、`docs/archive/` 存在；`.scratch` 入库（`git ls-files .scratch | wc -l` = 112）且 `.scratch/archive/<feature>/` 为 feature 目录；`minigame/game.js` 入库；`reports/` 在 `.gitignore` 且确被写（`scripts/mutation-changed.mjs:67`）；`dist/` 为无锚点规则。
+- **目录表逐行核对为真**：`src/package.json` = `@guiyuan/game`、`tools/package.json` = `@guiyuan/devtools`；`scripts/lib/` 存在；`tests/core/*.test.ts:2` 走 `../../src/…`、`../../tools/…` 相对路径；`docs/agents/` 含 issue-tracker / triage / domain；`docs/headless/`、`docs/archive/` 存在；`.scratch` 入库（`git ls-files .scratch | wc -l` = 112）且 `.scratch/archive/<feature>/` 为 feature 目录；`minigame/game.js` 入库；`artifacts/` 在 `.gitignore` 且确被写（`scripts/mutation-changed.mjs:67`）；`dist/` 为无锚点规则。
 - **`CONTRIBUTING.md:13` 的「真正执行」独立复现**：探针 `src/core/__review_probe.ts`（`import 'cc'` + `window` + `document`）与嵌套 `src/core/logic/__review_probe.ts`，`npx oxlint` 均退 1 并报 `no-restricted-globals`×2 + `no-restricted-imports`×1；同内容放 `src/adapters/` 退 0。`npm run lint` 覆盖 `src/core`（`package.json:22`），串进 `check:quick`（`:16`）→ `verify`（`:17`）→ CI（`.github/workflows/fast.yml:54`）。注：`oxlint --print-config` 只原样回显 overrides、不反映生效结果，探针才是有效验证。
 - **`docs/HLD.md:102` §4.2 无失真**：只实名两条真规则（`.dependency-cruiser.js:30` / `:51`），未声称拦 `core → minigame`；`CONTRIBUTING.md:17` 的 `src/core → src/adapters` 有 `core-not-to-adapters`（`.dependency-cruiser.js:18`）兜底。
 - **`docs/HLD.md:114` §4.3 与 `docs/MUTATION-TESTING.md` §2.1（`:13-14`）一致**，且采信侧正确：符合 spec 决定 5/6（全量由 agent 在 spec 收尾触发，改动处变异进快链当观察项）。

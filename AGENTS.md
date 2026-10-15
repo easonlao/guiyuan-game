@@ -45,7 +45,7 @@
 | 归档文档 | `docs/archive/` | 报告类 |
 | 任务（spec / map / issue） | `.scratch/<feature>/` | 完成的 feature 归档在 `.scratch/archive/<feature>/` |
 | 小游戏交付产物 | `minigame/` | `game.js` 入库，对账见「验收命令」 |
-| 工具落盘报告 | `reports/` | 不入库 |
+| 工具生成产物 | `artifacts/` | 不入库 |
 | 其他构建输出 | 任意层级的 `dist/` | 不入库 |
 
 版本库里的其余顶层目录：`.github/`（CI workflow）、`.githooks/`（提交信息 hook）、`patches/`（patch-package 补丁）、`.pi/`（工具配置，`.pi/skills/` 除外）。

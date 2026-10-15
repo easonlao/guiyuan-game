@@ -30,8 +30,8 @@
 
 - 新增 `.github/workflows/fast.yml`（快链，自动）：`on: pull_request` / `push: branches: [main]`；`permissions: contents: read`，全程无凭证引用。两个 job：
   - `verify`：checkout → setup-node（`node-version-file: .nvmrc` + `cache: npm`）→ `npm ci` → **`npm run verify`**（唯一检查步）。
-  - `mutation-changed`（观测项）：job 级 `continue-on-error: true`，红了不阻断验收；跑 **`npm run mutation:changed -- <ref>`**，基线 ref 按事件取（PR 用 `github.event.pull_request.base.sha`，push 用 `github.event.before`，并挡掉建分支时的全零 SHA）；`if: always()` 上传 `reports/` 为 artifact（保留 14 天）。`fetch-depth: 0` 供 diff 用。
-- 新增 `.github/workflows/mutation-milestone.yml`（里程碑，手动）：**只有 `on: workflow_dispatch`**；跑 **`npm run mutation:milestone`**，`timeout-minutes: 120`（全量实测 33 分钟，给足）；`if: always()` 上传 `reports/` 为 artifact（保留 30 天）。棘轮有新增存活时该 job 判红。
+  - `mutation-changed`（观测项）：job 级 `continue-on-error: true`，红了不阻断验收；跑 **`npm run mutation:changed -- <ref>`**，基线 ref 按事件取（PR 用 `github.event.pull_request.base.sha`，push 用 `github.event.before`，并挡掉建分支时的全零 SHA）；`if: always()` 上传 `artifacts/` 为 artifact（保留 14 天）。`fetch-depth: 0` 供 diff 用。
+- 新增 `.github/workflows/mutation-milestone.yml`（里程碑，手动）：**只有 `on: workflow_dispatch`**；跑 **`npm run mutation:milestone`**，`timeout-minutes: 120`（全量实测 33 分钟，给足）；`if: always()` 上传 `artifacts/` 为 artifact（保留 30 天）。棘轮有新增存活时该 job 判红。
 - `package.json` 新增命名脚本 `mutation:milestone` = `npm run mutation && npm run mutation:check`（给 AGENTS.md 与里程碑流水线一个入口，而不是让两边各拼两条命令）。
 - `AGENTS.md` 的 Mutation testing 节写明：全量 + 棘轮的触发者是 **agent**，在每个 spec 收尾时跑 `npm run mutation:milestone`。
 - `docs/HLD.md` 新增 §4.5「持续集成流水线」（工程方案回写 HLD，CI 归 HLD 所有）；`docs/MUTATION-TESTING.md` §2.2/§2.3/§9 与快速上手表同步（原 §2.3 写「本仓库没有 CI」，已按现状改写）；新增 ADR `docs/adr/0012-ci-fast-chain-and-manual-milestone.md`（决策 + 被否决方案 + 后果；不挂定时的理由写成「差分棘轮没有 diff 产不出新发现」的结构性理由，不是成本）。

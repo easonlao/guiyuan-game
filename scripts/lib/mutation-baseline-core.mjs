@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 /** 计入基线的突变体状态：执行到但存活 + 完全没覆盖。 */
 export const RATCHET_STATUSES = new Set(['Survived', 'NoCoverage']);
 
-export const DEFAULT_REPORT = 'reports/mutation/mutation.json';
+export const DEFAULT_REPORT = 'artifacts/mutation/mutation.json';
 export const DEFAULT_BASELINE = 'mutation-baseline.jsonl';
 export const DEFAULT_STRYKER_CONFIG = 'stryker.config.json';
 

@@ -6,7 +6,7 @@
 
 **Status:** resolved
 
-**What to build:** 审计对象：`src/core/logic/**` 的 `// Stryker disable`（阶段 3a，commit `515140a`）、门禁脚本、以及阶段 3b（`eaee33a`）的「真 bug」断言。 方法：静态逐条判定 + **实验**——把仓库拷贝到 `/tmp/audit` 并**删掉全部 71 条 disable 注释**，重跑一次全量 Stryker（1072 突变体 / 42 分钟），把结果与仓库内报告 `reports/mutation/mutation.json` 的 150 条 `Ignored` 按（文件+行+列+mutator+replacement）精确对齐。
+**What to build:** 审计对象：`src/core/logic/**` 的 `// Stryker disable`（阶段 3a，commit `515140a`）、门禁脚本、以及阶段 3b（`eaee33a`）的「真 bug」断言。 方法：静态逐条判定 + **实验**——把仓库拷贝到 `/tmp/audit` 并**删掉全部 71 条 disable 注释**，重跑一次全量 Stryker（1072 突变体 / 42 分钟），把结果与仓库内报告 `artifacts/mutation/mutation.json` 的 150 条 `Ignored` 按（文件+行+列+mutator+replacement）精确对齐。
 
 ## Answer
 
@@ -14,7 +14,7 @@
 
 | 指标 | 数值 | 来源 |
 |---|---|---|
-| 仓库内报告突变体总数 | 1073（Killed 922 / Timeout 1 / Ignored 150 / Survived 0 / NoCoverage 0） | `reports/mutation/mutation.json` |
+| 仓库内报告突变体总数 | 1073（Killed 922 / Timeout 1 / Ignored 150 / Survived 0 / NoCoverage 0） | `artifacts/mutation/mutation.json` |
 | `// Stryker disable` 指令数 | 71 | `grep -rn "Stryker disable" src/core/logic/` |
 | 被 disable 的突变体 | 150 | 同上报告 `Ignored` |
 | **去掉 disable 后重跑：150 条 Ignored 的真实状态** | **Survived 58 / NoCoverage 55 / Killed 35 / Timeout 1** | `/tmp/audit/reports/mutation/mutation.json` |
@@ -96,10 +96,10 @@
 ### 审计 2：门禁是否诚实
 
 1. **`mutation-baseline.jsonl` = 0 条：是真的没有存活/无覆盖。**
-   - 文件只有 5 行注释头，无记录；`git log` 显示由 `eaee33a` 从 `reports/mutation/mutation.json` 重建（223→0）。
-   - 该报告（`reports/mutation/mutation.json`，18:48，晚于 `eaee33a`）本身为全量：`config.mutate = ["src/core/logic/**/*.ts","!src/core/logic/index.ts"]`，状态 Killed 922 / Timeout 1 / Ignored 150 / **Survived 0 / NoCoverage 0**。
+   - 文件只有 5 行注释头，无记录；`git log` 显示由 `eaee33a` 从 `artifacts/mutation/mutation.json` 重建（223→0）。
+   - 该报告（`artifacts/mutation/mutation.json`，18:48，晚于 `eaee33a`）本身为全量：`config.mutate = ["src/core/logic/**/*.ts","!src/core/logic/index.ts"]`，状态 Killed 922 / Timeout 1 / Ignored 150 / **Survived 0 / NoCoverage 0**。
    - **交叉验证**：去 disable 重跑，113 条存活/无覆盖**全部命中**原报告的 `Ignored` 集合（0 条落在集合外）→ 报告与 disable 集合自洽，不是「刷空」。
-   - 但要注意：0 条**不等于**「测试全覆盖」。它是「扣掉 113 条显式忽略后的 0」。文档 §3.3 已如实披露。**风险点**：报告 `reports/` 被 gitignore、不入库，0 存活无法从仓库本身复现（须重跑约 42 分钟）。
+   - 但要注意：0 条**不等于**「测试全覆盖」。它是「扣掉 113 条显式忽略后的 0」。文档 §3.3 已如实披露。**风险点**：报告 `artifacts/` 被 gitignore、不入库，0 存活无法从仓库本身复现（须重跑约 42 分钟）。
 
 2. **`scripts/mutation-check.mjs` + `scripts/lib/mutation-baseline-core.mjs` 实测退出码**（用临时报告）：
 

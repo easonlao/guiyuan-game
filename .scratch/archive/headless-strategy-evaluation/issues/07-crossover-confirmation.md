@@ -8,7 +8,7 @@
 
 ## Answer
 
-用户已确认需求与结论边界；agent 完成分类、独立确认、遗漏计数及报告契约核验。专项测试 16/16、全套测试 118/118、构建通过；历史报告全部 1440 条已完成固定首步续局重放一致。未发现需修复的技术缺陷，未修改运行逻辑、未开展 08 的评价实验。核验依据与可复现命令见 [docs/crossover-confirmation.md](../../../docs/crossover-confirmation.md#issue-07-closure-verification)。
+用户已确认需求与结论边界；agent 完成分类、独立确认、遗漏计数及报告契约核验。专项测试 16/16、全套测试 118/118、构建通过；历史报告全部 1440 条已完成固定首步续局重放一致。未发现需修复的技术缺陷，未修改运行逻辑、未开展 08 的评价实验。核验依据与可复现命令见 [docs/crossover-confirmation.md](../../../../docs/archive/crossover-confirmation.md#issue-07-closure-verification)。
 
 ## 用户确认已完成，无需再次人工验收
 
@@ -41,10 +41,10 @@ npm test -- --run tests/crossover-confirmation.test.js tests/strategy-evaluation
 
 ## 证据与说明入口
 
-- [现有小样本中文报告](../../../reports/headless-strategy-evaluation/small-run/research.md)：流程验证与证据不足的说明，不要求用户再次阅读。
-- [结构化摘要](../../../reports/headless-strategy-evaluation/small-run/evaluation.json)：`plan` 保存种子和门槛，`evaluations[].result.discoveryPairs` / `confirmationPairs` 保存分类、差值、区间及样本数。
-- [完整记录](../../../reports/headless-strategy-evaluation/small-run/evaluation-full.json.gz)及[重放说明](../../../docs/fixed-position-continuations.md)。
-- [分类与确认规则](../../../docs/crossover-confirmation.md)及[CLI 说明](../../../docs/strategy-evaluation.md)。
+- [现有小样本中文报告](../../../../artifacts/headless-strategy-evaluation/small-run/research.md)：流程验证与证据不足的说明，不要求用户再次阅读。
+- [结构化摘要](../../../../artifacts/headless-strategy-evaluation/small-run/evaluation.json)：`plan` 保存种子和门槛，`evaluations[].result.discoveryPairs` / `confirmationPairs` 保存分类、差值、区间及样本数。
+- [完整记录](../../../../artifacts/headless-strategy-evaluation/small-run/evaluation-full.json.gz)及[重放说明](../../../../docs/archive/fixed-position-continuations.md)。
+- [分类与确认规则](../../../../docs/archive/crossover-confirmation.md)及[CLI 说明](../../../../docs/archive/strategy-evaluation.md)。
 
 ## 已有实现记录（本次已完成技术核验）
 

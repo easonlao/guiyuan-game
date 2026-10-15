@@ -64,7 +64,7 @@ for (const file of changedFiles) {
 }
 
 // 用 `--mutate` 覆盖配置里的全量 glob，只跑改动文件。
-// JSON 报告（reports/mutation/mutation.json）与存活明细仍由 stryker.config.json 的 reporters 产出。
+// JSON 报告（artifacts/mutation/mutation.json）与存活明细仍由 stryker.config.json 的 reporters 产出。
 const strykerArgs = ['run', '--mutate', changedFiles.join(','), ...passthroughArgs];
 const result = spawnSync(resolve('node_modules/.bin/stryker'), strykerArgs, {
   stdio: 'inherit',

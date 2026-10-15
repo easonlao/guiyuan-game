@@ -17,7 +17,7 @@
 
 - **门禁红**的定义：`npm run mutation:check` 报出「基线之外的存活/无覆盖突变体」，退出码 `1`。
 - **棘轮只对全量跑有效**：`mutation:check` 若发现报告来自子集跑（`mutation:changed` 的 `--mutate` 结果），退出码 `2` 并提示先跑 `npm run mutation`——子集跑的覆盖集不同，直接对比会报出**假的新增存活**。
-- 报告产物：`reports/mutation/mutation.json`（`reports/` 已 gitignore，不入库）。存活明细同时打到控制台（`clear-text`，含文件 / 行号 / 变异类型 / `- / +` diff）。
+- 报告产物：`artifacts/mutation/mutation.json`（`artifacts/` 已 gitignore，不入库）。存活明细同时打到控制台（`clear-text`，含文件 / 行号 / 变异类型 / `- / +` diff）。
 - 基线文件：`mutation-baseline.jsonl`（**入库**、JSONL、可 diff）。
 
 ---
@@ -221,8 +221,8 @@ if (score >= 0) { /* ... */ }
 
 产物：
 
-- `reports/mutation/mutation.json` —— Stryker JSON 报告（**gitignore，不入库**）。
+- `artifacts/mutation/mutation.json` —— Stryker JSON 报告（**gitignore，不入库**）。
 - `mutation-baseline.jsonl` —— 基线（**入库**）。
 - 控制台 `clear-text` —— 存活明细（文件 / 行号 / 变异类型 / diff）。
 
-配置：`stryker.config.json`（`mutate`、`reporters`、`timeoutMS`、`appendPlugins`；`coverageAnalysis: "off"` 字段名不副实、实际不生效，见 §2.1）、`vitest.stryker.config.ts`（Stryker 专用 Vitest 配置，含 `resolve.alias`，见 §9）。
+配置：`stryker.config.json`（`mutate`、`reporters`、`jsonReporter`、`timeoutMS`、`appendPlugins`；`coverageAnalysis: "off"` 字段名不副实、实际不生效，见 §2.1）、`vitest.stryker.config.ts`（Stryker 专用 Vitest 配置，含 `resolve.alias`，见 §9）。

@@ -6,7 +6,7 @@ labels:
 
 ## Problem Statement
 
-`reports/headless-strategy-evaluation/small-run/research.md`（001 / 08 号票产物）不能作为平衡决策依据：
+`artifacts/headless-strategy-evaluation/small-run/research.md`（001 / 08 号票产物）不能作为平衡决策依据：
 
 - 正文第 1–4 节是写死在 `StrategyEvaluation.js` `buildResearchMarkdown` 中的字符串，未读取任何计算结果；锦标赛实测三种策略平均胜负值均为 0.5、差值为 0，与正文"局势切换胜率收益稳健"相矛盾。
 - 评估默认 `maxTurns=12`（正式游戏为 60），每局约 11 次天干、最多点亮 5/10 侧，五行归元获胜从未发生，全部为回合上限结算。这违背了 08 号票"按正式规则回合上限继续"的已确认设计。

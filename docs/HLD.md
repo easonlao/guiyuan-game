@@ -131,7 +131,7 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 
 仓库是 public，Actions 分钟数不限量。流水线只做两件事，且**只调命名脚本**（CI 的失败信号只有一个来源——那条脚本本身，yaml 里不写裸检查命令）：
 
-*   **快链（自动）**——`.github/workflows/fast.yml`：PR 与推送到主分支时跑 `npm run verify`，失败即红；`npm run mutation:changed` 作为**观察项**并行跑，红了不阻断验收，只把 `reports/` 落盘成可下载的 artifact。观察项不能当门禁：子集报告做不了棘轮对比（`docs/MUTATION-TESTING.md` §3.1）。
+*   **快链（自动）**——`.github/workflows/fast.yml`：PR 与推送到主分支时跑 `npm run verify`，失败即红；`npm run mutation:changed` 作为**观察项**并行跑，红了不阻断验收，只把 `artifacts/` 落盘成可下载的 artifact。观察项不能当门禁：子集报告做不了棘轮对比（`docs/MUTATION-TESTING.md` §3.1）。
 *   **里程碑（手动）**——`.github/workflows/mutation-milestone.yml`：`workflow_dispatch` 触发，跑 `npm run mutation:milestone`（全量变异 + 棘轮对比），结果同样落盘可下载。
 
 **不挂 `on: schedule`**：门禁是差分棘轮（`docs/MUTATION-TESTING.md` §3.1），没有 diff 的定时跑在定义上产不出新发现——这是结构性理由，不是成本理由。全量那条的触发者因此只能是 agent，责任写进 `AGENTS.md`。决策与理由见 ADR 0012。

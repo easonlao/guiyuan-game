@@ -1,6 +1,6 @@
 # 回合上限结算输方 500 分诊断说明
 
-- **关联 Issue**: [01: 回合上限结算输方 500 分诊断](../../.scratch/balance-diagnostics/issues/01-loser-score-floor-diagnostic.md)
+- **关联 Issue**: [01: 回合上限结算输方 500 分诊断](../balance-diagnostics/issues/01-loser-score-floor-diagnostic.md)
 - **诊断日期**: 2026-10-06
 - **诊断结论**: 
   - **已证实**: 500 分不是保底分、下限钳制或记录口径错误，而是 `maxTurns=12` 截断与固定种子（202603/202604）组合下的虚假假象。
