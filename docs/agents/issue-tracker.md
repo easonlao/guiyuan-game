@@ -36,4 +36,6 @@ Used by `/wayfinder`. The **map** is a file with one **child** file per ticket.
 - **`.scratch/` 入库**：它是任务层的真源。`Resolve` 一步把决定追加进 `map.md`，这些文件必须跨 clone、跨机器可见，否则整个任务层协议就是空转——写进去的答案下一个 clone 看不到。内容全是 `.md`，体积小，不含密钥。
 - **`.agents/skills/` 不入库**：`AGENTS.md` 明写它「会被更新覆盖」；来源与 hash 由根目录 `skills-lock.json` 记录，可据此重建。入库只会制造覆盖冲突。
 
-`.gitignore` 排除的是具体目录（`.pi/skills/`、`.agents/skills/`、`.agents/plugins/`），不是整个 `.pi/` 或 `.agents/`。git 的规则是「父目录被排除时其内文件无法再被包含」，排除 `.pi/` 会让 `!.pi/subagents.json` 这类反选被静默忽略——不报错，只是不生效。所以 `.pi/mcp.json`（codegraph MCP 配置唯一入库的家）与 `.agents/skills.json`（`skills` CLI 的项目级状态文件）直接入库，不需要任何反选。
+`.gitignore` 排除的是具体目录（`.pi/skills/`、`.agents/skills/`），不是整个 `.pi/` 或 `.agents/`。git 的规则是「父目录被排除时其内文件无法再被包含」，排除 `.pi/` 会让里面的反选被静默忽略——不报错，只是不生效。所以 `.pi/mcp.json` 与 `.agents/plugins/` 直接入库，不需要任何反选。
+
+`.agents/plugins/` 是 **Antigravity 的工作区插件目录**（`agy` 二进制自带说明：`MCP Servers defined in plugins/<name>/mcp_config.json`，路径 `.agents/` 在工作区根）。它与 `.pi/mcp.json` 内容相同但无法共用——两个工具各读各的路径，改 codegraph 版本号时两处都要改。

@@ -81,3 +81,9 @@
   - `.gitignore` 的 `.agents/` 整目录规则替换为 `.agents/skills/`（理由同 `.pi/skills/`）与 `.agents/plugins/` 两条。
 
 - 2026-10（票 11 落地后）：本节里关于 `legacy/` 的三处描述已失效——票 11 把 `legacy/` 整体删除（`src` / `tests` / `scripts` 从无引用），并反转了 spec 的 Out of Scope。故「`legacy/src/network/supabaseClient.js` 仍 import supabase」「`legacy/` 被 `tsconfig.json` 排除」「`legacy/` 属 spec 的 Out of Scope」三句均不再成立。
+
+- 2026-10-16（当日二次更正）：上面第一条 2026-10-16 勘误有错，此处更正。**错法是把「工具往哪写」当成了「工具从哪读」。**
+  - `.agents/skills.json` 入库的理由作废：`skills` CLI v1.7.0 既不读也不写它（`dist/cli.mjs` 里出现的 JSON 文件名只有 `skills-lock.json`；全机器 grep `skills.json` 零命中）。它没有任何消费者，已删除。可移植性只来自 `skills-lock.json`。
+  - `.agents/plugins/` 的删除是错的，已恢复并改为入库。`agy` 二进制自带的工作区规范写明：`MCP Servers defined in plugins/<name>/mcp_config.json`，路径 `.agents/` 在工作区根。所以 `.agents/plugins/codegraph/{plugin.json,mcp_config.json}` 是 **agy 的项目级 codegraph MCP 配置**。当时判「无消费者」查的三个地方（pi 本体、`pi-mcp-adapter`、codegraph 自己的安装器目标表）都只覆盖 pi 与 codegraph 安装器，没查这份配置真正的读者 Antigravity。
+  - 连带作废的还有「`.agents/skills/` 只被 22 个工具认，zcode 不在里面」——那是 `skills` CLI 的**写入目标表**，不是**读取表**。ZCode 读 `.agents/skills/`：其数据目录里 `.agents/skills` 出现 325 次，含 `C:\Users\eason\.agents\skills\team-mode\SKILL.md`。
+  - `.gitignore` 现在只剩 `.pi/skills/` 与 `.agents/skills/` 两条排除规则。
