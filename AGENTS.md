@@ -48,7 +48,7 @@
 | 工具生成产物 | `artifacts/` | 不入库 |
 | 其他构建输出 | 任意层级的 `dist/` | 不入库 |
 
-版本库里的其余顶层目录：`.github/`（CI workflow）、`.githooks/`（提交信息 hook）、`patches/`（patch-package 补丁）、`.pi/`（pi 的工具配置）、`.agents/`（通用 Agent Skills 目录；技能本体与插件目录不入库，理由见 `.gitignore`）。
+版本库里的其余顶层目录：`.github/`（CI workflow）、`.githooks/`（提交信息 hook）、`patches/`（patch-package 补丁）、`.pi/`（pi 的工具配置）、`.agents/`（通用 Agent Skills 目录）。
 
 ## 提交纪律
 
@@ -59,6 +59,12 @@
 内循环与收尾各一条命名脚本（`check:quick` / `verify`）；构成以 `package.json` 为真源，分档意图见 `docs/HLD.md` §4.4，工作流步骤见 `CONTRIBUTING.md` §5。
 
 ## Agent skills
+
+### 技能与 codegraph 索引
+
+技能装在 `.agents/skills/`，codegraph 索引在 `.codegraph/`——两者都不随 clone 完整地来（`.agents/skills/` 里只有 38 个上游技能入库，见 `.gitignore`；索引记本机绝对路径，一律不入库）。**开工前先看这两个目录在不在，缺任何一个就跑 `npm run bootstrap`，再继续。**
+
+哪个 agent 工具读哪个技能目录、哪个 MCP 配置文件，以及遇到没见过的工具怎么查出来：`docs/agents/agent-tooling.md`。
 
 ### Issue tracker
 

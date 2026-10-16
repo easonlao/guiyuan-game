@@ -1,7 +1,7 @@
 # 本文件是「什么不进版本库」的边界清单，不是分类清单。
 # 每条规则都要能回答「为什么不进库」；写不出理由的条目就该删。
 # 不进库的判据只有四类：可再生（构建产物 / 缓存 / 索引）、本机私有（编辑器 / 开发者工具）、
-# 会漂移或含凭证（环境变量）、会被工具覆盖（.agents/skills）。
+# 会漂移或含凭证（环境变量）、会被工具覆盖（.agents/skills/sprite-gen）。
 # `.scratch/` 为何反过来必须入库，见 docs/agents/issue-tracker.md。
 
 # 依赖：体积大、含平台相关二进制，由 package-lock.json + npm ci 重建
@@ -39,8 +39,14 @@ minigame/project.private.config.json
 # pi 专属技能目录：本项目不用（技能统一装在 .agents/skills/），保留规则以防工具写入
 .pi/skills/
 
-# 通用 Agent Skills 目录：更新时会被覆盖，来源与 hash 由 skills-lock.json 记录
-.agents/skills/
+# 通用 Agent Skills 目录：38 个上游技能入库，来源与 hash 见根目录 skills-lock.json。
+# 只排两个 sprite*：
+#   sprite-gen   （aldegad/sprite-gen）的整仓，53 MB，其中 48 MB 是 docs/assets 的演示 GIF。
+#               `skills update` 每次覆盖，改动的 GIF 会永久留在 git 历史里。它在 skills-lock.json 里，
+#               `npx skills experimental_install` 能装回来。
+#   sprite-sheet  本地自制，无上游、不在 lock 里，是否留用未定。
+.agents/skills/sprite-gen/
+.agents/skills/sprite-sheet/
 
 # 子代理工作树：临时检出，用完即删
 .worktrees/

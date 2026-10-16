@@ -1,0 +1,7 @@
+# oxfmt 默认读 .gitignore 和 .prettierignore（见 `npx oxfmt --help` 的 Ignore Options）。
+# 本仓库不用 prettier；这个文件存在的唯一理由是把 vendored 内容排除在格式化之外。
+#
+# .agents/skills/ 是上游技能（来源与 hash 见 skills-lock.json）。格式化它会让本地副本与
+# 上游不一致，而 `skills update` 一覆盖，fmt:check 就又挂——改的不是我们的代码，
+# 就别让我们的格式化器管它。清单式的 lint 早已是同样的做法（见 package.json 的 lint 只列目录）。
+.agents/skills/
