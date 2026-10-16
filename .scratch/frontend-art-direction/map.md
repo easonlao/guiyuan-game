@@ -16,7 +16,7 @@ Label: wayfinder:map
 - 既有实现与决定继续有效；新方案若冲突，明确提出再决定，不默默覆盖。
 - **已有基础与继承边界**：盘面状态标记（归一金环／亢极外溢）、候选与按住预览（路径／幽灵态）、结算反馈与选项动画已实现并经用户部分验收（board-channel-and-marks 五票全部 resolved，归档于 `.scratch/archive/board-channel-and-marks/`，证据不是定义）。本路线在其基础上提升美术与表现范围，不从零重做前端。
 - **前置验收 task**：角色图集「缓存优先最终版」尚待用户在微信开发者工具重新编译确认；小屏布局已有用户验收记录（同归档票 05）。这是[票 07](issues/07-wechat-atlas-and-layout-acceptance.md) 的范围，不混作美术决策。
-- **本路线连同票 04–08 与 `tools/sprite-pipeline/` 只存在于分支 `exp/character-generation`**，main 上没有活动路线。原因是本地 ComfyUI／SDXL 出图未达到角色设计与动画所需；用户判断是「**先放下**」，不是「不行」（未定论）。重来时先做票 04 的原题——**定最小样张与判断标准**——再选生成手段。
+- **本路线连同票 04–08 与 `tools/sprite-pipeline/` 只存在于分支 `frontend-art-direction`**，main 上没有活动路线。原因是本地 ComfyUI／SDXL 出图未达到角色设计与动画所需；用户判断是「**先放下**」，不是「不行」（未定论）。重来时先做票 04 的原题——**定最小样张与判断标准**——再选生成手段。
 - 本地 tracker 约定见 docs/agents/issue-tracker.md。
 
 ## Decisions so far
