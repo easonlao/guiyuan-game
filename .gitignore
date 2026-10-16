@@ -39,8 +39,12 @@ minigame/project.private.config.json
 # pi 技能：更新时会被覆盖，来源与 hash 由 skills-lock.json 记录
 .pi/skills/
 
-# 工具自动注册的插件元数据（含 codegraph 的 MCP 配置）：无仓库内引用，可由工具重建
-.agents/
+# 通用 Agent Skills 目录：与 .pi/skills/ 同源同理由，技能本体不入库
+.agents/skills/
+
+# Agent Plugin 插件目录：工具自动注册，且当前全仓无消费者（pi 本体只发现 .agents/skills/，
+# 不读此处；pi-mcp-adapter 需在 agentPluginPaths 显式列出且只认插件根下的 mcp.json）
+.agents/plugins/
 
 # 子代理工作树：临时检出，用完即删
 .worktrees/

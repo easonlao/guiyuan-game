@@ -75,4 +75,9 @@
 
 ## Comments
 
+- 2026-10-16：本票「`.agents/` 整个排除」的决定已反转，拆成两条。**MCP 收敛的结论不变**：codegraph 的唯一在库配置仍是 `.pi/mcp.json`。
+  - `.agents/skills.json` 改为入库。原理由「无仓库内引用，可由工具重建」对它是错的——它是 `skills` CLI（vercel-labs/skills）的项目级状态文件，不在任何工具的重建路径上。但同样地，也没有任何工具读它：`/mnt/c/Users/eason/AppData/Roaming/npm/node_modules/` 与 `~/.pi/agent/npm/node_modules/` 下全部已装工具 grep `skills.json` 零命中。入库只是让它随仓库走，不构成可移植性（真正的可移植性来自已入库的 `skills-lock.json`）。
+  - `.agents/plugins/` 从工作区删除并单独排除，理由改写为实话「工具自动注册，且当前全仓无消费者」。证据：pi 本体只发现 `.agents/skills/`（`dist/core/package-manager.js:297`、`dist/core/trust-manager.js:153`），`.agents` 的命中全在 skills 语境；`pi-mcp-adapter` 的 Agent Plugin 加载器要求 `settings.agentPluginPaths` 显式列出目录（`types.ts:622`、`config.ts:415`，本机 `~/.pi/agent/mcp-adapter.json` 未配置），且只认插件根下的 `mcp.json`（`agent-plugin-loader.ts:77`），而该处文件名是 `mcp_config.json`，即使配了路径也读不到；codegraph 自身的安装器目标（`AppData/Local/codegraph/current/lib/dist/installer/targets/`）只有 claude / cursor / codex / opencode / hermes / gemini / antigravity / kiro / copilot-*，不含 `.agents`。
+  - `.gitignore` 的 `.agents/` 整目录规则替换为 `.agents/skills/`（理由同 `.pi/skills/`）与 `.agents/plugins/` 两条。
+
 - 2026-10（票 11 落地后）：本节里关于 `legacy/` 的三处描述已失效——票 11 把 `legacy/` 整体删除（`src` / `tests` / `scripts` 从无引用），并反转了 spec 的 Out of Scope。故「`legacy/src/network/supabaseClient.js` 仍 import supabase」「`legacy/` 被 `tsconfig.json` 排除」「`legacy/` 属 spec 的 Out of Scope」三句均不再成立。
