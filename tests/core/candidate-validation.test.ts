@@ -85,8 +85,10 @@ const DOMINANCE_CANDIDATE: CandidateSpec = {
 /**
  * 只给下面那个确定性用例的超时，不抬全局。
  *
- * 它把整套候选验证跑两遍比对，是本文件唯一的重活（其余用例 0–3ms）：GitHub `ubuntu-latest`
- * 上 4036ms，本机 2487ms，而 vitest 默认 testTimeout 是 5000ms——余量只剩 20%。
+ * 它把整套候选验证跑两遍比对，是本文件唯一的重活（其余用例 0–3ms）。实测（本机 / 5 次 CI）：
+ *   本机 2.8s；CI 3.3 / 3.9 / 4.0 / 4.0 / 4.2s（最坏 4.2s）。
+ * vitest 默认 testTimeout 是 5s，最坏值离它只剩 20%——同一台慢机器就能越过去。
+ * 取最坏值 ×3.6 ≈ 15s，与 dominance 那条例外的余量对齐。
  */
 const DETERMINISM_TIMEOUT_MS = 15_000;
 

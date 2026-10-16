@@ -60,11 +60,13 @@ const MAX_ROUNDS = 30;
 /**
  * 只给下面那个 hook 的超时，不抬全局。
  *
- * 它跑整张 head-to-head 矩阵，是本套件分量最重的一步：GitHub `ubuntu-latest` 上 10.4–10.8s，
- * 本机 5.6s，而 vitest 默认 hookTimeout 是 10s——机器一慢就翻（2026-10-16 把当日的旧成功
- * commit 重跑也超时，是 runner 变慢，不是代码回归）。排除掉的 250 局/座次方案见上面的「样本量取舍」。
+ * 它跑整张 head-to-head 矩阵，是本套件分量最重的一步。实测（本机 / 5 次 CI）：
+ *   本机 5.6s；CI 7.6 / 7.9 / 9.3 / 10.1 / 10.8s（最坏 10.8s）。
+ * vitest 默认 hookTimeout 是 10s——最坏值已经越过去了，慢机器上必挂。取最坏值 ×3.7 ≈ 40s，
+ * 与 candidate-validation 那条例外的余量对齐。只给这一步：新出现的慢 hook 仍应撞默认值。
+ * 排除掉的 250 局/座次方案见上面的「样本量取舍」。
  */
-const MATRIX_HOOK_TIMEOUT_MS = 30_000;
+const MATRIX_HOOK_TIMEOUT_MS = 40_000;
 /** 每格合并两座次后的样本量。 */
 const GAMES_PER_CELL = 2 * MATCHES_PER_SEAT;
 /** p≈0.5 时座次平衡胜率的二项标准误。 */
