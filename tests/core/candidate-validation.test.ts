@@ -82,6 +82,14 @@ const DOMINANCE_CANDIDATE: CandidateSpec = {
   pointsConfig: TRANS_ZERO_CONFIG,
 };
 
+/**
+ * 只给下面那个确定性用例的超时，不抬全局。
+ *
+ * 它把整套候选验证跑两遍比对，是本文件唯一的重活（其余用例 0–3ms）：GitHub `ubuntu-latest`
+ * 上 4036ms，本机 2487ms，而 vitest 默认 testTimeout 是 5000ms——余量只剩 20%。
+ */
+const DETERMINISM_TIMEOUT_MS = 15_000;
+
 describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
   let production: CandidateValidationReport;
   let dominated: CandidateValidationReport;
@@ -263,35 +271,39 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
     expect(production.baselineComparison.flips).toHaveLength(0);
   });
 
-  it('同一候选与同一选项产出同一报告（确定性；唯一例外是运行期内存诊断）', () => {
-    const spec: CandidateSpec = {
-      name: 'determinism',
-      description: '确定性探针',
-      pointsConfig: { ...POINTS_CONFIG, ACTION: { ...POINTS_CONFIG.ACTION, ATK: 41 } },
-    };
-    const options = {
-      matchesPerSeat: 50,
-      seed: 4242,
-      maxRounds: 30,
-      guardrailMatches: 100,
-      guardrailSeed: 10000,
-    } as const;
-    const stripRuntimeDiagnostics = (report: CandidateValidationReport) => ({
-      ...report,
-      // 堆内存增量是运行期诊断，天然带噪声；其余全部字段必须逐字节一致。
-      // 它同时出现在 `heapUsedDeltaMB` 与逐条 `checks[].actual` 中，两处都要归一。
-      guardrails: {
-        ...report.guardrails,
-        heapUsedDeltaMB: 0,
-        checks: report.guardrails.checks.map((check) =>
-          check.key === 'heapUsedDeltaMB' ? { ...check, actual: 0 } : check,
-        ),
-      },
-    });
-    const a = validateCandidate(spec, options);
-    const b = validateCandidate(spec, options);
-    expect(stripRuntimeDiagnostics(a)).toEqual(stripRuntimeDiagnostics(b));
-  });
+  it(
+    '同一候选与同一选项产出同一报告（确定性；唯一例外是运行期内存诊断）',
+    () => {
+      const spec: CandidateSpec = {
+        name: 'determinism',
+        description: '确定性探针',
+        pointsConfig: { ...POINTS_CONFIG, ACTION: { ...POINTS_CONFIG.ACTION, ATK: 41 } },
+      };
+      const options = {
+        matchesPerSeat: 50,
+        seed: 4242,
+        maxRounds: 30,
+        guardrailMatches: 100,
+        guardrailSeed: 10000,
+      } as const;
+      const stripRuntimeDiagnostics = (report: CandidateValidationReport) => ({
+        ...report,
+        // 堆内存增量是运行期诊断，天然带噪声；其余全部字段必须逐字节一致。
+        // 它同时出现在 `heapUsedDeltaMB` 与逐条 `checks[].actual` 中，两处都要归一。
+        guardrails: {
+          ...report.guardrails,
+          heapUsedDeltaMB: 0,
+          checks: report.guardrails.checks.map((check) =>
+            check.key === 'heapUsedDeltaMB' ? { ...check, actual: 0 } : check,
+          ),
+        },
+      });
+      const a = validateCandidate(spec, options);
+      const b = validateCandidate(spec, options);
+      expect(stripRuntimeDiagnostics(a)).toEqual(stripRuntimeDiagnostics(b));
+    },
+    DETERMINISM_TIMEOUT_MS,
+  );
 
   it('CLI 参数解析：默认生产配置，支持样本/种子/结算方式，未知参数抛错', () => {
     const defaults = parseCandidateArgs([]);

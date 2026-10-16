@@ -56,6 +56,15 @@ import type { HeadToHeadReport } from '../../tools/ExperimentRunner.js';
 const MATCHES_PER_SEAT = 500;
 const BASE_SEED = 10000;
 const MAX_ROUNDS = 30;
+
+/**
+ * 只给下面那个 hook 的超时，不抬全局。
+ *
+ * 它跑整张 head-to-head 矩阵，是本套件分量最重的一步：GitHub `ubuntu-latest` 上 10.4–10.8s，
+ * 本机 5.6s，而 vitest 默认 hookTimeout 是 10s——机器一慢就翻（2026-10-16 把当日的旧成功
+ * commit 重跑也超时，是 runner 变慢，不是代码回归）。排除掉的 250 局/座次方案见上面的「样本量取舍」。
+ */
+const MATRIX_HOOK_TIMEOUT_MS = 30_000;
 /** 每格合并两座次后的样本量。 */
 const GAMES_PER_CELL = 2 * MATCHES_PER_SEAT;
 /** p≈0.5 时座次平衡胜率的二项标准误。 */
@@ -107,7 +116,7 @@ describe('占优回归护栏：采纳进度定价后不存在严格占优（绊�
       baseSeed: BASE_SEED,
       maxRounds: MAX_ROUNDS,
     });
-  });
+  }, MATRIX_HOOK_TIMEOUT_MS);
 
   it('在生产默认计分配置（含 ATTACK_PROGRESS_SCALE）下跑出全策略座次平衡矩阵', () => {
     expect(report.mode).toBe('scoring');
