@@ -1,6 +1,6 @@
 # 归元弈界面表现重构
 
-> **归档说明（本轮任务整理）**：本 feature 的历史阶段结束，八票的实现物均已交付；本包**不声称全部验收完成**——角色图集「缓存优先最终版」在微信端的加载确认仍待用户重新编译目验（本目录原票 07-wechat-cache-first.md），该未验收项与同根因事项已收敛为美术路线票 07（已随该路线移入分支 `exp/character-generation`）。小屏布局项的微信确认已由用户在后续验收中覆盖（证据见 `.scratch/archive/board-channel-and-marks/issues/05-opponent-scale-and-layout.md` 与[其 spec 的验收节](../board-channel-and-marks/spec.md)；证据不是定义）。本目录只作证据与导航，不定义规则；各票状态保留原文，未伪造 resolved。
+> **归档说明（本轮任务整理）**：本 feature 的历史阶段结束，八票的实现物均已交付；本包**不声称全部验收完成**——角色图集「缓存优先最终版」在微信端的加载确认仍待用户重新编译目验（本目录原票 07-wechat-cache-first.md），该未验收项与同根因事项已收敛为美术路线票 07（已随该路线移入分支 `frontend-art-direction`）。小屏布局项的微信确认已由用户在后续验收中覆盖（证据见 `.scratch/archive/board-channel-and-marks/issues/05-opponent-scale-and-layout.md` 与[其 spec 的验收节](../board-channel-and-marks/spec.md)；证据不是定义）。本目录只作证据与导航，不定义规则；各票状态保留原文，未伪造 resolved。
 
 ## 目标
 
