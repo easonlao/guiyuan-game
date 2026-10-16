@@ -6,6 +6,8 @@ Status: resolved
 Assignee: main-agent
 Blocked by: none
 
+> **产物已删（2026-10-16）**：本文里的 `artifacts/frontend-art-direction/**` 链接指向本地产物（`artifacts/` 不入库），那些文件已于 2026-10-16 随 `artifacts/` 一起删除，链接已失效。文字记录本身保留；票 08 的「验证通过」另见 map.md 的复盘更正。
+
 ## Question
 
 用一张自行绘制或有权使用的 Q 版轮廓／服装草图 + 现有 SDXL 轮廓控制（ControlNet sketch/canny Control-LoRA，必要时 IP-Adapter 画风参考），能否稳定产出「Q 版比例、非幼态、服装分层可读」的单张人物，作为后续人设迭代的可复现方法？

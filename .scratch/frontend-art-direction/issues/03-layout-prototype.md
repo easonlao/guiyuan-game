@@ -29,7 +29,7 @@ Blocked by: 02
 
 - 一条命令：`npm run preview:minigame`（= `vite tools/minigame-preview --host 0.0.0.0`，见 `package.json:38`），默认端口 **5173**。
 - 原型页：`http://localhost:5173/layout-prototype.html?variant=A`；`?variant=B|C` 直达，或点页面底部唯一切换条的左右箭头 / 按 ← → / 1 2 3 切换，URL 即刷新即保持。
-- 默认预览 `http://localhost:5173/` 不受影响，只在左上角多了一个「🧭 布局原型 A/B/C」入口链接。
+- 默认预览 `http://localhost:5173/` 不受影响。原型页直接用 URL 进（`layout-prototype.html`）；它曾在默认预览页左上角有一个「🧭 布局原型 A/B/C」入口链接，2026-10-16 随路线整理移除。
 - 为什么不把 `?variant=` 挂在默认预览页上：默认预览跑的是正式 `GameScene`，盘面 / 头像 / 操作栏的排布写在 `src/minigame/game-scene.ts` 里；三个候选要改的正是这套排布，而本轮不允许改正式源码，所以另开 `layout-prototype.html` 承载（也避开了仓库已有的 `prototype.html` 动效原型，不覆盖他人产物）。
 
 **三个变体（结构不同，不是换色）**
@@ -46,11 +46,13 @@ Blocked by: 02
 - 盘面 = 真实 `BoardView.update(p1Board, p2Board)` + 真实候选弧 / 高亮连线投影；操作按钮与「上一招」= 真实 `ActionBarView` / `ActionResultView`（按钮文案与置灰口径与正式一致）；角色 = 仓库现有 `minigame/assets/characters.png` + 真实 `drawCharacterSprite`，页面明确标注为**占位素材、非最终画风**；背景 = 当前游戏已有的 `drawLandscape`，页面只另加了少量线条与淡雾草图。
 - 静态展示：按钮点击不结算（只读门面，不写回快照），页面侧栏会闪一下「不执行」的提示；「上一招」条可展开看真实变更明细。`?seed=`、`?round=` 可换一份可复现快照。
 
-**截图**（`artifacts/` 不入库）
+**截图**（`artifacts/` 不入库；以下 8 张已于 2026-10-16 随 `artifacts/` 删除）
 
-- `artifacts/frontend-art-direction/layout-A.png`、`layout-B.png`、`layout-C.png`：1280×900，含右侧说明栏。
+- `layout-A.png`、`layout-B.png`、`layout-C.png`：1280×900，含右侧说明栏。
 - `layout-A-phone390.png`、`layout-B-phone390.png`、`layout-C-phone390.png`、`layout-C-phone390x700.png`：390 宽窄屏证据。
 - `layout-overview.png`：三布局对比总览（同一快照，460×800 画布裁切并排）。
+
+截图没了不影响本票结论（用户选定 A，见 `../map.md`）。原型源文件就在本分支 `tools/minigame-preview/` 下，`npm run preview:minigame` 起来后按 `?variant=A|B|C` 复核。
 
 **已知代价与风险（如实呈现，未修饰）**
 
