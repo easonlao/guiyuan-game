@@ -14,8 +14,9 @@ dist/
 # Vitest 运行缓存：每次测试重算
 .vitest/
 
-# Python 字节码缓存：解释器重跑即重建，与 .vitest/ 同类。主线上当前没有 Python，
-# 留这条是为了分支合入后不误提交。
+# Python 字节码缓存：解释器重跑即重建，与 .vitest/ 同类。放主线而不是某个分支，
+# 是因为 .gitignore 跨分支共享：任何跑过 tools/sprite-pipeline/ 的分支都不会把
+# 生成的 __pycache__/ 提交进去。
 __pycache__/
 *.pyc
 
