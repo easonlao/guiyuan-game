@@ -7,6 +7,12 @@ Status: resolved
 Assignee: main-agent
 Blocked by: 02
 
+> **原型已归档（2026-10-16）**：`layout-prototype.html`、`layout-prototype.ts` 与一次性探针
+> `probe-layout-snapshot.ts` 移到分支 `exp/character-generation`——用户已选定 A 布局，原型完成使命
+> （即本票文末「原型归档（throwaway 分支）等用户选定后再做」）。下文的运行说明保留为过程记录，
+> `tools/minigame-preview/index.html` 的入口链接已移除。要复跑：
+> `git checkout exp/character-generation -- tools/minigame-preview/`
+
 ## Question
 
 把用户选择的视觉特征放回当前游戏后，哪种粗略画面方案既符合喜好，又让盘面、可操作入口、行动结果更容易辨认？使用临时原型而非正式素材，通过用户反馈确定方向，记录待试玩验证的假设，不声称原型已证明新玩家可理解。
