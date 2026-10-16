@@ -2,7 +2,7 @@
 
 状态：已随 08 实现并验证，待用户微信本地确认。
 
-> 归档迁移（本轮任务整理）：布局项的「微信本地确认」已被用户后续验收覆盖——用户在微信开发者工具（含 320×568 窄屏）完成多回合对局验收；证据与覆盖范围见归档件 [board-channel-and-marks 票 05](../../board-channel-and-marks/issues/05-opponent-scale-and-layout.md)（证据不是定义，只覆盖布局/遮挡，不覆盖图集加载）。加载项的最终确认见活动路线的[票 07](../../../frontend-art-direction/issues/07-wechat-atlas-and-layout-acceptance.md)。
+> 归档迁移（本轮任务整理）：布局项的「微信本地确认」已被用户后续验收覆盖——用户在微信开发者工具（含 320×568 窄屏）完成多回合对局验收；证据与覆盖范围见归档件 [board-channel-and-marks 票 05](../../board-channel-and-marks/issues/05-opponent-scale-and-layout.md)（证据不是定义，只覆盖布局/遮挡，不覆盖图集加载）。加载项的最终确认见美术路线票 07（已随该路线移入分支 `exp/character-generation`）。
 
 ## 用户证据
 
