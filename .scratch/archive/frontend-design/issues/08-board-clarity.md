@@ -2,7 +2,7 @@
 
 Status: resolved
 
-> 归档迁移（本轮任务整理）：本票「原生微信真实确认」中的布局/盘面可读性部分，已被用户在微信开发者工具的后续验收覆盖（证据与范围见 [board-channel-and-marks 票 05](../../board-channel-and-marks/issues/05-opponent-scale-and-layout.md)；证据不是定义），该覆盖不含角色图集加载。加载项的最终确认见活动路线的[票 07](../../../frontend-art-direction/issues/07-wechat-atlas-and-layout-acceptance.md)。
+> 归档迁移（本轮任务整理）：本票「原生微信真实确认」中的布局/盘面可读性部分，已被用户在微信开发者工具的后续验收覆盖（证据与范围见 [board-channel-and-marks 票 05](../../board-channel-and-marks/issues/05-opponent-scale-and-layout.md)；证据不是定义），该覆盖不含角色图集加载。加载项的最终确认见美术路线票 07（已随该路线移入分支 `exp/character-generation`）。
 
 ## 用户需求
 
