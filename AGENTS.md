@@ -18,7 +18,7 @@
 
 表外还有三类文档：
 
-- **真源类**（进采信链）——`GLOSSARY.md` 管「叫什么」：术语 + 一两句「它是什么」+ `_Avoid_` 禁用别名，格式见 `.pi/skills/domain-modeling/GLOSSARY-FORMAT.md`；术语冲突以它为准，**禁止往里写规则正文、实现细节或决策记录**。`docs/adr/` 管「为什么这么定」，决策冲突以最新 ADR 为准。
+- **真源类**（进采信链）——`GLOSSARY.md` 管「叫什么」：术语 + 一两句「它是什么」+ `_Avoid_` 禁用别名，格式见 `.agents/skills/domain-modeling/GLOSSARY-FORMAT.md`；术语冲突以它为准，**禁止往里写规则正文、实现细节或决策记录**。`docs/adr/` 管「为什么这么定」，决策冲突以最新 ADR 为准。
 - **报告类**（只做证据与导航，不定义规则）——`docs/headless/`、`docs/archive/`。引用它们时必须写明「这是证据，不是定义」。
 - **入口类**——`README.md` 面向人，可以概述玩法，但**不复述规则的条件与数值**（那些归 GDD），必须带指针；代码入口与模块职责归 `docs/HLD.md` §2。
 
@@ -48,7 +48,7 @@
 | 工具生成产物 | `artifacts/` | 不入库 |
 | 其他构建输出 | 任意层级的 `dist/` | 不入库 |
 
-版本库里的其余顶层目录：`.github/`（CI workflow）、`.githooks/`（提交信息 hook）、`patches/`（patch-package 补丁）、`.pi/`（工具配置，`.pi/skills/` 除外）。
+版本库里的其余顶层目录：`.github/`（CI workflow）、`.githooks/`（提交信息 hook）、`patches/`（patch-package 补丁）、`.pi/`（pi 的工具配置）、`.agents/`（通用 Agent Skills 目录；技能本体与插件目录不入库，理由见 `.gitignore`）。
 
 ## 提交纪律
 
@@ -95,7 +95,7 @@ Open the brief with: **"Start with `codegraph_explore`; use `read`/`grep` only f
 
 Inside a subagent there is no nested dispatch, so it calls `codegraph_explore` directly.
 
-These rules also bind the exploration steps of the workflow skills (implement, code-review, …), and live only in this file: `.pi/skills/` is overwritten on update.
+These rules also bind the exploration steps of the workflow skills (implement, code-review, …), and live only in this file: `.agents/skills/` is overwritten on update.
 
 <!-- CODEGRAPH_START -->
 ## CodeGraph

@@ -36,8 +36,8 @@
 
 | 本地 skill | 核验结果 | 本轮用途 |
 |---|---|---|
-| `.pi/skills/sprite-sheet/SKILL.md` | 描述明确排除单张插图；正文说核心不是画，而是交付前约束、抠图、切帧和验收。其「不能选模型/不能指定像素尺寸」是该技能所假定后端的限制，不是 ComfyUI 限制。 | 可借用验收纪律，不适合作为本轮角色设计后端，也不能靠切图修复设计。依据：`:3,10,29–31`。 |
-| `.pi/skills/sprite-gen/SKILL.md` 与 `docs/user-workflow.md` | 主图像交互流程是 GPT/Grok；另有明确命名的 OpenAI API、Claude 像素网格等路线，但不是 ComfyUI。全目录按 `ComfyUI/comfyui/comfy` 检索未找到支持文档。 | 没有核验到现成 ComfyUI provider/workflow；不能称「已经支持」。单独图像编辑能力不等于能调用户的局域网 ComfyUI。依据：`SKILL.md` Execution routes，`docs/user-workflow.md:5–14`。 |
+| `.agents/skills/sprite-sheet/SKILL.md` | 描述明确排除单张插图；正文说核心不是画，而是交付前约束、抠图、切帧和验收。其「不能选模型/不能指定像素尺寸」是该技能所假定后端的限制，不是 ComfyUI 限制。 | 可借用验收纪律，不适合作为本轮角色设计后端，也不能靠切图修复设计。依据：`:3,10,29–31`。 |
+| `.agents/skills/sprite-gen/SKILL.md` 与 `docs/user-workflow.md` | 主图像交互流程是 GPT/Grok；另有明确命名的 OpenAI API、Claude 像素网格等路线，但不是 ComfyUI。全目录按 `ComfyUI/comfyui/comfy` 检索未找到支持文档。 | 没有核验到现成 ComfyUI provider/workflow；不能称「已经支持」。单独图像编辑能力不等于能调用户的局域网 ComfyUI。依据：`SKILL.md` Execution routes，`docs/user-workflow.md:5–14`。 |
 | sprite-gen 的图集流程 | `docs/atlas-workflow.md:5–7` 明确要求先有用户认可的完整静态底图，再做动作。 | 此阶段仍缺认可的底图；后置工具不应提前。 |
 
 结论：不需要重复找另一个切图 skill。需要的是**经过兼容核验的结构/画风控制工作流，以及合格的设计输入**。
