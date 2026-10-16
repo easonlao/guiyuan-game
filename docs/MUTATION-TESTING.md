@@ -4,7 +4,7 @@
 
 这份文档是突变测试的唯一规则来源。它被 gitignore 之外的路径引用（`AGENTS.md` 的 Mutation testing 小节），改动会被提交，活得过工具更新。
 
-**叫法**：全篇用「突变测试」「突变体」，不用「变异测试」「变异分析」。名字定在这里、而不是 `GLOSSARY.md`，因为后者的格式约定（`.pi/skills/domain-modeling/GLOSSARY-FORMAT.md`）不收通用编程概念；而历史上确实同时存在两个叫法。
+**叫法**：全篇用「突变测试」「突变体」，不用「变异测试」「变异分析」。名字定在这里、而不是 `GLOSSARY.md`，因为后者的格式约定（`.agents/skills/domain-modeling/GLOSSARY-FORMAT.md`）不收通用编程概念；而历史上确实同时存在两个叫法。
 
 ---
 
@@ -166,9 +166,9 @@ if (score >= 0) { /* ... */ }
 
 ---
 
-## 7. 规则为什么不放在 `.pi/skills/`
+## 7. 规则为什么不放在 `.agents/skills/`
 
-- `.pi/skills/` 被 **gitignore**（见仓库根 `.gitignore` 的 `.pi/skills/`），而且按 `AGENTS.md` 的说明，该目录**会被更新覆盖**——写进去的规则活不过一次工具更新。
+- `.agents/skills/` 被 **gitignore**（见仓库根 `.gitignore` 的 `.agents/skills/`），而且按 `AGENTS.md` 的说明，该目录**会被更新覆盖**——写进去的规则活不过一次工具更新。
 - 所以规则写在这份 **committed** 的 `docs/MUTATION-TESTING.md`，由 `AGENTS.md` 的 Mutation testing 小节导航。改动进版本库，可 diff、可 review、可追溯。
 
 ### 7.1 为什么不立 ADR（决策 7）

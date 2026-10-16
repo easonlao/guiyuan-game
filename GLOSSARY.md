@@ -2,7 +2,7 @@
 
 五行相生相克与阴阳流转的轻度策略对弈游戏。本表固定跨任务必须一致的术语，并列出每个概念的**禁用别名**。
 
-它是术语表，不是规则说明：规则机制的唯一家在 `docs/GDD.md`，工程方案的唯一家在 `docs/HLD.md`。格式约定见 `.pi/skills/domain-modeling/GLOSSARY-FORMAT.md`。
+它是术语表，不是规则说明：规则机制的唯一家在 `docs/GDD.md`，工程方案的唯一家在 `docs/HLD.md`。格式约定见 `.agents/skills/domain-modeling/GLOSSARY-FORMAT.md`。
 
 ## 棋盘与状态
 
