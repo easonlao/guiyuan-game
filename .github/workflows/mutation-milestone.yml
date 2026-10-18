@@ -28,7 +28,11 @@ jobs:
     # 今天 `ubuntu-latest` 就指向 24.04，所以钉这一版不改变行为。
     runs-on: ubuntu-24.04
     # 全量耗时较长（见 `docs/MUTATION-TESTING.md`），超时给够。
-    timeout-minutes: 120
+    # 实测（2026-10-18，2 vCPU runner）：1078 个突变体，dry run 1m12s，之后 118 分钟跑到 90%，
+    # 折合全程约 132 分钟——原来的 120 分钟会在临门一脚处把 job 砍掉。留 ~80% 余量给
+    # 「多数突变体被 Killed 但有几个吃满突变超时」的批次抖动（突变超时 ≈ timeoutMS 30000 +
+    # timeoutFactor × dryRun 净耗时，单条可达 70s+）。
+    timeout-minutes: 240
     steps:
       - name: Checkout
         uses: actions/checkout@v7
