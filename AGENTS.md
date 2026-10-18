@@ -14,6 +14,8 @@
 
 两份文档冲突时采信顺序：LLD > HLD > GDD > SRS > FSR（类型定义本身以 `src/core/types/domain.ts` 为准）。发现冲突就修矛盾的一方（删除或改指针），不要两边各留一份。
 
+参数取值以代码常量为准（`src/core/logic/`），GDD 只写含义与意图。
+
 ### 真源类与报告类
 
 表外还有三类文档：
@@ -24,29 +26,18 @@
 
 ### ADR 的边界
 
-- 门槛（三条全中才写）：难以撤销 + 无上下文会令人困惑 + 是真实权衡的产物。
-- 一条决策一个文件：背景 + 决定 + 被否决的方案 + 后果。ADR 采纳后，**规则正文回写 GDD、工程方案回写 HLD、证据留在 `docs/headless/`**，ADR 只留决策与理由。
-- 现状勘误追加在文末，不重写历史结论；不复述被指向文档的内容。
+门槛与格式见 `domain-modeling` 技能的 `ADR-FORMAT.md`。本仓库按完整结构写：背景 + 决定 + 被否决的方案 + 后果（技能里后两项可选，这里不省）。另两条：
 
-变更历史由 git 承载：文档头部不写版本号，也不写逐版本变更记录。
+- 采纳后：规则正文回写 GDD、工程方案回写 HLD、证据留在 `docs/headless/`，ADR 只留决策与理由；现状勘误追加文末，不重写历史结论。
+- 变更历史由 git 承载：文档头部不写版本号，也不写逐版本变更记录。
 
 ## 目录约定
 
-东西放哪，看这张表。包名与包拓扑见 `docs/HLD.md` §2；进 / 不进库的理由以根目录 `.gitignore` 为真源。
+- 仓库基建脚本（构建、门禁、突变对比）放 `scripts/`，共享实现放 `scripts/lib/`；`tools/` 是开发工具与 CLI，自成 npm 包。
+- 单元测试放 `tests/`。
+- 工具生成的产物放 `artifacts/`。
 
-| 东西 | 放哪 | 说明 |
-|---|---|---|
-| 游戏核心 | `src/` | |
-| 开发工具与 CLI | `tools/` | |
-| 仓库基建脚本 | `scripts/`（共享实现 `scripts/lib/`） | 构建、门禁、突变测试对比 |
-| 测试 | `tests/` | |
-| 设计文档 | `docs/` | 含 `docs/adr/`、`docs/agents/` |
-| 实验报告 | `docs/headless/` | 报告类 |
-| 归档文档 | `docs/archive/` | 报告类 |
-| 任务（spec / map / issue） | `.scratch/<feature>/` | 完成的 feature 归档在 `.scratch/archive/<feature>/` |
-| 小游戏交付产物 | `minigame/` | `game.js` 入库，对账见「验收命令」 |
-| 工具生成产物 | `artifacts/` | 不入库 |
-| 其他构建输出 | 任意层级的 `dist/` | 不入库 |
+包名与包拓扑见 `docs/HLD.md` §2；进不进库以根目录 `.gitignore` 为真源（例外：`minigame/game.js` 是入库的交付产物，理由见 ADR 0014）；实验报告与归档文档见上一节。
 
 版本库里的其余顶层目录：`.github/`（CI workflow）、`.githooks/`（提交信息 hook）、`patches/`（patch-package 补丁）、`.pi/`（pi 的工具配置）、`.agents/`（通用 Agent Skills 目录）。
 
@@ -62,9 +53,7 @@
 
 ### 技能与 codegraph 索引
 
-技能装在 `.agents/skills/`，codegraph 索引在 `.codegraph/`——两者都不随 clone 完整地来（`.agents/skills/` 里只有 38 个上游技能入库，见 `.gitignore`；索引记本机绝对路径，一律不入库）。**开工前先看这两个目录在不在，缺任何一个就跑 `npm run bootstrap`，再继续。**
-
-哪个 agent 工具读哪个技能目录、哪个 MCP 配置文件，以及遇到没见过的工具怎么查出来：`docs/agents/agent-tooling.md`。
+开工前先看 `.agents/skills/` 与 `.codegraph/` 在不在，缺任何一个先跑 `npm run bootstrap`。为什么它们不随 clone 来、哪个工具读哪个目录、遇到没见过的工具怎么查：`docs/agents/agent-tooling.md`。
 
 ### Issue tracker
 
