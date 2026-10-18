@@ -48,7 +48,6 @@
     "@stryker-mutator/core": "^10.0.0",
     "@stryker-mutator/vitest-runner": "^10.0.0",
     "@types/node": "^26.6.4",
-    "agent-browser": "^0.38.2",
     "dependency-cruiser": "^18.5.0",
     "oxfmt": "^0.72.0",
     "oxlint": "^1.87.0",
