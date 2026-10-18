@@ -22,7 +22,11 @@ permissions:
 jobs:
   milestone:
     name: 全量突变测试 + 棘轮 (mutation:milestone)
-    runs-on: ubuntu-latest
+    # 固定镜像，不用 `ubuntu-latest`：该 label 自 2026-10-19 起滚动迁到 Ubuntu 26.04
+    # （actions/runner-images#14748，11-19 完成）。用 latest 等于把「换 OS」这件事交给
+    # 平台在无人改 yaml 的时候做掉；门禁换镜像应当是显式改动 + 一次绿的 verify。
+    # 今天 `ubuntu-latest` 就指向 24.04，所以钉这一版不改变行为。
+    runs-on: ubuntu-24.04
     # 全量耗时较长（见 `docs/MUTATION-TESTING.md`），超时给够。
     timeout-minutes: 120
     steps:
