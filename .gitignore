@@ -54,5 +54,8 @@ minigame/project.private.config.json
 .agents/skills/sprite-gen/
 .agents/skills/sprite-sheet/
 
-# 子代理工作树：临时检出，用完即删
-.worktrees/
+# 子代理工作树：临时检出，用完即删。落点由 `scripts/check-worktrees.mjs` 断言。
+# 必须写成 `.worktrees/*` 而非整目录 `.worktrees/`：父目录被排除后 git 不再下钻，
+# `!.worktrees/.gitkeep` 静默失效（gitignore(5)）。
+.worktrees/*
+!.worktrees/.gitkeep
