@@ -84,6 +84,18 @@ Single-context. See `docs/agents/domain.md`.
 
 全量突变测试 + 棘轮对比（`npm run mutation:milestone`）不挂 CI 定时、需求方不会去按按钮，**实际触发者只能是 agent**；何时跑、门禁口径见 `docs/MUTATION-TESTING.md`。
 
+### 前端渲染验证
+
+改动会改变画面的代码——`src/minigame/` 的 `views/`、`scene/`、`character-sprite.ts`、`pixel-art.ts`、`text-metrics.ts`、`theme.ts`，或 `tools/minigame-preview/`——之后，先看画面再报完成：
+
+1. 起预览：`npm run preview:minigame` 放后台跑（前台会阻塞），从它的输出里读地址。仓库没有 `vite.config.*`，端口不固定。
+2. 用 browser-mcp 打开该地址并 `browser_screenshot`，确认布局、Canvas 尺寸与 sprite 对齐。
+3. 截过图才说「改完了」。截不了就说明原因，不要凭代码推断画面正确。
+
+选 browser-mcp 而不是 agent-browser：开发预览是人机同屏场景，用户要在同一个 Chrome 里同时看见；agent-browser 是隔离实例，适合无人值守，不适合这里。
+
+纯逻辑改动不走这一步。盘面状态与指标在 Node 里可验，做法见 `tools/probe-layout-snapshot.ts`（无头跑 `GameScene` 输出摘要，不启浏览器）。
+
 ### Subagents
 
 The main thread dispatches and aggregates; code questions go to `Explore`.
