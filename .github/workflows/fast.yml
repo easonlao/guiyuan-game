@@ -82,11 +82,14 @@ jobs:
         run: npm run mutation:changed -- ${{ github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || 'HEAD~1' }}
 
       # 观测项红了也要传产物——红的那次最需要看报告。`if: always()` 保证前一步失败也上传。
+      # `if-no-files-found: ignore`：只改文档的推送里 `mutation:changed` 没有可突变文件，
+      # `artifacts/` 压根不存在，报 `warn` 会每次都抖一条「No files were found」标注。
+      # 真出错时信号不丢：Stryker 崩了这一步就是红的，job 状态本身看得见。
       - name: Upload mutation report
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: mutation-changed-report
           path: artifacts/
-          if-no-files-found: warn
+          if-no-files-found: ignore
           retention-days: 14
