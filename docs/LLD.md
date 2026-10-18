@@ -68,6 +68,9 @@
 1. **双盘投影**：`BoardView.update(p1Board: BoardState, p2Board: BoardState)`——同时接收己方盘与对方盘两块快照，一次投影；表现层**不再**按当前行动方切换单一棋盘（ADR 0015 的动机）。
 2. **槽位定位**：`BoardView.getSlot(player: PlayerId, element: WuXing, polarity: Polarity): BoardSlotView`——返回指定**某一方**、某五行、某极性槽位的投影视图（含父坐标系下的 `x/y` 与角度），供 `RuneFlightView` 取飞行落点。`player` 决定取内环（己方）还是外环（对方）。
 3. **飞行落点**：`RuneFlightView` 的目标坐标来自 `BoardView.getSlot(player, …)`；`ATK`/`BURST_ATK` 作用于对方，其余作用于己方。`GameScene` 比较动作前后只读快照，使用真实发生变化的目标阴阳侧定位；没有目标净变化时不播放目标冲击，`PASS` 原地消散。天命揭牌恒以 P2 与揭牌天干定位，与揭牌前行动方无关。落点回调更新投影，动作结束后进入短暂停留的 `result` 阶段，再交接行动方和天干。`ActionResultView` 保存上一招归属、天干、动作与所有真实阴阳等级变化，跨回合保留，可展开查看；重开时清空。
+   > **归属**：本条的行为句（目标净零不播冲击、`PASS` 原地消散、`result` 阶段停留、上一招结果条的保留期）是**落点契约的后果**，不是画法，所以留在 LLD；画法本身见 `docs/HLD.md` §2 Layer 3 的「法盘视觉编码」小节。
+   >
+   > 本条与第 1、2、4 条同属一类：都是契约与坐标断言的依据，不是样式描述。
 4. **同心双环语义**：内环恒为己方盘、外环恒为对方盘；外环相对内环逆时针偏移 2 格，每根射线满足「己方克对方」。该几何是契约而非样式（板盘测试按坐标断言）。
 5. **视觉编码与绘制细节不在本节**：等级阶梯、节点级标记、候选半身标记、按住预览、图例与布局避让的完整口径，唯一出处是 `docs/HLD.md` §2 Layer 3 的「法盘视觉编码」小节。本节只保留签名与契约语义：
    - `BoardView.setActivePaths(paths: readonly BoardActivePath[])` 保留 `(kind, from)` 查询契约（`TRANS` / `BURST` → 相生，`ATK` / `BURST_ATK` → 相克，其余动作无路径）；
