@@ -1,6 +1,6 @@
 # 指标口径表 (Metric Definitions)
 
-> 本文是测量台所有指标的**唯一定义处**。除场景接缝的 `atkTempoGain`（从两张受控 `BoardState` 派生）外，每个指标都只从 `HeadlessMatch.run` 的返回值 `MatchResult` 派生。
+> 本文是测量台所有指标**口径的唯一维护处**。它属于证据与导航（见 `AGENTS.md` 的报告类边界），不定义规则：规则机制归 `docs/GDD.md`，计分取值归 `src/core/logic/ScoreCalculator.ts` 的 `POINTS_CONFIG`，代码实现归 `tools/Metrics.ts`。除场景接缝的 `atkTempoGain`（从两张受控 `BoardState` 派生）外，每个指标都只从 `HeadlessMatch.run` 的返回值 `MatchResult` 派生。
 > 代码实现在 `tools/Metrics.ts`；陷阱回归测试在 `tests/core/metric-definitions.test.ts`。
 > 术语以 `GLOSSARY.md` 为准。任何报告引用指标时，请引用本表，不要另起口径。
 

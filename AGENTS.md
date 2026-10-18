@@ -1,6 +1,6 @@
 ## Design docs
 
-阅读顺序：`docs/FSR.md`（why）→ `docs/SRS.md`（what）→ `docs/GDD.md`（规则）→ `docs/HLD.md`（how）→ `docs/LLD.md`（契约）。
+阅读顺序见 `README.md` §文档（FSR → SRS → GDD → HLD → LLD），此处不重复。
 
 每个事实只有一个家。写或改文档时，先看它归谁：
 
@@ -20,7 +20,7 @@
 
 表外还有三类文档：
 
-- **真源类**（进采信链）——`GLOSSARY.md` 管「叫什么」：术语 + 一两句「它是什么」+ `_Avoid_` 禁用别名，格式见 `.agents/skills/domain-modeling/GLOSSARY-FORMAT.md`；术语冲突以它为准，**禁止往里写规则正文、实现细节或决策记录**。`docs/adr/` 管「为什么这么定」，决策冲突以最新 ADR 为准。
+- **真源类**（进采信链）——`GLOSSARY.md` 管「叫什么」：术语 + 一两句「它是什么」+ `_Avoid_` 禁用别名，格式见 `.agents/skills/domain-modeling/GLOSSARY-FORMAT.md`；术语冲突以它为准，**禁止往里写规则正文、实现细节或决策记录**。它的范围停在「规则与棋盘」这一层：表现层只收了 `主印`、`半身` 两条，其余视觉词（如 `幽灵态`、`候选弧`）不进表，在 `docs/LLD.md` §4.1 定义。`docs/adr/` 管「为什么这么定」，决策冲突以最新 ADR 为准。
 - **报告类**（只做证据与导航，不定义规则）——`docs/headless/`、`docs/archive/`。引用它们时必须写明「这是证据，不是定义」。
 - **入口类**——`README.md` 面向人，可以概述玩法，但**不复述规则的条件与数值**（那些归 GDD），必须带指针；代码入口与模块职责归 `docs/HLD.md` §2。
 
@@ -35,7 +35,7 @@
 
 - 仓库基建脚本（构建、门禁、突变对比）放 `scripts/`，共享实现放 `scripts/lib/`；`tools/` 是开发工具与 CLI，自成 npm 包。
 - 单元测试放 `tests/`。
-- 工具生成的产物放 `artifacts/`。
+- 工具生成的产物放 `artifacts/`；根目录的 `mutation-baseline.jsonl` 是入库的棘轮基线，归 `docs/MUTATION-TESTING.md` §3.2 管。
 
 包名与包拓扑见 `docs/HLD.md` §2；进不进库以根目录 `.gitignore` 为真源（例外：`minigame/game.js` 是入库的交付产物，理由见 ADR 0014）；实验报告与归档文档见上一节。
 
@@ -71,7 +71,7 @@ Single-context. See `docs/agents/domain.md`.
 
 门禁与做法见 `docs/MUTATION-TESTING.md`。
 
-全量突变测试 + 棘轮对比（`npm run mutation:milestone`）不挂 CI 定时、需求方不会去按按钮，**实际触发者只能是 agent**；何时跑、门禁口径见 `docs/MUTATION-TESTING.md`。
+全量突变测试 + 棘轮对比（`npm run mutation:milestone`）的**实际触发者是 agent**，不是要人去按按钮。何时跑、门禁口径见 `docs/MUTATION-TESTING.md`。
 
 ### Subagents
 

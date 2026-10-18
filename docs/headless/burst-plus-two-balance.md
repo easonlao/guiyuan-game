@@ -112,7 +112,7 @@ npx vitest run tests/core/ai-evaluator-benchmark-guardrails.test.ts
 **逐条结论**：归元率带内（0.902 ∈ [0.89, 0.95]）；先手胜率**带外**（0.544 > 0.51，且 2000 局口径下
 0.5455 同向）；堆增量带内。三条里只有先手胜率破了带。
 
-与工单 02 自报快照（`NOTES/burst-plus-two-recon.md` §5c：归元率 0.902、先手 0.544、堆 1.52MB）比较：
+与工单 02 自报快照（`.scratch/archive/burst-plus-two/burst-plus-two-recon.md` §5c：归元率 0.902、先手 0.544、堆 1.52MB）比较：
 归元率与先手胜率**一致**，堆增量不同（本文 3.08MB）——该差异是 GC 噪声，不影响任何结论。
 
 ## 6. 遗留红灯与后续入口
