@@ -33,7 +33,11 @@ concurrency:
 jobs:
   verify:
     name: 验收 (verify)
-    runs-on: ubuntu-latest
+    # 固定镜像，不用 `ubuntu-latest`：该 label 自 2026-10-19 起滚动迁到 Ubuntu 26.04
+    # （actions/runner-images#14748，11-19 完成）。用 latest 等于把「换 OS」这件事交给
+    # 平台在无人改 yaml 的时候做掉；门禁换镜像应当是显式改动 + 一次绿的 verify。
+    # 今天 `ubuntu-latest` 就指向 24.04，所以钉这一版不改变行为。
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -55,7 +59,8 @@ jobs:
 
   mutation-changed:
     name: 改动突变测试观测项 (mutation:changed)
-    runs-on: ubuntu-latest
+    # 同上：钉镜像而不是 `ubuntu-latest`，理由见 `verify` job 的注释。
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     # 观测项：job 红了不把整条流水线判红，但报告仍要落盘（见上面的「观测项」说明）。
     continue-on-error: true
