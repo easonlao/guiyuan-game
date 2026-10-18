@@ -1,3 +1,7 @@
+# 依赖关系图（已归档）
+
+> **已归档**：这张图画的是旧 JS 原型（`src/js/`）的模块依赖，该目录已删除。现行包拓扑见 `docs/HLD.md` §2，依赖规则与真源见 `docs/HLD.md` §4.2 与 `.dependency-cruiser.js`。
+
 ```mermaid
 flowchart LR
 
