@@ -59,7 +59,7 @@
 
 ### 2.3 为什么门禁必须落在「本地/agent 循环」
 
-CI 只把 `mutation:changed` 当**观察项**（红了不阻断、只落盘），全量 + 棘轮那条只能手动触发（工程方案见 `docs/HLD.md` §4.5，理由见 ADR 0012）。所以棘轮门禁的「红」没有流水线兜底，唯一消费者是跑它的那个 agent。`mutation:check` 自己算退出码（仓库刻意不配 `thresholds.break`，Stryker 不会因存活而失败），这条必须在 agent 内循环里成立。
+CI 只把 `mutation:changed` 当**观察项**（红了不阻断、只落盘），全量 + 棘轮由 agent 在本地手动跑（工程现状见 `docs/HLD.md` §4.5，理由见 ADR 0012）。所以棘轮门禁的「红」没有流水线兜底，唯一消费者是跑它的那个 agent。`mutation:check` 自己算退出码（仓库刻意不配 `thresholds.break`，Stryker 不会因存活而失败），这条必须在 agent 内循环里成立。
 
 ---
 
