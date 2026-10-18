@@ -1,7 +1,7 @@
 # 归元弈 (Guiyuan) - 高层设计文档 (HLD, AI-First 架构)
 
 **目标平台：** 微信小游戏 (首包预算 < 4MB)  
-**开发基准：** 纯 TypeScript 核心逻辑库 + 纯代码 Canvas 2D 直出微信小游戏 (对齐 ADR-0004)
+**开发基准：** 纯 TypeScript 核心逻辑库 + 纯代码 Canvas 2D 直出微信小游戏 (对齐 ADR 0004)
 
 ## 1. 设计输入 (Design Inputs)
 
@@ -25,10 +25,10 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 
 #### 🔴 Layer 1: 核心逻辑层 (Core Logic Layer) - **AI 主战场**
 完全独立的纯 TypeScript 环境，不包含任何 DOM、BOM 或外部引擎相关的 API。
-*   `State`: 维护全局棋盘数据、天干生成逻辑与对局回合。
+*   `State`: 初始状态构造与盘面谓词（纯函数）；半回合状态机、天干抽取（`utils/prng.ts` 的 `drawTianGan`）与连动规则由 `TurnManager` 承担。
 *   `ActionResolver`: 处理各类动作（吸纳、化、破）的合法性校验及状态变更。
 *   `ScoreCalculator`: 基于动作与状态变动进行双轨制计分。
-*   `TurnManager`: 回合状态机调度器与连动规则保障。
+*   `TurnManager`: 半回合状态机调度器与连动规则保障。
 *   `Strategy` & `ActionEvaluator`: 基于 `StrategyWeights` 权重的启发式 AI 决策。
 *   **AI 算力与执行保障**：
     *   单局推演与单次决策的性能预算见 `docs/SRS.md` §4.2；本层只保证内存增量平稳。
@@ -37,26 +37,27 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 
 #### 🟡 Layer 2: 存储与基建适配层 (Adapter Layer)
 完全剥离 Supabase 云端依赖，采用适配器模式（`IStorageManager` 接口）进行依赖注入，支持多环境无缝切换：
-*   `MockStorage`: 用于 AI 的本地 Node.js 单元测试和无头模拟对战。
+*   `MockStorage`: 用于 AI 的本地 Node.js 单元测试和无头推演。
 *   `LocalStorageAdapter`: 用于 Web 预览环境。
 *   `WechatStorageAdapter`: 用于实际打包微信小游戏时，调用微信原生 `wx.setStorageSync` 实现本地脱机存档。
 
 #### 🟢 Layer 3: 视图与小游戏交付层 (View Layer)
-纯代码 Canvas 2D 微信小游戏环境（`src/minigame/` -> `minigame/`，对齐 ADR-0004 与 ADR-0005）。
+纯代码 Canvas 2D 微信小游戏环境（`src/minigame/` -> `minigame/`，对齐 ADR 0004 与 ADR 0005）。
 
-> **实现状态**：轻量场景树/组件化架构**已落地**（对齐 ADR 0005）：`src/minigame/` 现由 `GameScene` 控制器与 `BoardView` / `ActionBarView` / `CharacterView` / `RuneFlightView` 四个视图组成，触控命中、按压反馈与补间动画分别由 `InputManager` / `Button` / `Tween` 承担；旧的单体命令式实现（`game-manager.ts` 与手写触摸命中判定）已删除，`pixel-art.ts` 只保留仍在用的绘制例程。
+> **实现状态**：轻量场景树/组件化架构**已落地**（对齐 ADR 0005）：`src/minigame/` 现由 `GameScene` 控制器与 `BoardView` / `ActionBarView` / `CharacterView` / `RuneFlightView` / `ActionResultView` 五个视图组成，触控命中、按压反馈与补间动画分别由 `InputManager` / `Button` / `Tween` 承担；旧的单体命令式实现（`game-manager.ts` 与手写触摸命中判定）已删除，`pixel-art.ts` 只保留仍在用的绘制例程。
 *   **轻量场景树与组件化**：基于轻量纯 TS 场景树架构（`Node`、`Container`、`Button`、`Tween`、`InputManager`），摆脱逐像素点阵硬编码，实现自动化触控命中检测、按压微动与声明式补间动画。
-*   **模块化业务视图**：拆分为 `BoardView`（法盘）、`ActionBarView`（可选动作按钮面板）、`CharacterView`（角色化身与表情）以及 `RuneFlightView`（天干轨迹动效），由 `GameScene` 控制器对齐 `TurnManager` 状态进行纯数据驱动投影。
+*   **模块化业务视图**：拆分为 `BoardView`（法盘）、`ActionBarView`（可选动作按钮面板）、`CharacterView`（角色化身与表情）、`RuneFlightView`（天干轨迹动效）以及 `ActionResultView`（上一招结果条），由 `GameScene` 控制器对齐 `TurnManager` 状态进行纯数据驱动投影。
 *   **法盘双环（已落地，ADR 0015）**：`BoardView` 已由「单一棋盘按行动方投影」升级为**同心双环**——内环恒为己方盘、外环恒为对方盘、外环逆时针偏移 2 格；接口契约（`update` 吃双盘、`getSlot(player,…)`、飞行落点、连线高亮语义）见 `docs/LLD.md` §4.1。
-*   **法盘状态编码（已落地票 01–05，ADR 0018）**：等级改走**亮度阶梯**——道损 = 暗化元素色 + 裂纹、虚空 = 空心（元素色淡描边）、点亮 = 元素色实心、加持 = 元素色实心 + 光晕；五行色相只表身份，任何等级都保留元素色描边。盘下图例与上一招变化条文案统一到「道损 / 虚空 / 点亮 / 加持」。节点级状态另占主印外侧：归一 = 一圈金环 + 沿环缓慢流动的金色高光（只要归一就有，与亢极无关）；亢极 = 归一那一层之上再叠元素色柔光与外扩涟漪（满溢 / 泄露 / 不稳）。金色流光与元素外溢都由表现层时钟 `BoardView.tick(dt)` 驱动（`GameScene.update` 每帧注入），盘面投影仍只由状态变更驱动。决策期候选落点半身标记由 `BoardView.setCandidates()` 驱动、与盘面等级和连线高亮都无关：每个候选把「会变的那半身」（阴鱼 / 阳鱼）整片染上**专属强调色**（`THEME.candidate`，紫，不取五行色、不取节点级状态的金）+ 一条薄轮廓，同一半身去重；所有标记共用同一个慢呼吸相位（与归一流光 / 亢极外溢同一个时钟），非抉择阶段不画。按住按钮的预览（票 04）由 `BoardView.setPreview()` 驱动：`isActive` 收窄到这一下的路径并叠加动作提示（相生弧箭 / 相克贯穿突刺 / 调息漩涡）、目标侧幽灵态与加快的候选呼吸；幽灵态真跑 `ActionResolver` 取结算后的目标等级（`src/minigame/preview-target.ts`），净零变化不画。对手盘归属靠环带实线 / 虚线与「你 / 天道」标签，不再整体变暗；对方的尺寸差也收窄到“只比己方略小”，归属判断不再依赖大小（票 05；缩放比与避让口径见 `docs/LLD.md` §4.1 与代码常量）；五行标签呈径向排列，操作栏在窄屏/紧凑屏下恒定预留双行 110px 预算，消解跨回合界面尺寸与位置的抖动。
+*   **法盘状态编码（已落地票 01–05，ADR 0018）**：等级改走**亮度阶梯**——道损 = 暗化的五行色 + 裂纹、虚空 = 空心（五行色淡描边）、点亮 = 五行色实心、加持 = 五行色实心 + 光晕；五行色相只表身份，任何等级都保留五行色描边。盘下图例与上一招变化条文案统一到「道损 / 虚空 / 点亮 / 加持」。节点级状态另占主印外侧：归一 = 一圈金环 + 沿环缓慢流动的金色高光（只要归一就有，与亢极无关）；亢极 = 归一那一层之上再叠五行色柔光与外扩涟漪（满溢 / 泄露 / 不稳）。金色流光与外溢都由表现层时钟 `BoardView.tick(dt)` 驱动（`GameScene.update` 每帧注入），盘面投影仍只由状态变更驱动。决策期候选落点半身标记由 `BoardView.setCandidates()` 驱动、与盘面等级和连线高亮都无关：每个候选把「会变的那半身」（阴鱼 / 阳鱼）整片染上**专属强调色**（`THEME.candidate`，紫，不取五行色、不取节点级状态的金）+ 一条薄轮廓，同一半身去重；所有标记共用同一个慢呼吸相位（与归一流光 / 亢极外溢同一个时钟），非抉择阶段不画。按住按钮的预览（票 04）由 `BoardView.setPreview()` 驱动：`isActive` 收窄到这一下的路径并叠加动作提示（相生弧箭 / 相克贯穿突刺 / 调息漩涡）、目标侧幽灵态与加快的候选呼吸；幽灵态真跑 `ActionResolver` 取结算后的目标等级（`src/minigame/preview-target.ts`），净零变化不画。对方盘归属靠环带实线 / 虚线与「你 / 天道」标签，不再整体变暗；对方的尺寸差也收窄到“只比己方略小”，归属判断不再依赖大小（票 05；缩放比与避让口径见 `docs/LLD.md` §4.1 与代码常量）；五行标签呈径向排列，操作栏在窄屏/紧凑屏下恒定预留双行 110px 预算，消解跨回合界面尺寸与位置的抖动。
 
-*   **极速构建管线**：通过 Vite 构建单文件 `minigame/game.js`，Windows 微信开发者工具直连开发与实时仿真调试。
+*   **极速构建管线**：通过 Vite 构建单文件 `minigame/game.js`，Windows 微信开发者工具直连开发与模拟器实时调试。
 *   **轻量低消耗**：零重型引擎包袱，首包体积 < 1MB（远低于 4MB 上限），启动秒开。
 
 #### ⚪ 开发工具块 (`tools/`) — 不进 `game.js`
 无头推演、批量评测与命令行实验入口**不在** Layer 1 内，独立于 `src/` 之外。切分判据是**独立运行时**：`tools/` 跑在 Node.js 上（使用 `node:url` / `node:path`），而小游戏侧（整个 `src/` 树，含 `src/core` / `src/adapters` / `src/minigame`）都会打进 `minigame/game.js`、运行在没有 Node 内建模块的微信小游戏环境里。两者之间只有单向依赖 `tools/` → `src/`；反向由 §4.2 的 depcruise 规则拦截。判据与理由见 ADR 0013。
-*   `HeadlessMatch` / `HeadlessBenchmark`：无头对战与万局自动化基线评测。
+*   `HeadlessMatch` / `HeadlessBenchmark`：无头推演与万局自动化基线评测。
 *   `ExperimentRunner` / `DynamicSwitching` / `ActionValueCensus` / `CandidateValidation` / `AtkMarginalReturn`：批量实验与平衡诊断。
+*   `GuardrailBand`：平衡护栏带（归元率 / 先手胜率 / 堆增量的阈值），**取值唯一真源**；为什么只设带不设目标值、为什么把攻击压制得分纳入待护栏清单，见 ADR 0001 与 ADR 0011。
 *   `TerminalBoardViewer`：纯文本控制台 ASCII 棋盘检视器。
 *   `cli.ts`：各实验入口共享的直接执行守卫与错误处理。
 
@@ -81,15 +82,15 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 1.  **代码构建**：AI 编写带有严格类型的 TS 代码（如 `domain.ts`）。
 2.  **验证循环 (Vitest)**：执行 `npm test`，根据控制台的红/绿灯自我修正代码。
 3.  **无头推演循环**：运行 `npm run benchmark:headless`，验证高频策略运算与内存低 GC 表现。
-4.  **真机视窗验收**：构建小游戏后，在微信开发者工具中即时仿真触控与视觉表现。
+4.  **真机视窗验收**：构建小游戏后，在微信开发者工具（模拟器）中即时验证触控与视觉表现。
 
 ### 3.2 实施里程碑 (Milestones)
 
 交付时点、范围与验收标准归 `docs/SRS.md` §5，本节不复制。此处只记录**工程侧完成度**：
 
-*   **阶段一（已完成）**：纯 TS 核心计算逻辑、无头推演闭环、Vitest 全量覆盖。
-*   **阶段二（进行中）**：独立 `minigame/` 构建管线与刘海屏安全区适配；表现层场景树重构已落地（见 §2 Layer 3）。
-*   **阶段三**：音效与微粒子动画调优、微信开放平台测试号真机扫码与体验版发布。
+*   **逻辑层（已完成，对应 `docs/SRS.md` §5 阶段 2）**：纯 TS 核心计算逻辑、无头推演闭环、Vitest 全量覆盖。
+*   **交付层（进行中，对应 SRS 阶段 3）**：独立 `minigame/` 构建管线与刘海屏安全区适配；表现层场景树重构已落地（见 §2 Layer 3）。
+*   **上架前打磨（SRS 阶段 3 收尾）**：音效与微粒子动画调优、微信开放平台测试号真机扫码与体验版发布。
 
 ---
 
