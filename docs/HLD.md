@@ -123,6 +123,8 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 *   **`npm run check:quick`（快速检查）**：给 AI 内循环用，秒级返回，只做静态检查；**不含**测试与构建——含测试与构建的命令贴不住每轮编辑循环。
 *   **`npm run verify`（验收）**：收尾时跑这一条，就知道算不算做完了；四段 = 快速检查 → 类型检查 → 测试 → **产物对账**。
 
+**worktree 落点（`npm run check:worktrees`，`check:quick` 第一段）**：子代理的 worktree 落在主 checkout 的 `.worktrees/<ticket>` 下；脚本用 `git worktree list --porcelain` 断言除主 checkout 外每条路径都在该前缀内——worktree 元数据记在 `.git/worktrees`，与目录位置无关，所以这是唯一拦得住「建到仓库外」的机制（历史上真发生过，见 `.scratch/archive/burst-plus-two/`）。另两条断言钉住 `.gitignore` 遮罩不变式，理由见脚本头部注释。
+
 **产物对账（`npm run check:artifact`）**：`src/minigame/` 的构建产物 `minigame/game.js` 是**入库提交物**（理由见 ADR 0014）。这条门禁用与 `npm run build:minigame` **同一次**构建调用现打一份（写回侧与核查侧共用 `scripts/lib/minigame-build.mjs`），与入库产物**逐字节比对**，不一致即红并报出第一个不同的字节位置；另有一条落点判定，断言产物路径**不落在任何层级的 `dist/` 下**——`.gitignore` 的无锚点 `dist/` 会让落进去的产物静默进不了库。产物保持 `minify: false`，入库的那份在 diff 里可读。为什么入库、为什么不能借参考仓库那个第三方契约的类比、被否决的方案，见 ADR 0014。
 
 突变测试**不在任何一档**：全量耗时较长，是独立的手动里程碑命令（见 §4.3 与 `docs/MUTATION-TESTING.md`）。
