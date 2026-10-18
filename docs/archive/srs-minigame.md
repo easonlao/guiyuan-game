@@ -1,6 +1,8 @@
 # 归元 (Guiyuan Game) 软件需求规格说明书 (SRS)
-**版本：** V1.0 (MVP 纯单机版)  
-**目标平台：** 微信小游戏 (通过 Cocos Creator 构建)
+
+> **已归档**：这是小程序化早期的需求稿，不是现行需求。它按 **Cocos Creator** 引擎规划，而现行方案已由 ADR 0004 改为纯代码 Canvas 2D。现行需求见 `docs/SRS.md`，引擎决策见 `docs/adr/0004-pure-ts-canvas-wechat-minigame.md`。
+>
+> **目标平台：** 微信小游戏 (通过 Cocos Creator 构建)
 
 ---
 

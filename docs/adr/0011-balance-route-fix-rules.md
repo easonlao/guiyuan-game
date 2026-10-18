@@ -25,7 +25,7 @@ status: accepted
 ## 决定
 
 1. **路线 = 修计分，不修盘面、不修 AI。** 完全剥离计分（AI 不读计分 **且** 终局改按盘面进度结算）后严格占优消失，说明压制优势来自计分而非盘面；动态策略对激进压制只赢 +0.71pp（95% CI [50.14%, 51.28%]），说明改 AI 也解决不了根因。
-   - **已落地的子路线是攻击进度定价。** 攻击状态分按「行动前对手盘面归一节点数」缩放，使压制的相对回报随盘面翻转。机制与设计意图归 `docs/GDD.md` §2.1，取值真源是 `src/core/logic/ScoreCalculator.ts` 的 `POINTS_CONFIG`；搜索过程与被否决候选见 `docs/headless/candidate-search.md`。
+   - **已落地的子路线是攻击进度定价。** 攻击状态分按「行动前对方盘面归一节点数」缩放，使压制的相对回报随盘面翻转。机制与设计意图归 `docs/GDD.md` §2.1，取值真源是 `src/core/logic/ScoreCalculator.ts` 的 `POINTS_CONFIG`；搜索过程与被否决候选见 `docs/headless/candidate-search.md`。
    - **终局结算口径未改。** 初版把「终局结算不再按累计分数奖励压制」列为路线的一部分，实际采纳的只是计分重定价子路线：`settlementMode` 仍为 `scoring`，`DAMAGE_PENALTY` 未动。
 2. **护栏带的唯一 live 定义在代码里。** `tools/GuardrailBand.ts` 的 `checkGuardrailBand` 是当前生效带的唯一定义，live 测试与候选校验 CLI 都从那里取数。ADR 0001 的 25%–80% 是「搜索深度 1/2 自对弈」口径的历史护栏，两条带**互不代换**。
 3. **死旋钮删除，不保留「以备后用」。** 只转发不生效的配置与恒等 0 的字段已删除；`DAMAGE_PENALTY` 仍是「仅终局生效」的活参数（终局读、AI 不读），保留。
