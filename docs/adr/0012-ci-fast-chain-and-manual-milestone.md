@@ -42,3 +42,9 @@ status: accepted
   该 workflow 从未在 CI 上成功跑过，第一次真正触发就暴露两处故障：dry run 里一条重仿真用例在插桩后被 Vitest 默认的 5s `testTimeout` 打断（`Stryker` 直接放弃）；修掉之后，全量在托管 runner 上跑 118 分钟才到 90%，折合全程约 132 分钟，被当时的 `timeout-minutes: 120` 取消。本地同一份配置约 50 分钟。
 
   判断依据是决定 4：棘轮的唯一消费者是跑它的 agent，流水线兜不兜底都不改变谁读这份报告。CI 那一份换来的只有「产物可下载」，代价是每条两三小时的等待，以及维护一个从未绿过的配置。全量因此固定走本地 `npm run mutation:milestone`，工程现状见 `docs/HLD.md` §4.5。
+
+- （2026-10-18，同日续）快链里的 `mutation:changed` **观察项**也删掉了，CI 现在只剩 `npm run verify` 一条 job。
+
+  决定 3 说的是「观察项不能当门禁」——这条仍然成立，但反过来说也成立：一个从不当门禁、红了不阻断、产物是 `artifacts/` 里一份没人会下载的报告的 job，实际贡献是每次推送 17 秒与一条 artifact 链接。而突变结果跨环境不可比（同一突变体在 Killed / Timeout 之间随负载翻转，见 `stryker.config.json` 的 `_timeoutComment`），在托管 runner 上跑出来的子集报告比本地更没有参考价值。
+
+  后果一栏里「观察项与门禁的区别在流水线里是显式的」这句自此不再描述任何现存 job——流水线里已经没有观察项。`mutation:changed` 本身仍在 `package.json`，只是改为由 agent 在本地按需跑（`docs/MUTATION-TESTING.md` §1 的表）。工程现状见 `docs/HLD.md` §4.5。
