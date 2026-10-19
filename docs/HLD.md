@@ -145,7 +145,9 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 
 仓库是 public，Actions 分钟数不限量。流水线只做一件事，且**只调命名脚本**（CI 的失败信号只有一个来源——那条脚本本身，yaml 里不写裸检查命令）：
 
-*   **快链（自动）**——`.github/workflows/fast.yml`：PR 与推送到主分支时跑 `npm run verify`，失败即红。流水线里没有第二个 job：`mutation:changed` 与全量棘轮都由 agent 在本地跑（`docs/MUTATION-TESTING.md`），CI 只负责「这次改动能不能过验收」这一件事。
+*   **快链（自动）**——`.github/workflows/fast.yml`：PR 与推送到主分支时跑 `npm run verify`，失败即红。流水线里没有第二个 job，CI 只负责「这次改动能不能过验收」这一件事。
+
+**突变测试不进 CI，且不得加回**：`mutation:changed` 只允许在本地 / agent 循环里跑。依据是 ADR 0012（决定 3 与 2026-10-18 的两条勘误）——要推翻它先改 ADR，不要在 yaml 里把 job 直接加回来。
 
 **全量突变测试不给 CI 开入口**：由 agent 在本地跑 `npm run mutation:milestone`（触发责任见 `AGENTS.md`）。曾有一个 `workflow_dispatch` 的里程碑 workflow，已删除——托管 runner 上实测全量约 132 分钟（dry run 1m12s 之后 118 分钟才走到 90%），本地同配置约 50 分钟，而棘轮的消费者只有跑它的那个 agent，CI 那份只多一个「产物可下载」。两处实测故障与删除理由见 ADR 0012 的勘误。
 
