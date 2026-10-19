@@ -71,7 +71,7 @@ Single-context. See `docs/agents/domain.md`.
 
 门禁与做法见 `docs/MUTATION-TESTING.md`。
 
-全量突变测试 + 棘轮对比（`npm run mutation:milestone`）的**实际触发者是 agent**，不是要人去按按钮。何时跑、门禁口径见 `docs/MUTATION-TESTING.md`。
+全量突变测试 + 棘轮对比（`npm run mutation:milestone`）由 **agent 在本地跑**——CI 不跑突变测试（见 `docs/HLD.md` §4.5）。何时跑、门禁口径见 `docs/MUTATION-TESTING.md`。
 
 ### Subagents
 

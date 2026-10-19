@@ -8,12 +8,13 @@ import { configDefaults, defineConfig } from 'vitest/config';
 //     在 Stryker 的 perTest 覆盖率插桩下超过 Vitest 默认的 10s hookTimeout，导致 dry run 直接失败。
 //     该用例只覆盖 `tools/CandidateValidation.ts`，而 Stryker 只 mutate `src/core/logic/**`，
 //     排除它不损失任何被 mutate 文件的覆盖信号。
-//   - 同时抬高 hookTimeout 与 testTimeout，给其余重用例留出插桩开销。后者的必要性由
-//     CI 暴露（本地看不到）：`座次平衡对称性` 那条用例本地约 0.5s，但 dry run 里被测源码
-//     带着 perTest 插桩、又跑在 2 vCPU 的 runner 上（4 个 worker 争 CPU），于是越过 Vitest
-//     默认的 5s testTimeout，整个 dry run 直接失败。该用例经 `HeadlessBenchmark` 驱动
-//     `TurnManager` / `ActionResolver` 跑 50 局矩阵，是 mutated 文件的真实覆盖来源，排掉
-//     等于丢信号（与 `candidate-validation` 的情形不同：那一份覆盖的是 `tools/`）。
+//   - 同时抬高 hookTimeout 与 testTimeout，给其余重用例留出插桩开销。testTimeout 这条
+//     是 2026-10-18 一次 CI 试跑留下的：`座次平衡对称性` 本地约 0.5s，但在 2 vCPU 的
+//     托管 runner 上、带着 perTest 插桩、4 个 worker 争 CPU 时越过了默认的 5s。
+//     那次运行所在的 workflow 已删除（CI 不再跑突变，见 ADR 0012），但上限保留：
+//     agent 的机器也可能被别的任务占满，dry run 一样带插桩。该用例经 `HeadlessBenchmark`
+//     驱动 `TurnManager` / `ActionResolver` 跑 50 局矩阵，是 mutated 文件的真实覆盖来源，
+//     排掉等于丢信号（与 `candidate-validation` 的情形不同：那一份覆盖的是 `tools/`）。
 //     抬到 60s 不会掩盖挂死：Stryker 自己的突变超时（`stryker.config.json` 的
 //     `timeoutMS` + `timeoutFactor × dryRun 净耗时`）远早于这个上限触发。
 //

@@ -47,8 +47,8 @@ const changedFiles = [...new Set([...trackedChanges, ...untrackedFiles])]
 
 if (changedFiles.length === 0) {
   // 无改动是合法状态（干净工作树 / 该 ref 未触及核心逻辑），不是失败。
-  // 退出 0 以免 CI 或自动化把「没有东西可注入突变」误判为报错；输出足以让人区分
-  // 「跑过了但没目标」和「真的跑过并全部存活」。
+  // 退出 0 以免调用方（agent 的收尾脚本、其他自动化）把「没有东西可注入突变」误判为
+  // 报错；输出足以让人区分「跑过了但没目标」和「真的跑过并全部存活」。
   process.stdout.write(
     `mutation:changed: 相对 '${ref}' 没有改动的 TypeScript 文件（目录 ${LOGIC_DIR}/，已排除 ${BARREL}）。\n`,
   );
