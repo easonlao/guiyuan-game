@@ -126,7 +126,7 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 ### 4.3 突变测试与健壮性体检 (Stryker.js)
 *   **工具集**：[Stryker.js](https://stryker-mutator.io/)
 *   **用途**：在业务逻辑中注入突变（Mutations，如把 `+` 变 `-`，把 `true` 变 `false`），检验现有的 Vitest 单元测试是否能精准捕捉到这些错误（杀死突变体）。
-*   **流程定位**：分改动处（`npm run mutation:changed`）与里程碑全量（`npm run mutation:milestone`）两条路径。全量不属 §4.4 任何一档、由 agent 手动触发（§4.5），改动处在 CI 快链里当观察项跑；节奏、门禁口径与理由见 `docs/MUTATION-TESTING.md`（唯一规则来源）。
+*   **流程定位**：分改动处（`npm run mutation:changed`）与里程碑全量（`npm run mutation:milestone`）两条路径，两条都由 agent 在本地跑（CI 里没有突变 job，见 §4.5）；节奏、门禁口径与理由见 `docs/MUTATION-TESTING.md`（唯一规则来源）。
 
 ### 4.4 验收命令分档 (Verification Tiers)
 
@@ -145,7 +145,7 @@ MVP 的工程前提：**纯单机、零服务器成本**；首包预算与降级
 
 仓库是 public，Actions 分钟数不限量。流水线只做一件事，且**只调命名脚本**（CI 的失败信号只有一个来源——那条脚本本身，yaml 里不写裸检查命令）：
 
-*   **快链（自动）**——`.github/workflows/fast.yml`：PR 与推送到主分支时跑 `npm run verify`，失败即红；`npm run mutation:changed` 作为**观察项**并行跑，红了不阻断验收，只把 `artifacts/` 落盘成可下载的 artifact。观察项不能当门禁：子集报告做不了棘轮对比（`docs/MUTATION-TESTING.md` §3.1）。
+*   **快链（自动）**——`.github/workflows/fast.yml`：PR 与推送到主分支时跑 `npm run verify`，失败即红。流水线里没有第二个 job：`mutation:changed` 与全量棘轮都由 agent 在本地跑（`docs/MUTATION-TESTING.md`），CI 只负责「这次改动能不能过验收」这一件事。
 
 **全量突变测试不给 CI 开入口**：由 agent 在本地跑 `npm run mutation:milestone`（触发责任见 `AGENTS.md`）。曾有一个 `workflow_dispatch` 的里程碑 workflow，已删除——托管 runner 上实测全量约 132 分钟（dry run 1m12s 之后 118 分钟才走到 90%），本地同配置约 50 分钟，而棘轮的消费者只有跑它的那个 agent，CI 那份只多一个「产物可下载」。两处实测故障与删除理由见 ADR 0012 的勘误。
 

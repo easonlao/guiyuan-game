@@ -10,8 +10,8 @@
 //
 // 为什么退出码由本脚本算：
 //   Stryker 只在 `thresholds.break` 是数字时才置退出码；本仓库没配 thresholds（也刻意不设全局阈值），
-//   所以「有新增存活就失败」这条门禁只能由这里兜底。CI 快链只把 `mutation:changed` 当观察项（不阻断验收），
-//   所以这条棘轮必须在本地 / agent 循环里成立。
+//   所以「有新增存活就失败」这条门禁只能由这里兜底。CI 不跑突变测试（只有 `npm run verify`），
+//   这条棘轮因此必须在本地 / agent 循环里成立。
 
 import { existsSync } from 'node:fs';
 import {

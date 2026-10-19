@@ -1,6 +1,6 @@
 # 快链：PR 开/更新/重开与推送到 main 时自动跑验收。
 #
-# 工程方案与「为什么快链自动、里程碑手动、不挂定时」见 `docs/HLD.md` §4.5 与 ADR 0012。
+# 工程方案与「为什么 CI 只跑验收、突变留给本地、不挂定时」见 `docs/HLD.md` §4.5 与 ADR 0012。
 #
 # ── 只调命名脚本 ──
 # 唯一的检查步是 `npm run verify`（`package.json` 里的命名脚本）。CI 的失败信号
@@ -10,9 +10,9 @@
 # 全部 step 只有 checkout / setup / `npm ci`（安装，不是检查）/ 命名脚本，
 # 没有一处凭证引用，权限收到只读。`npm run verify` 本身不联网。
 #
-# ── 观测项 ──
-# `mutation:changed` 作为**观测项**跑：红了不阻断验收 job，只把报告落盘成可下载
-# artifact。它**不能**当门禁——子集报告做不了棘轮对比（`mutation:check` 会退 `2`）。
+# ── 突变测试不在 CI ──
+# `mutation:changed` 与全量棘轮都由 agent 在本地跑（`docs/MUTATION-TESTING.md`）。
+# 流水线里只留验收一条，信号单一：一次推送 = 一次 `verify`。
 
 name: fast
 
@@ -56,45 +56,3 @@ jobs:
 
       - name: verify
         run: npm run verify
-
-  mutation-changed:
-    name: 改动突变测试观测项 (mutation:changed)
-    # 同上：钉镜像而不是 `ubuntu-latest`，理由见 `verify` job 的注释。
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    # 观测项：job 红了不把整条流水线判红，但报告仍要落盘（见上面的「观测项」说明）。
-    continue-on-error: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          # 需要完整历史：脚本要相对基线 ref 算「改了哪些文件」。
-          fetch-depth: 0
-
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Install
-        run: npm ci
-
-      # 基线 ref 必须传：`mutation:changed` 靠它判定「改动文件」，不传就无从比较。
-      #   - PR：base.sha（checkout 默认检出 merge commit，diff 出来的就是本 PR 的改动）
-      #   - push 到 main：event.before（本次推送前的 HEAD）；建分支时它是全零 SHA，要挡掉
-      - name: mutation:changed
-        run: npm run mutation:changed -- ${{ github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || 'HEAD~1' }}
-
-      # 观测项红了也要传产物——红的那次最需要看报告。`if: always()` 保证前一步失败也上传。
-      # `if-no-files-found: ignore`：只改文档的推送里 `mutation:changed` 没有可突变文件，
-      # `artifacts/` 压根不存在，报 `warn` 会每次都抖一条「No files were found」标注。
-      # 真出错时信号不丢：Stryker 崩了这一步就是红的，job 状态本身看得见。
-      - name: Upload mutation report
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: mutation-changed-report
-          path: artifacts/
-          if-no-files-found: ignore
-          retention-days: 14
