@@ -18,6 +18,8 @@ ZCode 还认自己的 `<工作区>/.zcode/skills` 与 `~/.zcode/skills`（`getWo
 
 pi 另外也认 `.pi/skills/`，本仓库不用，`.gitignore` 保留规则以防工具写入。
 
+pi 还读用户级 `~/.pi/agent/skills/`，一份技能对所有仓库生效。只给 pi 用的技能（`grill-me`、`grilling`、`research`、`wait-what`）放在那里：不在本仓库，也不在 `skills-lock.json` 里。
+
 ## codegraph MCP
 
 | 工具 | 项目级文件 | 备注 |

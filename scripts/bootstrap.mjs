@@ -41,7 +41,7 @@ function codegraph(args) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-// 1. 技能：`.agents/skills/` 里只有 38 个上游技能入库（见 .gitignore），其余靠 lock 重建。
+// 1. 技能：`.agents/skills/` 里只有 34 个上游技能入库（见 .gitignore），其余靠 lock 重建。
 const lock = JSON.parse(readFileSync(join(repoRoot, 'skills-lock.json'), 'utf8'));
 const missing = Object.keys(lock.skills).filter((name) => !existsSync(join(skillsDir, name)));
 if (missing.length === 0) {

@@ -168,7 +168,7 @@ if (score >= 0) { /* ... */ }
 
 ## 7. 规则为什么不放在 `.agents/skills/`
 
-- `.agents/skills/` 是**上游技能的副本**（38 个入库，见根 `.gitignore` 注释），按 `AGENTS.md` 的说明，`skills update` 会**整目录覆盖**——写进去的规则活不过一次工具更新。
+- `.agents/skills/` 是**上游技能的副本**（34 个入库，见根 `.gitignore` 注释），按 `AGENTS.md` 的说明，`skills update` 会**整目录覆盖**——写进去的规则活不过一次工具更新。
 - 所以规则写在这份 **committed** 的 `docs/MUTATION-TESTING.md`，由 `AGENTS.md` 的 Mutation testing 小节导航。改动进版本库，可 diff、可 review、可追溯。
 
 ### 7.1 为什么不立 ADR（决策 7）
