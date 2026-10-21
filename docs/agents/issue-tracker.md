@@ -34,7 +34,7 @@ Used by `/wayfinder`. The **map** is a file with one **child** file per ticket.
 两者都在仓库根目录下、都由工具写入，但用途不同：
 
 - **`.scratch/` 入库**：它是任务层的真源。`Resolve` 一步把决定追加进 `map.md`，这些文件必须跨 clone、跨机器可见，否则整个任务层协议就是空转——写进去的答案下一个 clone 看不到。内容全是 `.md`，体积小，不含密钥。
-- **`.agents/skills/` 也入库（38 个上游技能），但不能往里写规则**：`skills update` 会整目录覆盖，写进去的规则活不过一次工具更新。技能是上游代码的副本，来源与 hash 由根目录 `skills-lock.json` 记录，可重建。`.gitignore` 只排除了两个 sprite 技能（`sprite-gen/` 体量大、`sprite-sheet/` 为本地自制），排除理由写在该文件的注释里。
+- **`.agents/skills/` 也入库（34 个上游技能），但不能往里写规则**：`skills update` 会整目录覆盖，写进去的规则活不过一次工具更新。技能是上游代码的副本，来源与 hash 由根目录 `skills-lock.json` 记录，可重建。`.gitignore` 只排除了两个 sprite 技能（`sprite-gen/` 体量大、`sprite-sheet/` 为本地自制），排除理由写在该文件的注释里。
 
 `.gitignore` 排除的是具体目录（`.pi/skills/`、`.agents/skills/sprite-gen/`、`.agents/skills/sprite-sheet/`），不是整个 `.pi/` 或 `.agents/`。git 的规则是「父目录被排除时其内文件无法再被包含」，排除 `.pi/` 会让里面的反选被静默忽略——不报错，只是不生效。所以 `.pi/mcp.json` 与 `.agents/plugins/` 直接入库，不需要任何反选。
 

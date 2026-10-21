@@ -45,7 +45,7 @@ minigame/project.private.config.json
 # pi 专属技能目录：本项目不用（技能统一装在 .agents/skills/），保留规则以防工具写入
 .pi/skills/
 
-# 通用 Agent Skills 目录：38 个上游技能入库，来源与 hash 见根目录 skills-lock.json。
+# 通用 Agent Skills 目录：34 个上游技能入库，来源与 hash 见根目录 skills-lock.json。
 # 只排两个 sprite*：
 #   sprite-gen   （aldegad/sprite-gen）的整仓，53 MB，其中 48 MB 是 docs/assets 的演示 GIF。
 #               `skills update` 每次覆盖，改动的 GIF 会永久留在 git 历史里。它在 skills-lock.json 里，
