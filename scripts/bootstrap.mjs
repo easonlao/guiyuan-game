@@ -9,7 +9,6 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const skillsDir = join(repoRoot, '.agents', 'skills');
-const CODEGRAPH = '@colbymchenry/codegraph@1.6.2';
 
 function npx(args) {
   const result = spawnSync('npx', ['-y', ...args], {
@@ -18,6 +17,26 @@ function npx(args) {
     // Windows 上 npx 是 npx.cmd，不加 shell 会 ENOENT。
     shell: process.platform === 'win32',
   });
+  if (result.error) throw result.error;
+  if (result.status !== 0) process.exit(result.status ?? 1);
+}
+
+// codegraph 跑 PATH 上那份，不走 npx：二进制一份、索引每项目一份，
+// 版本由各机器自己管，见 docs/agents/agent-tooling.md。
+function codegraph(args) {
+  const result = spawnSync('codegraph', args, {
+    cwd: repoRoot,
+    stdio: 'inherit',
+    // Windows 上 codegraph 是 codegraph.cmd，不加 shell 会 ENOENT。
+    shell: process.platform === 'win32',
+  });
+  if (result.error?.code === 'ENOENT' || result.status === 127) {
+    console.error('[bootstrap] 找不到 codegraph 命令。先装一份（装到 ~/.local/bin）：');
+    console.error(
+      '  curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | sh',
+    );
+    process.exit(1);
+  }
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
@@ -38,5 +57,5 @@ if (existsSync(join(repoRoot, '.codegraph', 'codegraph.db'))) {
   console.log('[bootstrap] codegraph 索引已在，跳过。');
 } else {
   console.log('[bootstrap] 建 codegraph 索引。');
-  npx([CODEGRAPH, 'init']);
+  codegraph(['init']);
 }
