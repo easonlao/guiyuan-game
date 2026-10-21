@@ -1,13 +1,8 @@
 {
   "mcpServers": {
     "codegraph": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@colbymchenry/codegraph@1.6.2",
-        "serve",
-        "--mcp"
-      ],
+      "command": "codegraph",
+      "args": ["serve", "--mcp"],
       "exposure": "direct"
     }
   }
