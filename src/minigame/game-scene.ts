@@ -14,7 +14,13 @@
 import { RuleSwitches } from '../core/logic/ActionCandidates.js';
 import { TurnManager } from '../core/logic/TurnManager.js';
 import { isNodeGuiYi } from '../core/logic/State.js';
-import { BALANCED_WEIGHTS, createStrategy } from '../core/ai/Strategy.js';
+import {
+  AGGRESSIVE_WEIGHTS,
+  BALANCED_WEIGHTS,
+  DEFENSIVE_WEIGHTS,
+  RUSH_GUIYUAN_WEIGHTS,
+  createStrategy,
+} from '../core/ai/Strategy.js';
 import { DecisionStrategy } from '../core/ai/types.js';
 import { createPRNG, PRNG } from '../core/utils/prng.js';
 import {
@@ -54,6 +60,11 @@ import {
   NodeChange,
 } from './views/action-result-view.js';
 import { RuneFlightView } from './views/rune-flight-view.js';
+import { audioSynthesizer } from './audio/audio-synthesizer.js';
+import { storageService } from './services/storage-service.js';
+import { RuleModal } from './overlays/rule-modal.js';
+import { GameModeKey, SettingsModal } from './overlays/settings-modal.js';
+import { StatsModal } from './overlays/stats-modal.js';
 
 /** 场景所处的表现阶段。 */
 export type GameScenePhase =
@@ -107,6 +118,16 @@ export interface GameSceneOptions {
   /** 命中波纹时长（秒），默认 0.35。 */
   readonly impactDuration?: number;
   readonly resultHold?: number;
+  /** 对局模式：'ai' (人机) 或 'pvp' (同屏双人)，默认 'ai' */
+  readonly mode?: 'ai' | 'pvp';
+  /** AI 策略性格，默认 'ai_balanced' */
+  readonly aiStrategyKey?: GameModeKey;
+  /** 动效与倒计时播放倍速，默认 1 */
+  readonly speedMultiplier?: number;
+  /** 对局状态改变通知 (Web 仪表盘联动) */
+  readonly onStateChange?: (state: GameState) => void;
+  /** 对局日志播报通知 (Web 演武实录联动) */
+  readonly onLog?: (message: string) => void;
 }
 
 /** 一个动作在法盘上的落点：作用到哪一方的哪个槽位。 */
@@ -175,8 +196,18 @@ export class GameScene extends Container {
   public actionBar: ActionBarView;
 
   private _turnManager: TurnManager;
-  private readonly strategy: DecisionStrategy;
+  private strategy: DecisionStrategy;
   private readonly rules: RuleSwitches;
+  public mode: 'ai' | 'pvp' = 'ai';
+  public aiStrategyKey: GameModeKey = 'ai_balanced';
+  public speedMultiplier = 1;
+  public onStateChange?: (state: GameState) => void;
+  public onLog?: (message: string) => void;
+
+  public readonly ruleModal: RuleModal;
+  public readonly settingsModal: SettingsModal;
+  public readonly statsModal: StatsModal;
+
   private readonly autoExecuteDelay: number;
   private readonly aiThinkDelay: number;
   private readonly expressionHold: number;
@@ -216,6 +247,11 @@ export class GameScene extends Container {
     this.safeTop = options.safeTop ?? DEFAULT_SAFE_TOP;
     this.safeBottom = options.safeBottom ?? DEFAULT_SAFE_BOTTOM;
     this.rules = options.rules ?? {};
+    this.mode = options.mode ?? 'ai';
+    this.aiStrategyKey = options.aiStrategyKey ?? 'ai_balanced';
+    this.speedMultiplier = options.speedMultiplier ?? 1;
+    this.onStateChange = options.onStateChange;
+    this.onLog = options.onLog;
     this.autoExecuteDelay = options.autoExecuteDelay ?? DEFAULT_AUTO_EXECUTE_DELAY;
     this.aiThinkDelay = options.aiThinkDelay ?? DEFAULT_AI_THINK_DELAY;
     this.expressionHold = options.expressionHold ?? DEFAULT_EXPRESSION_HOLD;
@@ -225,7 +261,7 @@ export class GameScene extends Container {
     this.impactDuration = options.impactDuration ?? 0.35;
     this.resultHold = options.resultHold ?? 0.65;
     // 规则开关绑定到 AI 估值器（策略层）；候选生成不读 rules。
-    this.strategy = createStrategy(BALANCED_WEIGHTS, { rules: this.rules });
+    this.strategy = this.createAiStrategy(this.aiStrategyKey);
     this._turnManager =
       options.turnManager ??
       new TurnManager({
@@ -247,12 +283,59 @@ export class GameScene extends Container {
     this.lastAction = new ActionResultView(this.width - 20);
     this.lastAction.x = 10;
     this.placeResult();
+
+    this.ruleModal = new RuleModal({
+      width: this.width,
+      height: this.height,
+    });
+    this.ruleModal.visible = false;
+
+    this.settingsModal = new SettingsModal({
+      width: this.width,
+      height: this.height,
+      currentMode: this.aiStrategyKey,
+      onApplySettings: (cfg) => {
+        this.speedMultiplier = cfg.speed;
+        audioSynthesizer.enabled = cfg.soundEnabled;
+        if (cfg.mode === 'pvp') {
+          this.mode = 'pvp';
+        } else {
+          this.mode = 'ai';
+          this.aiStrategyKey = cfg.mode;
+          this.strategy = this.createAiStrategy(this.aiStrategyKey);
+        }
+        if (cfg.restartGame) {
+          this.restart(Date.now(), { mode: this.mode, aiStrategyKey: this.aiStrategyKey });
+        }
+      },
+    });
+    this.settingsModal.visible = false;
+
+    this.statsModal = new StatsModal({
+      width: this.width,
+      height: this.height,
+    });
+    this.statsModal.visible = false;
+
     this.addChild(this.board);
     this.addChild(this.runeFlight);
     this.addChild(this.characters);
     this.addChild(this.actionBar);
     this.addChild(this.lastAction);
     this.bindTurnManager(this._turnManager);
+  }
+
+  public createAiStrategy(key: GameModeKey): DecisionStrategy {
+    switch (key) {
+      case 'ai_rush':
+        return createStrategy(RUSH_GUIYUAN_WEIGHTS, { rules: this.rules });
+      case 'ai_aggressive':
+        return createStrategy(AGGRESSIVE_WEIGHTS, { rules: this.rules });
+      case 'ai_defensive':
+        return createStrategy(DEFENSIVE_WEIGHTS, { rules: this.rules });
+      default:
+        return createStrategy(BALANCED_WEIGHTS, { rules: this.rules });
+    }
   }
 
   /** 核心状态机（只读；`restart()` 会换成新实例）。 */
@@ -344,6 +427,9 @@ export class GameScene extends Container {
     this.runeFlight.syncCenter();
     this.characters.resize(width, this.safeTop, this.height < 650 || this.safeTop > 24);
     this.placeActionBar();
+    this.ruleModal?.resize(width, height);
+    this.settingsModal?.resize(width, height);
+    this.statsModal?.resize(width, height);
     if (this._phase === 'idle' || this._phase === 'game-over') {
       this.replaceRuneFlight();
       this.runeFlightStale = false;
@@ -361,7 +447,18 @@ export class GameScene extends Container {
   }
 
   /** 终局后重新开局：换一颗随机源、重置表现态，从第 1 回合重来。 */
-  public restart(seedOrPrng: number | PRNG = Date.now()): void {
+  public restart(
+    seedOrPrng: number | PRNG = Date.now(),
+    options?: { mode?: 'ai' | 'pvp'; aiStrategyKey?: GameModeKey },
+  ): void {
+    if (options?.mode !== undefined) {
+      this.mode = options.mode;
+    }
+    if (options?.aiStrategyKey !== undefined) {
+      this.aiStrategyKey = options.aiStrategyKey;
+      this.strategy = this.createAiStrategy(this.aiStrategyKey);
+      this.settingsModal.setMode(this.aiStrategyKey);
+    }
     this.unbindTurnManager();
     const prng = typeof seedOrPrng === 'number' ? createPRNG(seedOrPrng) : seedOrPrng;
     this._turnManager = new TurnManager({ prng });
@@ -386,6 +483,7 @@ export class GameScene extends Container {
     this.bindTurnManager(this._turnManager);
     this.setPhase('idle');
     this.beginTurn();
+    this.onStateChange?.(this._turnManager.getState());
   }
 
   /** 退订核心事件（销毁场景时调用）。 */
@@ -404,21 +502,22 @@ export class GameScene extends Container {
    * `Tween` 不掌握帧循环，时钟完全由这里注入。
    */
   public update(dt: number): void {
+    const effectiveDt = dt * this.speedMultiplier;
     const phaseBefore = this._phase;
-    this.characters.updateTimers(dt);
-    this.runeFlight.update(dt);
+    this.characters.updateTimers(effectiveDt);
+    this.runeFlight.update(effectiveDt);
     // 法盘只借时钟推进归一 / 亢极柔光；盘面投影仍由状态变更驱动（`board.update`）。
-    this.board.tick(dt);
+    this.board.tick(effectiveDt);
     if (this._phase === 'result') {
       if (phaseBefore !== 'result') return;
-      this.timer -= dt;
+      this.timer -= effectiveDt;
       if (this.timer <= 0) this.finishResult();
       return;
     }
     if (this._phase !== 'auto-pending' && this._phase !== 'ai-thinking') {
       return;
     }
-    this.timer -= dt;
+    this.timer -= effectiveDt;
     if (this.timer <= 0) {
       this.commitPendingDecision();
     }
@@ -426,10 +525,55 @@ export class GameScene extends Container {
 
   /**
    * 「点击屏幕任意处」的统一入口：
+   * - 弹层开启时：不响应下层对局点击；
+   * - 点击右上角功能按钮：唤起对应弹层；
    * - 唯一候选的缓冲期内：立即加速结算（GDD §2.4「允许随时加速」）；
    * - 终局展示：重新开局。
    */
-  public handleTap(): void {
+  public handleTap(screenX?: number, screenY?: number): void {
+    if (typeof screenX === 'number' && typeof screenY === 'number') {
+      if (this.ruleModal?.visible) {
+        this.ruleModal.onTap?.(screenX, screenY);
+        return;
+      }
+      if (this.settingsModal?.visible) {
+        this.settingsModal.onTap?.(screenX, screenY);
+        return;
+      }
+      if (this.statsModal?.visible) {
+        this.statsModal.onTap?.(screenX, screenY);
+        return;
+      }
+    } else if (this.ruleModal?.visible || this.settingsModal?.visible || this.statsModal?.visible) {
+      return;
+    }
+
+    if (typeof screenX === 'number' && typeof screenY === 'number') {
+      const topY = this.safeTop + 2;
+      const topH = 22;
+      if (screenY >= topY - 4 && screenY <= topY + topH + 4) {
+        // 【功勋】
+        if (screenX >= this.width - 52 && screenX <= this.width - 6) {
+          audioSynthesizer.play('tap');
+          this.statsModal.refresh();
+          this.statsModal.open();
+          return;
+        }
+        // 【天机】
+        if (screenX >= this.width - 100 && screenX <= this.width - 54) {
+          audioSynthesizer.play('tap');
+          this.settingsModal.open();
+          return;
+        }
+        // 【道藏】
+        if (screenX >= this.width - 148 && screenX <= this.width - 102) {
+          audioSynthesizer.play('tap');
+          this.ruleModal.open();
+          return;
+        }
+      }
+    }
+
     if (this._phase === 'auto-pending') {
       this.commitPendingDecision();
       return;
@@ -469,6 +613,7 @@ export class GameScene extends Container {
       return;
     }
     this.setPhase('entrance');
+    audioSynthesizer.play('deal');
     this.runeFlight.playEntrance(tianGan, {
       owner: state.currentPlayer,
       duration: this.entranceDuration,
@@ -480,7 +625,7 @@ export class GameScene extends Container {
   private afterEntrance(): void {
     const state = this._turnManager.getState();
     const actions = this._turnManager.getAvailableActions();
-    if (state.currentPlayer === 'P2') {
+    if (state.currentPlayer === 'P2' && this.mode !== 'pvp') {
       this.setPhase('ai-thinking');
       this.timer = this.aiThinkDelay;
       return;
@@ -584,6 +729,21 @@ export class GameScene extends Container {
     });
     this.characters.playAction(actor, event.actionType, this.flightDuration, this.impactDuration);
 
+    if (event.actionType === ActionType.TRANS) {
+      audioSynthesizer.play('trans');
+    } else if (event.actionType === ActionType.ATK) {
+      audioSynthesizer.play('atk');
+    } else if (event.actionType === ActionType.BURST || event.actionType === ActionType.BURST_ATK) {
+      audioSynthesizer.play('burst');
+    } else {
+      audioSynthesizer.play('tap');
+    }
+
+    const actorName = actor === 'P1' ? '先手' : this.mode === 'pvp' ? '后手' : '天道';
+    const logMsg = `第${state.round}轮 · ${actorName} 施展【${ACTION_LABEL[event.actionType]}】(${stemLabel}) -> 影响 ${changes.length} 处`;
+    this.onLog?.(logMsg);
+    this.onStateChange?.(state);
+
     // 法盘已是双环（行动前等级），飞行期不再换盘；落点后才投影结算结果。
     this.setPhase('flying');
     this.runeFlight.flyTo(target.player, target.element, target.polarity, {
@@ -640,6 +800,7 @@ export class GameScene extends Container {
     }
     const node = this._turnManager.getState().players[event.player].board[event.element];
     if (isNodeGuiYi(node)) {
+      audioSynthesizer.play('guiyi');
       if (this._phase === 'flying') this.pendingCelebrations.add(event.player);
       else this.characters.setExpression(event.player, 'celebrate', this.celebrateHold);
     }
@@ -743,6 +904,40 @@ export class GameScene extends Container {
     );
     this.showFinalPoses(state);
     this.projectBoards(state);
+
+    if (state.winner === 'P1') {
+      audioSynthesizer.play('victory');
+    } else if (state.winner === 'P2') {
+      audioSynthesizer.play('defeat');
+    }
+
+    try {
+      storageService.recordMatch({
+        timestamp: Date.now(),
+        winner: state.winner ?? 'DRAW',
+        reason: state.endReason ?? 'UNKNOWN',
+        rounds: state.round,
+        p1Score: state.players.P1.score,
+        p2Score: state.players.P2.score,
+        mode: this.mode === 'pvp' ? '同屏双人' : this.getAiModeName(),
+      });
+    } catch {
+      // 容错
+    }
+    this.onStateChange?.(state);
+  }
+
+  public getAiModeName(): string {
+    switch (this.aiStrategyKey) {
+      case 'ai_rush':
+        return '青木冲刺';
+      case 'ai_aggressive':
+        return '裂天克破';
+      case 'ai_defensive':
+        return '镇岳固守';
+      default:
+        return '太虚天道';
+    }
   }
 
   /** 终局姿势：胜方「胜」、负方「负」，持续到重开（`restart()` 清掉）；平局不摆姿势。 */
@@ -909,7 +1104,55 @@ export class GameScene extends Container {
     ctx.fillStyle = THEME.gold;
     ctx.font = `bold 18px ${THEME.font}`;
     ctx.fillText('归元弈', 18, this.safeTop + 13);
+
+    const modeBadge = this.getModeBadge();
+    ctx.font = `11px ${THEME.font}`;
+    ctx.fillStyle = THEME.muted;
+    ctx.fillText(modeBadge, 84, this.safeTop + 13);
+
+    this.drawTopButtons(ctx);
     ctx.restore();
+  }
+
+  private drawTopButtons(ctx: CanvasRenderingContext2D): void {
+    const btnH = 22;
+    const btnW = 42;
+    const topY = this.safeTop + 2;
+    const buttons = [
+      { label: '道藏', x: this.width - 146 },
+      { label: '天机', x: this.width - 98 },
+      { label: '功勋', x: this.width - 50 },
+    ];
+
+    for (const btn of buttons) {
+      ctx.fillStyle = 'rgba(16, 46, 53, 0.7)';
+      ctx.fillRect(btn.x, topY, btnW, btnH);
+      ctx.strokeStyle = THEME.edge;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(btn.x, topY, btnW, btnH);
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `11px ${THEME.font}`;
+      ctx.fillStyle = THEME.ivory;
+      ctx.fillText(btn.label, btn.x + btnW / 2, topY + btnH / 2);
+    }
+  }
+
+  private getModeBadge(): string {
+    if (this.mode === 'pvp') {
+      return '【同屏双人】';
+    }
+    switch (this.aiStrategyKey) {
+      case 'ai_rush':
+        return '【青木冲刺】';
+      case 'ai_aggressive':
+        return '【裂天克破】';
+      case 'ai_defensive':
+        return '【镇岳固守】';
+      default:
+        return '【太虚天道】';
+    }
   }
 
   public override render(ctx: CanvasRenderingContext2D): void {
@@ -917,6 +1160,9 @@ export class GameScene extends Container {
     ctx.save();
     this.drawDecisionGuide(ctx);
     ctx.restore();
+    if (this.ruleModal?.visible) this.ruleModal.render(ctx);
+    if (this.settingsModal?.visible) this.settingsModal.render(ctx);
+    if (this.statsModal?.visible) this.statsModal.render(ctx);
   }
 
   private placeResult(): void {

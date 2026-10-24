@@ -77,7 +77,7 @@ export function initMiniGame(): void {
     safeTop,
     safeBottom,
   });
-  stage.onTap = () => scene.handleTap();
+  stage.onTap = (x, y) => scene.handleTap(x, y);
   stage.addChild(scene);
 
   loadWechatCharacterAtlas(wx, (atlas) => scene.characters.setSpriteAtlas(atlas));

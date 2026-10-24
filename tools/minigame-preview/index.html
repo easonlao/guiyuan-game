@@ -3,17 +3,435 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>归元弈 · 对局预览</title>
+    <title>归元弈 · 策略对弈工作台</title>
     <style>
-      * { box-sizing: border-box; }
-      html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #080f14; }
-      body { display: grid; place-items: center; }
-      canvas { display: block; width: min(100vw, 460px); height: 100dvh; touch-action: none; outline: none; }
-      canvas:focus-visible { outline: 1px solid #d7b879; outline-offset: -1px; }
+      :root {
+        --bg-ink: #071318;
+        --bg-panel: #0d252c;
+        --bg-panel-raised: #12333b;
+        --border-edge: #224a52;
+        --border-gold: #d8b876;
+        --border-gold-dim: #7a6640;
+        --text-gold: #e5c788;
+        --text-ivory: #f4ead2;
+        --text-muted: #8ca39d;
+        --accent-jade: #72cfb0;
+        --accent-damage: #ee806b;
+        --font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg-ink);
+        color: var(--text-ivory);
+        font-family: var(--font-family);
+      }
+
+      /* 整体布局容器 */
+      #app-container {
+        display: flex;
+        flex-direction: column;
+        width: 100vw;
+        height: 100dvh;
+        background: radial-gradient(circle at 50% 30%, #102d35 0%, #08171d 60%, #050e12 100%);
+      }
+
+      /* 顶部导航控制条 */
+      #top-navbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        height: 48px;
+        background: rgba(13, 37, 44, 0.85);
+        border-bottom: 1px solid var(--border-edge);
+        backdrop-filter: blur(8px);
+        z-index: 10;
+        flex-shrink: 0;
+      }
+
+      .nav-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .logo-badge {
+        font-size: 18px;
+        font-weight: bold;
+        letter-spacing: 2px;
+        color: var(--text-gold);
+        text-shadow: 0 0 10px rgba(216, 184, 118, 0.3);
+      }
+
+      .subtitle-tag {
+        font-size: 11px;
+        color: var(--text-muted);
+        padding: 2px 8px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-edge);
+        border-radius: 4px;
+      }
+
+      .nav-center {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .mode-select {
+        background: var(--bg-panel-raised);
+        color: var(--text-ivory);
+        border: 1px solid var(--border-edge);
+        border-radius: 4px;
+        padding: 4px 10px;
+        font-size: 12px;
+        outline: none;
+        cursor: pointer;
+        transition: border-color 0.2s;
+      }
+      .mode-select:hover, .mode-select:focus {
+        border-color: var(--border-gold);
+      }
+
+      .nav-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .nav-btn {
+        background: var(--bg-panel-raised);
+        color: var(--text-ivory);
+        border: 1px solid var(--border-edge);
+        border-radius: 4px;
+        padding: 5px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: all 0.2s;
+      }
+      .nav-btn:hover {
+        background: rgba(216, 184, 118, 0.15);
+        border-color: var(--border-gold);
+        color: var(--text-gold);
+      }
+      .nav-btn.active {
+        background: var(--border-gold);
+        color: #071318;
+        font-weight: bold;
+      }
+
+      /* 主体工作区分栏 */
+      #workspace {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* 侧边信息栏公用样式 */
+      .side-panel {
+        width: 320px;
+        background: rgba(11, 31, 38, 0.7);
+        border-right: 1px solid var(--border-edge);
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        gap: 16px;
+        overflow-y: auto;
+        backdrop-filter: blur(6px);
+        flex-shrink: 0;
+      }
+      #right-panel {
+        border-right: none;
+        border-left: 1px solid var(--border-edge);
+        width: 340px;
+      }
+
+      .card {
+        background: rgba(16, 46, 53, 0.6);
+        border: 1px solid var(--border-edge);
+        border-radius: 6px;
+        padding: 14px;
+      }
+      .card-title {
+        font-size: 13px;
+        font-weight: bold;
+        color: var(--text-gold);
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(216, 184, 118, 0.15);
+        padding-bottom: 6px;
+      }
+
+      /* 局况与比分指标 */
+      .metric-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 12px;
+      }
+      .metric-label { color: var(--text-muted); }
+      .metric-value { font-weight: bold; color: var(--text-ivory); }
+
+      .score-box {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 6px;
+      }
+      .player-score {
+        background: rgba(8, 23, 29, 0.6);
+        border: 1px solid var(--border-edge);
+        padding: 8px;
+        border-radius: 4px;
+        text-align: center;
+      }
+      .player-score.active {
+        border-color: var(--border-gold);
+        box-shadow: 0 0 8px rgba(216, 184, 118, 0.2);
+      }
+      .player-name { font-size: 11px; color: var(--text-muted); }
+      .player-points { font-size: 20px; font-weight: bold; color: var(--text-gold); margin-top: 2px; }
+
+      .progress-bar-container {
+        height: 6px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 4px;
+      }
+      .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent-jade), var(--text-gold));
+        width: 0%;
+        transition: width 0.3s;
+      }
+
+      /* 演武实时日志 */
+      #log-container {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 11px;
+        line-height: 1.5;
+        padding-right: 4px;
+        max-height: 280px;
+      }
+      .log-item {
+        background: rgba(8, 27, 34, 0.5);
+        border-left: 2px solid var(--border-edge);
+        padding: 4px 8px;
+        border-radius: 2px;
+        color: var(--text-ivory);
+        animation: fadeIn 0.2s ease;
+      }
+      .log-item.p1 { border-left-color: var(--accent-jade); }
+      .log-item.p2 { border-left-color: var(--accent-damage); }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* 中间画布容器 */
+      #center-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(circle at 50% 50%, rgba(16, 46, 53, 0.3) 0%, transparent 70%);
+      }
+
+      #canvas-wrapper {
+        position: relative;
+        box-shadow: 0 0 30px rgba(0, 0, 0, 0.6), 0 0 1px 1px var(--border-edge);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      canvas#game {
+        display: block;
+        width: min(100vw, 440px);
+        height: min(92dvh, 780px);
+        touch-action: none;
+        outline: none;
+        background: #081b22;
+      }
+
+      /* 底部快捷键状态提示 */
+      #shortcut-bar {
+        position: absolute;
+        bottom: 8px;
+        display: flex;
+        gap: 16px;
+        font-size: 11px;
+        color: var(--text-muted);
+        background: rgba(13, 37, 44, 0.7);
+        padding: 4px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(54, 86, 90, 0.4);
+        pointer-events: none;
+      }
+      .kbd {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 1px 5px;
+        border-radius: 3px;
+        color: var(--text-gold);
+        font-family: monospace;
+      }
+
+      /* 移动端自适应折叠 */
+      @media (max-width: 960px) {
+        .side-panel { display: none !important; }
+        #top-navbar .subtitle-tag { display: none; }
+        canvas#game {
+          width: 100vw !important;
+          height: calc(100dvh - 48px) !important;
+          border-radius: 0;
+        }
+        #canvas-wrapper {
+          box-shadow: none;
+          border-radius: 0;
+        }
+      }
     </style>
   </head>
   <body>
-    <canvas id="game" tabindex="0" aria-label="归元弈对局。点击操作按钮出手，空格加速自动结算，R重新开局。"></canvas>
+    <div id="app-container">
+      <!-- 顶部控制条 -->
+      <header id="top-navbar">
+        <div class="nav-left">
+          <div class="logo-badge">归元弈</div>
+          <div class="subtitle-tag">五行流转 · 阴阳归一</div>
+        </div>
+
+        <div class="nav-center">
+          <select id="mode-select" class="mode-select" title="选择对局模式与天道性格">
+            <option value="ai_balanced">太虚道人 (平衡天道)</option>
+            <option value="ai_rush">青木神君 (归元冲刺)</option>
+            <option value="ai_aggressive">裂天剑祖 (激进压制)</option>
+            <option value="ai_defensive">镇岳真人 (保守防御)</option>
+            <option value="pvp">阴阳对弈 (同屏双人)</option>
+          </select>
+        </div>
+
+        <div class="nav-right">
+          <button id="btn-restart" class="nav-btn" title="重新开始对局 (快捷键: R)">🔄 重开</button>
+          <button id="btn-audio" class="nav-btn" title="切换国风合成音效 (快捷键: M)">🔊 仙乐</button>
+          <button id="btn-rules" class="nav-btn" title="查看道藏秘籍 (快捷键: H)">📜 道藏</button>
+          <button id="btn-fullscreen" class="nav-btn" title="全屏沉浸对弈">⛶ 全屏</button>
+        </div>
+      </header>
+
+      <!-- 主工作区 -->
+      <main id="workspace">
+        <!-- 左侧面板：天机局况盘 -->
+        <aside id="left-panel" class="side-panel">
+          <!-- 回合与天机 -->
+          <div class="card">
+            <div class="card-title">
+              <span>天机轮转</span>
+              <span id="ui-phase" style="color: var(--accent-jade)">对弈中</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">大回合推进</span>
+              <span id="ui-round" class="metric-value">第 1 / 30 轮</span>
+            </div>
+            <div class="progress-bar-container">
+              <div id="ui-round-bar" class="progress-bar" style="width: 3.3%"></div>
+            </div>
+            <div class="metric-row" style="margin-top: 10px;">
+              <span class="metric-label">当前行动方</span>
+              <span id="ui-current-player" class="metric-value" style="color: var(--text-gold)">先手 (你)</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">当值天干符令</span>
+              <span id="ui-stem" class="metric-value">待抽天干</span>
+            </div>
+          </div>
+
+          <!-- 双方比分与归一进度 -->
+          <div class="card">
+            <div class="card-title">双方道力对拼</div>
+            <div class="score-box">
+              <div id="box-p1" class="player-score active">
+                <div class="player-name">先手 · 玩家(阳)</div>
+                <div id="score-p1" class="player-points">0</div>
+                <div id="guiyi-p1" style="font-size: 10px; color: var(--accent-jade); margin-top: 4px;">归一: 0/5</div>
+              </div>
+              <div id="box-p2" class="player-score">
+                <div id="name-p2" class="player-name">后手 · 天道(阴)</div>
+                <div id="score-p2" class="player-points">0</div>
+                <div id="guiyi-p2" style="font-size: 10px; color: var(--accent-damage); margin-top: 4px;">归一: 0/5</div>
+              </div>
+            </div>
+            <div id="ui-gap" class="metric-row" style="margin-top: 10px; justify-content: center; color: var(--text-muted);">
+              双方战意势均力敌
+            </div>
+          </div>
+
+          <!-- 决胜雷达预警 -->
+          <div class="card">
+            <div class="card-title">智能快刀仲裁雷达</div>
+            <div id="ui-radar" style="font-size: 11px; line-height: 1.6; color: var(--text-muted);">
+              两军正处开局筑基期。先手达成归元且后手差 ≥ 2 侧时秒结；后手仅差 1 侧时触发天命揭牌！
+            </div>
+          </div>
+        </aside>
+
+        <!-- 中间：法盘游戏画布 -->
+        <section id="center-panel">
+          <div id="canvas-wrapper">
+            <canvas id="game" tabindex="0" aria-label="归元弈五行法盘。点击操作按钮出手，空格加速结算，R重开。"></canvas>
+          </div>
+          <div id="shortcut-bar">
+            <span><span class="kbd">空格</span> 加速流转</span>
+            <span><span class="kbd">R</span> 重新开局</span>
+            <span><span class="kbd">M</span> 声音</span>
+            <span><span class="kbd">H</span> 规则</span>
+            <span><span class="kbd">1-4</span> 快捷出招</span>
+          </div>
+        </section>
+
+        <!-- 右侧面板：演武实录与速查 -->
+        <aside id="right-panel" class="side-panel">
+          <div class="card" style="display: flex; flex-direction: column; flex: 1;">
+            <div class="card-title">
+              <span>演武流转实录</span>
+              <button id="btn-clear-log" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px;">清空</button>
+            </div>
+            <div id="log-container">
+              <div class="log-item">道法初开，阴阳相济。请按下方操作台出招行道。</div>
+            </div>
+          </div>
+
+          <!-- 五行速查小卡 -->
+          <div class="card">
+            <div class="card-title">五行生克玄枢速查</div>
+            <div style="font-size: 11px; line-height: 1.8;">
+              <div style="color: var(--accent-jade)"><b>相生(化)</b>：木 → 火 → 土 → 金 → 水 → 木</div>
+              <div style="color: var(--accent-damage)"><b>相克(破)</b>：木 → 土 → 水 → 火 → 金 → 木</div>
+              <div style="color: var(--text-muted); font-size: 10px; margin-top: 4px;">双侧 ≥ 1 为归一；达成五行归元即刻判定胜出！</div>
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

@@ -5111,6 +5111,1110 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
     }
   }
+  class AudioSynthesizer {
+    constructor() {
+      __publicField(this, "ctx", null);
+      __publicField(this, "_enabled", true);
+      __publicField(this, "_volume", 0.8);
+      __publicField(this, "initialized", false);
+    }
+    get enabled() {
+      return this._enabled;
+    }
+    set enabled(val) {
+      this._enabled = val;
+    }
+    get volume() {
+      return this._volume;
+    }
+    set volume(val) {
+      this._volume = Math.max(0, Math.min(1, val));
+    }
+    /** 在首次用户交互时激活 AudioContext */
+    unlock() {
+      if (this.ctx === null) {
+        this.initContext();
+      }
+      if (this.ctx !== null && this.ctx.state === "suspended") {
+        void this.ctx.resume().catch(() => {
+        });
+      }
+    }
+    initContext() {
+      if (this.initialized) return;
+      this.initialized = true;
+      try {
+        if (typeof window !== "undefined") {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) {
+            this.ctx = new AudioCtx();
+          }
+        } else if (typeof wx !== "undefined" && typeof wx.createWebAudioContext === "function") {
+          this.ctx = wx.createWebAudioContext();
+        }
+      } catch {
+        this.ctx = null;
+      }
+    }
+    play(effect) {
+      if (!this._enabled || this._volume <= 0) return;
+      this.unlock();
+      if (this.ctx === null) return;
+      try {
+        const now = this.ctx.currentTime;
+        switch (effect) {
+          case "tap":
+            this.playWoodBlock(now);
+            break;
+          case "deal":
+            this.playWindChime(now);
+            break;
+          case "trans":
+            this.playWaterFlow(now);
+            break;
+          case "atk":
+            this.playThunderStrike(now);
+            break;
+          case "burst":
+            this.playDragonRoar(now);
+            break;
+          case "guiyi":
+            this.playJadeBell(now);
+            break;
+          case "victory":
+            this.playVictoryFanfare(now);
+            break;
+          case "defeat":
+            this.playDefeatGong(now);
+            break;
+        }
+      } catch {
+      }
+    }
+    /** 木鱼点落音 (轻快短促) */
+    playWoodBlock(now) {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(640, now);
+      osc.frequency.exponentialRampToValueAtTime(180, now + 0.05);
+      gain.gain.setValueAtTime(this._volume * 0.45, now);
+      gain.gain.exponentialRampToValueAtTime(1e-3, now + 0.05);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.055);
+    }
+    /** 天干流光风铃音 (清越天籁) */
+    playWindChime(now) {
+      if (!this.ctx) return;
+      const notes = [1046.5, 1318.5, 1567.98];
+      notes.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const t = now + idx * 0.04;
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(this._volume * 0.25, t);
+        gain.gain.exponentialRampToValueAtTime(1e-3, t + 0.22);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.23);
+      });
+    }
+    /** 五行相生水流音 (温润滑音) */
+    playWaterFlow(now) {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.16);
+      gain.gain.setValueAtTime(this._volume * 0.35, now);
+      gain.gain.exponentialRampToValueAtTime(1e-3, now + 0.22);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.23);
+    }
+    /** 五行克破雷击音 (金石冰裂) */
+    playThunderStrike(now) {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(70, now + 0.14);
+      gain.gain.setValueAtTime(this._volume * 0.4, now);
+      gain.gain.exponentialRampToValueAtTime(1e-3, now + 0.16);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.17);
+    }
+    /** 爆发强化龙吟音 (低频共鸣震颤) */
+    playDragonRoar(now) {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(160, now);
+      osc.frequency.exponentialRampToValueAtTime(360, now + 0.18);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.35);
+      gain.gain.setValueAtTime(this._volume * 0.3, now);
+      gain.gain.exponentialRampToValueAtTime(1e-3, now + 0.38);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    }
+    /** 五行节点归一玉磬音 (空灵悠远古钟) */
+    playJadeBell(now) {
+      if (!this.ctx) return;
+      const harmonics = [587.33, 1174.66, 1760];
+      harmonics.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now);
+        const amp = this._volume * (0.35 / (idx + 1));
+        gain.gain.setValueAtTime(amp, now);
+        gain.gain.exponentialRampToValueAtTime(1e-3, now + 0.65);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.7);
+      });
+    }
+    /** 终局获胜仙音合奏 */
+    playVictoryFanfare(now) {
+      if (!this.ctx) return;
+      const chord = [523.25, 659.25, 783.99, 1046.5];
+      chord.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const t = now + idx * 0.08;
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(this._volume * 0.3, t);
+        gain.gain.exponentialRampToValueAtTime(1e-3, t + 0.8);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.85);
+      });
+    }
+    /** 终局惜败低沉铜锣 */
+    playDefeatGong(now) {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(75, now + 0.5);
+      gain.gain.setValueAtTime(this._volume * 0.45, now);
+      gain.gain.exponentialRampToValueAtTime(1e-3, now + 0.6);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.65);
+    }
+  }
+  const audioSynthesizer = new AudioSynthesizer();
+  class LocalStorageAdapter {
+    getItem(key) {
+      if (typeof localStorage === "undefined") {
+        return null;
+      }
+      const raw = localStorage.getItem(key);
+      if (raw === null) return null;
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return raw;
+      }
+    }
+    setItem(key, value) {
+      if (typeof localStorage === "undefined") return;
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+    removeItem(key) {
+      if (typeof localStorage === "undefined") return;
+      localStorage.removeItem(key);
+    }
+    clear() {
+      if (typeof localStorage === "undefined") return;
+      localStorage.clear();
+    }
+  }
+  class WechatStorageAdapter {
+    getItem(key) {
+      if (typeof wx === "undefined" || !wx.getStorageSync) {
+        return null;
+      }
+      try {
+        const data = wx.getStorageSync(key);
+        return data !== "" && data !== void 0 ? data : null;
+      } catch {
+        return null;
+      }
+    }
+    setItem(key, value) {
+      if (typeof wx === "undefined" || !wx.setStorageSync) return;
+      try {
+        wx.setStorageSync(key, value);
+      } catch (e) {
+        console.error("[WechatStorageAdapter] setStorageSync failed:", e);
+      }
+    }
+    removeItem(key) {
+      if (typeof wx === "undefined" || !wx.removeStorageSync) return;
+      try {
+        wx.removeStorageSync(key);
+      } catch (e) {
+        console.error("[WechatStorageAdapter] removeStorageSync failed:", e);
+      }
+    }
+    clear() {
+      if (typeof wx === "undefined" || !wx.clearStorageSync) return;
+      try {
+        wx.clearStorageSync();
+      } catch (e) {
+        console.error("[WechatStorageAdapter] clearStorageSync failed:", e);
+      }
+    }
+  }
+  class MockStorage {
+    constructor() {
+      __publicField(this, "store", /* @__PURE__ */ new Map());
+    }
+    getItem(key) {
+      const raw = this.store.get(key);
+      if (raw === void 0) return null;
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return raw;
+      }
+    }
+    setItem(key, value) {
+      this.store.set(key, JSON.stringify(value));
+    }
+    removeItem(key) {
+      this.store.delete(key);
+    }
+    clear() {
+      this.store.clear();
+    }
+  }
+  const SETTINGS_KEY = "guiyuan_user_settings";
+  const STATS_KEY = "guiyuan_user_stats";
+  const DEFAULT_SETTINGS = {
+    soundEnabled: true,
+    soundVolume: 0.8,
+    gameSpeed: 1,
+    autoDelay: 0.75
+  };
+  const DEFAULT_STATS = {
+    matchesPlayed: 0,
+    wins: 0,
+    losses: 0,
+    draws: 0,
+    guiYuanCount: 0,
+    highestScore: 0,
+    recentMatches: []
+  };
+  function detectStorage() {
+    if (typeof wx !== "undefined" && typeof wx.getStorageSync === "function") {
+      return new WechatStorageAdapter();
+    }
+    if (typeof localStorage !== "undefined") {
+      return new LocalStorageAdapter();
+    }
+    return new MockStorage();
+  }
+  class StorageService {
+    constructor(storage) {
+      __publicField(this, "storage");
+      __publicField(this, "cachedSettings", null);
+      __publicField(this, "cachedStats", null);
+      this.storage = storage ?? detectStorage();
+    }
+    getSettings() {
+      if (this.cachedSettings !== null) {
+        return this.cachedSettings;
+      }
+      const saved = this.storage.getItem(SETTINGS_KEY);
+      this.cachedSettings = saved ? { ...DEFAULT_SETTINGS, ...saved } : { ...DEFAULT_SETTINGS };
+      return this.cachedSettings;
+    }
+    saveSettings(settings) {
+      const current = this.getSettings();
+      this.cachedSettings = { ...current, ...settings };
+      this.storage.setItem(SETTINGS_KEY, this.cachedSettings);
+    }
+    getStats() {
+      if (this.cachedStats !== null) {
+        return this.cachedStats;
+      }
+      const saved = this.storage.getItem(STATS_KEY);
+      this.cachedStats = saved ? { ...DEFAULT_STATS, ...saved } : { ...DEFAULT_STATS };
+      return this.cachedStats;
+    }
+    recordMatch(record) {
+      const stats = this.getStats();
+      stats.matchesPlayed += 1;
+      if (record.winner === "P1") {
+        stats.wins += 1;
+      } else if (record.winner === "P2") {
+        stats.losses += 1;
+      } else {
+        stats.draws += 1;
+      }
+      if (record.reason === "GUI_YUAN") {
+        stats.guiYuanCount += 1;
+      }
+      if (record.p1Score > stats.highestScore) {
+        stats.highestScore = record.p1Score;
+      }
+      stats.recentMatches.unshift(record);
+      if (stats.recentMatches.length > 20) {
+        stats.recentMatches.pop();
+      }
+      this.cachedStats = stats;
+      this.storage.setItem(STATS_KEY, stats);
+    }
+    clearStats() {
+      this.cachedStats = { ...DEFAULT_STATS, recentMatches: [] };
+      this.storage.setItem(STATS_KEY, this.cachedStats);
+    }
+  }
+  const storageService = new StorageService();
+  class ModalOverlay extends Node {
+    constructor(options) {
+      super();
+      __publicField(this, "title");
+      __publicField(this, "screenWidth");
+      __publicField(this, "screenHeight");
+      __publicField(this, "panelW");
+      __publicField(this, "panelH");
+      __publicField(this, "panelX");
+      __publicField(this, "panelY");
+      __publicField(this, "closeX");
+      __publicField(this, "closeY");
+      __publicField(this, "closeSize", 28);
+      __publicField(this, "onClose");
+      this.title = options.title;
+      this.screenWidth = options.width;
+      this.screenHeight = options.height;
+      this.onClose = options.onClose;
+      this.panelW = options.panelWidth ?? Math.min(this.screenWidth - 32, 360);
+      this.panelH = options.panelHeight ?? Math.min(this.screenHeight - 120, 520);
+      this.panelX = (this.screenWidth - this.panelW) / 2;
+      this.panelY = (this.screenHeight - this.panelH) / 2;
+      this.closeX = this.panelX + this.panelW - this.closeSize - 12;
+      this.closeY = this.panelY + 12;
+      this.hitArea = {
+        x: 0,
+        y: 0,
+        width: this.screenWidth,
+        height: this.screenHeight
+      };
+      this.onTap = (screenX, screenY) => {
+        if (screenX >= this.closeX - 4 && screenX <= this.closeX + this.closeSize + 4 && screenY >= this.closeY - 4 && screenY <= this.closeY + this.closeSize + 4) {
+          audioSynthesizer.play("tap");
+          this.close();
+          return;
+        }
+        if (screenX < this.panelX || screenX > this.panelX + this.panelW || screenY < this.panelY || screenY > this.panelY + this.panelH) {
+          audioSynthesizer.play("tap");
+          this.close();
+          return;
+        }
+        this.handlePanelTap(screenX, screenY);
+      };
+    }
+    resize(width, height) {
+      this.screenWidth = width;
+      this.screenHeight = height;
+      this.panelW = Math.min(this.screenWidth - 32, 360);
+      this.panelH = Math.min(this.screenHeight - 120, 520);
+      this.panelX = (this.screenWidth - this.panelW) / 2;
+      this.panelY = (this.screenHeight - this.panelH) / 2;
+      this.closeX = this.panelX + this.panelW - this.closeSize - 12;
+      this.closeY = this.panelY + 12;
+      this.hitArea = {
+        x: 0,
+        y: 0,
+        width: this.screenWidth,
+        height: this.screenHeight
+      };
+    }
+    close() {
+      this.visible = false;
+      this.onClose?.();
+    }
+    open() {
+      this.visible = true;
+    }
+    handlePanelTap(_screenX, _screenY) {
+    }
+    renderSelf(ctx) {
+      if (!this.visible) return;
+      ctx.fillStyle = "rgba(8, 27, 34, 0.82)";
+      ctx.fillRect(0, 0, this.screenWidth, this.screenHeight);
+      drawPanel(
+        ctx,
+        this.panelX,
+        this.panelY,
+        this.panelW,
+        this.panelH,
+        THEME.gold,
+        THEME.panelRaised
+      );
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `bold 16px ${THEME.font}`;
+      ctx.fillStyle = THEME.gold;
+      ctx.fillText(this.title, this.panelX + this.panelW / 2, this.panelY + 26);
+      ctx.strokeStyle = "rgba(216, 184, 118, 0.25)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(this.panelX + 16, this.panelY + 44);
+      ctx.lineTo(this.panelX + this.panelW - 16, this.panelY + 44);
+      ctx.stroke();
+      ctx.strokeStyle = THEME.muted;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(this.closeX, this.closeY, this.closeSize, this.closeSize);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `14px ${THEME.font}`;
+      ctx.fillStyle = THEME.muted;
+      ctx.fillText("✕", this.closeX + this.closeSize / 2, this.closeY + this.closeSize / 2);
+      this.renderContent(ctx);
+    }
+    renderContent(_ctx) {
+    }
+  }
+  const TABS = [
+    { key: "shengke", label: "生克" },
+    { key: "tiangan", label: "天干" },
+    { key: "fourstates", label: "四态" },
+    { key: "actions", label: "神通" },
+    { key: "rules", label: "决胜" }
+  ];
+  class RuleModal extends ModalOverlay {
+    constructor(options) {
+      super({
+        ...options,
+        title: "道藏秘典 · 规则图鉴",
+        panelHeight: Math.min(options.height - 80, 560)
+      });
+      __publicField(this, "activeTab", "shengke");
+    }
+    handlePanelTap(screenX, screenY) {
+      const tabY = this.panelY + 54;
+      const tabH = 28;
+      const tabCount = TABS.length;
+      const tabW = (this.panelW - 24) / tabCount;
+      if (screenY >= tabY && screenY <= tabY + tabH) {
+        for (let i = 0; i < tabCount; i += 1) {
+          const x = this.panelX + 12 + i * tabW;
+          if (screenX >= x && screenX <= x + tabW) {
+            if (this.activeTab !== TABS[i].key) {
+              this.activeTab = TABS[i].key;
+              audioSynthesizer.play("tap");
+            }
+            return;
+          }
+        }
+      }
+    }
+    renderContent(ctx) {
+      const tabY = this.panelY + 52;
+      const tabH = 26;
+      const tabCount = TABS.length;
+      const tabW = (this.panelW - 24) / tabCount;
+      for (let i = 0; i < tabCount; i += 1) {
+        const tab = TABS[i];
+        const x = this.panelX + 12 + i * tabW;
+        const isActive = tab.key === this.activeTab;
+        ctx.fillStyle = isActive ? THEME.gold : "rgba(16, 46, 53, 0.6)";
+        ctx.fillRect(x + 1, tabY, tabW - 2, tabH);
+        ctx.strokeStyle = isActive ? THEME.gold : THEME.edge;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 1, tabY, tabW - 2, tabH);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = `${isActive ? "bold" : "normal"} 12px ${THEME.font}`;
+        ctx.fillStyle = isActive ? THEME.ink : THEME.muted;
+        ctx.fillText(tab.label, x + tabW / 2, tabY + tabH / 2);
+      }
+      const contentY = tabY + tabH + 16;
+      const contentX = this.panelX + 16;
+      const contentW = this.panelW - 32;
+      switch (this.activeTab) {
+        case "shengke":
+          this.renderShengKe(ctx, contentX, contentY, contentW);
+          break;
+        case "tiangan":
+          this.renderTianGan(ctx, contentX, contentY, contentW);
+          break;
+        case "fourstates":
+          this.renderFourStates(ctx, contentX, contentY, contentW);
+          break;
+        case "actions":
+          this.renderActions(ctx, contentX, contentY, contentW);
+          break;
+        case "rules":
+          this.renderRules(ctx, contentX, contentY, contentW);
+          break;
+      }
+    }
+    /** 五行生克图谱 */
+    renderShengKe(ctx, x, y, w) {
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.font = `bold 14px ${THEME.font}`;
+      ctx.fillStyle = THEME.jade;
+      ctx.fillText("五行相生 · 循环流转", x, y);
+      ctx.font = `12px ${THEME.font}`;
+      ctx.fillStyle = THEME.ivory;
+      ctx.fillText("木 生 火 → 火 生 土 → 土 生 金 → 金 生 水 → 水 生 木", x, y + 22);
+      ctx.fillStyle = THEME.muted;
+      ctx.fillText("【化 (TRANS)】：将自身本元导向相生之位，促成点亮与加持。", x, y + 42);
+      ctx.font = `bold 14px ${THEME.font}`;
+      ctx.fillStyle = THEME.damage;
+      ctx.fillText("五行相克 · 破阵封脉", x, y + 78);
+      ctx.font = `12px ${THEME.font}`;
+      ctx.fillStyle = THEME.ivory;
+      ctx.fillText("木 克 土 → 火 克 金 → 土 克 水 → 金 克 木 → 水 克 火", x, y + 100);
+      ctx.fillStyle = THEME.muted;
+      ctx.fillText("【破 (ATK)】：以相克法则直击敌方阵眼，制造破绽与道损。", x, y + 120);
+      ctx.fillStyle = "rgba(8, 27, 34, 0.5)";
+      ctx.fillRect(x, y + 155, w, 160);
+      ctx.strokeStyle = THEME.edge;
+      ctx.strokeRect(x, y + 155, w, 160);
+      ctx.textAlign = "center";
+      ctx.fillStyle = THEME.gold;
+      ctx.font = `bold 13px ${THEME.font}`;
+      ctx.fillText("【五行玄枢】顺时针相生 · 隔位相克", x + w / 2, y + 172);
+      const elements = [
+        { name: "木 (绿)", color: "#7bc8a4" },
+        { name: "火 (红)", color: "#ee7766" },
+        { name: "土 (黄)", color: "#d8b876" },
+        { name: "金 (白)", color: "#cfd8dc" },
+        { name: "水 (蓝)", color: "#64b5f6" }
+      ];
+      elements.forEach((elem, idx) => {
+        ctx.fillStyle = elem.color;
+        ctx.font = `12px ${THEME.font}`;
+        ctx.fillText(elem.name, x + 35 + idx * ((w - 70) / 4), y + 215);
+      });
+      ctx.fillStyle = THEME.muted;
+      ctx.font = `11px ${THEME.font}`;
+      ctx.fillText("内环为先手(阳)，外环为后手(天道/阴)。", x + w / 2, y + 265);
+      ctx.fillText("圆环连线亮起即为本次可选之机缘通道。", x + w / 2, y + 285);
+    }
+    /** 十天干与阴阳 */
+    renderTianGan(ctx, x, y, w) {
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.font = `bold 14px ${THEME.font}`;
+      ctx.fillStyle = THEME.gold;
+      ctx.fillText("十天干与五行阴阳映射表", x, y);
+      const rows = [
+        { elem: "木", yang: "甲 (阳木)", yin: "乙 (阴木)" },
+        { elem: "火", yang: "丙 (阳火)", yin: "丁 (阴火)" },
+        { elem: "土", yang: "戊 (阳土)", yin: "己 (阴土)" },
+        { elem: "金", yang: "庚 (阳金)", yin: "辛 (阴金)" },
+        { elem: "水", yang: "壬 (阳水)", yin: "癸 (阴水)" }
+      ];
+      const rowH = 34;
+      const startY = y + 30;
+      ctx.fillStyle = THEME.panelRaised;
+      ctx.fillRect(x, startY, w, 24);
+      ctx.fillStyle = THEME.muted;
+      ctx.font = `12px ${THEME.font}`;
+      ctx.fillText("五行", x + 16, startY + 6);
+      ctx.fillText("阳干 (主攻·克制)", x + 85, startY + 6);
+      ctx.fillText("阴干 (主化·生生)", x + w - 110, startY + 6);
+      rows.forEach((r, idx) => {
+        const curY = startY + 28 + idx * rowH;
+        ctx.fillStyle = idx % 2 === 0 ? "rgba(16, 46, 53, 0.4)" : "transparent";
+        ctx.fillRect(x, curY, w, rowH);
+        ctx.fillStyle = THEME.gold;
+        ctx.font = `bold 13px ${THEME.font}`;
+        ctx.fillText(r.elem, x + 20, curY + 8);
+        ctx.fillStyle = THEME.damage;
+        ctx.font = `12px ${THEME.font}`;
+        ctx.fillText(r.yang, x + 85, curY + 8);
+        ctx.fillStyle = THEME.jade;
+        ctx.fillText(r.yin, x + w - 110, curY + 8);
+      });
+      const tipsY = startY + 28 + rows.length * rowH + 20;
+      ctx.fillStyle = THEME.muted;
+      ctx.font = `12px ${THEME.font}`;
+      ctx.fillText("• 抽中【阳干】：若本节点未虚空，优先解锁【破】(克制敌方)。", x, tipsY);
+      ctx.fillText("• 抽中【阴干】：若本节点未虚空，优先解锁【化】(相生己方)。", x, tipsY + 20);
+      ctx.fillText("• 抽中对应侧为虚空或道损时：强制触发【吸纳】(填充自身)。", x, tipsY + 40);
+    }
+    /** 节点四态 */
+    renderFourStates(ctx, x, y, w) {
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.font = `bold 14px ${THEME.font}`;
+      ctx.fillStyle = THEME.gold;
+      ctx.fillText("节点四态（每个五行拥有阳侧与阴侧两轨）", x, y);
+      const states = [
+        {
+          tag: "道损 (-1)",
+          color: THEME.damage,
+          desc: "受克跌入道损。终局扣分惩罚！无法发动化/破。"
+        },
+        {
+          tag: "虚空 (0)",
+          color: THEME.muted,
+          desc: "未被点亮。抽中天干时必须吸纳回填。"
+        },
+        {
+          tag: "点亮 (1)",
+          color: THEME.jade,
+          desc: "道力初显。阴阳双侧均点亮即达成【归一】！"
+        },
+        {
+          tag: "加持 (2)",
+          color: THEME.gold,
+          desc: "双重加持。加成防护，可抵抗一次削弱。"
+        }
+      ];
+      states.forEach((st, idx) => {
+        const curY = y + 30 + idx * 56;
+        ctx.fillStyle = "rgba(8, 27, 34, 0.45)";
+        ctx.fillRect(x, curY, w, 48);
+        ctx.strokeStyle = st.color;
+        ctx.strokeRect(x, curY, w, 48);
+        ctx.fillStyle = st.color;
+        ctx.font = `bold 13px ${THEME.font}`;
+        ctx.fillText(st.tag, x + 12, curY + 8);
+        ctx.fillStyle = THEME.ivory;
+        ctx.font = `11px ${THEME.font}`;
+        ctx.fillText(st.desc, x + 12, curY + 28);
+      });
+      const bottomY = y + 30 + states.length * 56 + 10;
+      ctx.fillStyle = THEME.gold;
+      ctx.font = `bold 13px ${THEME.font}`;
+      ctx.fillText("【阴阳归一】五行的阴侧与阳侧均 ≥ 1 时，达成归一成就！", x, bottomY);
+      ctx.fillStyle = THEME.muted;
+      ctx.font = `11px ${THEME.font}`;
+      ctx.fillText("达成归一立即获赠高额里程碑分数，并解锁强力【爆发】神通！", x, bottomY + 20);
+    }
+    /** 神通六法 */
+    renderActions(ctx, x, y, _w) {
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      const acts = [
+        {
+          name: "吸纳 (AUTO)",
+          color: THEME.muted,
+          desc: "低位或道损时强制触发，将天干灵气注入本节点。"
+        },
+        {
+          name: "调息 (CONVERT)",
+          color: THEME.jade,
+          desc: "放弃生克，将天干能量直接强化自身对侧轨道(+1)。"
+        },
+        { name: "化 (TRANS)", color: "#80d6ba", desc: "以阴相生：保持自身等级，相生之节点阴侧+1。" },
+        { name: "破 (ATK)", color: "#ee8d77", desc: "以阳克敌：保持自身等级，重击对手相克节点-1。" },
+        {
+          name: "强化 (BURST)",
+          color: THEME.gold,
+          desc: "自损阴侧1级，使相生位连加2级！获得连动再动！"
+        },
+        {
+          name: "强破 (BURST_ATK)",
+          color: "#ff6644",
+          desc: "自损阳侧1级，连削对手相克位2级！获得连动再动！"
+        }
+      ];
+      acts.forEach((a, idx) => {
+        const curY = y + idx * 48;
+        ctx.font = `bold 13px ${THEME.font}`;
+        ctx.fillStyle = a.color;
+        ctx.fillText(`【${a.name}】`, x, curY);
+        ctx.font = `11px ${THEME.font}`;
+        ctx.fillStyle = THEME.ivory;
+        ctx.fillText(a.desc, x + 10, curY + 20);
+      });
+    }
+    /** 决胜规则与智能快刀 */
+    renderRules(ctx, x, y, _w) {
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.font = `bold 14px ${THEME.font}`;
+      ctx.fillStyle = THEME.gold;
+      ctx.fillText("两大胜负裁决目标", x, y);
+      ctx.font = `bold 12px ${THEME.font}`;
+      ctx.fillStyle = THEME.jade;
+      ctx.fillText("一、终极目标：五行归元（瞬结胜出）", x, y + 26);
+      ctx.font = `11px ${THEME.font}`;
+      ctx.fillStyle = THEME.ivory;
+      ctx.fillText("己方金木水火土五大节点全部达成“归一”（10个侧全点亮）。", x + 10, y + 44);
+      ctx.fillText("一旦达成，对局立即判定大获全胜！", x + 10, y + 60);
+      ctx.font = `bold 12px ${THEME.font}`;
+      ctx.fillStyle = THEME.gold;
+      ctx.fillText("二、次要目标：三十大回合终局计分", x, y + 86);
+      ctx.font = `11px ${THEME.font}`;
+      ctx.fillStyle = THEME.ivory;
+      ctx.fillText("对局上限为30大回合。满回合无人归元时按总分裁决：", x + 10, y + 104);
+      ctx.fillText("• 行为分：每次施展调息/化/破/强化均给付基础分。", x + 16, y + 120);
+      ctx.fillText("• 状态分：修复道损、点亮、加持及击损对手均得高分。", x + 16, y + 136);
+      ctx.fillText("• 终局残损扣分：残留的道损(-1)每处均扣减大额惩罚分。", x + 16, y + 152);
+      ctx.font = `bold 14px ${THEME.font}`;
+      ctx.fillStyle = "#64b5f6";
+      ctx.fillText("智能快刀决胜机制 (ADR 0007)", x, y + 185);
+      ctx.font = `11px ${THEME.font}`;
+      ctx.fillStyle = THEME.muted;
+      ctx.fillText("先手先达成归元时，根据后手剩余未点亮侧数判定：", x + 10, y + 205);
+      ctx.fillText("• 若后手差 ≥ 2 侧：数学上已无法逆转，系统立即秒结胜负；", x + 10, y + 223);
+      ctx.fillText("• 若后手严格只差 1 侧（已听牌）：触发“终轮天命揭牌”，", x + 10, y + 241);
+      ctx.fillText("  若揭出的天干契合，后手后发制人胜；否则先手胜！", x + 10, y + 257);
+    }
+  }
+  const MODES = [
+    { key: "ai_balanced", name: "太虚道人 · 平衡天道", tag: "攻守均衡 · 稳重自保" },
+    { key: "ai_rush", name: "青木神君 · 归元冲刺", tag: "抢速归一 · 追求圆满" },
+    { key: "ai_aggressive", name: "裂天剑祖 · 激进压制", tag: "疯狂克敌 · 制造道损" },
+    { key: "ai_defensive", name: "镇岳真人 · 保守防御", tag: "优先自愈 · 固若金汤" },
+    { key: "pvp", name: "阴阳对弈 · 同屏双人", tag: "双人同机 · 面对面博弈" }
+  ];
+  class SettingsModal extends ModalOverlay {
+    constructor(options) {
+      super({
+        ...options,
+        title: "天机玄枢 · 对局调谐",
+        panelHeight: Math.min(options.height - 70, 560)
+      });
+      __publicField(this, "selectedMode");
+      __publicField(this, "selectedSpeed");
+      __publicField(this, "soundEnabled");
+      __publicField(this, "onApply");
+      this.selectedMode = options.currentMode;
+      const settings = storageService.getSettings();
+      this.selectedSpeed = settings.gameSpeed;
+      this.soundEnabled = settings.soundEnabled;
+      this.onApply = options.onApplySettings;
+    }
+    setMode(mode) {
+      this.selectedMode = mode;
+    }
+    handlePanelTap(screenX, screenY) {
+      const startY = this.panelY + 54;
+      const w = this.panelW - 24;
+      const x = this.panelX + 12;
+      for (let i = 0; i < MODES.length; i += 1) {
+        const itemY = startY + 22 + i * 44;
+        if (screenX >= x && screenX <= x + w && screenY >= itemY && screenY <= itemY + 38) {
+          if (this.selectedMode !== MODES[i].key) {
+            this.selectedMode = MODES[i].key;
+            audioSynthesizer.play("tap");
+          }
+          return;
+        }
+      }
+      const speedY = startY + 22 + MODES.length * 44 + 32;
+      const speeds = [1, 1.5, 2];
+      const speedW = (w - 16) / 3;
+      for (let i = 0; i < speeds.length; i += 1) {
+        const btnX = x + i * (speedW + 8);
+        if (screenX >= btnX && screenX <= btnX + speedW && screenY >= speedY && screenY <= speedY + 30) {
+          if (this.selectedSpeed !== speeds[i]) {
+            this.selectedSpeed = speeds[i];
+            audioSynthesizer.play("tap");
+          }
+          return;
+        }
+      }
+      const soundY = speedY + 48;
+      const soundW = (w - 12) / 2;
+      if (screenX >= x && screenX <= x + soundW && screenY >= soundY && screenY <= soundY + 30) {
+        this.soundEnabled = true;
+        audioSynthesizer.enabled = true;
+        audioSynthesizer.play("tap");
+        return;
+      }
+      if (screenX >= x + soundW + 12 && screenX <= x + w && screenY >= soundY && screenY <= soundY + 30) {
+        this.soundEnabled = false;
+        audioSynthesizer.enabled = false;
+        return;
+      }
+      const bottomY = this.panelY + this.panelH - 46;
+      const btnW = (w - 12) / 2;
+      if (screenX >= x && screenX <= x + btnW && screenY >= bottomY && screenY <= bottomY + 34) {
+        audioSynthesizer.play("tap");
+        storageService.saveSettings({
+          soundEnabled: this.soundEnabled,
+          gameSpeed: this.selectedSpeed
+        });
+        this.close();
+        this.onApply({
+          mode: this.selectedMode,
+          speed: this.selectedSpeed,
+          soundEnabled: this.soundEnabled,
+          restartGame: true
+        });
+        return;
+      }
+      if (screenX >= x + btnW + 12 && screenX <= x + w && screenY >= bottomY && screenY <= bottomY + 34) {
+        audioSynthesizer.play("tap");
+        storageService.saveSettings({
+          soundEnabled: this.soundEnabled,
+          gameSpeed: this.selectedSpeed
+        });
+        this.close();
+        this.onApply({
+          mode: this.selectedMode,
+          speed: this.selectedSpeed,
+          soundEnabled: this.soundEnabled,
+          restartGame: false
+        });
+      }
+    }
+    renderContent(ctx) {
+      const startY = this.panelY + 54;
+      const w = this.panelW - 24;
+      const x = this.panelX + 12;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.font = `bold 13px ${THEME.font}`;
+      ctx.fillStyle = THEME.gold;
+      ctx.fillText("对弈阵营与天道性格", x, startY);
+      for (let i = 0; i < MODES.length; i += 1) {
+        const mode = MODES[i];
+        const itemY = startY + 20 + i * 44;
+        const isSel = this.selectedMode === mode.key;
+        ctx.fillStyle = isSel ? "rgba(216, 184, 118, 0.16)" : "rgba(8, 27, 34, 0.45)";
+        ctx.fillRect(x, itemY, w, 38);
+        ctx.strokeStyle = isSel ? THEME.gold : THEME.edge;
+        ctx.lineWidth = isSel ? 1.5 : 1;
+        ctx.strokeRect(x, itemY, w, 38);
+        ctx.beginPath();
+        ctx.arc(x + 18, itemY + 19, 6, 0, Math.PI * 2);
+        ctx.strokeStyle = isSel ? THEME.gold : THEME.muted;
+        ctx.stroke();
+        if (isSel) {
+          ctx.beginPath();
+          ctx.arc(x + 18, itemY + 19, 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = THEME.gold;
+          ctx.fill();
+        }
+        ctx.font = `bold 12px ${THEME.font}`;
+        ctx.fillStyle = isSel ? THEME.gold : THEME.ivory;
+        ctx.fillText(mode.name, x + 34, itemY + 6);
+        ctx.font = `10px ${THEME.font}`;
+        ctx.fillStyle = THEME.muted;
+        ctx.fillText(mode.tag, x + 34, itemY + 22);
+      }
+      const speedY = startY + 20 + MODES.length * 44 + 14;
+      ctx.font = `bold 13px ${THEME.font}`;
+      ctx.fillStyle = THEME.gold;
+      ctx.fillText("推演节奏与时空流速", x, speedY);
+      const speeds = [
+        { val: 1, label: "1.0x 仙风道骨" },
+        { val: 1.5, label: "1.5x 疾风骤雨" },
+        { val: 2, label: "2.0x 极速神行" }
+      ];
+      const speedBtnY = speedY + 20;
+      const speedW = (w - 16) / 3;
+      for (let i = 0; i < speeds.length; i += 1) {
+        const sp = speeds[i];
+        const btnX = x + i * (speedW + 8);
+        const isSel = Math.abs(this.selectedSpeed - sp.val) < 0.1;
+        ctx.fillStyle = isSel ? THEME.gold : "rgba(16, 46, 53, 0.5)";
+        ctx.fillRect(btnX, speedBtnY, speedW, 28);
+        ctx.strokeStyle = isSel ? THEME.gold : THEME.edge;
+        ctx.strokeRect(btnX, speedBtnY, speedW, 28);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = `${isSel ? "bold" : "normal"} 11px ${THEME.font}`;
+        ctx.fillStyle = isSel ? THEME.ink : THEME.ivory;
+        ctx.fillText(sp.label, btnX + speedW / 2, speedBtnY + 14);
+      }
+      const soundTitleY = speedBtnY + 38;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.font = `bold 13px ${THEME.font}`;
+      ctx.fillStyle = THEME.gold;
+      ctx.fillText("国风程序化合成音效", x, soundTitleY);
+      const soundBtnY = soundTitleY + 20;
+      const soundW = (w - 12) / 2;
+      const isAudioOn = this.soundEnabled;
+      ctx.fillStyle = isAudioOn ? THEME.jade : "rgba(16, 46, 53, 0.5)";
+      ctx.fillRect(x, soundBtnY, soundW, 28);
+      ctx.strokeStyle = isAudioOn ? THEME.jade : THEME.edge;
+      ctx.strokeRect(x, soundBtnY, soundW, 28);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `${isAudioOn ? "bold" : "normal"} 12px ${THEME.font}`;
+      ctx.fillStyle = isAudioOn ? THEME.ink : THEME.ivory;
+      ctx.fillText("🔊 仙乐齐鸣 (开启)", x + soundW / 2, soundBtnY + 14);
+      ctx.fillStyle = !isAudioOn ? THEME.damage : "rgba(16, 46, 53, 0.5)";
+      ctx.fillRect(x + soundW + 12, soundBtnY, soundW, 28);
+      ctx.strokeStyle = !isAudioOn ? THEME.damage : THEME.edge;
+      ctx.strokeRect(x + soundW + 12, soundBtnY, soundW, 28);
+      ctx.fillStyle = !isAudioOn ? THEME.ink : THEME.ivory;
+      ctx.font = `${!isAudioOn ? "bold" : "normal"} 12px ${THEME.font}`;
+      ctx.fillText("🔇 清虚寂灭 (静音)", x + soundW + 12 + soundW / 2, soundBtnY + 14);
+      const bottomY = this.panelY + this.panelH - 46;
+      const btnW = (w - 12) / 2;
+      ctx.fillStyle = THEME.gold;
+      ctx.fillRect(x, bottomY, btnW, 34);
+      ctx.strokeStyle = THEME.goldDim;
+      ctx.strokeRect(x, bottomY, btnW, 34);
+      ctx.fillStyle = THEME.ink;
+      ctx.font = `bold 12px ${THEME.font}`;
+      ctx.fillText("🔄 应用并重新开局", x + btnW / 2, bottomY + 17);
+      ctx.fillStyle = THEME.panelRaised;
+      ctx.fillRect(x + btnW + 12, bottomY, btnW, 34);
+      ctx.strokeStyle = THEME.edge;
+      ctx.strokeRect(x + btnW + 12, bottomY, btnW, 34);
+      ctx.fillStyle = THEME.ivory;
+      ctx.font = `12px ${THEME.font}`;
+      ctx.fillText("✓ 仅保存本局生效", x + btnW + 12 + btnW / 2, bottomY + 17);
+    }
+  }
+  class StatsModal extends ModalOverlay {
+    constructor(options) {
+      super({
+        ...options,
+        title: "功勋仙榜 · 战绩推演",
+        panelHeight: Math.min(options.height - 70, 560)
+      });
+      __publicField(this, "stats");
+      this.stats = storageService.getStats();
+    }
+    refresh() {
+      this.stats = storageService.getStats();
+    }
+    getCultivationTitle(wins, guiYuanCount) {
+      if (guiYuanCount >= 10 || wins >= 30) {
+        return { title: "太虚玄祖", desc: "五行随心 · 阴阳归一" };
+      }
+      if (guiYuanCount >= 5 || wins >= 15) {
+        return { title: "五行神尊", desc: "生克洞彻 · 阵法通神" };
+      }
+      if (wins >= 5) {
+        return { title: "通玄真人", desc: "渐入佳境 · 运筹帷幄" };
+      }
+      if (wins >= 1) {
+        return { title: "悟道剑士", desc: "初露锋芒 · 灵气初开" };
+      }
+      return { title: "入道童子", desc: "初涉仙途 · 探索生克" };
+    }
+    handlePanelTap(screenX, screenY) {
+      const clearY = this.panelY + this.panelH - 46;
+      const btnW = 120;
+      const btnX = this.panelX + (this.panelW - btnW) / 2;
+      if (screenX >= btnX && screenX <= btnX + btnW && screenY >= clearY && screenY <= clearY + 32) {
+        audioSynthesizer.play("tap");
+        storageService.clearStats();
+        this.stats = storageService.getStats();
+      }
+    }
+    renderContent(ctx) {
+      const x = this.panelX + 16;
+      const w = this.panelW - 32;
+      const startY = this.panelY + 54;
+      const realm = this.getCultivationTitle(this.stats.wins, this.stats.guiYuanCount);
+      ctx.fillStyle = "rgba(216, 184, 118, 0.12)";
+      ctx.fillRect(x, startY, w, 56);
+      ctx.strokeStyle = THEME.gold;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, startY, w, 56);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.font = `bold 16px ${THEME.font}`;
+      ctx.fillStyle = THEME.gold;
+      ctx.fillText(`【当前境界】${realm.title}`, x + 16, startY + 10);
+      ctx.font = `11px ${THEME.font}`;
+      ctx.fillStyle = THEME.muted;
+      ctx.fillText(realm.desc, x + 16, startY + 34);
+      const gridY = startY + 68;
+      const colW = (w - 12) / 2;
+      const rowH = 46;
+      const winRate = this.stats.matchesPlayed > 0 ? `${Math.round(this.stats.wins / this.stats.matchesPlayed * 100)}%` : "0%";
+      const metrics = [
+        { label: "累计对弈", val: `${this.stats.matchesPlayed} 局` },
+        { label: "胜率 / 胜局", val: `${winRate} (${this.stats.wins}胜)` },
+        { label: "五行归元胜", val: `${this.stats.guiYuanCount} 次` },
+        { label: "单局最高得分", val: `${this.stats.highestScore} 分` }
+      ];
+      metrics.forEach((m, idx) => {
+        const col = idx % 2;
+        const row = Math.floor(idx / 2);
+        const mx = x + col * (colW + 12);
+        const my = gridY + row * (rowH + 8);
+        ctx.fillStyle = "rgba(16, 46, 53, 0.5)";
+        ctx.fillRect(mx, my, colW, rowH);
+        ctx.strokeStyle = THEME.edge;
+        ctx.strokeRect(mx, my, colW, rowH);
+        ctx.font = `10px ${THEME.font}`;
+        ctx.fillStyle = THEME.muted;
+        ctx.fillText(m.label, mx + 10, my + 6);
+        ctx.font = `bold 14px ${THEME.font}`;
+        ctx.fillStyle = THEME.ivory;
+        ctx.fillText(m.val, mx + 10, my + 24);
+      });
+      const listY = gridY + 2 * (rowH + 8) + 12;
+      ctx.font = `bold 13px ${THEME.font}`;
+      ctx.fillStyle = THEME.gold;
+      ctx.fillText("最近演武实录", x, listY);
+      const listStartY = listY + 22;
+      const recent = this.stats.recentMatches.slice(0, 4);
+      if (recent.length === 0) {
+        ctx.fillStyle = "rgba(8, 27, 34, 0.4)";
+        ctx.fillRect(x, listStartY, w, 68);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = `12px ${THEME.font}`;
+        ctx.fillStyle = THEME.muted;
+        ctx.fillText("暂无演武记录，且去对弈一局！", x + w / 2, listStartY + 34);
+      } else {
+        recent.forEach((m, idx) => {
+          const itemY = listStartY + idx * 34;
+          const isWin = m.winner === "P1";
+          ctx.fillStyle = idx % 2 === 0 ? "rgba(16, 46, 53, 0.4)" : "transparent";
+          ctx.fillRect(x, itemY, w, 30);
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.font = `bold 12px ${THEME.font}`;
+          ctx.fillStyle = isWin ? THEME.jade : THEME.damage;
+          ctx.fillText(isWin ? "【胜】" : "【负】", x + 6, itemY + 15);
+          ctx.font = `11px ${THEME.font}`;
+          ctx.fillStyle = THEME.ivory;
+          const reasonText = m.reason === "GUI_YUAN" ? "五行归元" : "大回合终结";
+          ctx.fillText(`${m.mode} · ${reasonText} (${m.rounds}轮)`, x + 44, itemY + 15);
+          ctx.textAlign = "right";
+          ctx.fillStyle = THEME.gold;
+          ctx.fillText(`${m.p1Score} : ${m.p2Score}`, x + w - 8, itemY + 15);
+        });
+      }
+      const clearY = this.panelY + this.panelH - 46;
+      const btnW = 120;
+      const btnX = this.panelX + (this.panelW - btnW) / 2;
+      ctx.fillStyle = "rgba(238, 141, 119, 0.15)";
+      ctx.fillRect(btnX, clearY, btnW, 32);
+      ctx.strokeStyle = THEME.damage;
+      ctx.strokeRect(btnX, clearY, btnW, 32);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `12px ${THEME.font}`;
+      ctx.fillStyle = THEME.damage;
+      ctx.fillText("重置清空战绩", btnX + btnW / 2, clearY + 16);
+    }
+  }
   const DEFAULT_SAFE_TOP = 24;
   const DEFAULT_SAFE_BOTTOM = 12;
   const DEFAULT_AUTO_EXECUTE_DELAY = 0.75;
@@ -5143,6 +6247,14 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "_turnManager");
       __publicField(this, "strategy");
       __publicField(this, "rules");
+      __publicField(this, "mode", "ai");
+      __publicField(this, "aiStrategyKey", "ai_balanced");
+      __publicField(this, "speedMultiplier", 1);
+      __publicField(this, "onStateChange");
+      __publicField(this, "onLog");
+      __publicField(this, "ruleModal");
+      __publicField(this, "settingsModal");
+      __publicField(this, "statsModal");
       __publicField(this, "autoExecuteDelay");
       __publicField(this, "aiThinkDelay");
       __publicField(this, "expressionHold");
@@ -5176,6 +6288,11 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.safeTop = options.safeTop ?? DEFAULT_SAFE_TOP;
       this.safeBottom = options.safeBottom ?? DEFAULT_SAFE_BOTTOM;
       this.rules = options.rules ?? {};
+      this.mode = options.mode ?? "ai";
+      this.aiStrategyKey = options.aiStrategyKey ?? "ai_balanced";
+      this.speedMultiplier = options.speedMultiplier ?? 1;
+      this.onStateChange = options.onStateChange;
+      this.onLog = options.onLog;
       this.autoExecuteDelay = options.autoExecuteDelay ?? DEFAULT_AUTO_EXECUTE_DELAY;
       this.aiThinkDelay = options.aiThinkDelay ?? DEFAULT_AI_THINK_DELAY;
       this.expressionHold = options.expressionHold ?? DEFAULT_EXPRESSION_HOLD;
@@ -5184,7 +6301,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.flightDuration = options.flightDuration ?? 0.55;
       this.impactDuration = options.impactDuration ?? 0.35;
       this.resultHold = options.resultHold ?? 0.65;
-      this.strategy = createStrategy(BALANCED_WEIGHTS, { rules: this.rules });
+      this.strategy = this.createAiStrategy(this.aiStrategyKey);
       this._turnManager = options.turnManager ?? new TurnManager({
         prng: options.prng ?? createPRNG(options.seed ?? Date.now()),
         initialState: options.initialState
@@ -5203,12 +6320,54 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.lastAction = new ActionResultView(this.width - 20);
       this.lastAction.x = 10;
       this.placeResult();
+      this.ruleModal = new RuleModal({
+        width: this.width,
+        height: this.height
+      });
+      this.ruleModal.visible = false;
+      this.settingsModal = new SettingsModal({
+        width: this.width,
+        height: this.height,
+        currentMode: this.aiStrategyKey,
+        onApplySettings: (cfg) => {
+          this.speedMultiplier = cfg.speed;
+          audioSynthesizer.enabled = cfg.soundEnabled;
+          if (cfg.mode === "pvp") {
+            this.mode = "pvp";
+          } else {
+            this.mode = "ai";
+            this.aiStrategyKey = cfg.mode;
+            this.strategy = this.createAiStrategy(this.aiStrategyKey);
+          }
+          if (cfg.restartGame) {
+            this.restart(Date.now(), { mode: this.mode, aiStrategyKey: this.aiStrategyKey });
+          }
+        }
+      });
+      this.settingsModal.visible = false;
+      this.statsModal = new StatsModal({
+        width: this.width,
+        height: this.height
+      });
+      this.statsModal.visible = false;
       this.addChild(this.board);
       this.addChild(this.runeFlight);
       this.addChild(this.characters);
       this.addChild(this.actionBar);
       this.addChild(this.lastAction);
       this.bindTurnManager(this._turnManager);
+    }
+    createAiStrategy(key) {
+      switch (key) {
+        case "ai_rush":
+          return createStrategy(RUSH_GUIYUAN_WEIGHTS, { rules: this.rules });
+        case "ai_aggressive":
+          return createStrategy(AGGRESSIVE_WEIGHTS, { rules: this.rules });
+        case "ai_defensive":
+          return createStrategy(DEFENSIVE_WEIGHTS, { rules: this.rules });
+        default:
+          return createStrategy(BALANCED_WEIGHTS, { rules: this.rules });
+      }
     }
     /** 核心状态机（只读；`restart()` 会换成新实例）。 */
     get turnManager() {
@@ -5292,6 +6451,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.runeFlight.syncCenter();
       this.characters.resize(width, this.safeTop, this.height < 650 || this.safeTop > 24);
       this.placeActionBar();
+      this.ruleModal?.resize(width, height);
+      this.settingsModal?.resize(width, height);
+      this.statsModal?.resize(width, height);
       if (this._phase === "idle" || this._phase === "game-over") {
         this.replaceRuneFlight();
         this.runeFlightStale = false;
@@ -5307,7 +6469,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.beginTurn();
     }
     /** 终局后重新开局：换一颗随机源、重置表现态，从第 1 回合重来。 */
-    restart(seedOrPrng = Date.now()) {
+    restart(seedOrPrng = Date.now(), options) {
+      if (options?.mode !== void 0) {
+        this.mode = options.mode;
+      }
+      if (options?.aiStrategyKey !== void 0) {
+        this.aiStrategyKey = options.aiStrategyKey;
+        this.strategy = this.createAiStrategy(this.aiStrategyKey);
+        this.settingsModal.setMode(this.aiStrategyKey);
+      }
       this.unbindTurnManager();
       const prng = typeof seedOrPrng === "number" ? createPRNG(seedOrPrng) : seedOrPrng;
       this._turnManager = new TurnManager({ prng });
@@ -5331,6 +6501,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.bindTurnManager(this._turnManager);
       this.setPhase("idle");
       this.beginTurn();
+      this.onStateChange?.(this._turnManager.getState());
     }
     /** 退订核心事件（销毁场景时调用）。 */
     dispose() {
@@ -5347,30 +6518,71 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
      * `Tween` 不掌握帧循环，时钟完全由这里注入。
      */
     update(dt) {
+      const effectiveDt = dt * this.speedMultiplier;
       const phaseBefore = this._phase;
-      this.characters.updateTimers(dt);
-      this.runeFlight.update(dt);
-      this.board.tick(dt);
+      this.characters.updateTimers(effectiveDt);
+      this.runeFlight.update(effectiveDt);
+      this.board.tick(effectiveDt);
       if (this._phase === "result") {
         if (phaseBefore !== "result") return;
-        this.timer -= dt;
+        this.timer -= effectiveDt;
         if (this.timer <= 0) this.finishResult();
         return;
       }
       if (this._phase !== "auto-pending" && this._phase !== "ai-thinking") {
         return;
       }
-      this.timer -= dt;
+      this.timer -= effectiveDt;
       if (this.timer <= 0) {
         this.commitPendingDecision();
       }
     }
     /**
      * 「点击屏幕任意处」的统一入口：
+     * - 弹层开启时：不响应下层对局点击；
+     * - 点击右上角功能按钮：唤起对应弹层；
      * - 唯一候选的缓冲期内：立即加速结算（GDD §2.4「允许随时加速」）；
      * - 终局展示：重新开局。
      */
-    handleTap() {
+    handleTap(screenX, screenY) {
+      if (typeof screenX === "number" && typeof screenY === "number") {
+        if (this.ruleModal?.visible) {
+          this.ruleModal.onTap?.(screenX, screenY);
+          return;
+        }
+        if (this.settingsModal?.visible) {
+          this.settingsModal.onTap?.(screenX, screenY);
+          return;
+        }
+        if (this.statsModal?.visible) {
+          this.statsModal.onTap?.(screenX, screenY);
+          return;
+        }
+      } else if (this.ruleModal?.visible || this.settingsModal?.visible || this.statsModal?.visible) {
+        return;
+      }
+      if (typeof screenX === "number" && typeof screenY === "number") {
+        const topY = this.safeTop + 2;
+        const topH = 22;
+        if (screenY >= topY - 4 && screenY <= topY + topH + 4) {
+          if (screenX >= this.width - 52 && screenX <= this.width - 6) {
+            audioSynthesizer.play("tap");
+            this.statsModal.refresh();
+            this.statsModal.open();
+            return;
+          }
+          if (screenX >= this.width - 100 && screenX <= this.width - 54) {
+            audioSynthesizer.play("tap");
+            this.settingsModal.open();
+            return;
+          }
+          if (screenX >= this.width - 148 && screenX <= this.width - 102) {
+            audioSynthesizer.play("tap");
+            this.ruleModal.open();
+            return;
+          }
+        }
+      }
       if (this._phase === "auto-pending") {
         this.commitPendingDecision();
         return;
@@ -5407,6 +6619,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         return;
       }
       this.setPhase("entrance");
+      audioSynthesizer.play("deal");
       this.runeFlight.playEntrance(tianGan, {
         owner: state.currentPlayer,
         duration: this.entranceDuration,
@@ -5417,7 +6630,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     afterEntrance() {
       const state = this._turnManager.getState();
       const actions = this._turnManager.getAvailableActions();
-      if (state.currentPlayer === "P2") {
+      if (state.currentPlayer === "P2" && this.mode !== "pvp") {
         this.setPhase("ai-thinking");
         this.timer = this.aiThinkDelay;
         return;
@@ -5506,6 +6719,19 @@ ${event.actionType === ActionType.PASS ? "原地消散 · 无节点变化" : `${
         actingPlayer: actor
       });
       this.characters.playAction(actor, event.actionType, this.flightDuration, this.impactDuration);
+      if (event.actionType === ActionType.TRANS) {
+        audioSynthesizer.play("trans");
+      } else if (event.actionType === ActionType.ATK) {
+        audioSynthesizer.play("atk");
+      } else if (event.actionType === ActionType.BURST || event.actionType === ActionType.BURST_ATK) {
+        audioSynthesizer.play("burst");
+      } else {
+        audioSynthesizer.play("tap");
+      }
+      const actorName = actor === "P1" ? "先手" : this.mode === "pvp" ? "后手" : "天道";
+      const logMsg = `第${state.round}轮 · ${actorName} 施展【${ACTION_LABEL[event.actionType]}】(${stemLabel}) -> 影响 ${changes.length} 处`;
+      this.onLog?.(logMsg);
+      this.onStateChange?.(state);
       this.setPhase("flying");
       this.runeFlight.flyTo(target.player, target.element, target.polarity, {
         actionType: event.actionType,
@@ -5554,6 +6780,7 @@ ${event.actionType === ActionType.PASS ? "原地消散 · 无节点变化" : `${
       }
       const node = this._turnManager.getState().players[event.player].board[event.element];
       if (isNodeGuiYi(node)) {
+        audioSynthesizer.play("guiyi");
         if (this._phase === "flying") this.pendingCelebrations.add(event.player);
         else this.characters.setExpression(event.player, "celebrate", this.celebrateHold);
       }
@@ -5640,6 +6867,36 @@ ${event.actionType === ActionType.PASS ? "原地消散 · 无节点变化" : `${
       );
       this.showFinalPoses(state);
       this.projectBoards(state);
+      if (state.winner === "P1") {
+        audioSynthesizer.play("victory");
+      } else if (state.winner === "P2") {
+        audioSynthesizer.play("defeat");
+      }
+      try {
+        storageService.recordMatch({
+          timestamp: Date.now(),
+          winner: state.winner ?? "DRAW",
+          reason: state.endReason ?? "UNKNOWN",
+          rounds: state.round,
+          p1Score: state.players.P1.score,
+          p2Score: state.players.P2.score,
+          mode: this.mode === "pvp" ? "同屏双人" : this.getAiModeName()
+        });
+      } catch {
+      }
+      this.onStateChange?.(state);
+    }
+    getAiModeName() {
+      switch (this.aiStrategyKey) {
+        case "ai_rush":
+          return "青木冲刺";
+        case "ai_aggressive":
+          return "裂天克破";
+        case "ai_defensive":
+          return "镇岳固守";
+        default:
+          return "太虚天道";
+      }
     }
     /** 终局姿势：胜方「胜」、负方「负」，持续到重开（`restart()` 清掉）；平局不摆姿势。 */
     showFinalPoses(state) {
@@ -5772,13 +7029,58 @@ ${prompt}`;
       ctx.fillStyle = THEME.gold;
       ctx.font = `bold 18px ${THEME.font}`;
       ctx.fillText("归元弈", 18, this.safeTop + 13);
+      const modeBadge = this.getModeBadge();
+      ctx.font = `11px ${THEME.font}`;
+      ctx.fillStyle = THEME.muted;
+      ctx.fillText(modeBadge, 84, this.safeTop + 13);
+      this.drawTopButtons(ctx);
       ctx.restore();
+    }
+    drawTopButtons(ctx) {
+      const btnH = 22;
+      const btnW = 42;
+      const topY = this.safeTop + 2;
+      const buttons = [
+        { label: "道藏", x: this.width - 146 },
+        { label: "天机", x: this.width - 98 },
+        { label: "功勋", x: this.width - 50 }
+      ];
+      for (const btn of buttons) {
+        ctx.fillStyle = "rgba(16, 46, 53, 0.7)";
+        ctx.fillRect(btn.x, topY, btnW, btnH);
+        ctx.strokeStyle = THEME.edge;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(btn.x, topY, btnW, btnH);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = `11px ${THEME.font}`;
+        ctx.fillStyle = THEME.ivory;
+        ctx.fillText(btn.label, btn.x + btnW / 2, topY + btnH / 2);
+      }
+    }
+    getModeBadge() {
+      if (this.mode === "pvp") {
+        return "【同屏双人】";
+      }
+      switch (this.aiStrategyKey) {
+        case "ai_rush":
+          return "【青木冲刺】";
+        case "ai_aggressive":
+          return "【裂天克破】";
+        case "ai_defensive":
+          return "【镇岳固守】";
+        default:
+          return "【太虚天道】";
+      }
     }
     render(ctx) {
       super.render(ctx);
       ctx.save();
       this.drawDecisionGuide(ctx);
       ctx.restore();
+      if (this.ruleModal?.visible) this.ruleModal.render(ctx);
+      if (this.settingsModal?.visible) this.settingsModal.render(ctx);
+      if (this.statsModal?.visible) this.statsModal.render(ctx);
     }
     placeResult() {
       if (this.lastAction === void 0) return;
@@ -6053,7 +7355,7 @@ ${prompt}`;
       safeTop,
       safeBottom
     });
-    stage.onTap = () => scene.handleTap();
+    stage.onTap = (x, y) => scene.handleTap(x, y);
     stage.addChild(scene);
     loadWechatCharacterAtlas(wx, (atlas) => scene.characters.setSpriteAtlas(atlas));
     const input = new InputManager(stage);
