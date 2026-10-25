@@ -116,9 +116,9 @@
 
 ## C. 缺口（这条事实现在没有家，本轮要新建）
 
-**C1 分支与交付策略** — **已落 spec**：`.scratch/delivery-protocol/spec.md`，家定在 `CONTRIBUTING.md`（票 02），执行体是 `scripts/check-delivery.mjs`（票 03）。
+**C1 分支与交付策略** — **已落 spec**：`.scratch/delivery-protocol/spec.md`，家定在 `CONTRIBUTING.md` §6（票 02 已 resolved），执行体 `scripts/check-delivery.mjs` **已落地**（票 03，`npm run check:delivery`）。
 　三条开放项已拍定（2026-10-24）：D1 body 四要素、D2 白名单且 ≤ 3 文件、D3 每步重建 + amend + verify。见 spec 决定 9–11。
-　对账点（落地后）：`npm run check:delivery`。
+　对账点：`npm run check:delivery` → 四条断言全过。
 
 **C2 提交标题格式** — 家有（`CONTRIBUTING.md` §3 Conventional Commits），但**没有对账点**：`.githooks/commit-msg` 头注明确「只管 trailer，标题风格不在这道钩子」。
 　两个选择：补第二道 hook（对账点：`git log -1 --format=%s` 匹配类型前缀），或承认它只是约定、从「门禁」降级为「约定」。

@@ -2,7 +2,7 @@
 
 **Type:** task
 **Blocked by:** 02
-**Status:** needs-triage
+**Status:** resolved
 
 **What to build:** `scripts/check-delivery.mjs` + 命名脚本 `npm run check:delivery`。把交付策略里那几条「靠自觉」的约束变成断言。
 
@@ -21,15 +21,38 @@
 - **不进** `verify`：`verify` 的语义是「每个提交都得绿」，交付断言只在交付那一刻成立。混淆两者会让每个提交都跑不过。
 - 文档里写明它由谁在什么时候跑（agent 在整理阶段跑），并给一条 `--` 直通参数用于 CI 之外的本地复核。
 
-**验收清单：**
+## Answer
 
-- [ ] 四条断言各有：正常样例通过、人为破坏后判红、错误信息指出违反了哪一条（照 `check-worktrees.mjs` 的失败输出风格）
-- [ ] 退出码语义与仓库其他脚本一致：通过 0，判红 1
-- [ ] 断言 2 的比较对象是**提交**而不是文件列表（避免「文件列表一样但内容不同」）
-- [ ] 断言 3 的基线数字写进注释并说明来历与日期
-- [ ] `npm run check:delivery` 在当前 `main` 上退出 0（现状只有 5 个历史 merge commit，不在 `base..tip` 区间内）
-- [ ] `package.json` 脚本名只加一条，不重命名已有脚本
-- [ ] 文档接线：02 落的规则正文里把「由 `scripts/check-delivery.mjs` 执行」写准
+已落地（2026-10-25）：`scripts/check-delivery.mjs` + `npm run check:delivery`。
+
+**四条断言与实测（生产跑与破坏跑都做了）：**
+
+| 断言 | 正例 | 破坏例 | 结果 |
+|---|---|---|---|
+| ① main 线性 | `origin/main..HEAD`（空区间）通过 | `--base origin/main --tip archive/pre-linear-2026-10-24` → 报 **40 个 merge** 并列出前 5 个 | 两端均符合预期 |
+| ② 快照一致 | `--snapshot v2.0 --tip HEAD`（同树 `acd16be`）通过 | `--snapshot 'archive/pre-linear-2026-10-24~100'` → 报树不同 + `git diff --stat` | 两端均符合预期 |
+| ③ 无新增孤儿 | 默认基线 479 通过 | `--unreachable-baseline 0` → 报「479 个，新增 479」并列出最近 8 个 | 两端均符合预期 |
+| ④ worktree 清账 | 默认期望 1，实际 1，通过 | `--worktrees 2` → 报「有 1 个，期望 2」并列出路径 | 两端均符合预期 |
+
+**两个参数化设计（否则无法在不动用仓库的前提下测）：**
+
+- `--snapshot <rev>` 不传时断言② 报「跳过」而不是判红。快照比较只在交付整理时有对象；平时跑也红的话这条脚本就没人跑了。
+- `--worktrees <n>` 声明期望值。收尾要求只剩主 checkout（默认 1），整理期间用参数声明。
+- `--unreachable-baseline <n>` 是重钉路径，语义同 `mutation:baseline`。默认值 479 写在常量里，注释写明来历与「这是垃圾基线，不是允许 479 个孤儿」。
+
+**接线核实：**
+
+- `check:delivery` **不在** `check:quick`，也**不在** `verify`：前者每轮编辑都跑，后者要求每个提交都绿；交付断言只在整理那一刻成立。理由写进了脚本头注与 `CONTRIBUTING.md` §6.6。
+- `package.json` 只新增一条脚本，未重命名已有脚本。
+- `lint` 覆盖 `scripts/`，新脚本过了 oxlint 与 oxfmt（首次跑 `fmt:check` 报了一处格式问题，已 `oxfmt --write` 修）。
+- `npm run verify` 全绿。
+
+**与 `check-worktrees.mjs` 的分工：** 那条管「worktree 建在哪」，这条管「还剩几个」。两条不改，一条一个职责。
+
+**遗留：**
+
+- 断言③ 的基线是一个随时会被 `git gc` 改大的数（当前 479 里大多是线性化重写的垃圾）。`gc` 后它会下降，脚本不报红；但如果先 `gc` 再出现新的孤儿，比对会变敏感。这是可接受的。
+- 切片依赖无环（票 04）仍无脚本。
 
 **实现要点：**
 
