@@ -1,7 +1,7 @@
 /**
  * burst-plus-two ticket 03 —— AI 估值器与双级爆发的对账（真实行为断言）
  *
- * 权威：`.scratch/burst-plus-two/spec.md`「AI 估值器要对账，但不重调口径」。
+ * 权威：规则见 `docs/GDD.md` §2.3，决策见 ADR 0016（AI 估值器要对账，但不重调口径）。
  * 接缝：`ActionEvaluator.evaluate(...)` 的 `breakdown`——本文件全部用真实调用取证，不读代码下结论。
  *
  * 估值器读的是**动作前后的盘面差分**（`src/core/ai/ActionEvaluator.ts`），不是解析器内部那两次

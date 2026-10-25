@@ -1,7 +1,7 @@
 /**
  * 强化 (BURST) 双级作用真值表 —— burst-plus-two ticket 01
  *
- * 权威：`.scratch/burst-plus-two/spec.md`「核心规则：强化真值表（全部 16 种目标状态，已用真实计分器验算）」。
+ * 权威：规则见 `docs/GDD.md` §2.3（全部 16 种目标状态，已用真实计分器验算），决策见 ADR 0016。
  * 接缝：`ActionResolver.resolve`（只断言结算后的盘面、`scoreDelta`、`extraTurn` 与引用相等）。
  *
  * 规则：源节点消耗阴侧 1 级（不计分）；相生目标连做两次 `+1`，

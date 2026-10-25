@@ -2,7 +2,7 @@
 // （`npm run check:worktrees`，`check:quick` 第一段）。
 //
 // 规则写在 `~/projects/AGENTS.md`，但那是建议——这个仓库历史上真把 worktree 建到了仓库外
-// （见 `.scratch/archive/burst-plus-two/`）。`git worktree list` 才是事实：元数据记在
+// （历史上真发生过）。`git worktree list` 才是事实：元数据记在
 // `.git/worktrees`，建在哪都列得出来。
 //
 // 另两条断言钉住 `.gitignore` 遮罩：写成整目录就静默失效，`.git/info/exclude` 这类本地源

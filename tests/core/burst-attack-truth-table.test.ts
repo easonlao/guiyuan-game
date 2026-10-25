@@ -1,7 +1,7 @@
 /**
  * 强破 (BURST_ATK) 双级作用真值表 —— burst-plus-two ticket 02
  *
- * 权威：`.scratch/burst-plus-two/spec.md`「核心规则：强破真值表（动作分 80；状态分随「对手归一节点数」缩放，此处取归一数 = 2、系数 0.66 作为基准）」。
+ * 权威：规则见 `docs/GDD.md` §2.3，取值真源 `src/core/logic/ScoreCalculator.ts`（本表按动作分 80、攻击进度系数 0.66 取基准），决策见 ADR 0016。
  * 接缝：`ActionResolver.resolve`（只断言结算后的盘面、`scoreDelta`、`extraTurn` 与引用相等）。
  *
  * 规则：源节点消耗阳侧 1 级（不计分）；对手相克目标连做两次 `-1`，

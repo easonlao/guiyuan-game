@@ -6,6 +6,8 @@ Issues and specs for this repo live as markdown files in `.scratch/`.
 
 - One feature per directory: `.scratch/<feature-slug>/`
 - The spec is `.scratch/<feature-slug>/spec.md`
+- **Finished efforts are deleted, not archived.** When an effort's tickets are all resolved and its decisions have been written back (rule text to GDD, engineering to HLD, decisions to ADR, evidence to `docs/headless/`), delete the directory. `.scratch/archive/` held 25 finished efforts and 1.2M of dead weight until 2026-10-25; it was removed because nothing read it and its material had already been absorbed. The live `.scratch/` holds only efforts still in flight.
+- Nothing outside `.scratch/` may cite `.scratch/` as the source of a fact or of evidence. The dependency runs one way: an effort may cite `docs/` and code, never the reverse.
 - Implementation issues are one file per ticket at `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01`, never a single combined tickets file
 - Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading
