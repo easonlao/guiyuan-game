@@ -2,26 +2,51 @@
 
 **Type:** task
 **Blocked by:** None（01 已 resolved，规则文本已有输入）
-**Status:** ready-for-agent
+**Status:** resolved
 
 **What to build:** 把 spec 的「决定」一至八条写成可执行的规则正文，放进 `CONTRIBUTING.md`（新增一节「分支与交付」），`AGENTS.md` 与 `docs/HLD.md` 只留指针。
 
 **为什么落在 `CONTRIBUTING.md`：** 它已经拥有贡献流程与提交纪律（§3 提交信息、§5 开发流程闭环）。交付策略是同一层的事实。`docs/HLD.md` §4.5 拥有 CI，交付策略与它不是一件事，别塞进去。
 
+## Answer
+
+已落地（2026-10-25）。`CONTRIBUTING.md` 新增 **§6 分支与交付**，共 6 个小节；`AGENTS.md` 只加了三处指针与归属表一行。
+
+**节次与 spec 决定的对应：**
+
+| § | 内容 | 对应决定 |
+|---|---|---|
+| 6.1 | 三层颗粒度、切片定义、票与提交的比值、回退/bisect 精度 | 6、12 |
+| 6.2 | spec / ticket 分支与 worktree，单写者 | 1、5 |
+| 6.3 | 回 main 的七步；squash 点是票 → spec；四要素 body；整理阶段不新增测试 | 7、8、9 |
+| 6.4 | 快速通道三条判据与排除项 | 3、10 |
+| 6.5 | 产物与切片重排的三条命令 | 11 |
+| 6.6 | 验证档与执行者（含两个未落地脚本的诚实标注） | 2、4 |
+
 **验收清单：**
 
-- [ ] `CONTRIBUTING.md` 新增一节，覆盖：分支命名、切片定义、两类依赖、验证档位、整理与逐提交验证、ff 合入、收尾清理
-- [ ] 三条开放项的结论（01 的产出）在正文里有对应段落
-- [ ] 规则里写明 **squash 发生在「票 → spec」**，切片归组在 squash 之后；不要写成「先全 squash 再进 main」
-- [ ] 规则里写明**票与交付提交不是同一颗粒度**：票拆细（agent 聪明区）、交付提交按切片归组（回退单位）；一票单独能验证时才是 1:1
-- [ ] 交付提交的 body 写「切片名 + 该片全部票号 + 关键取舍 + 验证命令」（spec 决定 9）
-- [ ] 写明回退与 bisect 的精度是**切片**（spec 决定 12）
-- [ ] 快速通道写成机器可判的判据（路径白名单 + 文件数），并写明谁判
-- [ ] 规则里出现的每条命令都是 `package.json` 里真实存在的命名脚本：`node -e "console.log(Object.keys(require('./package.json').scripts).join(' '))"` 核对，不自造命令名
-- [ ] 文档里不出现 `ruff`、`python`、`pytest` 这类本仓库不存在的工具
-- [ ] `AGENTS.md` 只加指针，不复述规则正文（依据 `AGENTS.md` 的「每个事实只有一个家」）
-- [ ] 交付策略的家登记进 `AGENTS.md` 的归属表（这张表目前只管 FSR/SRS/GDD/HLD/LLD，需要扩一行）
-- [ ] 断链检查：本节引用的每个 `scripts/*.mjs` 与文档路径都存在
+- [x] `CONTRIBUTING.md` 新增一节，覆盖：分支命名、切片定义、两类依赖、验证档位、整理与逐提交验证、ff 合入、收尾清理
+- [x] 三条开放项（D1/D2/D3）的结论在正文里有对应段落
+- [x] 写明 squash 发生在「票 → spec」，切片归组在 squash 之后
+- [x] 写明票与交付提交不是同一颗粒度，并给出比值规则
+- [x] 交付提交 body 四要素（含「该片全部票号」）
+- [x] 写明回退与 bisect 的精度是切片
+- [x] 快速通道写成机器可判的判据（路径白名单 + 文件数）
+- [x] 规则里每条命令都真实存在（逐个核对 `package.json#scripts`）
+- [x] 不出现 `ruff` / `pytest` / `python`
+- [x] `AGENTS.md` 只加指针，不复述规则正文
+- [x] 归属表新增 `CONTRIBUTING.md` 一行
+- [x] 断链检查：引用的路径逐个检查，两个未落地脚本已在 §6.6 明写
+
+**验收核对记录：**
+
+- 命令真实性：`check:quick` / `verify` / `build:minigame` / `mutation:milestone` / `check:worktrees` 逐个用 `node -p "require('./package.json').scripts['X']"` 核对，均存在。
+- 禁词：`grep -c -E 'ruff|pytest|python' CONTRIBUTING.md` = 0。
+- 意外修正：§1 末尾原写「CI 快链在 **PR** / push 时判红」，但本仓库从未用过 PR，且旧历史下 CI 是事后补救。改为「CI 只做兜底，拦截靠交付前的本地验收」。
+
+**决定 2 的落地情况（需要明确）：**
+
+「不变量必须由脚本断言」这一步**只完成了一半**。已落地的只有 `npm run check:worktrees`。main 线性、快照一致、无新增孤儿提交、worktree 清账、切片依赖无环这五类，目前**只写在 §6.6 的执行者表里，无人拦**。它们的脚本在票 03、04。在票 03 落地前，这些不变量与 §6 的其他条款一样，靠协调代理人工核对。
 
 **实现要点：**
 
