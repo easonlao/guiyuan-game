@@ -65,3 +65,37 @@
 | 04 | 执行图 `Slice:` 字段 + 切片依赖循环检测 | — | S3 | 可开工 |
 
 切片依赖：S1 → S2 → S3（S2 的对账点依赖 S1 的规则文本；S3 的字段语义已在决定 5–6 定下，不再等 01）。无环。
+
+## 首次实跑（2026-10-25）
+
+**跑的是什么**：`.scratch/doc-dedup/` 第一档删除（删 15 份零引用报告 172K）。规模：1 张票 = 1 个切片 = 2 个交付提交（spec 文档 + 切片提交），基点 `c26d06a`。
+
+**实际步骤与时间**（作者时间）：
+
+| 时 | 步 | 产出 / 结果 |
+|---|---|---|
+| 11:38 | 开 spec 分支 + worktree | `spec/doc-dedup` @ `.worktrees/spec-doc-dedup` |
+| 11:41 | 写 `spec.md` | `3979c3b` |
+| 11:41 | 开 ticket 分支 + worktree | `ticket/doc-dedup/01` @ `.worktrees/ticket-doc-dedup-01` |
+| 11:42 | 删 15 份文件 + 改票面 | `02bd21c`（`npm ci` → `git rm` ×15 → `check:quick`） |
+| 11:42 | 把最新 spec 合入 ticket | `Already up to date`（spec 未动） |
+| 11:43 | squash 回 spec | `1066fb2` |
+| 11:43 | **切片验证（第一次）** | **判红**：`check:boundary` 说 `tools/` 解析不到 `@guiyuan/…`——spec worktree 没装依赖 |
+| 11:44 | 切片验证（补 `npm ci` 后） | `npm run verify` 全绿，spec tip `1066fb2` |
+| 11:45 | 交付整理 | `rebase --force-rebase --exec 'npm run verify' c26d06a`，逐个提交跑过 |
+| 11:45 | 快照比较 | 快照树 = 交付树 = `4213f8f`，逐字节一致 |
+| 11:45 | `check:delivery` | 四条断言通过（`--worktrees 3`） |
+| 11:45 | 交需求方确认 | 改动范围 + 提交列表 + 验证结果 |
+| 11:46 | ff 合入 main | `b8480d2` |
+| — | 收尾 | 删 2 个 worktree；2 个分支靠**树相等**判据删 |
+
+**四处摩擦与处理**：
+
+| 摩擦 | 处理 |
+|---|---|
+| 每个 worktree 都要跑 `npm ci`，否则包边界判红，看着像代码问题 | 已补进 §6.2 |
+| 交付整理的「同步」在 main 未前进时是空操作 | 已补进 §6.3.3 |
+| 交付期间 `check:delivery` 断言④ 会红（3 个 worktree），需用 `--worktrees <n>` 声明 | 已在脚本用法与 §6.6 写明 |
+| **squash + rebase 后 `git branch -d` 的结构判据永远通不过**，收尾删分支会卡住 | 已补进 §6.3.7：改用树相等的内容判据，不得改 `-D` |
+
+另有一条不是流程问题、但会重复发生的操作坑：写文件时容易写进**主 worktree** 而不是 spec worktree（首次实跑就这样，`spec.md` 落错地方，靠 `mv` 救回）。根因是工具给的是绝对路径。判据：写完先在该 worktree 里 `git status`，文件不在暂存区就是写错了地方。
