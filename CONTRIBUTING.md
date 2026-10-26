@@ -230,7 +230,7 @@ npm run verify
   - `check:worktrees`（`check:quick`）：worktree 落点与 `.gitignore` 遮罩。
   - `check:slices`（`check:quick`）：`Slice:` 归属一致、票据与切片依赖无环。
   - `check:refs`（`check:quick`）：长期文档里的本地路径引用零死链。
-  - `check:facts`（`check:quick`）：环境基线、CI 配置、ADR 命名、术语表、技能锁、突变基线结构等 12 条不变式。
+  - `check:facts`（`check:quick`）：环境基线、CI 配置、ADR 命名、术语表、技能锁、突变基线结构等 10 条不变式。
   - `check:prose`（`check:quick`）：本次改动新增的 Markdown 行里没有「查找替换改坏」的怪句子（括号不配对 / 汉字夹空格 / 括号套括号 / 相邻两对括号）。
   - `check:delivery`（按需，交付整理时跑）：main 线性、快照一致、无内容未并入 main 的孤儿提交、worktree 清账。
   `check:delivery` 不在 `check:quick` 也不在 `verify`——前者的语义是「每轮编辑都跑」，后者是「每个提交都得绿」，交付断言只在整理那一刻成立。用法：`npm run check:delivery -- --base <rev> --snapshot <rev> --tip <rev> --worktrees <n>`。
