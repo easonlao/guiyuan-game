@@ -12,7 +12,7 @@ describe('Ticket 01: 双轨制行为分与己方建设状态分全链路实装',
     it('defines accurate ACTION base points', () => {
       expect(POINTS_CONFIG.ACTION.AUTO).toBe(0);
       expect(POINTS_CONFIG.ACTION.CONVERT).toBe(50);
-      // 平衡重调（burst-plus-two 后）：化 30 → 160，见 docs/headless/burst-plus-two-balance.md。
+      // 平衡重调（burst-plus-two 后）：化 30 → 160，见 ADR 0017。
       expect(POINTS_CONFIG.ACTION.TRANS).toBe(160);
       expect(POINTS_CONFIG.ACTION.ATK).toBe(40);
       expect(POINTS_CONFIG.ACTION.BURST).toBe(100);

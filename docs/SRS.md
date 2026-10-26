@@ -46,7 +46,7 @@
 系统必须完整支持 GDD §2.1 定义的双轨计分机制，用于终局仲裁。**取值真源为 `src/core/logic/ScoreCalculator.ts` 的 `POINTS_CONFIG`**，本节不复写数值：
 *   **FR-2.1 行为分 (Action Score)**：按动作类型给付（`POINTS_CONFIG.ACTION`）。
 *   **FR-2.2 状态分 (State Score)**：按动作改变前后的棋盘状态转移给付（`POINTS_CONFIG.STATE_CHANGE`）。
-*   **FR-2.3 稀有度与乘区加成 (Rarity Multipliers)**：原设计的动态稀有度加成**从未在生产路径接线**，相关符号与配置字段已随 `078c240` 删除，机制不再存在于 `src/`。勘误见 ADR 0002 与 `docs/headless/knob-census.md` §5。
+*   **FR-2.3 稀有度与乘区加成 (Rarity Multipliers)**：原设计的动态稀有度加成**从未在生产路径接线**，相关符号与配置字段已随 `078c240` 删除，机制不再存在于 `src/`。勘误见 ADR 0002。
 
 ### 3.3 分层 AI 决策系统 (FR-3: AI Decision)
 系统必须提供开销可控的本地启发式 AI，不依赖网络（实现与模块见 `docs/HLD.md` §2）：
@@ -57,7 +57,7 @@
 系统必须原生支持脱离任何 UI 渲染的纯逻辑批处理对战环境：
 *   **FR-4.1 确定性无头推演 (`HeadlessMatch`)**：支持两方 AI 纯逻辑无延迟对战，单局耗时须满足 §4.2 的性能预算。
 *   **FR-4.2 种子可复现性 (PRNG)**：支持固定伪随机种子（`src/core/utils/prng.ts` 与无头入口的 `baseSeed`），确保偶发 Bug 或关键对局可 100% 确定性回放。
-*   **FR-4.3 批量实验与平衡性诊断**：支持批量对战、对拼矩阵、策略对比、参数敏感性扫描与候选搜索/护栏校验。实验工具清单见 `docs/HLD.md` §2 与 `docs/headless/`。
+*   **FR-4.3 批量实验与平衡性诊断**：支持批量对战、对拼矩阵、策略对比、参数敏感性扫描与候选搜索/护栏校验。实验工具清单见 `docs/HLD.md` §2。
 
 ### 3.5 多人联机与网络对战 (FR-5: Multiplayer & Networking)
 针对完整版联网场景，系统**规划**提供网络对弈能力。当前 `src/` 中**尚未实现**任何联机模块：

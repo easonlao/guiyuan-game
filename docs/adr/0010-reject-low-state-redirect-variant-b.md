@@ -8,7 +8,7 @@ status: accepted
 
 ADR 0006 确立「严格节点三态」契约后，低位态（虚空 0 / 道损 -1）**仅允许原地【吸纳】**，无任何策略选择。作为对「低位态是死局」这一设计担忧的回应，本实验提出**变体 B**：抽中天干对应侧处于低位态时，阴天干可改道【化】向相生节点、阳天干可改道【破】向相克节点，代价是放弃本次原地 +1；默认关闭（`lowStateRedirect`）。
 
-本 ADR 记录用无头推演台（可注入计分配置）对变体 B 做的两轮杠杆实验，并给出采纳或回退的最终决定。完整数据见 `docs/headless/low-state-redirect-experiment.md`。
+本 ADR 记录用无头推演台（可注入计分配置）对变体 B 做的两轮杠杆实验，并给出采纳或回退的最终决定。完整数据原报告已删，见 git 历史。
 
 ## 证据
 
@@ -43,7 +43,7 @@ ADR 0006 确立「严格节点三态」契约后，低位态（虚空 0 / 道损
 
 1. **否决变体 B。** 回退 `lowStateRedirect` 开关及其在 `ActionCandidates` / `TurnManager` / `game-manager` / 无头推演入口的全部接线与测试。低位态行为回到 ADR 0006 的「仅【吸纳】」。
 2. **回退全部实验计分改动。** 本实验从未改动生产默认 `POINTS_CONFIG`；一并移除仅为实验存在的计分配置注入、计分杠杆候选、`createScoreBoundStrategy`、测量台与对拼扫描，使工作区相对实验开始前无意外残留。
-3. **保留实验数据与结论。** `docs/headless/low-state-redirect-experiment.md` 保留为证伪记录（含命令、种子、样本量、全部对照表）；本 ADR 记录决定。
+3. **保留实验数据与结论。** 该实验的完整记录（含命令、种子、样本量、全部对照表）已删，可取回于 git 历史；本 ADR 记录决定。
 4. **生产规则、计分数值与文档维持现状。** GDD / GLOSSARY 无需因本决定改动；计分表与实现的分歧由工单 07 单独处理，计分模块死代码由工单 08 单独处理。
 
 ## 被否决的备选方案
@@ -61,4 +61,4 @@ ADR 0006 确立「严格节点三态」契约后，低位态（虚空 0 / 道损
 
 ## 勘误
 
-- （2026-10-11）证据段点名的 `npm run benchmark:ai-preference` 与 `npm run benchmark:score-lever` 两个脚本已随实验代码回退删除（决策 2），现在 `package.json` 里不存在。当时的读数与命令保留在 `docs/headless/low-state-redirect-experiment.md`（该报告已带同类勘误括注）。本 ADR 的决定不受影响。
+- （2026-10-11）证据段点名的 `npm run benchmark:ai-preference` 与 `npm run benchmark:score-lever` 两个脚本已随实验代码回退删除（决策 2），现在 `package.json` 里不存在。当时的读数与命令保留在原低位改道实验报告（已删，见 git 历史；该报告已带同类勘误括注）。本 ADR 的决定不受影响。

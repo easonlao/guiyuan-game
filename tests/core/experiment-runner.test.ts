@@ -246,7 +246,7 @@ describe('Ticket 06 - 基线复现 (self-distortion alarm)', () => {
     // 工单 05 平衡重调（化 30→160）后基线第三次位移：
     // 归元率 91.05% → 90.00%（−1.05pp）、平均大回合 17.78 → 18.15（+0.37）、
     // 先手胜率 54.55% → 52.55%（−2.00pp）。每次位移都是规则/计分改动的真实后果，
-    // 不是管道失真；护栏对照与在带/带外结论见 docs/headless/burst-plus-two-balance.md。
+    // 不是管道失真；护栏对照与在带/带外结论见 ADR 0017。
     expect(Math.abs(cell.guiYuanRate - 0.9)).toBeLessThanOrEqual(0.015);
     expect(Math.abs(cell.avgRounds - 18.148)).toBeLessThanOrEqual(1.5);
     expect(Math.abs(cell.p1WinRate - 0.5255)).toBeLessThanOrEqual(0.015);

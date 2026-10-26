@@ -6,7 +6,7 @@ status: accepted
 
 burst-plus-two（ADR 0016：强化/强破恢复双级作用、满溢则亏、门槛放开）落地后，平衡护栏的先手胜率
 破了带，占优格局也重新翻转。本 ADR 记录这次平衡重调的决策、理由与被否决的方案；**完整测量
-表与复跑口径**归 `docs/headless/burst-plus-two-balance.md` §7（本文只引关键数字），**取值真源**是
+表与复跑口径**的原报告已删（见 git 历史），本文只引关键数字，**取值真源**是
 `src/core/logic/ScoreCalculator.ts` 的 `POINTS_CONFIG`。
 
 ## 背景与问题

@@ -1,8 +1,8 @@
 /**
  * Ticket 05 — 死旋钮普查 (Dead Knob Census)
  *
- * 目的：把「哪些可调参数真的被读取」变成可执行断言，使 `docs/headless/knob-census.md`
- * 的活/死清单不能静默腐烂。本文件建立在 Ticket 04 的注入链路验证
+ * 目的：把「哪些可调参数真的被读取」变成可执行断言，使 ADR 0011 定的活/死参数清单
+ * 不能静默腐烂。本文件建立在 Ticket 04 的注入链路验证
  * (`tests/core/injection-path-verification.test.ts`) 之上，不重复其逐注入点行；
  * 这里做的是**逐参数**的三列普查：
  *

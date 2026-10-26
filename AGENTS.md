@@ -22,14 +22,14 @@
 表外还有三类文档：
 
 - **真源类**（进采信链）——`GLOSSARY.md` 管「叫什么」：术语 + 一两句「它是什么」+ `_Avoid_` 禁用别名，格式见 `.agents/skills/domain-modeling/GLOSSARY-FORMAT.md`；术语冲突以它为准，**禁止往里写规则正文、实现细节或决策记录**。它的范围停在「规则与棋盘」这一层：表现层只收了 `主印`、`半身` 两条，其余视觉词（如 `幽灵态`、`候选弧`）不进表，在 `docs/LLD.md` §4.1 定义。`docs/adr/` 管「为什么这么定」，决策冲突以最新 ADR 为准。
-- **报告类**（只做证据与导航，不定义规则）——`docs/headless/`、`docs/archive/`。引用它们时必须写明「这是证据，不是定义」。
+- **报告类**（只做证据与导航，不定义规则）——**已于 2026-10-25 删除**（原 `docs/headless/` 与 `docs/archive/`）。「引用它们时必须写明『这是证据，不是定义』」这条规矩仍有效，但此类目录已空。要取回某份报告：`git log --diff-filter=D -- docs/headless`，再 `git show <commit>:<path>`。
 - **入口类**——`README.md` 面向人，可以概述玩法，但**不复述规则的条件与数值**（那些归 GDD），必须带指针；代码入口与模块职责归 `docs/HLD.md` §2。
 
 ### ADR 的边界
 
 门槛与格式见 `domain-modeling` 技能的 `ADR-FORMAT.md`。本仓库按完整结构写：背景 + 决定 + 被否决的方案 + 后果（技能里后两项可选，这里不省）。另两条：
 
-- 采纳后：规则正文回写 GDD、工程方案回写 HLD、证据留在 `docs/headless/`，ADR 只留决策与理由；现状勘误追加文末，不重写历史结论。
+- 采纳后：规则正文回写 GDD、工程方案回写 HLD，ADR 只留决策与理由；现状勘误追加文末，不重写历史结论。**证据报告已于 2026-10-25 删除**（原 `docs/headless/`），只可取回于 git 历史；ADR 里指向被删报告处写作「原报告已删，见 git 历史」。
 - 变更历史由 git 承载：文档头部不写版本号，也不写逐版本变更记录。
 
 ## 目录约定
@@ -38,7 +38,7 @@
 - 单元测试放 `tests/`。
 - 工具生成的产物放 `artifacts/`；根目录的 `mutation-baseline.jsonl` 是入库的棘轮基线，归 `docs/MUTATION-TESTING.md` §3.2 管。
 
-包名与包拓扑见 `docs/HLD.md` §2；进不进库以根目录 `.gitignore` 为真源（例外：`minigame/game.js` 是入库的交付产物，理由见 ADR 0014）；实验报告与归档文档见上一节。
+包名与包拓扑见 `docs/HLD.md` §2；进不进库以根目录 `.gitignore` 为真源（例外：`minigame/game.js` 是入库的交付产物，理由见 ADR 0014）；实验报告与归档文档已于 2026-10-25 删除，见上一节。
 
 版本库里的其余顶层目录：`.github/`（CI workflow）、`.githooks/`（提交信息 hook）、`patches/`（patch-package 补丁）、`.pi/`（pi 的工具配置）、`.agents/`（通用 Agent Skills 目录）。
 

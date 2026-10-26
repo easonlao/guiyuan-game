@@ -26,7 +26,7 @@ import type { HeadToHeadReport } from '../../tools/ExperimentRunner.js';
  * burst-plus-two 后的平衡重调（工单 05，化 30→160）：双级爆发一度让「激进压制」重新
  * 6/6 严格占优、平衡对激进压制跌到 40.2%。把【化】行为分从 30 抬到 160 后，
  * 严格占优再次消失，平衡对激进压制回到 54.0%。本文件的两格钉值按重调后实测重录，
- * 理由与证据见 `docs/headless/burst-plus-two-balance.md`。
+ * 理由见 ADR 0017。
  *
  * 运行参数（生产默认计分配置）：
  *   - 规则模式 mode = 'scoring'（生产默认）
@@ -78,7 +78,7 @@ const STRATEGY_COUNT = DEFAULT_STRATEGY_VARIANTS.length;
 
 /**
  * 500 局/座次、种子 10000、scoring/default（含进度定价）下实测的关键格座次平衡胜率。
- * 两个格子取自候选搜索 `docs/headless/candidate-search.md` §4.1/§4.5 的核心翻转对，
+ * 两个格子取自候选搜索的核心翻转对（ADR 0011「后果」段），
  * 并在本文件相同样本量下重测；burst-plus-two 平衡重调（工单 05）后按实测重录。
  * 容差 2×SE ≈ 3.16pp。
  */
