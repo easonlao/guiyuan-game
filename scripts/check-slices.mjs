@@ -136,9 +136,12 @@ function findCycle(nodes, edges) {
   }
 }
 
-const efforts = readdirSync(scratchDir).filter((name) =>
-  statSync(join(scratchDir, name), { throwIfNoEntry: false })?.isDirectory(),
-);
+// `.scratch/` 可能整个不存在（没有在途 effort 是合法状态），按零个 effort 处理。
+const efforts = statSync(scratchDir, { throwIfNoEntry: false })?.isDirectory()
+  ? readdirSync(scratchDir).filter((name) =>
+      statSync(join(scratchDir, name), { throwIfNoEntry: false })?.isDirectory(),
+    )
+  : [];
 
 let ticketCount = 0;
 const frontierGroups = [];
