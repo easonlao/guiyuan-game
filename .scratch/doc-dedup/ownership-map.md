@@ -51,9 +51,9 @@
 　还在说：`docs/HLD.md` §4.4 复述了机制（同一件事写两遍，可降为指针）
 　对账：`npm run check:artifact` → 退出 0（实测输出「逐字节一致，落点不在任何 dist/ 下」）
 
-**A10 内循环命令的构成** — 家：`package.json#scripts.check:quick`（**8 段**：`check:worktrees` → `check:slices` → `fmt:check` → `lint` → `check:boundary` → `check:refs` → `check:facts` → `check:deps`）
+**A10 内循环命令的构成** — 家：`package.json#scripts.check:quick`（**9 段**：`check:worktrees` → `check:slices` → `fmt:check` → `lint` → `check:boundary` → `check:refs` → `check:facts` → `check:prose` → `check:deps`）
 　还在说：`docs/HLD.md` §4.4 明写「命令清单以 `package.json` 为真源，本文不复制」——是好的指针写法，照这个改其他处
-　对账：`node -p "require('./package.json').scripts['check:quick']"` → 8 段串联
+　对账：`node -p "require('./package.json').scripts['check:quick']"` → 9 段串联
 　**2026-10-25 复核两次**：原记 5 段 → 票 04 加 `check:slices` 变 6 段 → 同日后一轮加 `check:refs` 与 `check:facts` 变 8 段。段数变是合法的，所以 `check:facts` 只断言「门禁还在链里」，不锁段数。
 
 **A11 收尾命令** — 家：`package.json#scripts.verify`
