@@ -30,7 +30,6 @@
     "check:facts": "node scripts/check-facts.mjs",
     "check:slices": "node scripts/check-slices.mjs",
     "check:boundary": "node scripts/check-package-boundary.mjs",
-    "check:delivery": "node scripts/check-delivery.mjs",
     "check:artifact": "node scripts/check-minigame-artifact.mjs",
     "benchmark:headless": "npx tsx tools/HeadlessBenchmark.ts",
     "benchmark:experiment": "npx tsx tools/ExperimentRunner.ts",
