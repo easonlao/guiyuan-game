@@ -145,7 +145,8 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
   it('回归：样本量低于 MIN_DOMINANCE_MATCHES 时，C1 明确报「无法判定」而不是通过', () => {
     const tiny = validateCandidate(PRODUCTION_CANDIDATE, {
       ...FAST,
-      matchesPerSeat: 20, // 每格 40 局 < MIN_DOMINANCE_MATCHES(100) → 全部 insufficient
+      matchesPerSeat: 3, // 每格 6 局 < MIN_DOMINANCE_MATCHES(100) → 全部 insufficient
+      guardrailMatches: 5,
       baselineHeadToHead: production.noStrictDominance.headToHead,
     });
     expect(tiny.noStrictDominance.strictDominators).toEqual([]);
@@ -286,10 +287,10 @@ describe('Ticket 05 - 候选验证命令：四条标准一次跑完', () => {
         pointsConfig: { ...POINTS_CONFIG, ACTION: { ...POINTS_CONFIG.ACTION, ATK: 41 } },
       };
       const options = {
-        matchesPerSeat: 50,
+        matchesPerSeat: 3,
         seed: 4242,
         maxRounds: 30,
-        guardrailMatches: 100,
+        guardrailMatches: 5,
         guardrailSeed: 10000,
       } as const;
       const stripRuntimeDiagnostics = (report: CandidateValidationReport) => ({

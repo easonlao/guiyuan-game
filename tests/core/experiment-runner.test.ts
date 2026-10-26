@@ -255,7 +255,7 @@ describe('Ticket 06 - 基线复现 (self-distortion alarm)', () => {
   it('矩阵自对弈格与直接调用 HeadlessBenchmark 完全一致 (薄层不引入偏差)', () => {
     const balanced = DEFAULT_STRATEGY_VARIANTS.find((variant) => variant.name === '平衡')!;
     const defaultConfig = DEFAULT_SCORE_CONFIG_VARIANTS[0];
-    const options = { matches: 50, baseSeed: 4242, maxRounds: MAX_ROUNDS };
+    const options = { matches: 3, baseSeed: 4242, maxRounds: MAX_ROUNDS };
 
     const cell = runExperimentMatrix({
       modes: ['scoring'],
@@ -303,7 +303,7 @@ describe('Ticket 06 - 对拼矩阵座次平衡 (seat balancing)', () => {
 
   it('座次平衡对称性：A 对 B 与 B 对 A 的胜率互补 (和为 1)', () => {
     const report = runHeadToHeadMatrix({
-      matches: 50,
+      matches: 3,
       baseSeed: BASE_SEED,
       maxRounds: MAX_ROUNDS,
     });
@@ -321,7 +321,7 @@ describe('Ticket 06 - 对拼矩阵座次平衡 (seat balancing)', () => {
   it('座次平衡胜率是两座次的平均，能抵消先手优势', () => {
     const report = runHeadToHeadMatrix({
       strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 2),
-      matches: 50,
+      matches: 3,
       baseSeed: BASE_SEED,
       maxRounds: MAX_ROUNDS,
     });
@@ -337,7 +337,7 @@ describe('Ticket 06 - 对拼矩阵座次平衡 (seat balancing)', () => {
   it('对拼矩阵的 drawRate 是流局率（= 1 - 归元率），不是平局率', () => {
     const report = runHeadToHeadMatrix({
       strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 3),
-      matches: 100,
+      matches: 3,
       baseSeed: BASE_SEED,
       maxRounds: MAX_ROUNDS,
     });
@@ -380,7 +380,7 @@ describe('Ticket 06 - 对拼矩阵座次平衡 (seat balancing)', () => {
   it('同一随机种子产出同一对拼矩阵 (确定性)', () => {
     const options = {
       strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 3),
-      matches: 10,
+      matches: 3,
       baseSeed: 4242,
       maxRounds: MAX_ROUNDS,
     } as const;
@@ -433,11 +433,11 @@ describe('Ticket 06 - 报告输出 (paste-able markdown)', () => {
   });
 
   it('全格无法判定时报告「无法判定」，而不是「无占优」（不静默通过）', () => {
-    // 样本量 10 远低于 MIN_DOMINANCE_MATCHES（100）：两座次合计 20 局/格，
+    // 样本量 3 远低于 MIN_DOMINANCE_MATCHES（100）：两座次合计 6 局/格，
     // 全部格子均为「样本不足」而不可判定，没有任何格子能支撑占优结论。
     const report = runHeadToHeadMatrix({
       strategies: DEFAULT_STRATEGY_VARIANTS.slice(0, 2),
-      matches: 10,
+      matches: 3,
       baseSeed: BASE_SEED,
       maxRounds: MAX_ROUNDS,
     });

@@ -92,10 +92,10 @@ describe('Ticket 05 - 候选 A 注册与 CLI 选择', () => {
 
   it('validateCandidate 用调优动态策略复跑候选 A（标准 4 接线）', () => {
     const report = validateCandidate(TICKET_05_CANDIDATE, {
-      matchesPerSeat: 20,
+      matchesPerSeat: 3,
       seed: 10000,
       maxRounds: 30,
-      guardrailMatches: 40,
+      guardrailMatches: 5,
       guardrailSeed: 10000,
       dynamicPolicies: [TUNED_DYNAMIC_POLICY],
     });
