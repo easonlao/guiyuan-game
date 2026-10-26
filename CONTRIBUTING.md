@@ -119,14 +119,27 @@
 6. **合入 main**：合入前把改动范围、提交列表、验证结果告诉需求方。以 **fast-forward** 合入，合入后核对 main 与交付分支一致。
 7. **收尾**：核对分支实际 tip 与交付清单一致；逐项检查 worktree 里未提交、未跟踪、被忽略的文件（尤其本地配置）的走向；确认后删 ticket 分支、worktree 和已完成的 spec 分支。
 
-**收尾删分支用内容判据，不用 `git branch -d`。** squash 与 rebase 都改了哈希，ticket 与 spec 分支按「是否 main 的祖先」判，**永远算未合并**，`git branch -d` 会拒绝。删前先比树：
+**收尾删分支用内容判据，不用 `git branch -d`。** squash 与 rebase 都改了哈希，ticket 与 spec 分支按「是否 main 的祖先」判，**永远算未合并**，`git branch -d` 会拒绝。删前用下面两条比内容，**满足任一条即可删**：
+
+**判据一：整树相等。** 分支的树与快照（或交付树）逐字节相等，即内容已全部并入 main。
 
 ```bash
-# ticket / spec 分支的树与快照（或交付提交）的树相等，即内容已全部并入 main
-git rev-parse ticket/<spec>/<编号>^{tree} spec/<slug>^{tree} <快照>^{tree}
+# 三者应当输出同一个 tree hash
+git rev-parse <分支>^{tree} <快照>^{tree} main^{tree}
 ```
 
-三棵树相等再删。**不要为了跳过这道拒绝改用 `-D`**——那会失去唯一的安全网。`-d` 拒绝不是 bug，是它用的判据不适配 squash + rebase。
+**判据二：本分支改过的文件与 main 逐文件一致。** 只比这个分支真正动过的文件：
+
+```bash
+# 列出本分支相对基点的改动文件，再与 main 逐个比
+base=$(git merge-base main <分支>)
+git diff --stat main..<分支> -- $(git diff --name-only "$base"..<分支>)
+# 输出为空（或只差本分支之外的更新版本）即可删
+```
+
+**树相等只是「一票一片、整片交付」时的特例。** 多票并行时，每张 ticket 分支只含自己那一片的改动，它的整树天然不等于 main——但它的每一个文件都已进了 main。这时只能用判据二。（2026-10-25 首次碰到：三个并行子代理的 ticket 分支，其中一个分支只差一行—— main 上那份比它还新。）
+
+**不要为了跳过 `git branch -d` 的拒绝改用 `-D`**——那会失去唯一的安全网。`-d` 拒绝不是 bug，是它用的判据不适配 squash + rebase。
 
 **删完跑 `git gc --prune=now`，再跑 `npm run check:delivery`。** squash、rebase 与 amend 都会弃掉旧提交，这些垃圾只能靠 gc 清。清完不可达提交归零，`check:delivery` 的断言③ 才能干净通过（否则它会把上一轮交付的旧版本报成孤儿）。
 
@@ -135,7 +148,7 @@ gc **不可恢复**，所以要保存的东西必须先打 tag：tag 就是「gc
 ```bash
 # 1. ff 合入并核对
  git merge --ff-only delivery/<slug>
-# 2. 删 worktree 与分支（先比树，见上）
+# 2. 删 worktree 与分支（先用判据一或判据二的任一条比内容，见上）
 # 3. 清瞬态垃圾
  git gc --prune=now
 # 4. 门禁
