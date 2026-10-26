@@ -47,9 +47,13 @@ if (gates.length === 0) {
 
 const results = [];
 
-// `check-delivery` 的断言④ 数 worktree 数量（收尾后应当只剩主 checkout）。那是收尾后的
-// 判据，在 worktree 里跑必然红，但那不说明它坏了。所以在非主 checkout 下声明实际数量，
-// 让①②③ 仍然被自检到，并把这处跳过明说出来。
+// `check-delivery` 的断言④ 数 worktree 数量（收尾后应当只剩主 checkout）。那是**状态**断言，
+// 不是漂移断言：工作期间 worktree 一定多于一个，它必然红。所以自检始终给它实际数量，
+// 让①②③ 仍被自检到；④ 由收尾的 `npm run check:delivery`（不带参数）真测。
+//
+// 之前这里按「在不在主 checkout」分叉，两头都不对：分叉的判断自己比错了路径（`fileURLToPath`
+// 带末尾斜杠），而就算比对了，主 checkout 里也会因为工作期间还有 worktree 而判红。
+// 位置分叉本身就是错设计——同一条命令不该因位置不同而报不同结果。
 const worktreeList = execFileSync('git', ['worktree', 'list', '--porcelain'], {
   cwd: root,
   encoding: 'utf8',
@@ -57,11 +61,10 @@ const worktreeList = execFileSync('git', ['worktree', 'list', '--porcelain'], {
   .split('\n')
   .filter((line) => line.startsWith('worktree '))
   .map((line) => line.slice('worktree '.length));
-const inMainCheckout = worktreeList[0] === root;
 
 for (const gate of gates) {
   const args = [`scripts/${gate}`];
-  if (gate === 'check-delivery.mjs' && !inMainCheckout) {
+  if (gate === 'check-delivery.mjs') {
     args.push('--worktrees', String(worktreeList.length));
   }
   const run = spawnSync('node', args, {
@@ -79,12 +82,10 @@ for (const gate of gates) {
   process.stdout.write(`check:gates: ${gate} → ${run.status === 0 ? '绿' : '红'}\n`);
 }
 
-if (!inMainCheckout) {
-  process.stdout.write(
-    `check:gates: 注意——本次在 worktree 里跑，check-delivery 的断言④（worktree 数量）未受检；\n` +
-      `    它只在主 checkout 上才测得准，收尾后从主 checkout 再跑一次。\n`,
-  );
-}
+process.stdout.write(
+  'check:gates: 说明——check-delivery 的断言④（worktree 数量）是状态断言，工作期间必然红，\n' +
+    '    所以自检按实际数量传参、不在自检范围内；它由收尾的 npm run check:delivery（不带参数）真测。\n',
+);
 
 const red = results.filter((r) => r.code !== 0);
 if (red.length > 0) {

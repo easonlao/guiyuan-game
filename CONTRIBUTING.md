@@ -234,6 +234,6 @@ npm run verify
   - `check:facts`（`check:quick`）：环境基线、CI 配置、ADR 命名、术语表、技能锁、突变基线结构等 12 条不变式。
   - `check:prose`（`check:quick`）：本次改动新增的 Markdown 行里没有「查找替换改坏」的怪句子（括号不配对 / 汉字夹空格 / 括号套括号 / 相邻两对括号）。
   - `check:delivery`（按需，交付整理时跑）：main 线性、快照一致、无内容未并入 main 的孤儿提交、worktree 清账。
-  - `check:gates`（按需，交付收尾跑）：把上面每个门禁在当前状态下跑一遍，要求全绿。它抓的是「门禁写坏了、一直是红的」——每轮必红的门禁比没有门禁更糟。
+  - `check:gates`（按需，交付收尾跑）：把上面每个门禁在当前状态下跑一遍，要求全绿。它抓的是「门禁写坏了、一直是红的」——每轮必红的门禁比没有门禁更糟。`check:delivery` 的**断言④（worktree 数量）是状态断言**，工作期间必然红，所以自检按实际数量传参、不测它；它由收尾的 `npm run check:delivery`（不带参数）真测。
   `check:delivery` 不在 `check:quick` 也不在 `verify`——前者的语义是「每轮编辑都跑」，后者是「每个提交都得绿」，交付断言只在整理那一刻成立。用法：`npm run check:delivery -- --base <rev> --snapshot <rev> --tip <rev> --worktrees <n>`。
 - **CI** 只做兜底：push 到 main 后重跑 `npm run verify`。突变测试不在 CI。
