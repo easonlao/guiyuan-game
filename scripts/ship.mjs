@@ -16,7 +16,7 @@
 //   npm run ship                 先 verify、再 push 到 origin
 //   npm run ship -- --dry-run    做完前置检查，到「将要 push」就停，只打印命令，不真推
 //
-// ── 五步短路 ──
+// ── 四步短路 ──
 // ① 工作区脏就拒绝（带着未提交改动推上去，看的人以为推的就是全部）
 // ② `npm run verify` 非 0 就不推（失败信息留在屏幕上）
 // ③ 本地不领先远端就没有要推的（无 upstream 时提示先 `push -u`）

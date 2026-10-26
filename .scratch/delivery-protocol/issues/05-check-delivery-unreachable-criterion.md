@@ -2,7 +2,7 @@
 
 **Type:** task
 **Blocked by:** None
-**Status:** ready-for-agent
+**Status:** resolved
 **Slice:** S4
 
 **What to build:** 把 `scripts/check-delivery.mjs` 的断言③（「无新增孤儿提交」）从**计数棘轮**改成**树判据**。改完删掉基线常量。

@@ -2,7 +2,7 @@
 
 **Type:** task
 **Blocked by:** None（切片定义在 spec 决定 6，已定）
-**Status:** ready-for-agent
+**Status:** resolved
 **Slice:** S3
 
 **What to build:** 给 `.scratch/<effort>/issues/NN-<slug>.md` 增加 `Slice:` 字段，并写 `scripts/check-slices.mjs` 断言「票据归属唯一、切片依赖无环」。

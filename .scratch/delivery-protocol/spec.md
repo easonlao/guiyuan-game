@@ -62,8 +62,8 @@
 | 01 | 拍三条开放项 | — | 决策票，不产出交付提交 | resolved |
 | 02 | 规则正文落 `CONTRIBUTING.md`，`AGENTS.md` 只留指针 | — | S1 | 可开工 |
 | 03 | `scripts/check-delivery.mjs` + 接进命名脚本 | 02 | S2 | 等 02 |
-| 04 | 执行图 `Slice:` 字段 + 切片依赖循环检测 | — | S3 | 可开工 |
-| 05 | 重做 `check:delivery` 断言③：用树判据，不用计数棘轮 | — | S4 | ready-for-agent |
+| 04 | 执行图 `Slice:` 字段 + 切片依赖循环检测 | — | S3 | resolved |
+| 05 | 重做 `check:delivery` 断言③：用树判据，不用计数棘轮 | — | S4 | resolved |
 
 切片依赖：S1 → S2（已交付）。S3、S4 独立，无前置。无环。
 
