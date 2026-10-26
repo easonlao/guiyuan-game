@@ -15,6 +15,11 @@
 // ── 解析口径 ──
 // 行首匹配，不做全文正则：票面正文会大段引用规则文本，全文匹配会误判。字段允许被
 // `**` 包裹（现有票面两种写法都有）。
+//
+// ── 附带输出：frontier ──
+// 顺手报出「现在能开工的票」，语义见 `docs/agents/issue-tracker.md` 的 Frontier 一条：
+// 票面 `Status:` 既不是 `resolved` 也不是 `claimed`，且 `Blocked by:` 里每张票都已
+// `resolved`。这是信息输出，不改退出码。
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -38,6 +43,20 @@ function parseBlockers(text) {
   const head = text.split(/[（(]/)[0].trim();
   if (/^none$/i.test(head) || head === '') return [];
   return [...head.matchAll(/\d{1,3}/g)].map((match) => String(Number(match[0])).padStart(2, '0'));
+}
+
+/** 渲染 frontier 结果：单个 effort 一行；多个 effort 按组输出，每组前缀写 effort 名。 */
+function renderFrontier(groups) {
+  if (groups.length === 0) {
+    return 'check:slices: 没有可开工的票（未完成但被阻塞，或全部已完成）\n';
+  }
+  if (groups.length === 1) {
+    return `check:slices: 可开工：${groups[0].slugs.join('、')}\n`;
+  }
+  const lines = groups.map(
+    (group) => `check:slices: ${group.effort} 可开工：${group.slugs.join('、')}`,
+  );
+  return `${lines.join('\n')}\n`;
 }
 
 /** 读一个 effort 目录：spec 票据表 + 各票面字段。 */
@@ -72,7 +91,14 @@ function readEffort(effort) {
     const blockedBy = lines
       .map((line) => parseBlockers(fieldValue(line, 'Blocked by')))
       .find((v) => v !== undefined);
-    tickets.set(number, { file: `issues/${name}`, slice, blockedBy });
+    const status = lines.map((line) => fieldValue(line, 'Status')).find((v) => v !== undefined);
+    tickets.set(number, {
+      file: `issues/${name}`,
+      slug: name.replace(/\.md$/, ''),
+      slice,
+      blockedBy,
+      status,
+    });
   }
 
   return { declared, tickets };
@@ -122,6 +148,7 @@ const efforts = readdirSync(scratchDir).filter((name) =>
 
 let ticketCount = 0;
 let sliceCount = 0;
+const frontierGroups = [];
 
 for (const effort of efforts) {
   if (!statSync(join(scratchDir, effort, 'spec.md'), { throwIfNoEntry: false })?.isFile()) continue;
@@ -187,12 +214,29 @@ for (const effort of efforts) {
     );
   }
   sliceCount += sliceNodes.length;
+
+  // ── frontier：现在能开工的票 ──
+  // 判据取自 `docs/agents/issue-tracker.md` 的 Frontier 一条：票面 `Status:` 既不是
+  // `resolved` 也不是 `claimed`，且它 `Blocked by:` 里列的每张票都是 `resolved`。
+  // 只算 spec 票据表里声明的票（与上面的校验范围一致）。这是信息输出，不改退出码。
+  const statusOf = (number) => (tickets.get(number)?.status ?? '').trim().toLowerCase();
+  const ready = [];
+  for (const number of [...declared.keys()].sort()) {
+    const ticket = tickets.get(number);
+    if (ticket === undefined) continue; // 缺票面文件已在①里报过，这里不重复报
+    const status = statusOf(number);
+    if (status === 'resolved' || status === 'claimed') continue;
+    const blockers = ticket.blockedBy ?? [];
+    if (blockers.every((blocker) => statusOf(blocker) === 'resolved')) ready.push(ticket.slug);
+  }
+  if (ready.length > 0) frontierGroups.push({ effort, slugs: ready });
 }
 
-if (failures.length > 0) {
-  for (const failure of failures) process.stderr.write(`check:slices: ${failure}\n`);
-  process.exit(1);
+for (const failure of failures) process.stderr.write(`check:slices: ${failure}\n`);
+if (failures.length === 0) {
+  process.stdout.write(
+    `check:slices: ${ticketCount} 张票、${sliceCount} 个切片，票据与切片依赖均无环。\n`,
+  );
 }
-process.stdout.write(
-  `check:slices: ${ticketCount} 张票、${sliceCount} 个切片，票据与切片依赖均无环。\n`,
-);
+process.stdout.write(renderFrontier(frontierGroups));
+if (failures.length > 0) process.exit(1);
