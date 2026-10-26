@@ -51,9 +51,10 @@
 　还在说：`docs/HLD.md` §4.4 复述了机制（同一件事写两遍，可降为指针）
 　对账：`npm run check:artifact` → 退出 0（实测输出「逐字节一致，落点不在任何 dist/ 下」）
 
-**A10 内循环命令的构成** — 家：`package.json#scripts.check:quick`（5 段）
+**A10 内循环命令的构成** — 家：`package.json#scripts.check:quick`（**6 段**：`check:worktrees` → `check:slices` → `fmt:check` → `lint` → `check:boundary` → `check:deps`）
 　还在说：`docs/HLD.md` §4.4 明写「命令清单以 `package.json` 为真源，本文不复制」——是好的指针写法，照这个改其他处
-　对账：`node -p "require('./package.json').scripts['check:quick']"` → 5 段串联
+　对账：`node -p "require('./package.json').scripts['check:quick']"` → 6 段串联
+　**2026-10-25 复核：原记 5 段，实际已是 6 段**——票 04 把 `check:slices` 串进了第二段。
 
 **A11 收尾命令** — 家：`package.json#scripts.verify`
 　对账：`node -p "require('./package.json').scripts.verify"` → `check:quick && typecheck && test && check:artifact`
@@ -80,7 +81,7 @@
 　对账：`git ls-files minigame/game.js` 非空 + `npm run check:artifact` 通过
 
 **A18 `.scratch/` 入库** — 家：`docs/agents/issue-tracker.md`（含「为什么入库」一节）
-　对账：`git ls-files .scratch | wc -l` → > 0（实测 160）
+　对账：`git ls-files .scratch | wc -l` → > 0（**2026-10-25 复核：11**；原记 160，多出来那 160 份全在 `archive/`，已随清理三档删除，现在只剩 `delivery-protocol/` 与 `doc-dedup/`）
 
 **A19 技能来源与 hash** — 家：`skills-lock.json`
 　对账：lock 集合 − `.agents/skills/` 目录集合 → 恰好 `{sprite-gen}`（该技能 53MB，按需安装，已在 `.gitignore` 说明）。实测：lock 35 项，目录 34 个，差集正是 `sprite-gen`
@@ -99,7 +100,8 @@
 　对账：`npm test` → 全绿（取值有断言，实测 1003 用例通过）
 
 **A24 突变基线** — 家：`mutation-baseline.jsonl`（入库）
-　对账：`git ls-files mutation-baseline.jsonl` 非空；当前 38 行
+　对账：`git ls-files mutation-baseline.jsonl` 非空；**条目 34 条**（`grep -vc '^#' mutation-baseline.jsonl`）。
+　**口径统一为「条」**（2026-10-25 复核）：本文件 38 行，其中 4 行是 `#` 注释，记录是 34 条；`docs/MUTATION-TESTING.md` §3.3 也写「34 条」。两个家对同一个量必须用同一个叫法。
 
 **A25 突变棘轮的判定口径** — 家：`docs/MUTATION-TESTING.md`
 　对账：`npm run mutation:check`（需先有全量报告，属按需，不是每轮）。2026-10-25 实核：缺报告时退出 **2**（与 §3.1 / §10 写的口径一致）；`mutation:changed` 无改动时退出 0。
