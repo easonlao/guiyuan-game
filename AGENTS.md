@@ -17,19 +17,18 @@
 
 参数取值以代码常量为准（`src/core/logic/`），GDD 只写含义与意图。
 
-### 真源类与报告类
+### 表外三类文档
 
-表外还有三类文档：
-
-- **真源类**（进采信链）——`GLOSSARY.md` 管「叫什么」：术语 + 一两句「它是什么」+ `_Avoid_` 禁用别名，格式见 `.agents/skills/domain-modeling/GLOSSARY-FORMAT.md`；术语冲突以它为准，**禁止往里写规则正文、实现细节或决策记录**。它的范围停在「规则与棋盘」这一层：表现层只收了 `主印`、`半身` 两条，其余视觉词（如 `幽灵态`、`候选弧`）不进表，在 `docs/LLD.md` §4.1 定义。`docs/adr/` 管「为什么这么定」，决策冲突以最新 ADR 为准。
-- **报告类**（只做证据与导航，不定义规则）——**已于 2026-10-25 删除**（原 `docs/headless/` 与 `docs/archive/`）。「引用它们时必须写明『这是证据，不是定义』」这条规矩仍有效，但此类目录已空。要取回某份报告：`git log --diff-filter=D -- docs/headless`，再 `git show <commit>:<path>`。
-- **入口类**——`README.md` 面向人，可以概述玩法，但**不复述规则的条件与数值**（那些归 GDD），必须带指针；代码入口与模块职责归 `docs/HLD.md` §2。
+- **真源类**（进采信链）——`GLOSSARY.md` 管「叫什么」：术语 + 一句「它是什么」+ `_Avoid_` 禁用别名（格式见 `.agents/skills/domain-modeling/GLOSSARY-FORMAT.md`）。冲突以它为准；**禁止往里写规则正文、实现细节或决策记录**。范围停在「规则与棋盘」：表现层只收 `主印`、`半身`，其余视觉词在 `docs/LLD.md` §4.1 定义。`docs/adr/` 管「为什么这么定」，冲突以最新 ADR 为准。
+- **入口类**——`README.md` 面向人，可以概述玩法，但**不复述规则的条件与数值**，必须带指针。
+- **报告类**——已于 2026-10-25 删除（原 `docs/headless/`、`docs/archive/`）。取回某份：`git log --diff-filter=D -- docs/headless`，再 `git show <commit>:<path>`。将来重建此类目录时，引用要写明「这是证据，不是定义」。
 
 ### ADR 的边界
 
-门槛与格式见 `domain-modeling` 技能的 `ADR-FORMAT.md`。本仓库按完整结构写：背景 + 决定 + 被否决的方案 + 后果（技能里后两项可选，这里不省）。另两条：
+门槛与格式见 `domain-modeling` 的 `ADR-FORMAT.md`。本仓库写完整四段：背景 + 决定 + 被否决的方案 + 后果（技能里后两段可选，这里不省）。另三条：
 
-- 采纳后：规则正文回写 GDD、工程方案回写 HLD，ADR 只留决策与理由；现状勘误追加文末，不重写历史结论。**证据报告已于 2026-10-25 删除**（原 `docs/headless/`），只可取回于 git 历史；ADR 里指向被删报告处写作「原报告已删，见 git 历史」。
+- 采纳后：规则正文回写 GDD、工程方案回写 HLD，ADR 只留决策与理由。
+- 勘误追加文末，不重写历史结论；指向已删材料时写「原报告已删，见 git 历史」。
 - 变更历史由 git 承载：文档头部不写版本号，也不写逐版本变更记录。
 
 ## 目录约定
@@ -38,7 +37,7 @@
 - 单元测试放 `tests/`。
 - 工具生成的产物放 `artifacts/`；根目录的 `mutation-baseline.jsonl` 是入库的棘轮基线，归 `docs/MUTATION-TESTING.md` §3.2 管。
 
-包名与包拓扑见 `docs/HLD.md` §2；进不进库以根目录 `.gitignore` 为真源（例外：`minigame/game.js` 是入库的交付产物，理由见 ADR 0014）；实验报告与归档文档已于 2026-10-25 删除，见上一节。
+包名与包拓扑见 `docs/HLD.md` §2；进不进库以根目录 `.gitignore` 为真源（例外：`minigame/game.js` 是入库的交付产物，理由见 ADR 0014）。
 
 版本库里的其余顶层目录：`.github/`（CI workflow）、`.githooks/`（提交信息 hook）、`patches/`（patch-package 补丁）、`.pi/`（pi 的工具配置）、`.agents/`（通用 Agent Skills 目录）。
 
@@ -52,46 +51,38 @@
 
 ## Agent skills
 
-### 技能与 codegraph 索引
+| 什么时候 | 读什么 |
+|---|---|
+| 开工前，`.agents/skills/` 或 `.codegraph/` 不在 | 先跑 `npm run bootstrap`；哪个工具读哪个目录、没见过怎么查：`docs/agents/agent-tooling.md` |
+| 领任务、开票、改状态 | `.scratch/`（`docs/agents/issue-tracker.md`）；标签见 `docs/agents/triage-labels.md` |
+| 动领域词或写 ADR | `docs/agents/domain.md`（单上下文） |
+| 动 `src/core/logic/` | `docs/MUTATION-TESTING.md`；全量与棘轮由 agent 本地跑，CI 不跑（ADR 0012） |
+| 要派子代理 | 见下 |
 
-开工前先看 `.agents/skills/` 与 `.codegraph/` 在不在，缺任何一个先跑 `npm run bootstrap`。为什么它们不随 clone 来、哪个工具读哪个目录、遇到没见过的工具怎么查：`docs/agents/agent-tooling.md`。
+### 派子代理
 
-### Issue tracker
+主线派发与汇总，代码问题交 `Explore`。一个问题若不是「已知路径上的已知行」——架构、某个东西怎么跑、bug 定位、开票前的侦查——就派它。主线只读票面或用户点名的文件与符号：CodeGraph 用来写简报，不代替派发。
 
-Local markdown files in the `.scratch/` directory. See `docs/agents/issue-tracker.md`.
+简报开头写死这句：**"Start with `codegraph_explore`; use `read`/`grep` only for what it leaves unanswered."** 然后给：问题、已排除的、已知符号。它回结论加 `file:line`，不回源码。后台派。
 
-### Triage labels
-
-Canonical labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context. See `docs/agents/domain.md`.
-
-### Mutation testing
-
-门禁与做法见 `docs/MUTATION-TESTING.md`。
-
-全量突变测试 + 棘轮对比（`npm run mutation:milestone`）由 **agent 在本地跑**——CI 不跑突变测试（见 `docs/HLD.md` §4.5）。何时跑、门禁口径见 `docs/MUTATION-TESTING.md`。
-
-### Subagents
-
-The main thread dispatches and aggregates; code questions go to `Explore`.
-
-Dispatch `Explore` for a code question that is not one already-known path at one already-known line: architecture, "how does X work", bug diagnosis, or the reconnaissance before a ticket. The main thread reads only the ticket or issue text, and the file or symbol the user named verbatim — CodeGraph is there to write the brief, not to replace the dispatch.
-
-Open the brief with: **"Start with `codegraph_explore`; use `read`/`grep` only for what it leaves unanswered."** Then give it the question, what you already ruled out, and the symbols you already know. It returns a conclusion plus `file:line` references, not a source dump. Dispatch it in the background.
-
-| Subagent | Use for | Skills |
+| Subagent | 什么时候用 | Skills |
 |---|---|---|
-| `Explore` | code questions, recon | `research`, `diagnosing-bugs`, `codebase-design` |
-| `Reviewer` | the two `code-review` axes, verification of landed work | `code-review` |
-| `Executor` | implementing one ticket | `implement`, `tdd` |
-| `ExpertAdvisor` | design and modeling decisions | — (`skills: false`) |
+| `Explore` | 代码问题、侦查 | `research`, `diagnosing-bugs`, `codebase-design` |
+| `Reviewer` | code-review 两轴、校验已落地的工作 | `code-review` |
+| `Executor` | 实现一张票 | `implement`, `tdd` |
+| `ExpertAdvisor` | 设计与建模决策 | — (`skills: false`) |
 
-Inside a subagent there is no nested dispatch, so it calls `codegraph_explore` directly.
+子代理里没有嵌套派发，直接用 `codegraph_explore`。这些规则也约束 implement / code-review 等技能的探索步骤，而且只写在这里：`.agents/skills/` 更新时会被覆盖。
 
-These rules also bind the exploration steps of the workflow skills (implement, code-review, …), and live only in this file: `.agents/skills/` is overwritten on update.
+## 报告之前
+
+三问，答不上就先别报：
+
+| 问 | 判据 |
+|---|---|
+| **全量还是采样？** | 数字来自不带 `head` / `tail` 的完整命令；只看几条就明写「前 N 条」 |
+| **比内容还是比计数？** | 门禁与对账先比内容（树、逐字节、对象），比不了才退到计数或结构 |
+| **红过吗，红了凭什么变绿？** | 新断言先在自己造的破坏上红一次，再在真实流程里绿一次；每次都红的断言不算门禁 |
 
 <!-- CODEGRAPH_START -->
 ## CodeGraph
