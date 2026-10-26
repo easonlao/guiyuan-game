@@ -2,13 +2,13 @@
 
 **一句话**：Stryker 往 `src/core/logic/**` 里注入小 bug（突变体），跑一遍 Vitest，看测试抓不抓得住。抓不住的是「存活突变体」，指向测试缺口。本仓库的门禁是**基线棘轮**——只对基线里没有的存活/无覆盖报警，**不设全局固定分数阈值**。
 
-这份文档是突变测试的唯一规则来源。它被 gitignore 之外的路径引用（`AGENTS.md` 的 Mutation testing 小节），改动会被提交，活得过工具更新。
+这份文档是突变测试的唯一规则来源。它被 gitignore 之外的路径引用（`AGENTS.md` 的 Agent skills 表格「动 `src/core/logic/`」那一行），改动会被提交，活得过工具更新。
 
 **叫法**：全篇用「突变测试」「突变体」，不用「变异测试」「变异分析」。名字定在这里、而不是 `GLOSSARY.md`，因为后者的格式约定（`.agents/skills/domain-modeling/GLOSSARY-FORMAT.md`）不收通用编程概念；而历史上确实同时存在两个叫法。
 
 > **实测数字带日期，且不是当前事实。** 本文有两处数字来自 **2026-10-11** 的一次全量跑：§2.1 的突变体数量、§5.2 的分数。代码一变它们就旧，而重跑全量要数小时（§2.1 的耗时口径），所以**不随代码自动更新**。
 >
-> 区分办法：**带日期的快照不是当前事实**；不带日期、能当场跑出来的量（基线条目数、disable 行数、mutate 目标文件数、依赖版本）才是。§3.3 两类分开列。
+> 区分办法：**带日期的快照不是当前事实**；不带日期、能当场跑出来的量（基线条目数、disable 行数、mutate 目标文件数、依赖版本）才是，集中列在 §3.3。
 
 ---
 
@@ -38,7 +38,7 @@
 
 - **命令**：`npm run mutation:changed`，默认对比 `HEAD`（含未提交改动），只对 `src/core/logic/**` 里改动的 `.ts` 文件跑（排除纯 re-export 的 `src/core/logic/index.ts`）。
 - **时机**：`implement` 收尾。反馈最紧——刚写的代码、刚写的测试，改动小、跑得快，能当场把漏掉的断言补上。补测试本来就属于 `implement` 的职责，所以突变测试收敛到这一步，而不是留到事后。
-- **为什么不用全量**：全量一次耗时较长（**2026-10-11 实测**：1073 个突变体 / 6 个文件，其中 993 个计分；这不是当前事实，见 §3.3），不适合每次改动都跑。
+- **为什么不用全量**：全量一次耗时较长（**2026-10-11 实测**：1073 个突变体 / 6 个文件，其中 993 个计分；这不是当前事实），不适合每次改动都跑。
 - **子集报告不能做棘轮对比**：Stryker 的 perTest 覆盖按**被注入突变的文件集**选测试，子集跑出的存活集与全量不同。`mutation:check` 会识别并**拒绝**子集报告（退出 `2`），见 §3.1。
 - **实际覆盖粒度是 per-test，与 `coverageAnalysis` 配置无关**：`stryker.config.json` 里的 `coverageAnalysis: "off"` **并不生效**——`@stryker-mutator/vitest-runner@10.0.0` 的 `dryRun()` 无条件调用 `readMutantCoverage()`，实际总是按 per-test 收集覆盖（报告里每个 mutant 都带 `coveredBy`）。保留 `off` 只是沿用既有值，**不代表**「所有测试都打每个突变体」；也因此 `NoCoverage` 是真实存在的状态（不是结构性恒 0），纳入棘轮有意义（§3.1）。
 - **无改动文件时**：退出 `0`（合法状态，不是失败）。
@@ -63,7 +63,7 @@
 
 ### 2.3 为什么门禁必须落在「本地/agent 循环」
 
-CI 不跑任何突变测试：快链只有 `npm run verify`，`mutation:changed` 与全量 + 棘轮都由 agent 在本地手动跑（工程现状见 `docs/HLD.md` §4.5，理由见 ADR 0012）。所以棘轮门禁的「红」没有流水线兜底，唯一消费者是跑它的那个 agent。`mutation:check` 自己算退出码（仓库刻意不配 `thresholds.break`，Stryker 不会因存活而失败），这条必须在 agent 内循环里成立。
+CI 不跑任何突变测试（工程现状见 `docs/HLD.md` §4.5，理由见 ADR 0012），所以棘轮门禁的「红」没有流水线兜底，唯一消费者是跑它的那个 agent。
 
 ---
 
@@ -91,7 +91,7 @@ CI 不跑任何突变测试：快链只有 `npm run verify`，`mutation:changed`
 - **只能对全量报告刷基线**：`mutation:baseline` 与 `mutation:check` 一样校验报告来自全量跑（读 `stryker.config.json` 的 `mutate` 并比对报告 `config.mutate`），且拒绝结构无效 / 空的报告。缺报告、结构无效或报告来自子集跑（`mutation:changed` 的 `--mutate` 结果）都退出 `2`。**禁止对子集报告刷基线**——那会把基线缩到子集，使口径与门禁不一致（后续 `mutation:check` 会报更多新增）。
 - **不要**为了让门禁变绿而无脑重刷基线——那等于把门禁关掉。只有「确认等价」或「有意识接受一个新缺口」才更新。
 - 基线收缩（删掉已杀死的条目）是好信号，会在 diff 里体现。
-- **顺手更新本文的实测数字**：一次全量跑后要改 §2.1（突变体数量）、§3.3（当日快照那段）、§5.2（分数）三处，并把日期改成那一次跑的日期。这三处是本文唯一会随代码变旧的量；其余（退出码、身份键、disable 粒度、范围、补丁、安装布局）都是机制，不随跑次变化。
+- **顺手更新本文的实测数字**：一次全量跑后要改 §2.1（突变体数量）与 §5.2（分数）两处，并把日期改成那一次跑的日期。这两处是本文唯一会随代码变旧的量；其余（退出码、身份键、disable 粒度、范围、补丁、安装布局）都是机制，不随跑次变化。
 
 ### 3.3 现状快照
 
@@ -104,20 +104,9 @@ CI 不跑任何突变测试：快链只有 `npm run verify`，`mutation:changed`
 | mutate 目标 | **6 个文件** | `ls src/core/logic/*.ts \| grep -v index.ts \| wc -l` |
 | 基线占用的 mutator | `ConditionalExpression` 24 条、`EqualityOperator` 10 条 | 读基线文件 |
 
-基线条目全是「同一行同一 mutator 上还有可杀兄弟、无法单独 disable」的等价 / 不可观测突变体（逐条理由见 `mutation-baseline.jsonl` 的注释行与阶段 4a commit `57e8029`）。
+### 3.4 Timeout
 
-**2026-10-11 那次全量跑的快照（此后未重跑，不是当前事实）：**
-
-- 共 **1073** 个突变体，其中 **993** 个计分（Killed + Timeout 959 / Survived 34 / NoCoverage 0）；分发 **96.58%**。
-- 另有 **80 个**被**就地 disable**、Stryker 记为 `Ignored`（来自当时 **54 行** `// Stryker disable next-line`；行数至今未变，见上）。
-- **这个分数不是门禁，也不值得追高**：它只是当日快照。门禁只盯「有没有新增存活 / 无覆盖」（§3.1）。
-- **诚实说明（阶段 3a → 4a 的纠正）**：阶段 3a 一度把 disable 加到 **71 行**，对外呈现基线 **0 条** / 分数 **100.00%**。但 Stryker 的 disable 是「行 + mutator」粒度：一行 disable 会把该行该 mutator 的**全部取值**一起禁掉，其中 **35 个本可被现有测试杀死**。阶段 4a（`57e8029`）机械重做——只保留「该行该 mutator 全部取值都未被测试抓住」的 disable（54 行 / 80 个 `Ignored`），其余等价项落回基线（34 条）。所以「0 条 / 100%」是**过度 disable 造成的假象**，**34 条 / 96.58%** 才是准确口径。
-
-### 3.4 Timeout：为什么抬到 30s，且不影响门禁
-
-- `stryker.config.json` 设了 `timeoutMS: 30000`（默认 5000）。原因：少数突变体（如 `ActionResolver.ts` 440:23 的 `state.round + 1` → `state.round - 1`）会让轮次永不递增，使同步自对弈用例（含 `matches:2000`）慢一个数量级但不死循环；这类「慢而可杀」的突变体会在负载相关的超时线上下翻转 Killed/Timeout。把常量下限抬到 30s 后超时由常量项主导、对负载噪声不敏感。
-- **棘轮只收 `Survived + NoCoverage`，Timeout 不入基线**；而 Stryker 把 Timeout 计入「已探测」，所以 Killed↔Timeout 翻转对 `mutation:check` 与分数**都无影响**。
-- 因此不去彻底消除翻转（需再把超时抬 2–3 倍，每次多等数分钟，却不改善门禁稳定性）。完整推导见 `stryker.config.json` 的 `_timeoutComment`。
+`stryker.config.json` 把 `timeoutMS` 抬到 30000（默认 5000）的推导、以及它为什么不影响门禁，见该文件的 `_timeoutComment`。
 
 ---
 
@@ -171,7 +160,7 @@ if (score >= 0) { /* ... */ }
 
 - 这些是**参考**，用来判断「我们现在大概在什么水平」，**不是**要接线的红线。
 - **100% 不值得追**：等价突变体是理论天花板，永远杀不完；把突变分当 KPI 会逼出「为杀而杀」的测试（断言内部实现细节，反而更脆）。
-- 本仓库 **2026-10-11** 那次全量是 **96.58%**（等价项按 §4 分别 disable 或入基线），高于「高保障」档——但这是**某一天的一次测量，不是当前事实**（此后未重跑，见 §3.3），更**不是**要守住的 KPI。门禁是基线棘轮（§3），不是这个档位。
+- 本仓库 **2026-10-11** 那次全量是 **96.58%**（等价项按 §4 分别 disable 或入基线），高于「高保障」档——但这是**某一天的一次测量，不是当前事实**（此后未重跑），更**不是**要守住的 KPI。门禁是基线棘轮（§3），不是这个档位。
 
 ---
 
@@ -184,14 +173,9 @@ if (score >= 0) { /* ... */ }
 
 ---
 
-## 7. 规则为什么不放在 `.agents/skills/`
+## 7. 规则放在哪
 
-- `.agents/skills/` 是**上游技能的副本**（34 个入库，见根 `.gitignore` 注释），按 `AGENTS.md` 的说明，`skills update` 会**整目录覆盖**——写进去的规则活不过一次工具更新。
-- 所以规则写在这份 **committed** 的 `docs/MUTATION-TESTING.md`，由 `AGENTS.md` 的 Mutation testing 小节导航。改动进版本库，可 diff、可 review、可追溯。
-
-### 7.1 为什么不立 ADR（决策 7）
-
-`domain-modeling` 建议只在三条门槛**全中**时才立 ADR：**难以逆转 + 反直觉 + 真实权衡**。本决定（基线棘轮、不设全局固定阈值、规则放 committed 文档）里「难以逆转」不成立——它只是本仓库的本地工程约定，改回固定阈值或换门禁形态的成本很低（改一个脚本 + 重刷基线），也不与任何外部契约绑定。门槛缺一即跳过 ADR，故本决定不单立 ADR，决策与理由就记在本文件（§3、§5）。
+规则写在这份 **committed** 的 `docs/MUTATION-TESTING.md`，由 `AGENTS.md` 的 Agent skills 表格「动 `src/core/logic/`」那一行导航。改动进版本库，可 diff、可 review、可追溯。
 
 ---
 
@@ -230,11 +214,8 @@ if (score >= 0) { /* ... */ }
 
 ## 9. `linked` 安装布局（声明式包边界的安装前提）
 
-`.npmrc` 的 `install-strategy=linked`（见 `docs/HLD.md` §4.2）把依赖放进 `node_modules/.store` 下的 per-package `node_modules`，而不是平铺到根。它动了三处与突变测试/包边界相关的解析与加载，**改动 `.npmrc` 时必须复核**：
-
 - **插件加载**：Stryker 默认按 `@stryker-mutator/*` 从 **core 自己所在目录**枚举插件；`linked` 下那里只有 core 自己的依赖，找不到作为根 devDependency 的 vitest-runner。`stryker.config.json` 用 `appendPlugins: ["./scripts/stryker-vitest-plugin.mjs"]` 补一条稳定路径；该 wrapper 从仓库根解析裸包名再把插件的导出原样再导出，不写死 vitest-runner 内部的 `dist/src/index.js`。
 - **沙箱内的模块身份**：Stryker 沙箱把 `node_modules` 目录**符号链接**回真实仓库，于是 `tools/` 里的 `@guiyuan/game/…` 会解析到**真实仓库的 `src/`**，而测试用相对路径 `../../src/…` 解析到**沙箱自己的 `src/`**——同一份源码出现两个模块实例。后果不只是 `toBe` 身份断言假红（曾见于 `tests/core/candidate-search.test.ts`），更严重的是被 mutate 的沙箱源码与 tools 实际加载的源码不是同一份，突变信号失真。`vitest.stryker.config.ts` 用 `resolve.alias` 把 `@guiyuan/game` 钉回**运行目录**（沙箱根）的 `src/`。
-- **包边界自检**：`npm run check:boundary`（已进 `check:quick`）断言「从 `src/` 解析不到 `@guiyuan/devtools`」这条机制仍成立。`linked` 一旦失效（npm 默认布局变回 hoisted、或有人手写 `--install-strategy=hoisted`），它会立刻判红，不会静默。
 - 前两处都只影响 Stryker 路径；`npm test` 仍走真实的 `node_modules` 解析（`vitest.config.ts` 不加别名），这样包边界在常规测试里也真的被走一遍。
 
 ---

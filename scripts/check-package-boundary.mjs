@@ -8,7 +8,7 @@
 //   - 从 `tools/` 解析 `@guiyuan/game/…` —— 必须**成功**（声明过的边照常可用）。
 // 它不枚举任何具体边，只钉住机制；机制一旦被安装布局改动破坏，这条就红。
 //
-// 工程方案见 `docs/HLD.md` §4.2，安装布局的工具链适配与自检见 `docs/MUTATION-TESTING.md` §9。
+// 工程方案见 `docs/HLD.md` §4.2，安装布局的工具链适配见 `docs/MUTATION-TESTING.md` §9。
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
