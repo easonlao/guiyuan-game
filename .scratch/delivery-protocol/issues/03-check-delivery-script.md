@@ -3,6 +3,7 @@
 **Type:** task
 **Blocked by:** 02
 **Status:** resolved
+**Slice:** S2
 
 **What to build:** `scripts/check-delivery.mjs` + 命名脚本 `npm run check:delivery`。把交付策略里那几条「靠自觉」的约束变成断言。
 

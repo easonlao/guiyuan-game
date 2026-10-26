@@ -3,6 +3,7 @@
 **Type:** task
 **Blocked by:** None
 **Status:** resolved
+**Slice:** none
 
 **What to build:** 三条决定，写进 `.scratch/delivery-protocol/spec.md` 的「决定」一节。本票不产出交付提交，也不改任何文件（定案那一步由 02 落笔）。
 

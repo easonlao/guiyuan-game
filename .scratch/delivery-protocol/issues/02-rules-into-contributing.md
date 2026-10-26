@@ -3,6 +3,7 @@
 **Type:** task
 **Blocked by:** None（01 已 resolved，规则文本已有输入）
 **Status:** resolved
+**Slice:** S1
 
 **What to build:** 把 spec 的「决定」一至八条写成可执行的规则正文，放进 `CONTRIBUTING.md`（新增一节「分支与交付」），`AGENTS.md` 与 `docs/HLD.md` 只留指针。
 

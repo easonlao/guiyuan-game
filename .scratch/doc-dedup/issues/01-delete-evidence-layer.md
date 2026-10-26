@@ -3,6 +3,7 @@
 **Type:** task
 **Blocked by:** None
 **Status:** resolved
+**Slice:** S1
 
 **What to build:** 删掉已无读者的报告与归档。分三档按证据删，不按目录整块删。
 

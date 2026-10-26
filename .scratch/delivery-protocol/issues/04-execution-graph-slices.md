@@ -3,6 +3,7 @@
 **Type:** task
 **Blocked by:** None（切片定义在 spec 决定 6，已定）
 **Status:** ready-for-agent
+**Slice:** S3
 
 **What to build:** 给 `.scratch/<effort>/issues/NN-<slug>.md` 增加 `Slice:` 字段，并写 `scripts/check-slices.mjs` 断言「票据归属唯一、切片依赖无环」。
 
@@ -35,3 +36,34 @@
 - `docs/agents/issue-tracker.md`：字段约定与 wayfinding 语义。
 - `.scratch/delivery-protocol/spec.md`：票据表（本 spec 自己的第一个样例）。
 - `.scratch/doc-dedup/ownership-map.md`：C4 —— 归属表与字段说明的登记位置。
+
+## Answer
+
+已落地（2026-10-25）。`scripts/check-slices.mjs` + `npm run check:slices`，接进 `check:quick` 第二段（紧跟 `check:worktrees`）。
+
+### 四个判定与实测
+
+| 判定 | 探针 | 结果 |
+|---|---|---|
+| 归属：spec 票据表与票面 `Slice:` 必须一致 | 现网 7 张票都缺 `Slice:` 行 | 逐个报出并给出「加一行：Slice: Sx」的修法 |
+| 悬空依赖：`Blocked by` 指向未声明的票 | 探针里写 `Blocked by: 99` | 报「指向票 99，但 spec 票据表里没有这张票」 |
+| 票据依赖成环 | 探针 01→02→03→01 | 报路径 `01 → 02 → 03 → 01` |
+| 切片依赖成环（从票据依赖推导） | 同上探针（S1/S2/S3 各一张票） | 报路径 `S1 → S2 → S3 → S1`，并说明环来自票据依赖 |
+
+`None（01 已 resolved，规则文本已有输入）` 这种写法**不算依赖**——括号里是说明不是依赖。实测确认不产生边、不误报环。
+
+### 强制范围
+
+只校验 `spec.md` 票据表里列出的票。历史票面（`reviews/` 子目录等）不受强制，脚本里写明了理由：否则后来的人会去批量改历史文件。
+
+### 落地时的附带改动
+
+- 给现有 7 张票各补一行 `**Slice:**`：delivery-protocol 的 01 `none`、02 `S1`、03 `S2`、04 `S3`、05 `S4`；doc-dedup 的 01 `S1`、02 `S2`。（04 那张票的 `None（切片定义在 spec 决定 6，已定）` 也是括号说明式。）
+- `docs/agents/issue-tracker.md` 的 Conventions 里写明 `Slice:` 的取值与「切片依赖从票据依赖推导，不重复声明」。
+- `package.json` 只新增 `check:slices` 一条，`check:quick` 串进第二段。
+
+### 验证
+
+- 探针（成环、悬空、None 括号）三种情形逐个实测，见上表。
+- 现网：`check:slices: 7 张票、6 个切片，票据与切片依赖均无环。`（4 + 2 = 6 个切片，两个 effort 各自编号，互不冲突）
+- `npm run verify` 全绿。

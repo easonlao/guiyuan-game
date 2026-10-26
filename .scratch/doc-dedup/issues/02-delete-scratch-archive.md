@@ -3,6 +3,7 @@
 **Type:** task
 **Blocked by:** None（S1 已 resolved 且已 ff 合入 main）
 **Status:** resolved
+**Slice:** S2
 
 **What to build:** 删掉 `.scratch/archive/`（160 文件 1.2M，25 个已完成的 effort），并把采信链与代码里指向它的引用一并清掉。同时把新规矩写下来：**完成的 effort 直接删除，不进 archive。**
 
