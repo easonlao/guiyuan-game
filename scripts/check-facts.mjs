@@ -18,7 +18,6 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 
 const read = (path) => readFileSync(resolve(root, path), 'utf8');
 const readJson = (path) => JSON.parse(read(path));
-const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
 
 const failures = [];
 const check = (condition, message) => {

@@ -205,7 +205,7 @@ for (const effort of efforts) {
     if (from !== to && from !== 'none' && to !== 'none') sliceEdges.push([from, to]);
   }
 
-  const sliceNodes = [...new Set([...declared.values()])].filter((slice) => slice !== 'none');
+  const sliceNodes = [...new Set(declared.values())].filter((slice) => slice !== 'none');
   const sliceCycle = findCycle(sliceNodes, sliceEdges);
   if (sliceCycle.length > 0) {
     failures.push(
