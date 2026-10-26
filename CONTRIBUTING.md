@@ -128,6 +128,20 @@ git rev-parse ticket/<spec>/<编号>^{tree} spec/<slug>^{tree} <快照>^{tree}
 
 三棵树相等再删。**不要为了跳过这道拒绝改用 `-D`**——那会失去唯一的安全网。`-d` 拒绝不是 bug，是它用的判据不适配 squash + rebase。
 
+**删完跑 `git gc --prune=now`，再跑 `npm run check:delivery`。** squash、rebase 与 amend 都会弃掉旧提交，这些垃圾只能靠 gc 清。清完不可达提交归零，`check:delivery` 的断言③ 才能干净通过（否则它会把上一轮交付的旧版本报成孤儿）。
+
+gc **不可恢复**，所以要保存的东西必须先打 tag：tag 就是「gc 不该回收」的豁免名单。例如 `archive/ccc3886-frontend-full-experience` 保存了一整条没合并的前端工作。交付收尾的完整顺序：
+
+```bash
+# 1. ff 合入并核对
+ git merge --ff-only delivery/<slug>
+# 2. 删 worktree 与分支（先比树，见上）
+# 3. 清瞬态垃圾
+ git gc --prune=now
+# 4. 门禁
+ npm run check:delivery
+```
+
 **整理阶段不新增测试。** 整理只搬历史，不改行为。要靠补测试才能变绿，说明该票没做完，回到第 1 步。
 
 **交付提交的 body 写四要素**：切片名 + 该片全部票号 + 该片的关键取舍（含被否决的做法及原因）+ 验证命令。`.scratch/` 里的票面会被清理，body 是唯一跟着代码走的地方。
@@ -169,6 +183,6 @@ npm run verify
 
 - **协调代理**执行 §6.2–§6.3 的全部步骤。
 - **agent** 在每个交付提交上跑 `npm run verify`。
-- **脚本**断言不变量：`npm run check:worktrees`（已落地）与 `npm run check:delivery`（已落地：main 线性、快照一致、无新增孤儿提交、worktree 清账）；切片依赖无环由 `scripts/check-slices.mjs` 断言，**尚未落地**（见 `.scratch/delivery-protocol/` 票 04），落地前这一类由协调代理人工核对。
+- **脚本**断言不变量：`npm run check:worktrees`（已落地）与 `npm run check:delivery`（已落地：main 线性、快照一致、无内容未并入 main 的孤儿提交、worktree 清账）；切片依赖无环由 `scripts/check-slices.mjs` 断言，**尚未落地**，落地前这一类由协调代理人工核对。
   `check:delivery` 不在 `check:quick` 也不在 `verify`——前者的语义是「每轮编辑都跑」，后者是「每个提交都得绿」，交付断言只在整理那一刻成立。用法：`npm run check:delivery -- --base <rev> --snapshot <rev> --tip <rev> --worktrees <n>`。
 - **CI** 只做兜底：push 到 main 后重跑 `npm run verify`。突变测试不在 CI。
