@@ -61,6 +61,10 @@
 
 新克隆装上门禁：`npm install` 会自动装（`prepare`），也可显式跑 `npm run setup:hooks`。
 
+**提交前逐条过 `AGENTS.md`「报告之前」的四问**（当场跑过吗 / 全量还是采样 / 比内容还是比计数 / 红过吗）。其中「数字来自当场跑过的命令」最容易漏——推断出来的「应该是 0」也像事实。
+
+提交信息模板：`git config commit.template COMMIT_TEMPLATE.md` 装上，打开编辑器写信息时会看到骨架与那四问。**用 `-m` / `-F` 提交看不到它**，那种情况下自己过一遍。
+
 ---
 
 ## 4. 给 AI Agent 的特别指引 (AI Agent Guidelines)
