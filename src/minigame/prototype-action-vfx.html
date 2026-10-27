@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>【原型】归元·动作打击感时间线 — 看完即弃</title>
+<style>
+  :root { --accent:#c0392b; --ink:#2c3e50; --muted:#7f8c8d; --bg:#faf8f4; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Microsoft YaHei",system-ui,sans-serif; background:var(--bg); color:var(--ink);
+         max-width:960px; margin:0 auto; padding:32px 24px 80px; line-height:1.7; }
+  .tag { display:inline-block; background:var(--accent); color:#fff; font-size:12px;
+         padding:2px 10px; border-radius:99px; letter-spacing:2px; }
+  h1 { font-size:24px; margin:10px 0 6px; }
+  .q { background:#fff; border-left:4px solid var(--accent); padding:12px 16px; margin:16px 0;
+       border-radius:0 8px 8px 0; font-size:14px; }
+  canvas { display:block; width:100%; background:#1a1d29; border-radius:12px; margin:16px 0; }
+  .panel { background:#fff; border:1px solid #e8e2d8; border-radius:12px; padding:16px 20px; margin:16px 0; }
+  .panel h2 { font-size:15px; margin-bottom:10px; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  button { border:1px solid #d5cfc4; background:#fff; border-radius:8px; padding:8px 14px;
+           font-size:14px; cursor:pointer; font-family:inherit; transition:all .15s; }
+  button:hover { border-color:var(--accent); color:var(--accent); }
+  button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  button.wx.on { color:#fff; }
+  .hint { font-size:13px; color:var(--muted); margin-top:8px; }
+  .state { font-family:Consolas,monospace; font-size:12px; color:var(--muted); margin-top:10px;
+           white-space:pre-wrap; }
+  .sep { color:var(--muted); font-size:13px; margin:0 4px; }
+  kbd { background:#eee; border-radius:4px; padding:1px 6px; font-size:12px; }
+</style>
+</head>
+<body>
+
+<span class="tag">原型 · 看完即弃</span>
+<h1>动作打击感时间线原型</h1>
+<div class="q">
+  <b>要回答的问题：</b>参考 combat-vfx-demo 的「事件时间线」做法（hit-stop 冻结时钟 + 击退 + 震屏，
+  全部由参数表驱动），搬到归元的 Canvas 2D 表现层后，手感是否成立？
+  玩家动作走<b>剑术</b>（劈砍）、天道动作走<b>法术</b>（弹道+落点冲击），五种五行属性只换材质参数。
+  <br><b>看的时候注意：</b>打击瞬间的「停顿」是否让命中感成立？剑术与法术的节奏差异是否足够区分两个阵营？
+  同一动作切换五行材质时，辨识度够不够？
+</div>
+
+<canvas id="cv" width="912" height="380"></canvas>
+<div class="state" id="state"></div>
+
+<div class="panel">
+  <h2>① 选五行材质（只换参数，不换机制）</h2>
+  <div class="row" id="materials"></div>
+</div>
+
+<div class="panel">
+  <h2>② 触发动作</h2>
+  <div class="row">
+    <span style="font-size:13px;color:var(--muted)">玩家（剑术）：</span>
+    <button data-act="slash1">劈砍 · 一段</button>
+    <button data-act="slash3">劈砍 · 三段连击</button>
+    <span class="sep">|</span>
+    <span style="font-size:13px;color:var(--muted)">天道（法术）：</span>
+    <button data-act="bolt">符弹 · 单发</button>
+    <button data-act="barrage">符弹 · 三连</button>
+    <span class="sep">|</span>
+    <button data-act="reset">重置</button>
+  </div>
+  <div class="hint">快捷键：<kbd>1</kbd> 劈砍 <kbd>2</kbd> 三段 <kbd>3</kbd> 符弹 <kbd>4</kbd> 三连 <kbd>空格</kbd> 慢放/常速 <kbd>R</kbd> 重置</div>
+</div>
+
+<div class="panel">
+  <h2>③ 情景走查（点一下自动演一遍）</h2>
+  <div class="row">
+    <button data-scene="feel">A. 打击感从哪来：同一个劈砍，先无停顿、再有 hit-stop</button>
+    <button data-scene="versus">B. 阵营对比：玩家三段剑术 → 天道三连法术</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+ * 纯模块：ActionTimeline —— 可整体搬进 src/minigame/ 的部分
+ * 事件时间线：{ t, do, ...参数 } 按时间排序触发；
+ * hit-stop = 冻结整条时间线时钟；击退/浮空 = 目标运动学；
+ * 震屏 = 正弦衰减偏移。无任何 DOM 依赖。
+ * ========================================================== */
+const ActionTimeline = (() => {
+
+  // —— 五行材质参数表（参考 combat-vfx-demo 的数值方法论，自写参数）——
+  // ramp = 四色渐层（亮→暗），组织方式照搬 demo 的 PALETTES / ComboStyle.palette()；
+  // demo 算法负责「形」，五行只换 ramp 与次要形态参数（widMul=smear 宽度、
+  // sparkMul=碎屑数量、spikes=落点环刺数、burstY/burstSquash=落点形态）。
+  const MATERIALS = {
+    metal: { name:"金", main:"#f5d76e", glow:"#fff3c4", spark:"#ffffff",
+             ramp:["#ffffff","#fff3c4","#f5d76e","#8a6d1f"], widMul:0.8,  sparkMul:0.8, spikes:4, burstY:0,  burstSquash:1 },
+    wood:  { name:"木", main:"#58d68d", glow:"#a9dfbf", spark:"#eafaf1",
+             ramp:["#f4ffe6","#b9f27c","#4fbf4a","#1d5a2c"], widMul:1.0,  sparkMul:1.2, spikes:6, burstY:0,  burstSquash:1 },
+    water: { name:"水", main:"#5dade2", glow:"#aed6f1", spark:"#ebf5fb",
+             ramp:["#ffffff","#d6f3ff","#78c4ea","#33618f"], widMul:0.9,  sparkMul:1.0, spikes:0, burstY:0,  burstSquash:1 },
+    fire:  { name:"火", main:"#ec7063", glow:"#f5b7b1", spark:"#fdedec",
+             ramp:["#fff0dd","#ff9c66","#e2412f","#6e1222"], widMul:1.0,  sparkMul:1.3, spikes:8, burstY:0,  burstSquash:1 },
+    earth: { name:"土", main:"#d4ac0d", glow:"#f7dc6f", spark:"#fef9e7",
+             ramp:["#fffbe2","#ffe189","#d4ac0d","#6e4a0f"], widMul:1.35, sparkMul:0.7, spikes:5, burstY:34, burstSquash:0.3 },
+  };
+
+  // —— 动作事件表（剑术/法术；数值即手感的全部来源）——
+  function buildEvents(act, noStop) {
+    const stop = noStop ? 0 : undefined;
+    switch (act) {
+      case "slash1": return [
+        { t:0.00, do:"move",  dx:220, duration:0.14, ease:"out" },          // 进步贴近
+        { t:0.14, do:"slash", stop:stop ?? 0.09, push:240, shake:7, angle:-0.3 },
+        { t:0.50, do:"move",  dx:-220, duration:0.26, ease:"inout" },       // 收步回位
+      ];
+      case "slash3": return [
+        { t:0.00, do:"move",  dx:220, duration:0.14, ease:"out" },
+        { t:0.14, do:"slash", stop:0.06, push:120, shake:4, angle:-0.5 },
+        { t:0.44, do:"slash", stop:0.06, push:120, shake:4, angle: 0.5 },
+        { t:0.74, do:"slash", stop:0.13, push:340, shake:11, angle:-0.1, heavy:true },
+        { t:1.15, do:"move",  dx:-220, duration:0.28, ease:"inout" },
+      ];
+      case "bolt": return [
+        { t:0.00, do:"cast",  hold:0.25 },                                  // 起手蓄力
+        { t:0.25, do:"bolt",  travel:0.28, ease:"in" },                     // 弹道
+        { t:0.53, do:"hit",   stop:stop ?? 0.08, push:200, shake:8 },
+      ];
+      case "barrage": return [0,1,2].flatMap(i => [
+        { t:0.00+i*0.45, do:"cast",  hold:0.18 },
+        { t:0.18+i*0.45, do:"bolt",  travel:0.24, ease:"in" },
+        { t:0.42+i*0.45, do:"hit",   stop: i===2 ? 0.13 : 0.05,
+                              push: i===2 ? 320 : 130, shake: i===2 ? 11 : 5, heavy: i===2 },
+      ]);
+      default: return [];
+    }
+  }
+
+  function create(act, opts) {
+    const events = buildEvents(act, opts && opts.noStop).slice().sort((a,b)=>a.t-b.t);
+    return {
+      act, events,
+      mat: (opts && opts.mat) || "fire",   // 触发时锁死材质
+      time: 0, stopLeft: 0, cursor: 0, done: false,
+      attacker: { x:0, dx:0, lunge:0 },             // lunge: 0..1 进步插值
+      target:   { x:0, y:0, vx:0, vy:0, flash:0, shake:0 },
+      shake:    { amp:0, t:0 },
+      fx: [],                                       // 瞬时特效 {kind,mat,...}
+      projectiles: [],
+      hits: 0,
+      log: [],
+    };
+  }
+
+  // 单点推进：表现层每帧只调这一个函数（对应 demo 的 advance）
+  function advance(s, dt) {
+    if (s.done) return s;
+    // hit-stop：时钟冻结，只让目标小幅抖动
+    if (s.stopLeft > 0) {
+      s.stopLeft -= dt;
+      // [ported from combat-vfx-demo: vfx/combo_stage.gd — PolyForm Noncommercial, 商用前需重写]
+      // advance() hit-stop 分支：目标位置不动，只加 ±3px 显示抖动，每 0.02s 剩余冻结时间换向
+      s.target.shake = Math.floor(Math.max(s.stopLeft, 0) / 0.02) % 2 === 0 ? 3 : -3;
+      return s;
+    }
+    s.target.shake = 0;
+    s.time += dt;
+
+    // 到点触发事件
+    while (s.cursor < s.events.length && s.events[s.cursor].t <= s.time) {
+      fire(s, s.events[s.cursor++]);
+    }
+
+    // 目标运动学：击退 + 弹簧回位（带回弹）
+    const tg = s.target;
+    tg.vx += -tg.x * 55 * dt;                       // 弹簧拉回原点
+    tg.vx *= Math.pow(0.02, dt);                    // 阻尼
+    tg.x += tg.vx * dt;
+    tg.flash = Math.max(0, tg.flash - dt*6);
+    // 震屏衰减
+    s.shake.amp *= Math.pow(0.0005, dt); s.shake.t += dt;
+    // 特效寿命
+    for (const f of s.fx) f.age += dt;
+    s.fx = s.fx.filter(f => f.age < f.life);
+    // 弹道
+    for (const p of s.projectiles) p.age += dt;
+    s.projectiles = s.projectiles.filter(p => p.age < p.travel + 0.05);
+
+    if (s.cursor >= s.events.length && !s.fx.length && !s.projectiles.length
+        && Math.abs(tg.vx) < 1 && s.time > 0.6) s.done = true;
+    return s;
+  }
+
+  function fire(s, e) {
+    s.log.push(`${s.time.toFixed(2)}s ${e.do}`);
+    switch (e.do) {
+      case "move":
+        s.fx.push({ kind:"lunge", from:s.attacker.dx, to:s.attacker.dx+e.dx,
+                    dur:e.duration, age:0, life:e.duration, ease:e.ease });
+        s.attacker.dx += e.dx;
+        break;
+      case "slash":
+        s.hits++;
+        s.stopLeft = e.stop;
+        s.target.vx += e.push;
+        s.target.flash = 1;
+        s.shake.amp = Math.max(s.shake.amp, e.shake);
+        // demo 组合：crescent 刀光 + 星形 hit spark + 碎屑喷射（payload 参数照搬 combo_stage slash/_hit）
+        s.fx.push({ kind:"blade", angle:e.angle, heavy:!!e.heavy, age:0, life: e.heavy?0.29:0.22, mat:s.mat });
+        s.fx.push({ kind:"star", heavy:!!e.heavy, hits:s.hits, age:0, life: e.heavy?0.31:0.18, mat:s.mat });
+        s.fx.push({ kind:"sparks", n: e.heavy?28:10, heavy:!!e.heavy, seed:s.hits, age:0, life:0.35, mat:s.mat });
+        break;
+      case "cast":
+        s.fx.push({ kind:"charge", dur:e.hold, age:0, life:e.hold, mat:s.mat });
+        break;
+      case "bolt":
+        s.projectiles.push({ age:0, travel:e.travel, mat:s.mat });
+        break;
+      case "hit":
+        s.hits++;
+        s.stopLeft = e.stop;
+        s.target.vx += e.push;
+        s.target.flash = 1;
+        s.shake.amp = Math.max(s.shake.amp, e.shake);
+        // 弹道命中：落点 burst 环 + 星形 hit spark + 碎屑喷射（同 slash 的 demo 组合）
+        s.fx.push({ kind:"burst", heavy:!!e.heavy, age:0, life:0.35, mat:s.mat });
+        s.fx.push({ kind:"star", heavy:!!e.heavy, hits:s.hits, age:0, life: e.heavy?0.31:0.18, mat:s.mat });
+        s.fx.push({ kind:"sparks", n: e.heavy?28:10, heavy:!!e.heavy, seed:s.hits+7, age:0, life:0.35, mat:s.mat });
+        break;
+    }
+  }
+
+  return { MATERIALS, create, advance, buildEvents };
+})();
+
+/* ============================================================
+ * 下面是一次性页面外壳：渲染 + 按钮。不进生产。
+ * ========================================================== */
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+const stateEl = document.getElementById("state");
+const GROUND = 300, AX = 300, TX = 640;
+let matKey = "fire", slow = false;
+let scene = null;            // 当前 ActionTimeline 状态
+let queue = [];              // 情景走查的动作队列
+let queueDelay = 0;
+
+function start(act, opts) { scene = ActionTimeline.create(act, Object.assign({ mat: matKey }, opts)); }
+
+// 取特效自身锁定的材质（落回当前选择，兼容旧 fx）
+function fxMat(f) { return ActionTimeline.MATERIALS[f.mat] || ActionTimeline.MATERIALS[matKey]; }
+
+/* —— 特效绘制：几何算法移植自 combat-vfx-demo，五行只换 ramp 与次要形态参数 —— */
+
+const deg = d => d * Math.PI / 180;
+const clamp01 = v => Math.min(Math.max(v, 0), 1);
+
+// [ported from combat-vfx-demo: vfx/pixel_slash.gd — PolyForm Noncommercial, 商用前需重写]
+// ease_swing()：中段快、收尾短促的挥击缓动
+function easeSwing(t) { return 1 - Math.pow(1 - clamp01(t), 2.4); }
+// [ported from combat-vfx-demo: vfx/pixel_slash.gd — PolyForm Noncommercial, 商用前需重写]
+// lens()：crescent 沿弧的厚度轮廓——两端为零、中间最厚
+function lens(along) { return Math.pow(Math.sin(Math.PI * clamp01(along)), 0.6); }
+// [ported from combat-vfx-demo: vfx/pixel_slash.gd — PolyForm Noncommercial, 商用前需重写]
+// make_particles() 用的固定种子随机（demo 用 RandomNumberGenerator.seed，这里 mulberry32）
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// [ported from combat-vfx-demo: vfx/pixel_slash.gd — PolyForm Noncommercial, 商用前需重写]
+// _draw_crescent() + _crescent_layer()：格斗游戏式刀光 smear。
+// 张开（ease_swing）→ 保持（hold）→ 从旧端侵蚀（from_s = f^0.8）并整体变薄；
+// 分层：ghost 残影 / body / mid / 白芯 / 外侧 echo 线 / 收尾 speed lines。
+// demo 画在低分辨率 SubViewport 里再最近邻放大，这里直接画世界像素（不做像素化）。
+function drawCrescent(f, cx, cy) {
+  const FM = fxMat(f), P = FM.ramp;
+  const duration = 0.045, hold = 0.04, fade = f.heavy ? 0.20 : 0.13;   // demo combo_stage slash 默认值
+  const radius = f.heavy ? 165 : 140, width = (f.heavy ? 56 : 44) * FM.widMul;
+  const squash = 0.9, tilt = f.angle;
+  const startA = deg(-70), sweep = deg(140);                            // demo from -70° to 70°
+  const lineGap = 6, lineWidth = 5;
+  const age = f.age;
+  const open = easeSwing(age / duration);
+  const fr = clamp01((age - duration - hold) / fade);                   // _fade_fraction()
+  const fromS = Math.pow(fr, 0.8);
+  const thick = width * (1 - fr * 0.6);
+  const ct = Math.cos(tilt), st = Math.sin(tilt);
+  const pt = (ang, d) => {                                              // _point() 的 arc 分支
+    const x = Math.cos(ang) * d, y = Math.sin(ang) * d * squash;
+    return [cx + x * ct - y * st, cy + x * st + y * ct];
+  };
+  const layer = (a, b, rAt, th, inner, color) => {                      // _crescent_layer()
+    if (b - a <= 0.0005 || th * inner < 0.5) return;
+    const steps = Math.max(2, Math.ceil(Math.abs(sweep) * (b - a) / deg(3)));
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const along = a + (b - a) * i / steps;
+      const [x, y] = pt(startA + sweep * along, rAt);
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    for (let i = steps; i >= 0; i--) {                                  // inside.reverse()
+      const along = a + (b - a) * i / steps;
+      const [x, y] = pt(startA + sweep * along, rAt - th * inner * lens(along));
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath(); ctx.fill();
+  };
+  const ghost = easeSwing((age - 1 / 60) / duration);                   // 晚一帧的内侧残影
+  layer(fromS, ghost, radius * 0.84, thick * 0.55, 1.0, P[3]);
+  layer(fromS, open, radius, thick, 1.0, P[2]);
+  if (fr < 0.7) layer(fromS, open, radius, thick, 0.62, P[1]);
+  if (fr < 0.35) layer(fromS, open, radius, thick, 0.28, P[0]);
+  if (age > duration * 0.5 && fr < 0.85) {                              // 外侧 echo 细线
+    const lr = radius + lineGap + lineWidth;
+    layer(fromS, open * 0.96, lr, lineWidth / Math.max(lens(0.5), 0.01), 1.0, fr < 0.4 ? P[1] : P[2]);
+  }
+  if (fr > 0) {                                                         // 收尾甩出的 speed lines
+    for (let k = 0; k < 5; k++) {
+      const along = (k + 0.5) / 5;
+      if (along < fromS) continue;
+      const ang = startA + sweep * along;
+      const r0 = radius + lineGap * 2 + 30 * fr;
+      const r1 = r0 + 26 * (1 - fr) * lens(along);
+      const [x0, y0] = pt(ang, r0), [x1, y1] = pt(ang, r1);
+      if (Math.hypot(x1 - x0, y1 - y0) < 2) continue;
+      ctx.strokeStyle = fr < 0.5 ? P[1] : P[2];
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    }
+  }
+}
+
+// [ported from combat-vfx-demo: vfx/pixel_slash.gd — PolyForm Noncommercial, 商用前需重写]
+// _draw_star()：星形 hit spark——长短交替的尖射线（张开→保持→缩短）+ 白核 + 早消的细环。
+// 参数（spikes 8/12、hold/fade、spark_dir = 15°×hits）照搬 combo_stage.gd _hit()。
+function drawStar(f, cx, cy) {
+  const P = fxMat(f).ramp;
+  const duration = 0.03, hold = f.heavy ? 0.08 : 0.03, fade = f.heavy ? 0.2 : 0.12;
+  const radius = f.heavy ? 64 : 46, width = radius * 0.22;
+  const rays = Math.max(f.heavy ? 12 : 8, 4);
+  const dir0 = deg(15 * (f.hits || 0));
+  const open = easeSwing(f.age / duration);
+  const fr = clamp01((f.age - duration - hold) / fade);
+  for (let i = 0; i < rays; i++) {
+    const longR = i % 2 === 0;
+    const a = dir0 + Math.PI * 2 * i / rays;
+    const dx = Math.cos(a), dy = Math.sin(a);
+    const len = radius * open * (longR ? 1 : 0.5) * (1 - fr * 0.6);
+    const base = width * (1 - fr) * (longR ? 0.6 : 0.4);
+    if (len < 2 || base < 0.7) continue;
+    ctx.fillStyle = fr < 0.4 ? (longR ? P[0] : P[1]) : P[2];
+    ctx.beginPath();
+    ctx.moveTo(cx - dy * base, cy + dx * base);
+    ctx.lineTo(cx + dx * len, cy + dy * len);
+    ctx.lineTo(cx + dy * base, cy - dx * base);
+    ctx.closePath(); ctx.fill();
+  }
+  const core = width * 0.9 * (1 - fr);
+  if (core >= 2) {
+    ctx.fillStyle = P[0];
+    ctx.beginPath(); ctx.arc(cx, cy, core, 0, 7); ctx.fill();
+  }
+  if (fr < 0.4) {                                                       // 长射线内侧的细环，fade 早期消失
+    ctx.strokeStyle = P[1]; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx, cy, radius * 0.7 * open * (0.9 + fr * 0.5), 0, 7); ctx.stroke();
+  }
+}
+
+// [ported from combat-vfx-demo: vfx/pixel_slash.gd — PolyForm Noncommercial, 商用前需重写]
+// make_particles() + _spark_at() + _draw_sparks()：扇形碎屑喷射——固定种子、
+// 每颗随机方向/速度/寿命、受重力抛落、沿运动方向留 0.03s 短拖痕、颜色按寿命分档。
+// 参数照搬 combo_stage.gd _hit()：spread 60°/180°、速度 260-620/300-900、寿命 0.16-0.3。
+function drawSparks(f, cx, cy) {
+  const FM = fxMat(f), P = FM.ramp;
+  const n = Math.round(f.n * FM.sparkMul);
+  const spread = f.heavy ? Math.PI : deg(60);
+  const v0 = f.heavy ? 300 : 260, v1 = f.heavy ? 900 : 620;
+  const rng = mulberry32((f.seed || 1) * 1000 + 7);
+  for (let i = 0; i < n; i++) {
+    const ang = (rng() * 2 - 1) * spread;                               // spark_dir = 0（向前）
+    const sp = v0 + rng() * (v1 - v0);
+    const life = 0.16 + rng() * (0.3 - 0.16);
+    if (f.age >= life) continue;
+    const frac = f.age / life;
+    const at = t => [cx + Math.cos(ang) * sp * t,
+                     cy + Math.sin(ang) * sp * t + 900 * t * t / 2];    // spark_gravity = 900
+    const [hx, hy] = at(f.age), [tx, ty] = at(Math.max(f.age - 0.03, 0));
+    ctx.strokeStyle = frac < 0.3 ? P[0] : frac < 0.65 ? P[1] : P[2];
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
+  }
+}
+
+// [ported from combat-vfx-demo: vfx/pixel_slash.gd — PolyForm Noncommercial, 商用前需重写]
+// _draw_burst()：落点冲击——圆环张开（ease_swing）厚度随 fade 收缩、颜色按 fade 分档，
+// 环外一圈长刺（spikes=0 即纯环，demo 用于地面冲击波）。五行只换 ramp/spikes/压扁。
+function drawBurst(f, cx, cy0) {
+  const FM = fxMat(f), P = FM.ramp;
+  const cy = cy0 + FM.burstY, squash = FM.burstSquash;
+  const duration = 0.12, tail = 0.2;
+  const radius = f.heavy ? 170 : 120, width = f.heavy ? 12 : 10;
+  const t = clamp01(f.age / duration);
+  const fr = clamp01((f.age - duration) / tail);
+  const r = radius * easeSwing(t);
+  const thick = Math.max(width * (1 - fr) * (1 - 0.5 * t), 1.5);
+  ctx.fillStyle = fr < 0.3 ? P[0] : fr < 0.66 ? P[1] : P[2];
+  const steps = 24;
+  for (let i = 0; i < steps; i++) {
+    const a0 = Math.PI * 2 * i / steps, a1 = Math.PI * 2 * (i + 1) / steps;
+    const inner = Math.max(r - thick, 0);
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a0) * inner, cy + Math.sin(a0) * inner * squash);
+    ctx.lineTo(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r * squash);
+    ctx.lineTo(cx + Math.cos(a1) * r, cy + Math.sin(a1) * r * squash);
+    ctx.lineTo(cx + Math.cos(a1) * inner, cy + Math.sin(a1) * inner * squash);
+    ctx.closePath(); ctx.fill();
+  }
+  const spk = radius * 0.55 * (1 - fr);                                 // 环外长刺，随 fade 缩短
+  if (spk < 3 || FM.spikes <= 0) return;
+  for (let i = 0; i < FM.spikes; i++) {
+    const a = Math.PI * 2 * i / FM.spikes + Math.PI / FM.spikes;
+    const dx = Math.cos(a), dy = Math.sin(a);
+    const side = Math.max(thick * 0.5, 3);
+    const bx = cx + dx * (r + 6), by = cy + dy * (r + 6) * squash;
+    ctx.fillStyle = fr < 0.5 ? P[1] : P[2];
+    ctx.beginPath();
+    ctx.moveTo(bx - dy * side, by + dx * side * squash);
+    ctx.lineTo(bx + dx * spk, by + dy * spk * squash);
+    ctx.lineTo(bx + dy * side, by - dx * side * squash);
+    ctx.closePath(); ctx.fill();
+  }
+}
+
+// 弹道：金=飞针 木=藤种 水=水珠 火=火球 土=石块
+function drawProjectile(pj, x0, x1, ty) {
+  const M = fxMat(pj), q = Math.min(1, pj.age / pj.travel);
+  const px = x0 + (x1 - x0) * q*q, py = ty - 6;
+  switch (pj.mat) {
+    case "metal":
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.globalAlpha = 0.95;
+      ctx.beginPath(); ctx.moveTo(px - 18, py); ctx.lineTo(px + 10, py); ctx.stroke();
+      ctx.strokeStyle = M.main; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(px - 30*q, py); ctx.lineTo(px - 18, py); ctx.stroke();
+      break;
+    case "wood":
+      ctx.fillStyle = M.main; ctx.save(); ctx.translate(px, py); ctx.rotate(q * 10);
+      ctx.beginPath(); ctx.ellipse(0, 0, 9, 4.5, 0, 0, 7); ctx.fill(); ctx.restore();
+      ctx.strokeStyle = M.glow; ctx.globalAlpha = 0.5; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px - 22*q, py + Math.sin(q*9)*5); ctx.lineTo(px - 8, py); ctx.stroke();
+      break;
+    case "water":
+      ctx.fillStyle = M.main; ctx.globalAlpha = 0.95;
+      ctx.beginPath(); ctx.arc(px, py, 8, 0, 7); ctx.fill();
+      ctx.fillStyle = M.glow; ctx.globalAlpha = 0.6;
+      for (let k = 1; k <= 3; k++) { ctx.beginPath(); ctx.arc(px - 12*k*q, py + k*1.5, 6-k*1.4, 0, 7); ctx.fill(); }
+      break;
+    case "fire":
+      ctx.fillStyle = M.main;
+      ctx.beginPath(); ctx.arc(px, py, 9, 0, 7); ctx.fill();
+      ctx.fillStyle = "#f8c471"; ctx.globalAlpha = 0.85;
+      ctx.beginPath(); ctx.arc(px, py, 5, 0, 7); ctx.fill();
+      ctx.fillStyle = M.main; ctx.globalAlpha = 0.5;
+      for (let k = 1; k <= 3; k++) { ctx.beginPath(); ctx.arc(px - 11*k*q, py + Math.sin(q*12+k)*3, 7-k*1.8, 0, 7); ctx.fill(); }
+      break;
+    case "earth":
+      ctx.fillStyle = "#a04000"; ctx.save(); ctx.translate(px, py); ctx.rotate(q * 7);
+      ctx.fillRect(-8, -8, 16, 16); ctx.restore();
+      ctx.fillStyle = M.glow; ctx.globalAlpha = 0.4;
+      ctx.beginPath(); ctx.arc(px - 16*q, py + 4, 5, 0, 7); ctx.fill();
+      break;
+  }
+  ctx.globalAlpha = 1;
+}
+
+
+// —— 材质按钮 ——
+const matRow = document.getElementById("materials");
+for (const [k, m] of Object.entries(ActionTimeline.MATERIALS)) {
+  const b = document.createElement("button");
+  b.textContent = m.name; b.className = "wx"; b.dataset.mat = k;
+  b.style.borderColor = m.main;
+  if (k === matKey) { b.classList.add("on"); b.style.background = m.main; }
+  b.onclick = () => {
+    matKey = k;
+    matRow.querySelectorAll("button").forEach(x => { x.classList.remove("on"); x.style.background = "#fff"; });
+    b.classList.add("on"); b.style.background = m.main;
+  };
+  matRow.appendChild(b);
+}
+
+document.querySelectorAll("[data-act]").forEach(b =>
+  b.onclick = () => { queue = []; start(b.dataset.act); });
+document.querySelectorAll("[data-scene]").forEach(b =>
+  b.onclick = () => runScene(b.dataset.scene));
+
+addEventListener("keydown", e => {
+  if (e.key === "1") start("slash1");
+  if (e.key === "2") start("slash3");
+  if (e.key === "3") start("bolt");
+  if (e.key === "4") start("barrage");
+  if (e.key === "r" || e.key === "R") { scene = null; queue = []; }
+  if (e.key === " ") { slow = !slow; e.preventDefault(); }
+});
+
+function runScene(name) {
+  if (name === "feel")   queue = [["slash1",{noStop:true}], ["slash1",{}]];
+  if (name === "versus") queue = [["slash3",{}], ["barrage",{}]];
+  queueDelay = 0;
+  const [act, opts] = queue.shift();
+  start(act, opts);
+}
+
+// —— 渲染（throwaway：能看清手感即可）——
+function draw() {
+  const M = ActionTimeline.MATERIALS[matKey];
+  ctx.clearRect(0,0,cv.width,cv.height);
+
+  // 震屏偏移
+  let sx = 0, sy = 0;
+  if (scene && scene.shake.amp > 0.1) {
+    const a = scene.shake.amp, t = scene.shake.t * 55;
+    sx = Math.sin(t) * a; sy = Math.cos(t * 1.3) * a * 0.6;
+  }
+  ctx.save(); ctx.translate(sx, sy);
+
+  // 地面
+  ctx.strokeStyle = "#3a4055"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(40, GROUND+40); ctx.lineTo(cv.width-40, GROUND+40); ctx.stroke();
+
+  const tg = scene ? scene.target : { x:0, flash:0, shake:0 };
+  // 攻击者位移：取进行中的最后一个 lunge 插值，否则用累计位移
+  let lungeDx = scene ? scene.attacker.dx : 0;
+  if (scene) for (const f of scene.fx) if (f.kind === "lunge") {
+    const p = Math.min(1, f.age / f.dur);
+    const e = f.ease === "out" ? 1-(1-p)*(1-p) : p*p*(3-2*p);
+    lungeDx = f.from + (f.to - f.from) * e;
+  }
+
+  // 攻击方（左，内环 · 玩家/天道通用剪影）
+  const ax = AX + lungeDx;
+  ctx.fillStyle = "#8e9bbf";
+  ctx.beginPath(); ctx.arc(ax, GROUND, 26, 0, 7); ctx.fill();
+  ctx.fillStyle = "#6d7b9e";
+  ctx.beginPath(); ctx.arc(ax, GROUND-38, 14, 0, 7); ctx.fill();
+
+  // 蓄力光环
+  if (scene) for (const f of scene.fx) if (f.kind === "charge") {
+    const FM = fxMat(f);
+    const p = f.age / f.life;
+    ctx.strokeStyle = FM.glow; ctx.globalAlpha = 0.4 + 0.6*p; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(ax, GROUND-20, 34 - 14*p, 0, 7); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // 目标（右，五行节点：外圈环 + 内圆）；shake = hit-stop 冻结期的原地抖动（demo Block.shake）
+  const tx = TX + tg.x + (tg.shake || 0), ty = GROUND;
+  ctx.strokeStyle = M.main; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.arc(tx, ty, 34, 0, 7); ctx.stroke();
+  ctx.fillStyle = tg.flash > 0 ? M.spark : M.main;
+  ctx.globalAlpha = tg.flash > 0 ? 1 : 0.85;
+  ctx.beginPath(); ctx.arc(tx, ty, 22, 0, 7); ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // 刀光：demo 式 crescent smear，锚在攻击者身上（demo 里 crescent 是 attacker 的子节点）
+  if (scene) for (const f of scene.fx) if (f.kind === "blade") drawCrescent(f, ax, GROUND - 20);
+
+  // 命中点（demo _hit 的 at：目标中心偏左上）
+  const hx = tx - 10, hy = ty - 24;
+
+  // 落点爆裂（demo burst 环 + 刺）
+  if (scene) for (const f of scene.fx) if (f.kind === "burst") drawBurst(f, tx, ty);
+
+  // 星形 hit spark（demo _draw_star）
+  if (scene) for (const f of scene.fx) if (f.kind === "star") drawStar(f, hx, hy);
+
+  // 碎屑喷射（demo 扇形 spray，带重力与拖痕）
+  if (scene) for (const f of scene.fx) if (f.kind === "sparks") drawSparks(f, hx, hy);
+
+  // 弹道（五行分形）
+  if (scene) for (const p of scene.projectiles) drawProjectile(p, ax + 30, tx, ty);
+
+  ctx.restore();
+
+  // 连击计数
+  if (scene && scene.hits > 0) {
+    ctx.fillStyle = M.main; ctx.font = "bold 28px Microsoft YaHei";
+    ctx.fillText(`${scene.hits} HIT`, cv.width - 110, 50);
+  }
+  if (!scene) {
+    ctx.fillStyle = "#5a6478"; ctx.font = "16px Microsoft YaHei";
+    ctx.fillText("选一个五行材质，再点一个动作", 340, 200);
+  }
+
+  // 状态面板（每次动作后可见变化）
+  stateEl.textContent = scene
+    ? `材质=${M.name}  动作=${scene.act}  时钟=${scene.time.toFixed(2)}s  `
+    + `冻结=${scene.stopLeft > 0 ? scene.stopLeft.toFixed(2)+"s（hit-stop）" : "无"}  `
+    + `目标位移=${tg.x.toFixed(1)}px  震幅=${scene.shake.amp.toFixed(1)}  命中=${scene.hits}\n`
+    + `事件流水：${scene.log.slice(-8).join("  →  ")}`
+    : "待机。";
+}
+
+// —— 主循环 ——
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000) * (slow ? 0.25 : 1);
+  last = now;
+  if (scene) {
+    ActionTimeline.advance(scene, dt);
+    if (scene.done && queue.length) {
+      queueDelay += dt;
+      if (queueDelay > 0.5) { queueDelay = 0; const [a,o] = queue.shift(); start(a,o); }
+    }
+  }
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
