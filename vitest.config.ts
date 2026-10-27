@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: ['tests/core/**/*.test.ts'],
+    include: ['tests/core/**/*.test.ts', 'tests/minigame/**/*.test.ts'],
     environment: 'node',
     globals: true,
     // 超时不在这里全局抬高。两个重用例各自在自己的文件里声明超时，见
