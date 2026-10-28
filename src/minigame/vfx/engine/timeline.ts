@@ -54,10 +54,7 @@ export interface TimelineState {
 }
 
 /** 创建时间线。事件表在此排序一次，之后只读。 */
-export function createTimeline(
-  events: readonly VfxEvent[],
-  tuning: TimelineTuning,
-): TimelineState {
+export function createTimeline(events: readonly VfxEvent[], tuning: TimelineTuning): TimelineState {
   return {
     events: events.slice().sort((a, b) => a.t - b.t),
     tuning,

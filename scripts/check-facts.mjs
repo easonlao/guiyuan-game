@@ -36,16 +36,25 @@ check(
 
 // ② npm 版本：`packageManager` 是机器的判据，本机装的那份必须与它一致。
 const declaredNpm = (pkg.packageManager ?? '').split('@')[1];
-let actualNpm = '';
 try {
-  actualNpm = execFileSync('npm', ['-v'], { cwd: root, encoding: 'utf8' }).trim();
+  // npm 脚本给出正在运行的 CLI；直接由 Node 启动，避开 Windows 的 npm.cmd。
+  const npmCli =
+    process.env.npm_execpath ??
+    (process.platform === 'win32'
+      ? resolve(process.execPath, '../node_modules/npm/bin/npm-cli.js')
+      : undefined);
+  const actualNpm = execFileSync(
+    npmCli === undefined ? 'npm' : process.execPath,
+    npmCli === undefined ? ['-v'] : [npmCli, '-v'],
+    { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  ).trim();
+  check(
+    declaredNpm !== undefined && actualNpm === declaredNpm,
+    `② 本机 npm 是 ${actualNpm}，但 package.json#packageManager 写 ${pkg.packageManager}。`,
+  );
 } catch {
   failures.push('② 跑不了 `npm -v`，无法核对 packageManager。');
 }
-check(
-  declaredNpm !== undefined && actualNpm === declaredNpm,
-  `② 本机 npm 是 ${actualNpm}，但 package.json#packageManager 写 ${pkg.packageManager}。`,
-);
 
 // ③④ `.npmrc` 的两条开关：版本不符即判红、没声明就解析不到。两条都是机制，不是偏好。
 check(

@@ -67,10 +67,7 @@ describe('advanceTimeline', () => {
   });
 
   it('冻结抖动只动显示层：target.shake 在 ±joltPx 间换向，target.x 不动', () => {
-    const state = createTimeline(
-      [{ t: 0, do: 'hit', stop: 0.09, push: 200, shake: 4 }],
-      TUNING,
-    );
+    const state = createTimeline([{ t: 0, do: 'hit', stop: 0.09, push: 200, shake: 4 }], TUNING);
     advanceTimeline(state, 0.001); // 触发 hit
     const xAtFreeze = state.target.x;
     const shakes: number[] = [];
@@ -86,9 +83,7 @@ describe('advanceTimeline', () => {
   });
 
   it('击退后弹簧回位收敛，时间线最终 done', () => {
-    const { state, fired } = runUntilDone([
-      { t: 0, do: 'hit', stop: 0, push: 300, shake: 8 },
-    ]);
+    const { state, fired } = runUntilDone([{ t: 0, do: 'hit', stop: 0, push: 300, shake: 8 }]);
     expect(fired).toHaveLength(1);
     expect(state.done).toBe(true);
     expect(Math.abs(state.target.x)).toBeLessThan(1);

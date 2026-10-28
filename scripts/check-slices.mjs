@@ -66,7 +66,7 @@ function readEffort(effort) {
 
   // 票据表：表行里第一个单元格是数字编号。切片取该行里第一个 `S<n>` / `none`。
   const declared = new Map();
-  for (const line of spec.split('\n')) {
+  for (const line of spec.split(/\r?\n/)) {
     if (!line.trimStart().startsWith('|')) continue;
     const cells = line
       .split('|')
@@ -86,7 +86,7 @@ function readEffort(effort) {
   const tickets = new Map();
   for (const name of files) {
     const number = String(Number(name.slice(0, 2))).padStart(2, '0');
-    const lines = readFileSync(join(issuesDir, name), 'utf8').split('\n');
+    const lines = readFileSync(join(issuesDir, name), 'utf8').split(/\r?\n/);
     const slice = lines.map((line) => fieldValue(line, 'Slice')).find((v) => v !== undefined);
     const blockedBy = lines
       .map((line) => parseBlockers(fieldValue(line, 'Blocked by')))
@@ -219,7 +219,11 @@ for (const effort of efforts) {
   // 判据取自 `docs/agents/issue-tracker.md` 的 Frontier 一条：票面 `Status:` 既不是
   // `resolved` 也不是 `claimed`，且它 `Blocked by:` 里列的每张票都是 `resolved`。
   // 只算 spec 票据表里声明的票（与上面的校验范围一致）。这是信息输出，不改退出码。
-  const statusOf = (number) => (tickets.get(number)?.status ?? '').trim().toLowerCase();
+  const statusOf = (number) =>
+    (tickets.get(number)?.status ?? '')
+      .split(/[（(]/)[0]
+      .trim()
+      .toLowerCase();
   const ready = [];
   for (const number of [...declared.keys()].sort()) {
     const ticket = tickets.get(number);
