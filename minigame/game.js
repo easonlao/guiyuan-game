@@ -1654,7 +1654,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     goldDim: "#8d7852",
     jade: "#80d6ba",
     rival: "#86b8cb",
-    damage: "#ee8d77",
     /**
      * 候选标记的专属强调色：故意**不取任何五行色、也不取节点级状态的金**。
      * 之前用元素色加亮时，亮底（点亮 / 加持）上趋近白，与「加持」的径向光晕读成同一种东西（金最明显）；
@@ -1735,10 +1734,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     [WuXing.METAL]: { name: "金", main: "#cbd5cd", light: "#f5f1de", dark: "#5e7378" },
     [WuXing.WATER]: { name: "水", main: "#75b4cb", light: "#bce4eb", dark: "#315363" }
   };
-  function drawPixelRect(ctx, x, y, w, h, color) {
-    ctx.fillStyle = color;
-    ctx.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
-  }
   const CHARACTER_PIXEL_SIZE = 4;
   const CHARACTER_SPRITE_BOUNDS = {
     top: -15,
@@ -2625,12 +2620,17 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "maxColumns");
       __publicField(this, "gapX");
       __publicField(this, "gapY");
+      /** 紧凑模式：按钮只留主标签（省掉副文案行），矮屏两行按钮少占 28px。 */
+      __publicField(this, "_compact");
       /** 按动作键复用按钮，避免每次重排都重建节点（保住按压反馈与节点身份）。 */
       __publicField(this, "buttonsByKey", /* @__PURE__ */ new Map());
       /** 当前排版顺序的按钮（与 `getAvailableActions()` 顺序一致）。 */
       __publicField(this, "buttons", []);
       /** 最近一次排版的实测内容高度（按钮总高 + 行间距）；无按钮时为 0。 */
       __publicField(this, "_contentHeight", 0);
+      /** 满额两行网格的预留高度（紧凑 / 完整两套按钮实测，供棋盘预算共用同一几何）。 */
+      __publicField(this, "reservedCompactHeight");
+      __publicField(this, "reservedFullHeight");
       __publicField(this, "unsubscribes", []);
       this.turnManager = options.turnManager;
       this.availableWidth = options.width;
@@ -2639,6 +2639,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.gapY = options.gapY ?? DEFAULT_GAP_Y;
       this.interactive = options.interactive ?? true;
       this.y = options.y ?? 0;
+      this._compact = options.compact ?? false;
+      this.reservedCompactHeight = new Button({ label: "" }).height * 2 + this.gapY;
+      this.reservedFullHeight = new Button({ label: "", subLabel: " " }).height * 2 + this.gapY;
       this.unsubscribes.push(
         this.turnManager.getEventBus().on("action:executed", () => this.refresh())
       );
@@ -2651,9 +2654,25 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     get contentHeight() {
       return this._contentHeight;
     }
+    /** 满额两行网格的预留高度：与渲染按钮同一套实测尺寸，紧凑与否各一套。 */
+    get reservedHeight() {
+      return this._compact ? this.reservedCompactHeight : this.reservedFullHeight;
+    }
     /** Reflow existing buttons and their hit regions when the viewport changes. */
-    resize(width) {
+    resize(width, compact = this._compact) {
+      const compactChanged = compact !== this._compact;
       this.availableWidth = width;
+      this._compact = compact;
+      if (compactChanged) {
+        for (const button of this.buttonsByKey.values()) {
+          this.removeChild(button);
+        }
+        this.buttonsByKey.clear();
+        this.buttons.length = 0;
+        this._contentHeight = 0;
+        this.refresh();
+        return;
+      }
       this.layout();
     }
     /**
@@ -2695,7 +2714,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const formatted = formatActionButton(action);
       return new Button({
         label: formatted.label,
-        subLabel: formatted.subLabel,
+        // 紧凑模式省掉副文案行：按钮矮 14px，两行满额从 110px 收到 82px。
+        subLabel: this._compact ? "" : formatted.subLabel,
         color: formatted.color,
         onPress: () => this.onPreview?.(action),
         onRelease: () => this.onPreview?.(null),
@@ -2774,7 +2794,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const OUTER_RADIUS_RATIO = 0.4;
   const SEAL_SIZE_RATIO = 0.062;
   const MIN_SEAL_READABLE = 18;
-  const MIN_SEAL_COMPACT = 4;
+  const MIN_SEAL_COMPACT = 20;
   const SEAL_READABILITY_FLOOR = 0.6;
   const OPPONENT_SEAL_SCALE = 0.92;
   const VOID_OUTLINE_ALPHA = 0.55;
@@ -2918,9 +2938,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
      */
     resize(width, height, bounds) {
       const span = Math.min(width, height);
-      const available = bounds === void 0 ? height : Math.max(100, bounds.bottom - bounds.top);
+      const available = bounds === void 0 ? height : Math.max(1, bounds.bottom - bounds.top);
       const top = bounds?.top ?? 0;
-      const minInner = available < 244 ? Math.min(40, Math.max(30, (available - 80) / 3.3)) : 40;
+      const minInner = 40;
       const floor = available < 244 ? MIN_SEAL_COMPACT : MIN_SEAL_READABLE;
       const sealFloor = floor * SEAL_READABILITY_FLOOR;
       const markOut = this._elements.some(
@@ -2939,7 +2959,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           seal,
           inner,
           outer,
-          height: topEdge + bottomEdge + BOARD_EDGE_PADDING * 2
+          height: topEdge + bottomEdge + (available < 244 ? 4 : BOARD_EDGE_PADDING) * 2
         };
       };
       let low = 0;
@@ -2950,14 +2970,15 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         else high = mid;
       }
       const fitted = dimensions(low);
+      const fit = Math.min(1, available / fitted.height);
       this._layout = {
         ...this._layout,
         centerX: width / 2,
         // 盘心落在可用区域里：装得下就居中（bounds === undefined 时严格为视口中点）。
-        centerY: bounds === void 0 ? height / 2 : top + Math.max(fitted.height, available) / 2,
-        innerRadius: fitted.inner,
-        outerRadius: fitted.outer,
-        sealSize: fitted.seal
+        centerY: bounds === void 0 ? height / 2 : top + available / 2,
+        innerRadius: fitted.inner * fit,
+        outerRadius: fitted.outer * fit,
+        sealSize: fitted.seal * fit
       };
       this._rebuild();
     }
@@ -3916,474 +3937,358 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     const scale = Math.min((frameWidth - 6) / maxWidth, (frameHeight - 12) / maxHeight);
     const width = sourceWidth * scale;
     const height = sourceHeight * scale;
-    const offsets = {
-      idle: Math.sin(tick * 0.08) * 2,
-      attack: -2,
-      hurt: 2,
-      cast: Math.sin(tick * 0.06) * 1.5,
-      celebrate: -Math.abs(Math.sin(tick * 0.12)) * 3,
-      win: Math.sin(tick * 0.08) * 1.5,
-      lose: 2
-    };
     ctx.drawImage(
       atlas.image,
       crop.x,
       crop.y,
       sourceWidth,
       sourceHeight,
-      frameX + (frameWidth - width) / 2 + (motion?.x ?? 0),
-      frameY + frameHeight - 8 - ((crop.footY ?? crop.y + sourceHeight) - crop.y) * scale + (motion?.y ?? offsets[state]),
+      frameX + (frameWidth - width) / 2 + motion?.x,
+      frameY + frameHeight - 8 - ((crop.footY ?? crop.y + sourceHeight) - crop.y) * scale + motion?.y,
       width,
       height
     );
   }
-  const AVATAR_WIDTH = 88;
-  const AVATAR_HEIGHT = 112;
-  const SIDE_MARGIN = 10;
-  const TOP_BAR_HEIGHT = 26;
-  const BANNER_GAP = 10;
-  const BANNER_HEIGHT = 88;
-  const PANEL_COLOR = THEME.panel;
-  const PANEL_BORDER = THEME.edge;
-  const ACTIVE_COLOR = THEME.gold;
-  const EXTRA_TURN_COLOR = THEME.jade;
-  const TEXT_COLOR = THEME.ivory;
-  const MUTED_COLOR = THEME.muted;
-  const P1_COLOR = THEME.jade;
-  const P2_COLOR = THEME.rival;
-  const HURT_COLOR = THEME.damage;
-  const EXPRESSION_COLOR = {
-    idle: null,
-    attack: THEME.gold,
-    hurt: HURT_COLOR,
-    cast: "#b7f0da",
-    celebrate: "#ed8936",
-    win: "#48bb78",
-    lose: "#a0aec0"
+  const SWORD_TUNING = {
+    springK: 55,
+    dampingBase: 0.02,
+    shakeDecayBase: 5e-4,
+    freezeJoltPx: 3,
+    freezeJoltPeriod: 0.02,
+    settleTime: 0.6,
+    minVelocity: 1,
+    settleDistance: 0.5
   };
-  const PLAYER_LABEL = { P1: "你 · 弈者", P2: "天道" };
-  const PLAYER_COLOR = { P1: P1_COLOR, P2: P2_COLOR };
+  const SWORD_LIMITS = { maxStop: 0.3, rampLength: 4 };
+  const COMBAT_PLAYBACK = { flashDecay: 6, burstLife: 0.35, impactAge: 0.025 };
+  const SWORD_DISPLAY = {
+    standingGap: 190,
+    sideMargin: 24,
+    avatarWidth: 88,
+    avatarHeight: 112,
+    compactAvatarHeight: 48,
+    turnBarHeight: 26,
+    frameTopGap: 16,
+    labelRoom: 34,
+    contactInset: 20,
+    movePeak: 220,
+    knockScale: 1,
+    fxScale: 0.24,
+    shakeFrequency: 55,
+    shakeYFrequency: 1.3,
+    shakeYScale: 0.6,
+    bladeOffsetY: -14,
+    impactOffsetX: -10,
+    impactOffsetY: -6
+  };
+  const NORMAL = {
+    bladeLife: 0.22,
+    starLife: 0.18,
+    debrisLife: 0.35,
+    duration: 0.045,
+    hold: 0.04,
+    fade: 0.13,
+    radius: 140,
+    width: 44,
+    starDuration: 0.03,
+    starHold: 0.03,
+    starFade: 0.12,
+    starRadius: 46,
+    rays: 8,
+    count: 10,
+    spread: Math.PI / 3,
+    speedMin: 260,
+    speedMax: 620,
+    particleLifeMin: 0.16,
+    particleLifeMax: 0.3,
+    gravity: 900,
+    trail: 0.03,
+    // 先建立可见命中形态，再由冻结时钟保持；单位为表现秒。
+    impactAge: 0.025,
+    startDegrees: -70,
+    sweepDegrees: 140,
+    gap: 6,
+    lineWidth: 5,
+    aspectRatio: 0.9,
+    echoDelay: 1 / 60,
+    echoRadiusScale: 0.84,
+    echoWidthScale: 0.55,
+    speedLineCount: 5,
+    speedLineDrift: 30,
+    speedLineLength: 26,
+    speedLineWidth: 2,
+    starWidthRatio: 0.22,
+    starRotationDegrees: 15,
+    starShortRayScale: 0.5,
+    starLongWidthScale: 0.6,
+    starShortWidthScale: 0.4,
+    starCoreScale: 0.9,
+    starRingScale: 0.7,
+    starRingWidth: 2,
+    debrisWidth: 2
+  };
+  const HEAVY = {
+    ...NORMAL,
+    bladeLife: 0.29,
+    starLife: 0.31,
+    fade: 0.2,
+    radius: 165,
+    width: 56,
+    starHold: 0.08,
+    starFade: 0.2,
+    starRadius: 64,
+    rays: 12,
+    count: 28,
+    spread: Math.PI / 3,
+    speedMin: 300,
+    speedMax: 900
+  };
+  const SWORD_SINGLE = {
+    name: "劈砍·一段",
+    material: {
+      ramp: ["#fff0dd", "#ff9c66", "#e2412f", "#6e1222"],
+      widthMultiplier: 1,
+      debrisMultiplier: 1.3
+    },
+    normal: NORMAL,
+    heavy: HEAVY,
+    events: [
+      { t: 0, do: "move", dx: 220, duration: 0.14, ease: "out" },
+      { t: 0.14, do: "slash", stop: 0.09, push: 240, shake: 7, angle: -0.3 },
+      { t: 0.5, do: "move", dx: -220, duration: 0.26, ease: "inout" }
+    ]
+  };
+  const SWORD_TRIPLE = {
+    ...SWORD_SINGLE,
+    name: "劈砍·三段",
+    events: [
+      { t: 0, do: "move", dx: 220, duration: 0.14, ease: "out" },
+      { t: 0.14, do: "slash", stop: 0.06, push: 120, shake: 4, angle: -0.5 },
+      { t: 0.44, do: "slash", stop: 0.06, push: 120, shake: 4, angle: 0.5 },
+      { t: 0.74, do: "slash", stop: 0.13, push: 340, shake: 11, angle: -0.1, heavy: true },
+      { t: 1.15, do: "move", dx: -220, duration: 0.28, ease: "inout" }
+    ]
+  };
+  const PLAYERS = ["P1", "P2"];
   class CharacterView extends Container {
     constructor(options) {
       super();
-      __publicField(this, "_width");
-      __publicField(this, "_spriteAtlas", null);
-      __publicField(this, "_safeTop");
-      __publicField(this, "_compact");
-      __publicField(this, "_round", 0);
-      __publicField(this, "_maxRounds", 0);
-      __publicField(this, "_currentPlayer", null);
-      __publicField(this, "_isExtraTurn", false);
-      __publicField(this, "_scores", { P1: 0, P2: 0 });
-      __publicField(this, "_expressions", { P1: "idle", P2: "idle" });
-      __publicField(this, "_expressionTimers", { P1: 0, P2: 0 });
-      __publicField(this, "_bubbles", {
+      __publicField(this, "width");
+      __publicField(this, "safeTop");
+      __publicField(this, "compact");
+      __publicField(this, "atlas", null);
+      __publicField(this, "tick", 0);
+      __publicField(this, "round", 0);
+      __publicField(this, "maxRounds", 0);
+      __publicField(this, "currentPlayer", null);
+      __publicField(this, "isExtraTurn", false);
+      /** 核心层终局标记：回合条与「行动中」尾缀在终局后改口，不再谎报「你行动」。 */
+      __publicField(this, "isGameOver", false);
+      __publicField(this, "bannerText", "");
+      __publicField(this, "bannerSubText", "");
+      __publicField(this, "scores", { P1: 0, P2: 0 });
+      __publicField(this, "expressions", { P1: "idle", P2: "idle" });
+      __publicField(this, "transitions", {});
+      __publicField(this, "timers", { P1: 0, P2: 0 });
+      __publicField(this, "bubbles", {
         P1: null,
         P2: null
       });
-      __publicField(this, "_bannerText", "");
-      __publicField(this, "_bannerSubText", "");
-      /** 头像呼吸动画的累积时间（秒）。 */
-      __publicField(this, "_tick", 0);
       __publicField(this, "motions", {});
-      __publicField(this, "transitions", {});
-      this._width = options.width;
-      this._safeTop = options.safeTop ?? 24;
-      this._compact = options.compact ?? false;
+      __publicField(this, "combatOffsets", { P1: { x: 0, y: 0 }, P2: { x: 0, y: 0 } });
+      __publicField(this, "combatScales", { P1: 1, P2: 1 });
+      __publicField(this, "combatFlash", { P1: 0, P2: 0 });
+      __publicField(this, "combatShake", { x: 0, y: 0 });
+      this.width = options.width;
+      this.safeTop = options.safeTop ?? 24;
+      this.compact = options.compact ?? false;
     }
-    changePose(player, pose, duration = 0) {
-      const previous = this._expressions[player];
-      if (previous === pose) return false;
-      if (duration > 0) this.transitions[player] = { from: previous, elapsed: 0, duration };
-      else delete this.transitions[player];
-      this._expressions[player] = pose;
-      return true;
+    get combatLayout() {
+      const p = SWORD_DISPLAY;
+      const height = this.compact ? p.compactAvatarHeight : p.avatarHeight;
+      const top = this.safeTop + p.turnBarHeight + (this.compact ? 2 : p.frameTopGap);
+      return {
+        gap: Math.min(p.standingGap, this.width - 2 * p.sideMargin - p.avatarWidth),
+        top,
+        height,
+        bottom: top + height + p.labelRoom
+      };
     }
-    /** Anticipation, release and recovery share the rune clock, including custom playback durations. */
+    combatAnchor(player) {
+      const l = this.combatLayout;
+      return {
+        x: this.width / 2 + (player === "P1" ? -1 : 1) * l.gap / 2,
+        y: l.top + l.height / 2
+      };
+    }
+    setSpriteAtlas(atlas) {
+      this.atlas = atlas !== null && Number.isFinite(atlas.width) && Number.isFinite(atlas.height) && atlas.width > 0 && atlas.height > 0 ? atlas : null;
+    }
+    scoreOf(player) {
+      return this.scores[player];
+    }
+    update(state, options = {}) {
+      this.round = state.round;
+      this.maxRounds = state.maxRounds;
+      this.currentPlayer = options.actingPlayer ?? state.currentPlayer;
+      this.isExtraTurn = options.isExtraTurn ?? false;
+      this.isGameOver = state.isGameOver;
+      this.scores = { P1: state.players.P1.score, P2: state.players.P2.score };
+    }
+    resize(width, safeTop = this.safeTop, compact = this.compact) {
+      this.width = width;
+      this.safeTop = safeTop;
+      this.compact = compact;
+    }
+    setExpression(player, expression, holdSeconds = 0.6, transitionSeconds = 0) {
+      delete this.motions[player];
+      if (transitionSeconds > 0 && this.expressions[player] !== expression)
+        this.transitions[player] = {
+          from: this.expressions[player],
+          elapsed: 0,
+          duration: transitionSeconds
+        };
+      else if (transitionSeconds === 0) delete this.transitions[player];
+      this.expressions[player] = expression;
+      this.timers[player] = expression === "idle" ? 0 : Math.max(0, holdSeconds);
+    }
+    getExpression(player) {
+      return this.expressions[player];
+    }
     playAction(player, action, flight, impact) {
       this.setExpression(player, "cast", 0, Math.min(0.08, flight * 0.18));
       this.motions[player] = { action, elapsed: 0, flight, total: flight + impact };
     }
-    motionOffset(player) {
-      const motion = this.motions[player];
-      if (motion === void 0) return void 0;
-      const t = motion.elapsed / motion.flight;
-      const direction = player === "P1" ? 1 : -1;
-      if (t < 0.18)
-        return {
-          x: -direction * 1.5 * Math.sin(t / 0.18 * Math.PI),
-          y: Math.sin(t / 0.18 * Math.PI)
-        };
-      const attack = motion.action === ActionType.ATK || motion.action === ActionType.BURST_ATK;
-      const release = Math.sin(Math.min(1, (t - 0.18) / 0.82) * Math.PI);
-      const recovery = Math.max(
-        0,
-        1 - (motion.elapsed - motion.flight) / (motion.total - motion.flight)
-      );
-      return {
-        x: attack ? direction * 2.5 * release : 0,
-        y: t < 1 ? -release * 1.5 : -Math.sin(recovery * Math.PI)
-      };
-    }
-    /** Hosts inject the decoded image only after loading has completed. */
-    setSpriteAtlas(atlas) {
-      this._spriteAtlas = atlas !== null && Number.isFinite(atlas.width) && Number.isFinite(atlas.height) && atlas.width > 0 && atlas.height > 0 ? atlas : null;
-    }
-    /** 回合数（未投影时为 0）。 */
-    get round() {
-      return this._round;
-    }
-    /** 回合上限（未投影时为 0）。 */
-    get maxRounds() {
-      return this._maxRounds;
-    }
-    /** 当前行动方（未投影时为 null）。 */
-    get currentPlayer() {
-      return this._currentPlayer;
-    }
-    /** 当前是否处于连动额外行动。 */
-    get isExtraTurn() {
-      return this._isExtraTurn;
-    }
-    /** 指定玩家的比分。 */
-    scoreOf(player) {
-      return this._scores[player];
-    }
-    /** 当前横幅主文案。 */
-    get bannerText() {
-      return this._bannerText;
-    }
-    /** 当前横幅副文案。 */
-    get bannerSubText() {
-      return this._bannerSubText;
-    }
-    /** 按只读快照投影回合、比分与当前行动方。 */
-    update(state, options = {}) {
-      this._round = state.round;
-      this._maxRounds = state.maxRounds;
-      this._currentPlayer = options.actingPlayer ?? state.currentPlayer;
-      this._isExtraTurn = options.isExtraTurn ?? false;
-      this._scores = { P1: state.players.P1.score, P2: state.players.P2.score };
-    }
-    /** 视口自适应（安全区与宽度变化时调用）。 */
-    resize(width, safeTop, compact) {
-      this._width = width;
-      this._safeTop = safeTop ?? this._safeTop;
-      this._compact = compact ?? this._compact;
-    }
-    /**
-     * 表情反馈：`holdSeconds` 秒后自动回落待机；`holdSeconds <= 0` 表示**持续**到下一次表情
-     * 覆盖或 `resetFeedback()`（终局胜 / 负用）。重复触发会重新计时。
-     */
-    setExpression(player, expression, holdSeconds = 0.6, transitionSeconds = 0) {
-      delete this.motions[player];
-      this.changePose(player, expression, transitionSeconds);
-      this._expressionTimers[player] = expression === "idle" ? 0 : Math.max(0, holdSeconds);
-    }
-    /** 指定玩家当前的表情。 */
-    getExpression(player) {
-      return this._expressions[player];
-    }
-    /** 清空双方表情与气泡（重开一局时调用）：终局胜 / 负的持续姿势不跨局残留。 */
     resetFeedback() {
-      for (const player of PLAYER_IDS) {
-        delete this.motions[player];
-        delete this.transitions[player];
-        this._expressions[player] = "idle";
-        this._expressionTimers[player] = 0;
-        this._bubbles[player] = null;
+      for (const p of PLAYERS) {
+        this.setExpression(p, "idle");
+        this.bubbles[p] = null;
+        Object.assign(this.combatOffsets[p], { x: 0, y: 0 });
+        this.combatFlash[p] = 0;
       }
     }
-    /** 气泡播报：`holdSeconds` 秒后消散。 */
     announce(player, text, holdSeconds = 1.6) {
-      this._bubbles[player] = { text, timer: Math.max(0, holdSeconds) };
+      this.bubbles[player] = { text, timer: Math.max(0, holdSeconds) };
     }
-    /** 指定玩家当前的气泡文案（无气泡时为 null）。 */
     getBubble(player) {
-      return this._bubbles[player]?.text ?? null;
+      return this.bubbles[player]?.text ?? null;
     }
-    /** 横幅播报：主文案 + 可选副文案，常驻直到下一次播报。 */
     showBanner(mainText, subText = "") {
-      this._bannerText = mainText;
-      this._bannerSubText = subText;
+      this.bannerText = mainText;
+      this.bannerSubText = subText;
     }
-    /** 由调用方每帧驱动（秒）：推进呼吸动画与表情/气泡的衰减。 */
     updateTimers(dt) {
-      this._tick += dt;
-      for (const player of PLAYER_IDS) {
-        const transition = this.transitions[player];
+      this.tick += dt;
+      for (const p of PLAYERS) {
+        const transition = this.transitions[p];
         if (transition !== void 0) {
           transition.elapsed += dt;
-          if (transition.elapsed >= transition.duration) delete this.transitions[player];
+          if (transition.elapsed >= transition.duration) delete this.transitions[p];
         }
-        const motion = this.motions[player];
-        if (motion !== void 0) {
-          motion.elapsed += dt;
-          const releaseAt = motion.flight * 0.18;
-          const recoverAt = motion.flight + (motion.total - motion.flight) * 0.75;
-          const recovering = motion.elapsed >= recoverAt;
-          const attack = motion.action === ActionType.ATK || motion.action === ActionType.BURST_ATK;
-          const pose = recovering ? "idle" : motion.elapsed >= releaseAt && attack ? "attack" : "cast";
-          const duration = recovering ? Math.min(0.08, (motion.total - motion.flight) * 0.25) : Math.min(0.08, motion.flight * 0.18);
-          if (this.changePose(player, pose, duration)) {
-            const next = this.transitions[player];
-            if (next !== void 0) {
-              next.elapsed = Math.max(0, motion.elapsed - (recovering ? recoverAt : releaseAt));
-              if (next.elapsed >= next.duration) delete this.transitions[player];
-            }
-          }
-          if (motion.elapsed >= motion.total) delete this.motions[player];
+        const m = this.motions[p];
+        if (m !== void 0) {
+          m.elapsed += dt;
+          this.expressions[p] = m.elapsed >= m.total ? "idle" : m.elapsed >= m.flight * 0.18 && p === "P1" && (m.action === ActionType.ATK || m.action === ActionType.BURST_ATK) ? "attack" : "cast";
+          if (m.elapsed >= m.total) delete this.motions[p];
         }
-        if (this._expressionTimers[player] > 0) {
-          this._expressionTimers[player] -= dt;
-          if (this._expressionTimers[player] <= 0) {
-            this._expressionTimers[player] = 0;
-            this.changePose(player, "idle", 0.08);
-          }
+        if (this.timers[p] > 0) {
+          this.timers[p] -= dt;
+          if (this.timers[p] <= 0) this.expressions[p] = "idle";
         }
-        const bubble = this._bubbles[player];
-        if (bubble !== null) {
-          bubble.timer -= dt;
-          if (bubble.timer <= 0) {
-            this._bubbles[player] = null;
-          }
+        const b = this.bubbles[p];
+        if (b !== null) {
+          b.timer -= dt;
+          if (b.timer <= 0) this.bubbles[p] = null;
         }
       }
     }
-    /** 先画横幅与头像，再画回合信息条（后者盖在上层）。 */
     renderSelf(ctx) {
-      this.drawBanner(ctx);
-      for (const player of PLAYER_IDS) {
-        this.drawAvatar(ctx, player);
-      }
-      this.drawTurnStrip(ctx);
-    }
-    drawTurnStrip(ctx) {
+      const l = this.combatLayout;
       ctx.save();
-      ctx.fillStyle = MUTED_COLOR;
+      ctx.translate(this.combatShake.x, this.combatShake.y);
+      ctx.strokeStyle = THEME.edge;
+      ctx.beginPath();
+      ctx.moveTo(SWORD_DISPLAY.sideMargin, l.top + l.height - 8);
+      ctx.lineTo(this.width - SWORD_DISPLAY.sideMargin, l.top + l.height - 8);
+      ctx.stroke();
+      for (const p of PLAYERS) this.drawActor(ctx, p);
+      ctx.restore();
+      ctx.save();
+      ctx.fillStyle = THEME.muted;
       ctx.font = `bold 12px ${THEME.font}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(
-        `回合 ${this._round}/${this._maxRounds} · ${this._currentPlayer === "P1" ? "你行动" : this._currentPlayer === "P2" ? "天道行动" : "等待开局"}`,
-        this._width / 2,
-        this._safeTop + TOP_BAR_HEIGHT / 2
+        `回合 ${this.round}/${this.maxRounds} · ${this.isGameOver ? "本局结束" : this.currentPlayer === "P1" ? "你行动" : this.currentPlayer === "P2" ? "天道行动" : "等待开局"}${!this.isGameOver && this.isExtraTurn ? " · 连动" : ""}`,
+        this.width / 2,
+        this.safeTop + 13
       );
-      if (this._isExtraTurn) {
-        ctx.fillStyle = EXTRA_TURN_COLOR;
-        ctx.font = `bold 11px ${THEME.font}`;
-        ctx.textAlign = "right";
-        ctx.fillText("连动", this._width - SIDE_MARGIN, this._safeTop + TOP_BAR_HEIGHT / 2);
-      }
       ctx.restore();
     }
-    drawAvatar(ctx, player) {
-      const avatarHeight = this._compact ? 80 : AVATAR_HEIGHT;
-      const isPlayer = player === "P1";
-      const frameX = isPlayer ? SIDE_MARGIN : this._width - SIDE_MARGIN - AVATAR_WIDTH;
-      const frameY = this._safeTop + TOP_BAR_HEIGHT + 4;
-      const isCurrent = this._currentPlayer === player;
-      const expression = this._expressions[player];
-      const border = EXPRESSION_COLOR[expression] ?? (isCurrent ? ACTIVE_COLOR : isPlayer ? P1_COLOR : P2_COLOR);
+    drawActor(ctx, p) {
+      const a = this.combatAnchor(p), l = this.combatLayout;
       ctx.save();
-      drawPanel(ctx, frameX, frameY, AVATAR_WIDTH, avatarHeight, border, PANEL_COLOR);
-      const aura = ctx.createRadialGradient(
-        frameX + AVATAR_WIDTH / 2,
-        frameY + 42,
-        2,
-        frameX + AVATAR_WIDTH / 2,
-        frameY + 42,
-        41
-      );
-      aura.addColorStop(0, isPlayer ? "rgba(128,214,186,0.18)" : "rgba(134,184,203,0.18)");
-      aura.addColorStop(1, "transparent");
-      ctx.fillStyle = aura;
-      ctx.beginPath();
-      ctx.arc(frameX + AVATAR_WIDTH / 2, frameY + 44, 39, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(216,184,118,0.20)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(frameX + AVATAR_WIDTH / 2, frameY + 41, 29, Math.PI, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = THEME.deep;
-      ctx.fillRect(frameX + 9, frameY + avatarHeight - 9, AVATAR_WIDTH - 18, 4);
-      const drawPose = (pose, alpha) => {
-        if (alpha <= 0) return;
-        ctx.save();
-        ctx.globalAlpha *= alpha;
-        if (this._spriteAtlas !== null) {
-          drawCharacterSprite(
+      ctx.translate(this.combatOffsets[p].x, this.combatOffsets[p].y);
+      if (this.atlas !== null) {
+        if (p === "P2") {
+          ctx.translate(a.x * 2, 0);
+          ctx.scale(-1, 1);
+        }
+        const drawPose = (pose) => {
+          const draw = () => drawCharacterSprite(
             ctx,
-            this._spriteAtlas,
-            player,
+            this.atlas,
+            p,
             pose,
-            this._tick * 60,
-            frameX,
-            frameY,
-            AVATAR_WIDTH,
-            avatarHeight,
-            this.motionOffset(player)
+            this.tick * 60,
+            a.x - 44,
+            l.top,
+            88,
+            l.height,
+            { x: 0, y: 0 }
           );
-        } else {
-          const spriteTop = CHARACTER_SPRITE_BOUNDS.top * CHARACTER_PIXEL_SIZE;
-          const spriteHeight = (CHARACTER_SPRITE_BOUNDS.bottom - CHARACTER_SPRITE_BOUNDS.top) * CHARACTER_PIXEL_SIZE;
-          ctx.translate(
-            frameX + AVATAR_WIDTH / 2,
-            frameY + (avatarHeight - spriteHeight) / 2 - spriteTop
-          );
-          const motion = this.motionOffset(player);
-          if (motion !== void 0) ctx.translate(motion.x, motion.y);
-          drawPixelCharacter(ctx, 0, 0, isPlayer, pose, this._tick * 60);
+          draw();
+          if (this.combatFlash[p] > 0) {
+            ctx.save();
+            ctx.globalCompositeOperation = "lighter";
+            ctx.globalAlpha *= Math.min(1, this.combatFlash[p]);
+            draw();
+            draw();
+            ctx.restore();
+          }
+        };
+        const transition = this.transitions[p];
+        if (transition !== void 0) {
+          const t = transition.elapsed / transition.duration;
+          const weight = t * t * (3 - 2 * t);
+          ctx.save();
+          ctx.globalAlpha *= 1 - weight;
+          drawPose(transition.from);
+          ctx.restore();
+          ctx.globalAlpha *= weight;
         }
-        ctx.restore();
-      };
-      const transition = this.transitions[player];
-      if (transition === void 0) drawPose(expression, 1);
-      else {
-        const t = Math.min(1, transition.elapsed / transition.duration);
-        const weight = t * t * (3 - 2 * t);
-        drawPose(transition.from, 1 - weight);
-        drawPose(expression, weight);
-      }
-      const labelX = isPlayer ? frameX : frameX + AVATAR_WIDTH;
-      ctx.textAlign = isPlayer ? "left" : "right";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = PLAYER_COLOR[player];
-      ctx.font = `bold 11px ${THEME.font}`;
-      ctx.fillText(PLAYER_LABEL[player], labelX, frameY + avatarHeight + 12);
-      ctx.fillStyle = TEXT_COLOR;
-      ctx.font = `bold 12px ${THEME.font}`;
-      ctx.fillText(`得分 ${this._scores[player]}`, labelX, frameY + avatarHeight + 26);
-      if (isCurrent) {
-        ctx.fillStyle = this._isExtraTurn ? EXTRA_TURN_COLOR : ACTIVE_COLOR;
-        ctx.font = `bold 9px ${THEME.font}`;
-        ctx.fillText(this._isExtraTurn ? "连动行动中" : "行动中", labelX, frameY + avatarHeight + 40);
-      }
-      const bubble = this._bubbles[player];
-      if (bubble !== null) {
-        this.drawBubble(ctx, player, frameX, frameY, bubble.text);
-      }
-      ctx.restore();
-    }
-    /** 气泡：挂在头像上方，宽度夹在头像列与居中回合条之间，文本超宽时截断。 */
-    drawBubble(ctx, player, frameX, frameY, text) {
-      const isPlayer = player === "P1";
-      const maxWidth = this._width / 2 - SIDE_MARGIN - AVATAR_WIDTH - 12;
-      const fontSize = 10;
-      const label = truncateToWidth(text, maxWidth - 12, fontSize);
-      const width = estimateTextWidth(label, fontSize) + 12;
-      const height = 20;
-      const x = isPlayer ? Math.min(frameX, Math.max(SIDE_MARGIN, frameX + AVATAR_WIDTH - width)) : Math.max(frameX + AVATAR_WIDTH - width, this._width - SIDE_MARGIN - width);
-      const y = frameY - height - 4;
-      drawPanel(ctx, x, y, width, height, EXTRA_TURN_COLOR);
-      drawPixelRect(ctx, x, y, width, 2, EXTRA_TURN_COLOR);
-      ctx.fillStyle = TEXT_COLOR;
-      ctx.font = `${fontSize}px ${THEME.font}`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(label, x + width / 2, y + height / 2 + 1);
-    }
-    /** 横幅：主文案（12px，最多两行）+ 副文案（9px，最多两行）。 */
-    drawBanner(ctx) {
-      if (this._bannerText === "" && this._bannerSubText === "") {
-        return;
-      }
-      const x = SIDE_MARGIN + AVATAR_WIDTH + BANNER_GAP;
-      const width = Math.max(80, this._width - 2 * x);
-      const y = this._safeTop + TOP_BAR_HEIGHT + 4;
-      ctx.save();
-      drawPanel(ctx, x, y, width, this._compact ? 64 : BANNER_HEIGHT, PANEL_BORDER);
-      const textWidth = width - 16;
-      const mainLines = wrapText(this._bannerText, textWidth, 13, this._compact ? 1 : 2);
-      const subLines = wrapText(this._bannerSubText, textWidth, 11, this._compact ? 2 : 4);
-      const mainLineHeight = 16;
-      const subLineHeight = 14;
-      const blockHeight = mainLines.length * mainLineHeight + subLines.length * subLineHeight;
-      let cursor = y + ((this._compact ? 64 : BANNER_HEIGHT) - blockHeight) / 2 + mainLineHeight / 2;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = TEXT_COLOR;
-      ctx.font = `bold 13px ${THEME.font}`;
-      for (const line of mainLines) {
-        ctx.fillText(line, x + width / 2, cursor);
-        cursor += mainLineHeight;
-      }
-      ctx.fillStyle = MUTED_COLOR;
-      ctx.font = `11px ${THEME.font}`;
-      for (const line of subLines) {
-        ctx.fillText(line, x + width / 2, cursor);
-        cursor += subLineHeight;
-      }
-      ctx.restore();
-    }
-  }
-  const PLAYER_IDS = ["P1", "P2"];
-  function wrapText(text, maxWidth, fontSize, maxLines) {
-    if (text === "") {
-      return [];
-    }
-    const lines = [];
-    let current = "";
-    for (const unit of textUnits(text)) {
-      if (unit === "\n") {
-        lines.push(current);
-        current = "";
-        if (lines.length === maxLines) break;
-        continue;
-      }
-      const next = current + unit;
-      if (current !== "" && estimateTextWidth(next, fontSize) > maxWidth) {
-        lines.push(current);
-        current = unit;
-        if (lines.length === maxLines) {
-          break;
-        }
+        drawPose(this.expressions[p]);
       } else {
-        current = next;
+        const top = CHARACTER_SPRITE_BOUNDS.top * CHARACTER_PIXEL_SIZE;
+        const height = (CHARACTER_SPRITE_BOUNDS.bottom - CHARACTER_SPRITE_BOUNDS.top) * CHARACTER_PIXEL_SIZE;
+        ctx.translate(a.x, l.top + (l.height - height) / 2 - top);
+        drawPixelCharacter(ctx, 0, 0, p === "P1", this.expressions[p], this.tick * 60);
       }
+      ctx.restore();
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = p === "P1" ? THEME.jade : THEME.rival;
+      ctx.font = `bold 11px ${THEME.font}`;
+      ctx.fillText(p === "P1" ? "你 · 弈者" : "天道", a.x, l.top + l.height + 8);
+      ctx.fillStyle = THEME.ivory;
+      ctx.fillText(
+        `得分 ${this.scores[p]}${!this.isGameOver && this.currentPlayer === p ? " · 行动中" : ""}`,
+        a.x,
+        l.top + l.height + 24
+      );
+      ctx.restore();
     }
-    if (lines.length < maxLines && current !== "") {
-      lines.push(current);
-    }
-    if ([...lines.join("")].length < [...text.replace(/\n/g, "")].length) {
-      const last = lines[lines.length - 1] ?? "";
-      lines[lines.length - 1] = `${truncateToWidth(last, maxWidth, fontSize)}…`;
-    }
-    return lines;
-  }
-  function textUnits(text) {
-    const units = [];
-    let bracket = "";
-    for (const char of text) {
-      if (bracket !== "") {
-        bracket += char;
-        if (char === "】") {
-          units.push(bracket);
-          bracket = "";
-        }
-        continue;
-      }
-      if (char === "【") {
-        bracket = char;
-        continue;
-      }
-      units.push(char);
-    }
-    if (bracket !== "") {
-      units.push(bracket);
-    }
-    return units;
-  }
-  function truncateToWidth(text, maxWidth, fontSize) {
-    if (estimateTextWidth(text, fontSize) <= maxWidth) {
-      return text;
-    }
-    const chars = [...text];
-    while (chars.length > 1 && estimateTextWidth(`${chars.join("")}…`, fontSize) > maxWidth) {
-      chars.pop();
-    }
-    return `${chars.join("")}…`;
   }
   const LEVEL_LABEL = {
     [-1]: "道损",
@@ -4419,12 +4324,16 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   function describeNodeChange(change) {
     return `${change.player === "P1" ? "你" : "天道"}·${WUXING_PALETTE[change.element].name}${change.polarity === Polarity.YIN ? "阴" : "阳"} ${LEVEL_LABEL[change.before]}→${LEVEL_LABEL[change.after]}`;
   }
+  const GAME_OVER_TITLE = "对局结束";
+  const GAME_OVER_RESTART_HINT = "点击空白处重新开局";
   class ActionResultView extends Container {
     constructor(width) {
       super();
       __publicField(this, "changes", []);
       __publicField(this, "title", "");
       __publicField(this, "note");
+      /** 终局模式：非 null 时结果条改画「胜负 / 结束原因 / 重开提示」，覆盖上一招内容。 */
+      __publicField(this, "gameOverLines", null);
       __publicField(this, "width");
       __publicField(this, "expanded", false);
       this.width = width;
@@ -4439,7 +4348,18 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.title = `上一招 · ${actor === "P1" ? "你" : "天道"}用${stem} · ${action === "showdown" ? "天命抽牌" : ACTION_LABEL[action]}`;
       this.changes = [...changes];
       this.note = note;
+      this.gameOverLines = null;
       this.expanded = false;
+      this.visible = true;
+      this.reflow();
+    }
+    /** 终局展示：明确胜负、结束原因与重开提示都进现有结果区，不依赖已删的顶部播报框。 */
+    setGameOver(resultText, reasonText) {
+      this.title = GAME_OVER_TITLE;
+      this.changes = [];
+      this.note = void 0;
+      this.gameOverLines = [resultText, reasonText, GAME_OVER_RESTART_HINT];
+      this.expanded = true;
       this.visible = true;
       this.reflow();
     }
@@ -4447,6 +4367,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.visible = false;
       this.title = "";
       this.changes = [];
+      this.gameOverLines = null;
       this.expanded = false;
     }
     resize(width) {
@@ -4454,7 +4375,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.reflow();
     }
     reflow() {
-      const height = this.expanded ? 32 + Math.max(1, this.changes.length + (this.note ? 1 : 0)) * 18 : 34;
+      const lineCount = this.gameOverLines !== null ? this.gameOverLines.length : this.changes.length + (this.note ? 1 : 0);
+      const height = this.expanded ? 32 + Math.max(1, lineCount) * 18 : 34;
       this.hitArea = { x: 0, y: 34 - height, width: this.width, height };
     }
     renderSelf(ctx) {
@@ -4467,23 +4389,25 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ctx.fillText(this.title, 9, area.y + 10);
       ctx.fillStyle = THEME.ivory;
       if (this.expanded) {
-        const lines = this.changes.length === 0 ? ["未改变任何阴阳状态"] : this.changes.map(describeNodeChange);
-        if (this.note) lines.unshift(this.note);
+        const lines = this.gameOverLines !== null ? [...this.gameOverLines] : this.changes.length === 0 ? ["未改变任何阴阳状态"] : this.changes.map(describeNodeChange);
+        if (this.note && this.gameOverLines === null) lines.unshift(this.note);
         lines.forEach((line, index) => ctx.fillText(line, 9, area.y + 32 + index * 18));
-        ctx.textAlign = "right";
-        ctx.fillStyle = THEME.muted;
-        ctx.fillText("收起", this.width - 9, area.y + 10);
+        if (this.gameOverLines === null) {
+          ctx.textAlign = "right";
+          ctx.fillStyle = THEME.muted;
+          ctx.fillText("收起", this.width - 9, area.y + 10);
+        }
       } else {
         const first = this.changes[0];
         ctx.fillText(
-          this.note ?? (first === void 0 ? "未改变任何阴阳状态" : describeNodeChange(first)),
+          this.gameOverLines !== null ? this.gameOverLines[0] : this.note ?? (first === void 0 ? "未改变任何阴阳状态" : describeNodeChange(first)),
           9,
           25
         );
         ctx.textAlign = "right";
         ctx.fillStyle = THEME.jade;
         ctx.fillText(
-          this.changes.length > 1 ? `${this.changes.length}处 · 展开` : "查看",
+          this.gameOverLines !== null ? "展开" : this.changes.length > 1 ? `${this.changes.length}处 · 展开` : "查看",
           this.width - 9,
           25
         );
@@ -5111,6 +5035,413 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       }
     }
   }
+  function createTimeline(events, tuning) {
+    return {
+      events: events.slice().sort((a, b) => a.t - b.t),
+      tuning,
+      time: 0,
+      stopLeft: 0,
+      cursor: 0,
+      done: false,
+      target: { x: 0, y: 0, vx: 0, vy: 0, shake: 0 },
+      shake: { amp: 0, t: 0 }
+    };
+  }
+  function advanceTimeline(state, dt) {
+    if (state.done || dt <= 0) return [];
+    const tuning = state.tuning;
+    if (state.stopLeft > 0) {
+      const frozen = Math.min(dt, state.stopLeft);
+      state.stopLeft -= frozen;
+      dt -= frozen;
+      state.target.shake = Math.floor(Math.max(state.stopLeft, 0) / tuning.freezeJoltPeriod) % 2 === 0 ? tuning.freezeJoltPx : -tuning.freezeJoltPx;
+      if (dt <= 0) return [];
+    }
+    state.target.shake = 0;
+    state.time += dt;
+    const fired = [];
+    while (state.cursor < state.events.length && state.events[state.cursor].t <= state.time) {
+      const event = state.events[state.cursor++];
+      applyEvent(state, event);
+      fired.push(event);
+      if (state.stopLeft > 0) break;
+    }
+    const tg = state.target;
+    tg.vx += -tg.x * tuning.springK * dt;
+    tg.vx *= Math.pow(tuning.dampingBase, dt);
+    tg.x += tg.vx * dt;
+    state.shake.amp *= Math.pow(tuning.shakeDecayBase, dt);
+    state.shake.t += dt;
+    const lastT = state.events.length > 0 ? state.events[state.events.length - 1].t : 0;
+    if (state.cursor >= state.events.length && Math.abs(tg.vx) < tuning.minVelocity && Math.abs(tg.x) < tuning.settleDistance && state.time > lastT + tuning.settleTime) {
+      state.done = true;
+    }
+    return fired;
+  }
+  function applyEvent(state, event) {
+    switch (event.do) {
+      case "slash":
+      case "hit":
+        state.stopLeft = event.stop;
+        state.target.vx += event.push;
+        state.shake.amp = Math.max(state.shake.amp, event.shake);
+        break;
+    }
+  }
+  const V1_EVENT_KINDS = ["move", "slash", "cast", "bolt", "hit"];
+  function validateRecipe(recipe, limits) {
+    const errors = [];
+    recipe.events.forEach((event, i) => {
+      const at = `事件[${i}](${String(event.do)})`;
+      if (!Number.isFinite(event.t) || event.t < 0) {
+        errors.push(`${at}：t=${String(event.t)} 不能为负或非数值`);
+      }
+      if (i > 0 && event.t <= recipe.events[i - 1].t) {
+        errors.push(`${at}：t=${String(event.t)} 未递增（前一事件 t=${recipe.events[i - 1].t}）`);
+      }
+      if (!V1_EVENT_KINDS.includes(event.do)) {
+        errors.push(`${at}：未知事件类型 "${String(event.do)}"`);
+      }
+      if ((event.do === "slash" || event.do === "hit") && event.stop > limits.maxStop) {
+        errors.push(`${at}：stop=${event.stop} 超过上限 ${limits.maxStop}s`);
+      }
+    });
+    const ramp = recipe.material.ramp;
+    if (ramp.length !== limits.rampLength || ramp.some((c) => typeof c !== "string" || c === "")) {
+      errors.push(`材质 ramp 需要 ${limits.rampLength} 个非空颜色，实际 ${ramp.length} 个`);
+    }
+    return errors;
+  }
+  class CombatPlayback {
+    constructor(recipe, tuning = SWORD_TUNING) {
+      __publicField(this, "recipe");
+      __publicField(this, "timeline");
+      __publicField(this, "effects", []);
+      __publicField(this, "attackerX", 0);
+      __publicField(this, "hits", 0);
+      __publicField(this, "flash", 0);
+      __publicField(this, "spells", []);
+      __publicField(this, "destination", 0);
+      __publicField(this, "move", null);
+      this.recipe = recipe;
+      const errors = validateRecipe(recipe, SWORD_LIMITS);
+      if (errors.length > 0) throw new Error(errors.join("\n"));
+      this.timeline = createTimeline(recipe.events, tuning);
+    }
+    get done() {
+      return this.timeline.done && this.effects.length === 0 && this.spells.length === 0 && this.move === null;
+    }
+    advance(dt) {
+      if (dt <= 0 || !Number.isFinite(dt) || this.done) return;
+      while (dt > 0 && !this.done) {
+        let step = Math.min(dt, 1 / 120);
+        const state = this.timeline;
+        const next = state.events[state.cursor];
+        if (state.stopLeft > 0) step = Math.min(step, state.stopLeft);
+        else if (next !== void 0 && next.t > state.time)
+          step = Math.min(step, next.t - state.time);
+        const wasDone = state.done;
+        const before = state.time;
+        const events = advanceTimeline(state, step);
+        const active = wasDone ? step : Math.max(0, state.time - before);
+        this.age(active);
+        for (const event of events) {
+          if (event.do === "move") {
+            this.move = { event, from: this.attackerX, to: this.destination + event.dx, age: 0 };
+            this.destination += event.dx;
+          } else if (event.do === "cast" || event.do === "bolt") {
+            this.spells.push({
+              kind: event.do === "cast" ? "charge" : "bolt",
+              age: 0,
+              life: event.do === "cast" ? event.hold : event.travel,
+              heavy: false
+            });
+          } else if (event.do === "slash" || event.do === "hit") {
+            this.hits++;
+            this.flash = 1;
+            if (event.do === "hit")
+              this.spells.push({
+                kind: "burst",
+                age: event.stop > 0 ? COMBAT_PLAYBACK.impactAge : 0,
+                life: COMBAT_PLAYBACK.burstLife,
+                heavy: event.heavy ?? false
+              });
+            const style = event.heavy ? this.recipe.heavy : this.recipe.normal;
+            const common = {
+              age: event.stop > 0 ? style.impactAge : 0,
+              angle: event.do === "slash" ? event.angle : 0,
+              hit: this.hits,
+              style
+            };
+            this.effects.push(
+              ...event.do === "slash" ? [{ ...common, kind: "blade", life: style.bladeLife }] : [],
+              { ...common, kind: "star", life: style.starLife },
+              { ...common, kind: "debris", life: style.debrisLife }
+            );
+          }
+        }
+        dt = Math.max(0, dt - step);
+      }
+    }
+    age(dt) {
+      this.flash = Math.max(0, this.flash - dt * COMBAT_PLAYBACK.flashDecay);
+      for (let i = this.spells.length - 1; i >= 0; i--) {
+        this.spells[i].age += dt;
+        if (this.spells[i].age >= this.spells[i].life) this.spells.splice(i, 1);
+      }
+      for (let i = this.effects.length - 1; i >= 0; i--) {
+        const effect = this.effects[i];
+        effect.age += dt;
+        if (effect.age >= effect.life) this.effects.splice(i, 1);
+      }
+      const move = this.move;
+      if (move === null) return;
+      move.age += dt;
+      const t = Math.min(1, move.age / move.event.duration);
+      const eased = move.event.ease === "out" ? 1 - (1 - t) ** 2 : move.event.ease === "in" ? t * t : t * t * (3 - 2 * t);
+      this.attackerX = move.from + (move.to - move.from) * eased;
+      if (t >= 1) {
+        this.attackerX = move.to;
+        this.move = null;
+      }
+    }
+  }
+  const MAGIC_SINGLE = {
+    ...SWORD_SINGLE,
+    name: "符弹·单发",
+    events: [
+      { t: 0, do: "cast", hold: 0.25 },
+      { t: 0.25, do: "bolt", travel: 0.28, ease: "in" },
+      { t: 0.53, do: "hit", stop: 0.08, push: 200, shake: 8 }
+    ]
+  };
+  const MAGIC_TRIPLE = {
+    ...MAGIC_SINGLE,
+    name: "符弹·三连",
+    events: [0, 1, 2].flatMap((i) => [
+      { t: i * 0.45, do: "cast", hold: 0.18 },
+      { t: 0.18 + i * 0.45, do: "bolt", travel: 0.24, ease: "in" },
+      {
+        t: 0.42 + i * 0.45,
+        do: "hit",
+        stop: i === 2 ? 0.13 : 0.05,
+        push: i === 2 ? 320 : 130,
+        shake: i === 2 ? 11 : 5,
+        heavy: i === 2
+      }
+    ])
+  };
+  const MAGIC_DISPLAY = {
+    duration: 0.12,
+    tail: 0.2,
+    radius: 120,
+    heavyRadius: 170,
+    width: 10,
+    heavyWidth: 12,
+    spikes: 8,
+    spikeScale: 0.55,
+    segments: 24,
+    chargeRadius: 34,
+    chargeShrink: 14,
+    chargeWidth: 3,
+    projectileRadius: 9,
+    projectileCore: 5,
+    trailCount: 3,
+    palmX: 18,
+    palmY: -22
+  };
+  function drawMagic(ctx, effect, mat, s) {
+    const q = Math.min(1, effect.age / effect.life);
+    const p = mat.ramp;
+    if (effect.kind === "charge") {
+      ctx.globalAlpha *= 0.4 + 0.6 * q;
+      ctx.strokeStyle = p[1];
+      ctx.lineWidth = s.chargeWidth;
+      ctx.beginPath();
+      ctx.arc(0, 0, s.chargeRadius - s.chargeShrink * q, 0, Math.PI * 2);
+      ctx.stroke();
+      return;
+    }
+    if (effect.kind === "bolt") {
+      ctx.fillStyle = p[2];
+      ctx.beginPath();
+      ctx.arc(0, 0, s.projectileRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = p[1];
+      ctx.beginPath();
+      ctx.arc(0, 0, s.projectileCore, 0, Math.PI * 2);
+      ctx.fill();
+      for (let k = 1; k <= s.trailCount; k++) {
+        ctx.globalAlpha *= 0.5;
+        ctx.fillStyle = p[2];
+        ctx.beginPath();
+        ctx.arc(-11 * k * q, Math.sin(q * 12 + k) * 3, 7 - k * 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      return;
+    }
+    const t = Math.min(1, effect.age / s.duration);
+    const fade = Math.max(0, Math.min(1, (effect.age - s.duration) / s.tail));
+    const radius = effect.heavy ? s.heavyRadius : s.radius;
+    const r = radius * (1 - (1 - t) ** 2.4);
+    const thick = Math.max((effect.heavy ? s.heavyWidth : s.width) * (1 - fade) * (1 - 0.5 * t), 1.5);
+    ctx.fillStyle = fade < 0.3 ? p[0] : fade < 0.66 ? p[1] : p[2];
+    for (let i = 0; i < s.segments; i++) {
+      const a = Math.PI * 2 * i / s.segments, b = Math.PI * 2 * (i + 1) / s.segments;
+      const inner = Math.max(0, r - thick);
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
+      ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      ctx.lineTo(Math.cos(b) * r, Math.sin(b) * r);
+      ctx.lineTo(Math.cos(b) * inner, Math.sin(b) * inner);
+      ctx.closePath();
+      ctx.fill();
+    }
+    for (let i = 0; i < s.spikes; i++) {
+      const a = Math.PI * 2 * (i + 0.5) / s.spikes, dx = Math.cos(a), dy = Math.sin(a);
+      const x = dx * (r + 6), y = dy * (r + 6), side = Math.max(3, thick / 2);
+      const length = radius * s.spikeScale * (1 - fade);
+      ctx.beginPath();
+      ctx.moveTo(x - dy * side, y + dx * side);
+      ctx.lineTo(x + dx * length, y + dy * length);
+      ctx.lineTo(x + dy * side, y - dx * side);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+  const deg = (v) => v * Math.PI / 180;
+  const easeSwing = (t) => 1 - Math.pow(1 - clamp01(t), 2.4);
+  const lens = (t) => Math.pow(Math.sin(Math.PI * clamp01(t)), 0.6);
+  function mulberry32(seed) {
+    return () => {
+      seed |= 0;
+      seed = seed + 1831565813 | 0;
+      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function drawCrescent(ctx, f, mat) {
+    const p = mat.ramp, s = f.style;
+    const radius = s.radius, width = s.width * mat.widthMultiplier;
+    const start = deg(s.startDegrees), sweep = deg(s.sweepDegrees), gap = s.gap, lineWidth = s.lineWidth;
+    const open = easeSwing(f.age / s.duration);
+    const fade = clamp01((f.age - s.duration - s.hold) / s.fade);
+    const from = Math.pow(fade, 0.8), thick = width * (1 - fade * 0.6);
+    const ct = Math.cos(f.angle), st = Math.sin(f.angle);
+    const point = (angle, distance) => {
+      const x = Math.cos(angle) * distance, y = Math.sin(angle) * distance * s.aspectRatio;
+      return [x * ct - y * st, x * st + y * ct];
+    };
+    const layer = (a, b, r, thickness, inner, color) => {
+      if (b - a <= 5e-4 || thickness * inner < 0.5) return;
+      const steps = Math.max(2, Math.ceil(Math.abs(sweep) * (b - a) / deg(3)));
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      for (let i = 0; i <= steps; i++) {
+        const along = a + (b - a) * i / steps;
+        const [x, y] = point(start + sweep * along, r);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      for (let i = steps; i >= 0; i--) {
+        const along = a + (b - a) * i / steps;
+        const [x, y] = point(start + sweep * along, r - thickness * inner * lens(along));
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+    };
+    layer(
+      from,
+      easeSwing((f.age - s.echoDelay) / s.duration),
+      radius * s.echoRadiusScale,
+      thick * s.echoWidthScale,
+      1,
+      p[3]
+    );
+    layer(from, open, radius, thick, 1, p[2]);
+    if (fade < 0.7) layer(from, open, radius, thick, 0.62, p[1]);
+    if (fade < 0.35) layer(from, open, radius, thick, 0.28, p[0]);
+    if (f.age > s.duration * 0.5 && fade < 0.85)
+      layer(
+        from,
+        open * 0.96,
+        radius + gap + lineWidth,
+        lineWidth / Math.max(lens(0.5), 0.01),
+        1,
+        fade < 0.4 ? p[1] : p[2]
+      );
+    if (fade > 0)
+      for (let k = 0; k < s.speedLineCount; k++) {
+        const along = (k + 0.5) / s.speedLineCount;
+        if (along < from) continue;
+        const angle = start + sweep * along, r = radius + gap * 2 + s.speedLineDrift * fade;
+        const [x0, y0] = point(angle, r), [x1, y1] = point(angle, r + s.speedLineLength * (1 - fade) * lens(along));
+        if (Math.hypot(x1 - x0, y1 - y0) < 2) continue;
+        ctx.strokeStyle = fade < 0.5 ? p[1] : p[2];
+        ctx.lineWidth = s.speedLineWidth;
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+      }
+  }
+  function drawStar(ctx, f, mat) {
+    const p = mat.ramp, s = f.style, width = s.starRadius * s.starWidthRatio;
+    const open = easeSwing(f.age / s.starDuration);
+    const fade = clamp01((f.age - s.starDuration - s.starHold) / s.starFade);
+    for (let i = 0; i < s.rays; i++) {
+      const isLong = i % 2 === 0, angle = deg(s.starRotationDegrees * f.hit) + Math.PI * 2 * i / s.rays;
+      const dx = Math.cos(angle), dy = Math.sin(angle);
+      const length = s.starRadius * open * (isLong ? 1 : s.starShortRayScale) * (1 - fade * 0.6);
+      const base = width * (1 - fade) * (isLong ? s.starLongWidthScale : s.starShortWidthScale);
+      if (length < 2 || base < 0.7) continue;
+      ctx.fillStyle = fade < 0.4 ? isLong ? p[0] : p[1] : p[2];
+      ctx.beginPath();
+      ctx.moveTo(-dy * base, dx * base);
+      ctx.lineTo(dx * length, dy * length);
+      ctx.lineTo(dy * base, -dx * base);
+      ctx.closePath();
+      ctx.fill();
+    }
+    const core = width * s.starCoreScale * (1 - fade);
+    if (core >= 2) {
+      ctx.fillStyle = p[0];
+      ctx.beginPath();
+      ctx.arc(0, 0, core, 0, 7);
+      ctx.fill();
+    }
+    if (fade < 0.4) {
+      ctx.strokeStyle = p[1];
+      ctx.lineWidth = s.starRingWidth;
+      ctx.beginPath();
+      ctx.arc(0, 0, s.starRadius * s.starRingScale * open * (0.9 + fade * 0.5), 0, 7);
+      ctx.stroke();
+    }
+  }
+  function drawDebris(ctx, f, mat) {
+    const s = f.style, p = mat.ramp, rng = mulberry32(f.hit * 1e3 + 7);
+    for (let i = 0; i < Math.round(s.count * mat.debrisMultiplier); i++) {
+      const angle = (rng() * 2 - 1) * s.spread;
+      const speed = s.speedMin + rng() * (s.speedMax - s.speedMin);
+      const life = s.particleLifeMin + rng() * (s.particleLifeMax - s.particleLifeMin);
+      if (f.age >= life) continue;
+      const fraction = f.age / life;
+      const point = (t) => [
+        Math.cos(angle) * speed * t,
+        Math.sin(angle) * speed * t + s.gravity * t * t / 2
+      ];
+      const [hx, hy] = point(f.age), [tx, ty] = point(Math.max(f.age - s.trail, 0));
+      ctx.strokeStyle = fraction < 0.3 ? p[0] : fraction < 0.65 ? p[1] : p[2];
+      ctx.lineWidth = s.debrisWidth;
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(hx, hy);
+      ctx.stroke();
+    }
+  }
   const DEFAULT_SAFE_TOP = 24;
   const DEFAULT_SAFE_BOTTOM = 12;
   const DEFAULT_AUTO_EXECUTE_DELAY = 0.75;
@@ -5118,7 +5449,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const DEFAULT_EXPRESSION_HOLD = 0.6;
   const DEFAULT_CELEBRATE_HOLD = 1.2;
   const ACTION_BAR_MARGIN = 14;
-  const ACTION_BAR_RESERVED_HEIGHT = 110;
+  const RESULT_HEIGHT = 34;
+  const FOOTER_GAP = 4;
+  const GUIDE_ROW_BELOW = 30;
+  const GUIDE_ROW_COMPACT_BELOW = 6;
+  const MIN_GUIDE_SEAL = 12;
+  const GAME_OVER_NOTICE_DELAY = 1.2;
+  const LEGEND_TEXT_GUARD = 8;
   function describeEndReason(endReason) {
     switch (endReason) {
       case "GUI_YUAN":
@@ -5171,6 +5508,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "unsubscribes", []);
       /** 视口在对局中变化时，符文层延到下一个回合开始前重建（不打断当前动效）。 */
       __publicField(this, "runeFlightStale", false);
+      __publicField(this, "sword", null);
+      __publicField(this, "combatActor", "P1");
+      /** Target identity is locked at playback creation, independent of later turn changes. */
+      __publicField(this, "combatElement", null);
+      __publicField(this, "isRuneComplete", false);
+      /** 待展示的终局提示：揭牌路径延迟出现，先把「天命抽牌」的结果留给玩家读完。 */
+      __publicField(this, "pendingGameOver", null);
       this.width = options.width;
       this.height = options.height;
       this.safeTop = options.safeTop ?? DEFAULT_SAFE_TOP;
@@ -5189,6 +5533,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         prng: options.prng ?? createPRNG(options.seed ?? Date.now()),
         initialState: options.initialState
       });
+      this.actionBar = this.buildActionBar(this._turnManager);
       this.board = new BoardView();
       this.layoutBoard();
       this.runeFlight = this.buildRuneFlight();
@@ -5197,7 +5542,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         safeTop: this.safeTop,
         compact: this.height < 650 || this.safeTop > 24
       });
-      this.actionBar = this.buildActionBar(this._turnManager);
       this.actionBar.visible = false;
       this.placeActionBar();
       this.lastAction = new ActionResultView(this.width - 20);
@@ -5224,6 +5568,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 切换表现阶段：连线高亮、候选落点弧与阶段一致（只有 `awaiting-player` 有待定动作）。 */
     setPhase(phase) {
       this._phase = phase;
+      if (phase !== "awaiting-player") {
+        this.actionBar.visible = false;
+      }
       this.board.setPreview(null);
       this.board.setActivePaths(this.activePathsFor(phase));
       this.board.setCandidates(this.candidatesFor(phase));
@@ -5287,7 +5634,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       this.height = height;
       this.safeTop = safeTop ?? this.safeTop;
       this.safeBottom = safeBottom ?? this.safeBottom;
-      this.actionBar.resize(width - ACTION_BAR_MARGIN * 2);
+      this.actionBar.resize(width - ACTION_BAR_MARGIN * 2, this.isCompact());
       this.layoutBoard();
       this.runeFlight.syncCenter();
       this.characters.resize(width, this.safeTop, this.height < 650 || this.safeTop > 24);
@@ -5309,6 +5656,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 终局后重新开局：换一颗随机源、重置表现态，从第 1 回合重来。 */
     restart(seedOrPrng = Date.now()) {
       this.unbindTurnManager();
+      this.clearSword();
+      this.pendingGameOver = null;
       const prng = typeof seedOrPrng === "number" ? createPRNG(seedOrPrng) : seedOrPrng;
       this._turnManager = new TurnManager({ prng });
       this.lastShowdown = null;
@@ -5335,6 +5684,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     /** 退订核心事件（销毁场景时调用）。 */
     dispose() {
       this.unbindTurnManager();
+      this.clearSword();
+      this.pendingGameOver = null;
       this.actionBar.dispose();
       this.runeFlight.cancel();
       this.characters.resetFeedback();
@@ -5348,9 +5699,20 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
      */
     update(dt) {
       const phaseBefore = this._phase;
-      this.characters.updateTimers(dt);
+      this.advanceSword(dt);
+      this.characters.updateTimers(this.sword?.timeline.stopLeft ? 0 : dt);
       this.runeFlight.update(dt);
       this.board.tick(dt);
+      if (this._phase === "game-over" && this.pendingGameOver !== null) {
+        this.pendingGameOver.delay -= dt;
+        if (this.pendingGameOver.delay <= 0) {
+          const { resultText, reasonText } = this.pendingGameOver;
+          this.pendingGameOver = null;
+          this.lastAction.setGameOver(resultText, reasonText);
+          this.placeResult();
+        }
+        return;
+      }
       if (this._phase === "result") {
         if (phaseBefore !== "result") return;
         this.timer -= dt;
@@ -5492,6 +5854,16 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const secondaryPolarity = changedPolarities.find((polarity) => polarity !== target.polarity);
       this.actionBefore = null;
       const isAttack = isAttackAction(event.actionType);
+      this.isRuneComplete = false;
+      if (isAttack) {
+        this.combatActor = actor;
+        this.combatElement = resolved.element;
+        const triple = event.actionType === ActionType.BURST_ATK;
+        this.sword = new CombatPlayback(
+          actor === "P1" ? triple ? SWORD_TRIPLE : SWORD_SINGLE : triple ? MAGIC_TRIPLE : MAGIC_SINGLE
+        );
+        this.characters.setExpression(actor, actor === "P1" ? "attack" : "cast", 0);
+      }
       this.hideActionBar();
       const stemLabel = this.visualStem?.name ?? "";
       const actionTitle = `${actor === "P1" ? "你" : "天道"} · ${ACTION_LABEL[event.actionType]}`;
@@ -5505,7 +5877,8 @@ ${event.actionType === ActionType.PASS ? "原地消散 · 无节点变化" : `${
         isExtraTurn: this._turnManager.isExtraTurnActive(),
         actingPlayer: actor
       });
-      this.characters.playAction(actor, event.actionType, this.flightDuration, this.impactDuration);
+      if (!isAttack)
+        this.characters.playAction(actor, event.actionType, this.flightDuration, this.impactDuration);
       this.setPhase("flying");
       this.runeFlight.flyTo(target.player, target.element, target.polarity, {
         actionType: event.actionType,
@@ -5524,7 +5897,7 @@ ${event.actionType === ActionType.PASS ? "原地消散 · 无节点变化" : `${
             changes,
             targetChanges.length === 0
           );
-          if (isAttack && targetChanges.some((change) => change.after < change.before)) {
+          if (this.sword === null && isAttack && targetChanges.some((change) => change.after < change.before)) {
             this.characters.setExpression(
               opponentOf(actor),
               "hurt",
@@ -5540,7 +5913,8 @@ ${event.actionType === ActionType.PASS ? "原地消散 · 无节点变化" : `${
         onComplete: () => {
           if (event.actionType === ActionType.PASS)
             this.showActionResult(actor, event.actionType, stemLabel, changes);
-          this.afterFlight();
+          this.isRuneComplete = true;
+          if (this.sword === null) this.afterFlight();
         }
       });
     }
@@ -5573,6 +5947,88 @@ ${event.actionType === ActionType.PASS ? "原地消散 · 无节点变化" : `${
 共${changes.length}处 · 下方可展开` : ""}`
       );
       this.placeResult();
+    }
+    clearSword() {
+      this.sword = null;
+      this.combatElement = null;
+      this.isRuneComplete = false;
+      this.x = this.y = 0;
+      this.characters.combatShake.x = this.characters.combatShake.y = 0;
+      this.characters.setExpression(this.combatActor, "idle");
+      for (const player of ["P1", "P2"]) {
+        this.characters.combatOffsets[player].x = 0;
+        this.characters.combatOffsets[player].y = 0;
+        this.characters.combatScales[player] = 1;
+        this.characters.combatFlash[player] = 0;
+        this.characters.setExpression(player, "idle");
+      }
+    }
+    advanceSword(dt) {
+      const sword = this.sword;
+      if (sword === null) return;
+      sword.advance(dt);
+      const dir = this.combatActor === "P1" ? 1 : -1;
+      const display = SWORD_DISPLAY;
+      const progress = sword.attackerX / display.movePeak;
+      Object.assign(this.characters.combatOffsets[this.combatActor], {
+        x: dir * progress * (this.characters.combatLayout.gap - display.contactInset) || 0,
+        y: -9 * Math.sin(Math.PI * progress) || 0
+      });
+      const target = opponentOf(this.combatActor);
+      Object.assign(this.characters.combatOffsets[target], {
+        x: dir * sword.timeline.target.x * display.knockScale + sword.timeline.target.shake,
+        y: 0
+      });
+      this.characters.combatFlash[target] = sword.flash;
+      this.characters.setExpression(target, sword.flash > 0 ? "hurt" : "idle", 0);
+      const shake = sword.timeline.shake;
+      this.characters.combatShake.x = Math.sin(shake.t * display.shakeFrequency) * shake.amp;
+      this.characters.combatShake.y = Math.cos(shake.t * display.shakeFrequency * display.shakeYFrequency) * shake.amp * display.shakeYScale;
+      if (sword.done) {
+        const canFinish = this.isRuneComplete;
+        this.clearSword();
+        if (canFinish) this.afterFlight();
+      }
+    }
+    drawSword(ctx) {
+      const sword = this.sword;
+      if (sword === null) return;
+      const dir = this.combatActor === "P1" ? 1 : -1;
+      const target = opponentOf(this.combatActor);
+      const home = this.characters.combatAnchor(target);
+      const offset = this.characters.combatOffsets[target];
+      const hitX = home.x + offset.x + dir * SWORD_DISPLAY.impactOffsetX;
+      const hitY = home.y + SWORD_DISPLAY.impactOffsetY;
+      ctx.save();
+      ctx.translate(this.characters.combatShake.x, this.characters.combatShake.y);
+      for (const effect of sword.effects) {
+        ctx.save();
+        ctx.translate(hitX, hitY + (effect.kind === "blade" ? SWORD_DISPLAY.bladeOffsetY : 0));
+        ctx.scale(dir * SWORD_DISPLAY.fxScale, SWORD_DISPLAY.fxScale);
+        if (effect.kind === "blade") drawCrescent(ctx, effect, sword.recipe.material);
+        else if (effect.kind === "star") drawStar(ctx, effect, sword.recipe.material);
+        else drawDebris(ctx, effect, sword.recipe.material);
+        ctx.restore();
+      }
+      const caster = this.characters.combatAnchor(this.combatActor);
+      for (const effect of sword.spells) {
+        ctx.save();
+        const q = Math.min(1, effect.age / effect.life);
+        if (effect.kind === "bolt") {
+          const start = caster.x + dir * MAGIC_DISPLAY.palmX;
+          ctx.translate(start + (hitX - start) * q * q, caster.y + (hitY - caster.y) * q * q);
+          ctx.scale(dir, 1);
+        } else {
+          ctx.translate(
+            effect.kind === "charge" ? caster.x : hitX,
+            effect.kind === "charge" ? caster.y + MAGIC_DISPLAY.palmY : hitY
+          );
+          ctx.scale(dir * SWORD_DISPLAY.fxScale, SWORD_DISPLAY.fxScale);
+        }
+        drawMagic(ctx, effect, sword.recipe.material, MAGIC_DISPLAY);
+        ctx.restore();
+      }
+      ctx.restore();
     }
     /** Keep the acting player and stem visible long enough to read the change before handover. */
     afterFlight() {
@@ -5628,6 +6084,7 @@ ${event.actionType === ActionType.PASS ? "原地消散 · 无节点变化" : `${
               onComplete: () => {
                 this.board.update(state.players.P1.board, state.players.P2.board);
                 this.showFinalPoses(state);
+                this.showGameOverNotice(state, GAME_OVER_NOTICE_DELAY);
               }
             });
           }
@@ -5639,7 +6096,26 @@ ${event.actionType === ActionType.PASS ? "原地消散 · 无节点变化" : `${
         describeEndReason(state.endReason)
       );
       this.showFinalPoses(state);
+      this.showGameOverNotice(state);
       this.projectBoards(state);
+    }
+    /**
+     * 终局信息落到画面：胜负结论、结束原因与重开提示写进常驻结果条。
+     * 顶部播报框已删（用户口径），`showBanner` 只留数据给复盘消费，不再充当可见出口。
+     * `delay > 0` 时先挂起倒计时（揭牌路径），让揭牌结果先可读，倒计时归零再覆盖。
+     */
+    showGameOverNotice(state, delay = 0) {
+      const resultText = state.winner === "P1" ? "你获胜" : state.winner === "P2" ? "天道获胜" : "平局";
+      if (delay > 0) {
+        this.pendingGameOver = {
+          resultText,
+          reasonText: describeEndReason(state.endReason),
+          delay
+        };
+        return;
+      }
+      this.lastAction.setGameOver(resultText, describeEndReason(state.endReason));
+      this.placeResult();
     }
     /** 终局姿势：胜方「胜」、负方「负」，持续到重开（`restart()` 清掉）；平局不摆姿势。 */
     showFinalPoses(state) {
@@ -5673,25 +6149,47 @@ ${prompt}`;
     /** 把操作面板底对齐到安全区底部：按钮实测多高就占多高，不留空档。 */
     placeActionBar() {
       this.actionBar.x = ACTION_BAR_MARGIN;
-      this.actionBar.y = this.height - this.safeBottom - this.actionBar.contentHeight;
+      this.actionBar.y = this.height - this.safeBottom - this.actionBar.contentHeight - (this.actionBar.contentHeight > 0 ? RESULT_HEIGHT + FOOTER_GAP : 0);
       this.placeResult();
     }
     layoutBoard() {
-      const compact = this.height < 650 || this.safeTop > 24;
-      const buttonHeight = compact ? ACTION_BAR_RESERVED_HEIGHT : Math.max(ACTION_BAR_RESERVED_HEIGHT, this.actionBar?.contentHeight ?? 0);
-      this.board.resize(
-        this.width,
-        this.height,
-        compact ? {
-          top: this.safeTop + (compact ? 88 : 128),
-          bottom: this.height - this.safeBottom - buttonHeight - (compact ? 94 : 72)
-        } : void 0
-      );
+      const top = this.safeTop + SWORD_DISPLAY.turnBarHeight + (this.isCompact() ? 2 : SWORD_DISPLAY.frameTopGap) + (this.isCompact() ? SWORD_DISPLAY.compactAvatarHeight : SWORD_DISPLAY.avatarHeight) + SWORD_DISPLAY.labelRoom + 4;
+      const barTop = this.actionBarTop();
+      let bottom = barTop - LEGEND_TEXT_GUARD;
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        this.board.resize(this.width, this.height, { top, bottom });
+        const overhang = this.guideLegendBottom() - barTop;
+        if (overhang <= 0.5) break;
+        if (this.board.layout.sealSize <= MIN_GUIDE_SEAL + 0.01) break;
+        bottom -= overhang;
+      }
+    }
+    /** 紧凑布局判定：矮屏或刘海安全区偏高时收窄角色区并压缩按钮与图例。 */
+    isCompact() {
+      return this.height < 650 || this.safeTop > 24;
+    }
+    /**
+     * 操作区满额占地（唯一真源）：按钮高取「满额两行预留」与「当前实测」的较大者，
+     * 候选从 1 行涨到 2 行时棋盘预算不塌（全周期棋盘尺寸恒定）。
+     */
+    actionBarBudgetHeight() {
+      return Math.max(this.actionBar?.reservedHeight ?? 0, this.actionBar?.contentHeight ?? 0);
+    }
+    /** 操作区（结果条 + 按钮组）在视口里的顶沿 y；法盘与图例都必须让到它之上。 */
+    actionBarTop() {
+      return this.height - this.safeBottom - RESULT_HEIGHT - FOOTER_GAP - this.actionBarBudgetHeight();
+    }
+    /** 归元图例的真实底沿（相对法盘基线行；紧凑模式第二行画在基线之上，不占下方）。 */
+    guideLegendBottom() {
+      const b = this.board.layout;
+      const baseline = b.centerY + b.outerRadius + b.sealSize * LEGEND_BASELINE_RATIO;
+      return baseline + (this.isCompact() ? GUIDE_ROW_COMPACT_BELOW : GUIDE_ROW_BELOW);
     }
     buildActionBar(turnManager) {
       const actionBar = new ActionBarView({
         turnManager,
-        width: this.width - ACTION_BAR_MARGIN * 2
+        width: this.width - ACTION_BAR_MARGIN * 2,
+        compact: this.isCompact()
       });
       actionBar.onPreview = (action) => this.previewAction(action);
       return actionBar;
@@ -5776,16 +6274,17 @@ ${prompt}`;
     }
     render(ctx) {
       super.render(ctx);
+      if (!this.visible || this.alpha <= 0) return;
+      this.drawSword(ctx);
       ctx.save();
       this.drawDecisionGuide(ctx);
       ctx.restore();
     }
+    /** 结果条贴安全区底部摆放；按钮组压在它上方（与 `actionBarTop` 同一口径）。 */
     placeResult() {
       if (this.lastAction === void 0) return;
       this.lastAction.resize(this.width - 20);
-      const compact = this.height < 650 || this.safeTop > 24;
-      const buttonHeight = compact ? ACTION_BAR_RESERVED_HEIGHT : Math.max(ACTION_BAR_RESERVED_HEIGHT, this.actionBar?.contentHeight ?? 0);
-      this.lastAction.y = this.height - this.safeBottom - buttonHeight - 42;
+      this.lastAction.y = this.height - this.safeBottom - RESULT_HEIGHT;
     }
     /** One permanent legend; the readable last-action strip owns the remaining footer. */
     drawDecisionGuide(ctx) {
@@ -5797,7 +6296,9 @@ ${prompt}`;
       const yGui = b.centerY + b.outerRadius + b.sealSize * LEGEND_BASELINE_RATIO;
       ctx.fillText("木示例", this.width * 0.5 / 4 - 13, yGui);
       ctx.fillText("左阴 · 右阳", this.width / 2, yGui);
-      const yLevels = yGui + 20;
+      const barTop = this.actionBarTop();
+      const yLevels = this.isCompact() ? Math.min(barTop, yGui) - 20 : yGui + 20;
+      if (yLevels + 10 > barTop) return;
       for (const [index, level] of [-1, 0, 1, 2].entries()) {
         const column = this.width * (index + 0.5) / 4;
         drawYinYangFish(ctx, column - 13, yLevels, 7, Polarity.YIN, level, WuXing.WOOD);

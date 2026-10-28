@@ -54,6 +54,11 @@ import {
   NodeChange,
 } from './views/action-result-view.js';
 import { RuneFlightView } from './views/rune-flight-view.js';
+import { CombatPlayback } from './vfx/sword-playback.js';
+import { MAGIC_SINGLE, MAGIC_TRIPLE, MAGIC_DISPLAY } from './vfx/params/magic.js';
+import { drawMagic } from './vfx/primitives/magic.js';
+import { SWORD_DISPLAY, SWORD_SINGLE, SWORD_TRIPLE } from './vfx/params/sword.js';
+import { drawCrescent, drawDebris, drawStar } from './vfx/primitives/sword.js';
 
 /** 场景所处的表现阶段。 */
 export type GameScenePhase =
@@ -122,9 +127,21 @@ const DEFAULT_AUTO_EXECUTE_DELAY = 0.75;
 const DEFAULT_AI_THINK_DELAY = 0.55;
 const DEFAULT_EXPRESSION_HOLD = 0.6;
 const DEFAULT_CELEBRATE_HOLD = 1.2;
-/** 底部操作台边距与满额双行按钮预留高度（最多 4 个动作，2 列 2 行共 110px）。 */
+/** 底部操作台左右边距。 */
 const ACTION_BAR_MARGIN = 14;
-const ACTION_BAR_RESERVED_HEIGHT = 110;
+/** 结果条高度与其上方留白。 */
+const RESULT_HEIGHT = 34;
+const FOOTER_GAP = 4;
+/** 非紧凑图例第二行（等级示例）在基线之下的底沿超出：行距 20 + 半行字 6 + 余量 4。 */
+const GUIDE_ROW_BELOW = 30;
+/** 紧凑图例第二行改画在基线之上，基线行只剩半行文字要避让。 */
+const GUIDE_ROW_COMPACT_BELOW = 6;
+/** 图例避让可缩到的最小主印半径（紧凑读性下限），再小宁可少一行图例也不缩盘。 */
+const MIN_GUIDE_SEAL = 12;
+/** 揭牌后的终局提示延迟（秒）：先把「天命抽牌」的结果读进去，再换成胜负结论。 */
+const GAME_OVER_NOTICE_DELAY = 1.2;
+/** 法盘内容边界之上的固定守带：文字余量与盘面内边距，保证图例不蹭按钮顶。 */
+const LEGEND_TEXT_GUARD = 8;
 /** 震屏时长与幅度（像素）。 */
 
 /**
@@ -208,6 +225,13 @@ export class GameScene extends Container {
 
   /** 视口在对局中变化时，符文层延到下一个回合开始前重建（不打断当前动效）。 */
   private runeFlightStale = false;
+  private sword: CombatPlayback | null = null;
+  private combatActor: PlayerId = 'P1';
+  /** Target identity is locked at playback creation, independent of later turn changes. */
+  public combatElement: WuXing | null = null;
+  private isRuneComplete = false;
+  /** 待展示的终局提示：揭牌路径延迟出现，先把「天命抽牌」的结果留给玩家读完。 */
+  private pendingGameOver: { resultText: string; reasonText: string; delay: number } | null = null;
 
   public constructor(options: GameSceneOptions) {
     super();
@@ -233,6 +257,7 @@ export class GameScene extends Container {
         initialState: options.initialState,
       });
 
+    this.actionBar = this.buildActionBar(this._turnManager);
     this.board = new BoardView();
     this.layoutBoard();
     this.runeFlight = this.buildRuneFlight();
@@ -241,7 +266,6 @@ export class GameScene extends Container {
       safeTop: this.safeTop,
       compact: this.height < 650 || this.safeTop > 24,
     });
-    this.actionBar = this.buildActionBar(this._turnManager);
     this.actionBar.visible = false;
     this.placeActionBar();
     this.lastAction = new ActionResultView(this.width - 20);
@@ -272,6 +296,10 @@ export class GameScene extends Container {
   /** 切换表现阶段：连线高亮、候选落点弧与阶段一致（只有 `awaiting-player` 有待定动作）。 */
   private setPhase(phase: GameScenePhase): void {
     this._phase = phase;
+    // 按钮只在玩家抉择期可见：出手进入飞行即收起，不留能点的陈旧按钮压住图例与结果条。
+    if (phase !== 'awaiting-player') {
+      this.actionBar.visible = false;
+    }
     // 阶段一变，上一次按住留下的预览（箭头 / 幽灵态）立即作废；预览只在按住期间存在。
     this.board.setPreview(null);
     this.board.setActivePaths(this.activePathsFor(phase));
@@ -339,7 +367,7 @@ export class GameScene extends Container {
     this.height = height;
     this.safeTop = safeTop ?? this.safeTop;
     this.safeBottom = safeBottom ?? this.safeBottom;
-    this.actionBar.resize(width - ACTION_BAR_MARGIN * 2);
+    this.actionBar.resize(width - ACTION_BAR_MARGIN * 2, this.isCompact());
     this.layoutBoard();
     this.runeFlight.syncCenter();
     this.characters.resize(width, this.safeTop, this.height < 650 || this.safeTop > 24);
@@ -363,6 +391,8 @@ export class GameScene extends Container {
   /** 终局后重新开局：换一颗随机源、重置表现态，从第 1 回合重来。 */
   public restart(seedOrPrng: number | PRNG = Date.now()): void {
     this.unbindTurnManager();
+    this.clearSword();
+    this.pendingGameOver = null;
     const prng = typeof seedOrPrng === 'number' ? createPRNG(seedOrPrng) : seedOrPrng;
     this._turnManager = new TurnManager({ prng });
     this.lastShowdown = null;
@@ -391,6 +421,8 @@ export class GameScene extends Container {
   /** 退订核心事件（销毁场景时调用）。 */
   public dispose(): void {
     this.unbindTurnManager();
+    this.clearSword();
+    this.pendingGameOver = null;
     this.actionBar.dispose();
     this.runeFlight.cancel();
     this.characters.resetFeedback();
@@ -405,10 +437,21 @@ export class GameScene extends Container {
    */
   public update(dt: number): void {
     const phaseBefore = this._phase;
-    this.characters.updateTimers(dt);
+    this.advanceSword(dt);
+    this.characters.updateTimers(this.sword?.timeline.stopLeft ? 0 : dt);
     this.runeFlight.update(dt);
     // 法盘只借时钟推进归一 / 亢极柔光；盘面投影仍由状态变更驱动（`board.update`）。
     this.board.tick(dt);
+    if (this._phase === 'game-over' && this.pendingGameOver !== null) {
+      this.pendingGameOver.delay -= dt;
+      if (this.pendingGameOver.delay <= 0) {
+        const { resultText, reasonText } = this.pendingGameOver;
+        this.pendingGameOver = null;
+        this.lastAction.setGameOver(resultText, reasonText);
+        this.placeResult();
+      }
+      return;
+    }
     if (this._phase === 'result') {
       if (phaseBefore !== 'result') return;
       this.timer -= dt;
@@ -569,6 +612,22 @@ export class GameScene extends Container {
     const secondaryPolarity = changedPolarities.find((polarity) => polarity !== target.polarity);
     this.actionBefore = null;
     const isAttack = isAttackAction(event.actionType);
+    this.isRuneComplete = false;
+    if (isAttack) {
+      this.combatActor = actor;
+      this.combatElement = resolved.element;
+      const triple = event.actionType === ActionType.BURST_ATK;
+      this.sword = new CombatPlayback(
+        actor === 'P1'
+          ? triple
+            ? SWORD_TRIPLE
+            : SWORD_SINGLE
+          : triple
+            ? MAGIC_TRIPLE
+            : MAGIC_SINGLE,
+      );
+      this.characters.setExpression(actor, actor === 'P1' ? 'attack' : 'cast', 0);
+    }
 
     this.hideActionBar();
     const stemLabel = this.visualStem?.name ?? '';
@@ -582,7 +641,8 @@ export class GameScene extends Container {
       isExtraTurn: this._turnManager.isExtraTurnActive(),
       actingPlayer: actor,
     });
-    this.characters.playAction(actor, event.actionType, this.flightDuration, this.impactDuration);
+    if (!isAttack)
+      this.characters.playAction(actor, event.actionType, this.flightDuration, this.impactDuration);
 
     // 法盘已是双环（行动前等级），飞行期不再换盘；落点后才投影结算结果。
     this.setPhase('flying');
@@ -603,7 +663,11 @@ export class GameScene extends Container {
           changes,
           targetChanges.length === 0,
         );
-        if (isAttack && targetChanges.some((change) => change.after < change.before)) {
+        if (
+          this.sword === null &&
+          isAttack &&
+          targetChanges.some((change) => change.after < change.before)
+        ) {
           this.characters.setExpression(
             opponentOf(actor),
             'hurt',
@@ -619,7 +683,8 @@ export class GameScene extends Container {
       onComplete: () => {
         if (event.actionType === ActionType.PASS)
           this.showActionResult(actor, event.actionType, stemLabel, changes);
-        this.afterFlight();
+        this.isRuneComplete = true;
+        if (this.sword === null) this.afterFlight();
       },
     });
   }
@@ -667,6 +732,94 @@ export class GameScene extends Container {
         : `${targetUnchanged ? '目标阴阳未变\n' : ''}${describeNodeChange(changes[0])}${!compact && changes.length > 1 ? `\n共${changes.length}处 · 下方可展开` : ''}`,
     );
     this.placeResult();
+  }
+
+  private clearSword(): void {
+    this.sword = null;
+    this.combatElement = null;
+    this.isRuneComplete = false;
+    this.x = this.y = 0;
+    this.characters.combatShake.x = this.characters.combatShake.y = 0;
+    this.characters.setExpression(this.combatActor, 'idle');
+    for (const player of ['P1', 'P2'] as const) {
+      this.characters.combatOffsets[player].x = 0;
+      this.characters.combatOffsets[player].y = 0;
+      this.characters.combatScales[player] = 1;
+      this.characters.combatFlash[player] = 0;
+      this.characters.setExpression(player, 'idle');
+    }
+  }
+
+  private advanceSword(dt: number): void {
+    const sword = this.sword;
+    if (sword === null) return;
+    sword.advance(dt);
+    const dir = this.combatActor === 'P1' ? 1 : -1;
+    const display = SWORD_DISPLAY;
+    const progress = sword.attackerX / display.movePeak;
+    Object.assign(this.characters.combatOffsets[this.combatActor], {
+      x: dir * progress * (this.characters.combatLayout.gap - display.contactInset) || 0,
+      y: -display.hop * Math.sin(Math.PI * progress) || 0,
+    });
+    const target = opponentOf(this.combatActor);
+    Object.assign(this.characters.combatOffsets[target], {
+      x: dir * sword.timeline.target.x * display.knockScale + sword.timeline.target.shake,
+      y: 0,
+    });
+    this.characters.combatFlash[target] = sword.flash;
+    this.characters.setExpression(target, sword.flash > 0 ? 'hurt' : 'idle', 0);
+    const shake = sword.timeline.shake;
+    this.characters.combatShake.x = Math.sin(shake.t * display.shakeFrequency) * shake.amp;
+    this.characters.combatShake.y =
+      Math.cos(shake.t * display.shakeFrequency * display.shakeYFrequency) *
+      shake.amp *
+      display.shakeYScale;
+    if (sword.done) {
+      const canFinish = this.isRuneComplete;
+      this.clearSword();
+      if (canFinish) this.afterFlight();
+    }
+  }
+
+  private drawSword(ctx: CanvasRenderingContext2D): void {
+    const sword = this.sword;
+    if (sword === null) return;
+    const dir = this.combatActor === 'P1' ? 1 : -1;
+    const target = opponentOf(this.combatActor);
+    const home = this.characters.combatAnchor(target);
+    const offset = this.characters.combatOffsets[target];
+    const hitX = home.x + offset.x + dir * SWORD_DISPLAY.impactOffsetX;
+    const hitY = home.y + SWORD_DISPLAY.impactOffsetY;
+    ctx.save();
+    ctx.translate(this.characters.combatShake.x, this.characters.combatShake.y);
+    for (const effect of sword.effects) {
+      ctx.save();
+      ctx.translate(hitX, hitY + (effect.kind === 'blade' ? SWORD_DISPLAY.bladeOffsetY : 0));
+      ctx.scale(dir * SWORD_DISPLAY.fxScale, SWORD_DISPLAY.fxScale);
+      if (effect.kind === 'blade') drawCrescent(ctx, effect, sword.recipe.material);
+      else if (effect.kind === 'star') drawStar(ctx, effect, sword.recipe.material);
+      else drawDebris(ctx, effect, sword.recipe.material);
+      ctx.restore();
+    }
+    const caster = this.characters.combatAnchor(this.combatActor);
+    for (const effect of sword.spells) {
+      ctx.save();
+      const q = Math.min(1, effect.age / effect.life);
+      if (effect.kind === 'bolt') {
+        const start = caster.x + dir * MAGIC_DISPLAY.palmX;
+        ctx.translate(start + (hitX - start) * q * q, caster.y + (hitY - caster.y) * q * q);
+        ctx.scale(dir, 1);
+      } else {
+        ctx.translate(
+          effect.kind === 'charge' ? caster.x : hitX,
+          effect.kind === 'charge' ? caster.y + MAGIC_DISPLAY.palmY : hitY,
+        );
+        ctx.scale(dir * SWORD_DISPLAY.fxScale, SWORD_DISPLAY.fxScale);
+      }
+      drawMagic(ctx, effect, sword.recipe.material, MAGIC_DISPLAY);
+      ctx.restore();
+    }
+    ctx.restore();
   }
 
   /** Keep the acting player and stem visible long enough to read the change before handover. */
@@ -730,6 +883,7 @@ export class GameScene extends Container {
               this.board.update(state.players.P1.board, state.players.P2.board);
               // 落点后才定格终局姿势，揭牌期间保留施法 / 受击的揭牌动效。
               this.showFinalPoses(state);
+              this.showGameOverNotice(state, GAME_OVER_NOTICE_DELAY);
             },
           });
         },
@@ -742,7 +896,28 @@ export class GameScene extends Container {
       describeEndReason(state.endReason),
     );
     this.showFinalPoses(state);
+    this.showGameOverNotice(state);
     this.projectBoards(state);
+  }
+
+  /**
+   * 终局信息落到画面：胜负结论、结束原因与重开提示写进常驻结果条。
+   * 顶部播报框已删（用户口径），`showBanner` 只留数据给复盘消费，不再充当可见出口。
+   * `delay > 0` 时先挂起倒计时（揭牌路径），让揭牌结果先可读，倒计时归零再覆盖。
+   */
+  private showGameOverNotice(state: GameState, delay = 0): void {
+    const resultText =
+      state.winner === 'P1' ? '你获胜' : state.winner === 'P2' ? '天道获胜' : '平局';
+    if (delay > 0) {
+      this.pendingGameOver = {
+        resultText,
+        reasonText: describeEndReason(state.endReason),
+        delay,
+      };
+      return;
+    }
+    this.lastAction.setGameOver(resultText, describeEndReason(state.endReason));
+    this.placeResult();
   }
 
   /** 终局姿势：胜方「胜」、负方「负」，持续到重开（`restart()` 清掉）；平局不摆姿势。 */
@@ -791,31 +966,68 @@ export class GameScene extends Container {
   /** 把操作面板底对齐到安全区底部：按钮实测多高就占多高，不留空档。 */
   private placeActionBar(): void {
     this.actionBar.x = ACTION_BAR_MARGIN;
-    this.actionBar.y = this.height - this.safeBottom - this.actionBar.contentHeight;
+    this.actionBar.y =
+      this.height -
+      this.safeBottom -
+      this.actionBar.contentHeight -
+      (this.actionBar.contentHeight > 0 ? RESULT_HEIGHT + FOOTER_GAP : 0);
     this.placeResult();
   }
 
   private layoutBoard(): void {
-    const compact = this.height < 650 || this.safeTop > 24;
-    const buttonHeight = compact
-      ? ACTION_BAR_RESERVED_HEIGHT
-      : Math.max(ACTION_BAR_RESERVED_HEIGHT, this.actionBar?.contentHeight ?? 0);
-    this.board.resize(
-      this.width,
-      this.height,
-      compact
-        ? {
-            top: this.safeTop + (compact ? 88 : 128),
-            bottom: this.height - this.safeBottom - buttonHeight - (compact ? 94 : 72),
-          }
-        : undefined,
+    const top =
+      this.safeTop +
+      SWORD_DISPLAY.turnBarHeight +
+      (this.isCompact() ? 2 : SWORD_DISPLAY.frameTopGap) +
+      (this.isCompact() ? SWORD_DISPLAY.compactAvatarHeight : SWORD_DISPLAY.avatarHeight) +
+      SWORD_DISPLAY.labelRoom +
+      4;
+    // 操作区顶沿（含结果条贴底与满额按钮预算）：法盘内容边界先贴到它，再按图例实测收口。
+    const barTop = this.actionBarTop();
+    let bottom = barTop - LEGEND_TEXT_GUARD;
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      this.board.resize(this.width, this.height, { top, bottom });
+      const overhang = this.guideLegendBottom() - barTop;
+      // 图例比法盘自留的盘外下沿更低：实测压到操作区就收边界重排。
+      if (overhang <= 0.5) break;
+      // 保住最小可读主印：再缩就要破读性下限时停手，图例装不下由绘制端省略。
+      if (this.board.layout.sealSize <= MIN_GUIDE_SEAL + 0.01) break;
+      bottom -= overhang;
+    }
+  }
+
+  /** 紧凑布局判定：矮屏或刘海安全区偏高时收窄角色区并压缩按钮与图例。 */
+  private isCompact(): boolean {
+    return this.height < 650 || this.safeTop > 24;
+  }
+
+  /**
+   * 操作区满额占地（唯一真源）：按钮高取「满额两行预留」与「当前实测」的较大者，
+   * 候选从 1 行涨到 2 行时棋盘预算不塌（全周期棋盘尺寸恒定）。
+   */
+  private actionBarBudgetHeight(): number {
+    return Math.max(this.actionBar?.reservedHeight ?? 0, this.actionBar?.contentHeight ?? 0);
+  }
+
+  /** 操作区（结果条 + 按钮组）在视口里的顶沿 y；法盘与图例都必须让到它之上。 */
+  private actionBarTop(): number {
+    return (
+      this.height - this.safeBottom - RESULT_HEIGHT - FOOTER_GAP - this.actionBarBudgetHeight()
     );
+  }
+
+  /** 归元图例的真实底沿（相对法盘基线行；紧凑模式第二行画在基线之上，不占下方）。 */
+  private guideLegendBottom(): number {
+    const b = this.board.layout;
+    const baseline = b.centerY + b.outerRadius + b.sealSize * LEGEND_BASELINE_RATIO;
+    return baseline + (this.isCompact() ? GUIDE_ROW_COMPACT_BELOW : GUIDE_ROW_BELOW);
   }
 
   private buildActionBar(turnManager: TurnManager): ActionBarView {
     const actionBar = new ActionBarView({
       turnManager,
       width: this.width - ACTION_BAR_MARGIN * 2,
+      compact: this.isCompact(),
     });
     // 按住 / 松开按钮驱动法盘预览（票 04）：面板只管「哪一个候选被按住」，落点与幽灵态在这里解。
     actionBar.onPreview = (action) => this.previewAction(action);
@@ -914,19 +1126,18 @@ export class GameScene extends Container {
 
   public override render(ctx: CanvasRenderingContext2D): void {
     super.render(ctx);
+    if (!this.visible || this.alpha <= 0) return;
+    this.drawSword(ctx);
     ctx.save();
     this.drawDecisionGuide(ctx);
     ctx.restore();
   }
 
+  /** 结果条贴安全区底部摆放；按钮组压在它上方（与 `actionBarTop` 同一口径）。 */
   private placeResult(): void {
     if (this.lastAction === undefined) return;
     this.lastAction.resize(this.width - 20);
-    const compact = this.height < 650 || this.safeTop > 24;
-    const buttonHeight = compact
-      ? ACTION_BAR_RESERVED_HEIGHT
-      : Math.max(ACTION_BAR_RESERVED_HEIGHT, this.actionBar?.contentHeight ?? 0);
-    this.lastAction.y = this.height - this.safeBottom - buttonHeight - 42;
+    this.lastAction.y = this.height - this.safeBottom - RESULT_HEIGHT;
   }
 
   /** One permanent legend; the readable last-action strip owns the remaining footer. */
@@ -941,7 +1152,11 @@ export class GameScene extends Container {
     ctx.fillText('木示例', (this.width * 0.5) / 4 - 13, yGui);
     ctx.fillText('左阴 · 右阳', this.width / 2, yGui);
 
-    const yLevels = yGui + 20;
+    // 紧凑屏垂直空间不够再塞一行：等级示例改画在基线行之上（盘外沿与基线之间的空带），
+    // 与基线行、按钮顶都错开；装不下时整行省略，绝不画到按钮下面被盖住。
+    const barTop = this.actionBarTop();
+    const yLevels = this.isCompact() ? Math.min(barTop, yGui) - 20 : yGui + 20;
+    if (yLevels + 10 > barTop) return;
     for (const [index, level] of ([-1, 0, 1, 2] as const).entries()) {
       const column = (this.width * (index + 0.5)) / 4;
       drawYinYangFish(ctx, column - 13, yLevels, 7, Polarity.YIN, level, WuXing.WOOD);

@@ -1,150 +1,81 @@
-/**
- * 双方对战角色卡视图（Layer 3）：玩家（P1）与天道（P2）的头像框架、行动回合标识、
- * 连动标记、比分、表情反馈与播报气泡/横幅。
- *
- * 数据流是单向的（`docs/LLD.md` §4）：`update(state, options)` 只读 `GameState` 快照投影
- * 回合 / 比分 / 当前行动方，本视图不缓存也不改写任何核心状态。
- * 表情与气泡是纯表现态，由调用方（`GameScene`）触发，靠 `updateTimers(dt)` 自行衰减。
- */
-
 import { ActionType, GameState, PlayerId } from '../../core/types/domain.js';
 import { CharacterActionState } from '../types.js';
 import { CharacterSpriteAtlas, drawCharacterSprite } from '../character-sprite.js';
-import {
-  CHARACTER_PIXEL_SIZE,
-  CHARACTER_SPRITE_BOUNDS,
-  drawPixelCharacter,
-  drawPixelRect,
-} from '../pixel-art.js';
-import { drawPanel, THEME } from '../theme.js';
+import { CHARACTER_PIXEL_SIZE, CHARACTER_SPRITE_BOUNDS, drawPixelCharacter } from '../pixel-art.js';
+import { THEME } from '../theme.js';
 import { Container } from '../scene/container.js';
-import { estimateTextWidth } from '../text-metrics.js';
+import { SWORD_DISPLAY } from '../vfx/params/sword.js';
 
 export interface CharacterViewOptions {
-  /** 视口宽度（父坐标系）。 */
   readonly width: number;
-  /** 安全区顶部偏移（刘海屏），默认 24。 */
   readonly safeTop?: number;
   readonly compact?: boolean;
 }
-
-/** 投影选项：连动回合是核心状态之外的回合语义，由调用方传入。 */
 export interface CharacterProjectionOptions {
-  /** Keep the visual turn marker on the casting actor until the animation finishes. */
   readonly actingPlayer?: PlayerId;
-  /** 当前是否处于爆发连动带来的额外行动中。 */
   readonly isExtraTurn?: boolean;
 }
+const PLAYERS = ['P1', 'P2'] as const;
 
-/** 头像框架尺寸与边距（保持头像与播报的既有布局契约）。 */
-const AVATAR_WIDTH = 88;
-const AVATAR_HEIGHT = 112;
-const SIDE_MARGIN = 10;
-const TOP_BAR_HEIGHT = 26;
-const BANNER_GAP = 10;
-const BANNER_HEIGHT = 88;
-
-/* 配色（仅本视图使用）。 */
-const PANEL_COLOR = THEME.panel;
-const PANEL_BORDER = THEME.edge;
-const ACTIVE_COLOR = THEME.gold;
-const EXTRA_TURN_COLOR = THEME.jade;
-const TEXT_COLOR = THEME.ivory;
-const MUTED_COLOR = THEME.muted;
-const P1_COLOR = THEME.jade;
-const P2_COLOR = THEME.rival;
-const HURT_COLOR = THEME.damage;
-
-/** 表情对应的框架描边色；待机时用当前行动方颜色。 */
-const EXPRESSION_COLOR: Record<CharacterActionState, string | null> = {
-  idle: null,
-  attack: THEME.gold,
-  hurt: HURT_COLOR,
-  cast: '#b7f0da',
-  celebrate: '#ed8936',
-  win: '#48bb78',
-  lose: '#a0aec0',
-};
-
-const PLAYER_LABEL: Record<PlayerId, string> = { P1: '你 · 弈者', P2: '天道' };
-const PLAYER_COLOR: Record<PlayerId, string> = { P1: P1_COLOR, P2: P2_COLOR };
-
+/** Shared combat area. Announcement data remains available to result consumers. */
 export class CharacterView extends Container {
-  private _width: number;
-  private _spriteAtlas: CharacterSpriteAtlas | null = null;
-  private _safeTop: number;
-  private _compact: boolean;
-
-  private _round = 0;
-  private _maxRounds = 0;
-  private _currentPlayer: PlayerId | null = null;
-  private _isExtraTurn = false;
-  private _scores: Record<PlayerId, number> = { P1: 0, P2: 0 };
-  private _expressions: Record<PlayerId, CharacterActionState> = { P1: 'idle', P2: 'idle' };
-  private _expressionTimers: Record<PlayerId, number> = { P1: 0, P2: 0 };
-  private _bubbles: Record<PlayerId, { text: string; timer: number } | null> = {
-    P1: null,
-    P2: null,
-  };
-  private _bannerText = '';
-  private _bannerSubText = '';
-  /** 头像呼吸动画的累积时间（秒）。 */
-  private _tick = 0;
-  private readonly motions: Partial<
-    Record<PlayerId, { action: ActionType; elapsed: number; flight: number; total: number }>
-  > = {};
-
+  private width: number;
+  private safeTop: number;
+  private compact: boolean;
+  private atlas: CharacterSpriteAtlas | null = null;
+  private tick = 0;
+  public round = 0;
+  public maxRounds = 0;
+  public currentPlayer: PlayerId | null = null;
+  public isExtraTurn = false;
+  /** 核心层终局标记：回合条与「行动中」尾缀在终局后改口，不再谎报「你行动」。 */
+  public isGameOver = false;
+  public bannerText = '';
+  public bannerSubText = '';
+  private scores = { P1: 0, P2: 0 };
+  private expressions: Record<PlayerId, CharacterActionState> = { P1: 'idle', P2: 'idle' };
   private readonly transitions: Partial<
     Record<PlayerId, { from: CharacterActionState; elapsed: number; duration: number }>
   > = {};
-
-  private changePose(player: PlayerId, pose: CharacterActionState, duration = 0): boolean {
-    const previous = this._expressions[player];
-    if (previous === pose) return false;
-    if (duration > 0) this.transitions[player] = { from: previous, elapsed: 0, duration };
-    else delete this.transitions[player];
-    this._expressions[player] = pose;
-    return true;
-  }
-
-  /** Anticipation, release and recovery share the rune clock, including custom playback durations. */
-  public playAction(player: PlayerId, action: ActionType, flight: number, impact: number): void {
-    this.setExpression(player, 'cast', 0, Math.min(0.08, flight * 0.18));
-    this.motions[player] = { action, elapsed: 0, flight, total: flight + impact };
-  }
-
-  private motionOffset(player: PlayerId): { x: number; y: number } | undefined {
-    const motion = this.motions[player];
-    if (motion === undefined) return undefined;
-    const t = motion.elapsed / motion.flight;
-    const direction = player === 'P1' ? 1 : -1;
-    if (t < 0.18)
-      return {
-        x: -direction * 1.5 * Math.sin((t / 0.18) * Math.PI),
-        y: Math.sin((t / 0.18) * Math.PI),
-      };
-    const attack = motion.action === ActionType.ATK || motion.action === ActionType.BURST_ATK;
-    const release = Math.sin(Math.min(1, (t - 0.18) / 0.82) * Math.PI);
-    const recovery = Math.max(
-      0,
-      1 - (motion.elapsed - motion.flight) / (motion.total - motion.flight),
-    );
-    return {
-      x: attack ? direction * 2.5 * release : 0,
-      y: t < 1 ? -release * 1.5 : -Math.sin(recovery * Math.PI),
-    };
-  }
+  private timers = { P1: 0, P2: 0 };
+  private bubbles: Record<PlayerId, { text: string; timer: number } | null> = {
+    P1: null,
+    P2: null,
+  };
+  private readonly motions: Partial<
+    Record<PlayerId, { action: ActionType; elapsed: number; flight: number; total: number }>
+  > = {};
+  public readonly combatOffsets = { P1: { x: 0, y: 0 }, P2: { x: 0, y: 0 } };
+  public readonly combatScales = { P1: 1, P2: 1 };
+  public readonly combatFlash = { P1: 0, P2: 0 };
+  public readonly combatShake = { x: 0, y: 0 };
 
   public constructor(options: CharacterViewOptions) {
     super();
-    this._width = options.width;
-    this._safeTop = options.safeTop ?? 24;
-    this._compact = options.compact ?? false;
+    this.width = options.width;
+    this.safeTop = options.safeTop ?? 24;
+    this.compact = options.compact ?? false;
   }
-
-  /** Hosts inject the decoded image only after loading has completed. */
+  public get combatLayout(): { gap: number; top: number; height: number; bottom: number } {
+    const p = SWORD_DISPLAY;
+    const height = this.compact ? p.compactAvatarHeight : p.avatarHeight;
+    const top = this.safeTop + p.turnBarHeight + (this.compact ? 2 : p.frameTopGap);
+    return {
+      gap: Math.min(p.standingGap, this.width - 2 * p.sideMargin - p.avatarWidth),
+      top,
+      height,
+      bottom: top + height + p.labelRoom,
+    };
+  }
+  public combatAnchor(player: PlayerId): { x: number; y: number } {
+    const l = this.combatLayout;
+    return {
+      x: this.width / 2 + ((player === 'P1' ? -1 : 1) * l.gap) / 2,
+      y: l.top + l.height / 2,
+    };
+  }
   public setSpriteAtlas(atlas: CharacterSpriteAtlas | null): void {
-    this._spriteAtlas =
+    this.atlas =
       atlas !== null &&
       Number.isFinite(atlas.width) &&
       Number.isFinite(atlas.height) &&
@@ -153,62 +84,22 @@ export class CharacterView extends Container {
         ? atlas
         : null;
   }
-
-  /** 回合数（未投影时为 0）。 */
-  public get round(): number {
-    return this._round;
-  }
-
-  /** 回合上限（未投影时为 0）。 */
-  public get maxRounds(): number {
-    return this._maxRounds;
-  }
-
-  /** 当前行动方（未投影时为 null）。 */
-  public get currentPlayer(): PlayerId | null {
-    return this._currentPlayer;
-  }
-
-  /** 当前是否处于连动额外行动。 */
-  public get isExtraTurn(): boolean {
-    return this._isExtraTurn;
-  }
-
-  /** 指定玩家的比分。 */
   public scoreOf(player: PlayerId): number {
-    return this._scores[player];
+    return this.scores[player];
   }
-
-  /** 当前横幅主文案。 */
-  public get bannerText(): string {
-    return this._bannerText;
-  }
-
-  /** 当前横幅副文案。 */
-  public get bannerSubText(): string {
-    return this._bannerSubText;
-  }
-
-  /** 按只读快照投影回合、比分与当前行动方。 */
   public update(state: GameState, options: CharacterProjectionOptions = {}): void {
-    this._round = state.round;
-    this._maxRounds = state.maxRounds;
-    this._currentPlayer = options.actingPlayer ?? state.currentPlayer;
-    this._isExtraTurn = options.isExtraTurn ?? false;
-    this._scores = { P1: state.players.P1.score, P2: state.players.P2.score };
+    this.round = state.round;
+    this.maxRounds = state.maxRounds;
+    this.currentPlayer = options.actingPlayer ?? state.currentPlayer;
+    this.isExtraTurn = options.isExtraTurn ?? false;
+    this.isGameOver = state.isGameOver;
+    this.scores = { P1: state.players.P1.score, P2: state.players.P2.score };
   }
-
-  /** 视口自适应（安全区与宽度变化时调用）。 */
-  public resize(width: number, safeTop?: number, compact?: boolean): void {
-    this._width = width;
-    this._safeTop = safeTop ?? this._safeTop;
-    this._compact = compact ?? this._compact;
+  public resize(width: number, safeTop = this.safeTop, compact = this.compact): void {
+    this.width = width;
+    this.safeTop = safeTop;
+    this.compact = compact;
   }
-
-  /**
-   * 表情反馈：`holdSeconds` 秒后自动回落待机；`holdSeconds <= 0` 表示**持续**到下一次表情
-   * 覆盖或 `resetFeedback()`（终局胜 / 负用）。重复触发会重新计时。
-   */
   public setExpression(
     player: PlayerId,
     expression: CharacterActionState,
@@ -216,359 +107,171 @@ export class CharacterView extends Container {
     transitionSeconds = 0,
   ): void {
     delete this.motions[player];
-    this.changePose(player, expression, transitionSeconds);
-    this._expressionTimers[player] = expression === 'idle' ? 0 : Math.max(0, holdSeconds);
+    if (transitionSeconds > 0 && this.expressions[player] !== expression)
+      this.transitions[player] = {
+        from: this.expressions[player],
+        elapsed: 0,
+        duration: transitionSeconds,
+      };
+    else if (transitionSeconds === 0) delete this.transitions[player];
+    this.expressions[player] = expression;
+    this.timers[player] = expression === 'idle' ? 0 : Math.max(0, holdSeconds);
   }
-
-  /** 指定玩家当前的表情。 */
   public getExpression(player: PlayerId): CharacterActionState {
-    return this._expressions[player];
+    return this.expressions[player];
   }
-
-  /** 清空双方表情与气泡（重开一局时调用）：终局胜 / 负的持续姿势不跨局残留。 */
+  public playAction(player: PlayerId, action: ActionType, flight: number, impact: number): void {
+    this.setExpression(player, 'cast', 0, Math.min(0.08, flight * 0.18));
+    this.motions[player] = { action, elapsed: 0, flight, total: flight + impact };
+  }
   public resetFeedback(): void {
-    for (const player of PLAYER_IDS) {
-      delete this.motions[player];
-      delete this.transitions[player];
-      this._expressions[player] = 'idle';
-      this._expressionTimers[player] = 0;
-      this._bubbles[player] = null;
+    for (const p of PLAYERS) {
+      this.setExpression(p, 'idle');
+      this.bubbles[p] = null;
+      Object.assign(this.combatOffsets[p], { x: 0, y: 0 });
+      this.combatFlash[p] = 0;
     }
   }
-
-  /** 气泡播报：`holdSeconds` 秒后消散。 */
   public announce(player: PlayerId, text: string, holdSeconds = 1.6): void {
-    this._bubbles[player] = { text, timer: Math.max(0, holdSeconds) };
+    this.bubbles[player] = { text, timer: Math.max(0, holdSeconds) };
   }
-
-  /** 指定玩家当前的气泡文案（无气泡时为 null）。 */
   public getBubble(player: PlayerId): string | null {
-    return this._bubbles[player]?.text ?? null;
+    return this.bubbles[player]?.text ?? null;
   }
-
-  /** 横幅播报：主文案 + 可选副文案，常驻直到下一次播报。 */
   public showBanner(mainText: string, subText = ''): void {
-    this._bannerText = mainText;
-    this._bannerSubText = subText;
+    this.bannerText = mainText;
+    this.bannerSubText = subText;
   }
-
-  /** 由调用方每帧驱动（秒）：推进呼吸动画与表情/气泡的衰减。 */
   public updateTimers(dt: number): void {
-    this._tick += dt;
-    for (const player of PLAYER_IDS) {
-      const transition = this.transitions[player];
+    this.tick += dt;
+    for (const p of PLAYERS) {
+      const transition = this.transitions[p];
       if (transition !== undefined) {
         transition.elapsed += dt;
-        if (transition.elapsed >= transition.duration) delete this.transitions[player];
+        if (transition.elapsed >= transition.duration) delete this.transitions[p];
       }
-      const motion = this.motions[player];
-      if (motion !== undefined) {
-        motion.elapsed += dt;
-        const releaseAt = motion.flight * 0.18;
-        const recoverAt = motion.flight + (motion.total - motion.flight) * 0.75;
-        const recovering = motion.elapsed >= recoverAt;
-        const attack = motion.action === ActionType.ATK || motion.action === ActionType.BURST_ATK;
-        const pose = recovering
-          ? 'idle'
-          : motion.elapsed >= releaseAt && attack
-            ? 'attack'
-            : 'cast';
-        const duration = recovering
-          ? Math.min(0.08, (motion.total - motion.flight) * 0.25)
-          : Math.min(0.08, motion.flight * 0.18);
-        if (this.changePose(player, pose, duration)) {
-          const next = this.transitions[player];
-          if (next !== undefined) {
-            next.elapsed = Math.max(0, motion.elapsed - (recovering ? recoverAt : releaseAt));
-            if (next.elapsed >= next.duration) delete this.transitions[player];
-          }
-        }
-        if (motion.elapsed >= motion.total) delete this.motions[player];
+      const m = this.motions[p];
+      if (m !== undefined) {
+        m.elapsed += dt;
+        this.expressions[p] =
+          m.elapsed >= m.total
+            ? 'idle'
+            : m.elapsed >= m.flight * 0.18 &&
+                p === 'P1' &&
+                (m.action === ActionType.ATK || m.action === ActionType.BURST_ATK)
+              ? 'attack'
+              : 'cast';
+        if (m.elapsed >= m.total) delete this.motions[p];
       }
-      if (this._expressionTimers[player] > 0) {
-        this._expressionTimers[player] -= dt;
-        if (this._expressionTimers[player] <= 0) {
-          this._expressionTimers[player] = 0;
-          this.changePose(player, 'idle', 0.08);
-        }
+      if (this.timers[p] > 0) {
+        this.timers[p] -= dt;
+        if (this.timers[p] <= 0) this.expressions[p] = 'idle';
       }
-      const bubble = this._bubbles[player];
-      if (bubble !== null) {
-        bubble.timer -= dt;
-        if (bubble.timer <= 0) {
-          this._bubbles[player] = null;
-        }
+      const b = this.bubbles[p];
+      if (b !== null) {
+        b.timer -= dt;
+        if (b.timer <= 0) this.bubbles[p] = null;
       }
     }
   }
-
-  /** 先画横幅与头像，再画回合信息条（后者盖在上层）。 */
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
-    this.drawBanner(ctx);
-    for (const player of PLAYER_IDS) {
-      this.drawAvatar(ctx, player);
-    }
-    this.drawTurnStrip(ctx);
-  }
-
-  private drawTurnStrip(ctx: CanvasRenderingContext2D): void {
+    const l = this.combatLayout;
     ctx.save();
-    ctx.fillStyle = MUTED_COLOR;
+    ctx.translate(this.combatShake.x, this.combatShake.y);
+    ctx.strokeStyle = THEME.edge;
+    ctx.beginPath();
+    ctx.moveTo(SWORD_DISPLAY.sideMargin, l.top + l.height - 8);
+    ctx.lineTo(this.width - SWORD_DISPLAY.sideMargin, l.top + l.height - 8);
+    ctx.stroke();
+    for (const p of PLAYERS) this.drawActor(ctx, p);
+    ctx.restore();
+    ctx.save();
+    ctx.fillStyle = THEME.muted;
     ctx.font = `bold 12px ${THEME.font}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(
-      `回合 ${this._round}/${this._maxRounds} · ${this._currentPlayer === 'P1' ? '你行动' : this._currentPlayer === 'P2' ? '天道行动' : '等待开局'}`,
-      this._width / 2,
-      this._safeTop + TOP_BAR_HEIGHT / 2,
+      `回合 ${this.round}/${this.maxRounds} · ${
+        this.isGameOver
+          ? '本局结束'
+          : this.currentPlayer === 'P1'
+            ? '你行动'
+            : this.currentPlayer === 'P2'
+              ? '天道行动'
+              : '等待开局'
+      }${!this.isGameOver && this.isExtraTurn ? ' · 连动' : ''}`,
+      this.width / 2,
+      this.safeTop + 13,
     );
-    if (this._isExtraTurn) {
-      ctx.fillStyle = EXTRA_TURN_COLOR;
-      ctx.font = `bold 11px ${THEME.font}`;
-      ctx.textAlign = 'right';
-      ctx.fillText('连动', this._width - SIDE_MARGIN, this._safeTop + TOP_BAR_HEIGHT / 2);
-    }
     ctx.restore();
   }
-
-  private drawAvatar(ctx: CanvasRenderingContext2D, player: PlayerId): void {
-    const avatarHeight = this._compact ? 80 : AVATAR_HEIGHT;
-    const isPlayer = player === 'P1';
-    const frameX = isPlayer ? SIDE_MARGIN : this._width - SIDE_MARGIN - AVATAR_WIDTH;
-    const frameY = this._safeTop + TOP_BAR_HEIGHT + 4;
-    const isCurrent = this._currentPlayer === player;
-    const expression = this._expressions[player];
-    const border =
-      EXPRESSION_COLOR[expression] ?? (isCurrent ? ACTIVE_COLOR : isPlayer ? P1_COLOR : P2_COLOR);
-
+  private drawActor(ctx: CanvasRenderingContext2D, p: PlayerId): void {
+    const a = this.combatAnchor(p),
+      l = this.combatLayout;
     ctx.save();
-    drawPanel(ctx, frameX, frameY, AVATAR_WIDTH, avatarHeight, border, PANEL_COLOR);
-    // Painted moon niche and plinth integrate the chibi into the same jade world.
-    const aura = ctx.createRadialGradient(
-      frameX + AVATAR_WIDTH / 2,
-      frameY + 42,
-      2,
-      frameX + AVATAR_WIDTH / 2,
-      frameY + 42,
-      41,
-    );
-    aura.addColorStop(0, isPlayer ? 'rgba(128,214,186,0.18)' : 'rgba(134,184,203,0.18)');
-    aura.addColorStop(1, 'transparent');
-    ctx.fillStyle = aura;
-    ctx.beginPath();
-    ctx.arc(frameX + AVATAR_WIDTH / 2, frameY + 44, 39, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(216,184,118,0.20)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(frameX + AVATAR_WIDTH / 2, frameY + 41, 29, Math.PI, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = THEME.deep;
-    ctx.fillRect(frameX + 9, frameY + avatarHeight - 9, AVATAR_WIDTH - 18, 4);
-    const drawPose = (pose: CharacterActionState, alpha: number): void => {
-      if (alpha <= 0) return;
-      ctx.save();
-      ctx.globalAlpha *= alpha;
-      if (this._spriteAtlas !== null) {
-        drawCharacterSprite(
-          ctx,
-          this._spriteAtlas,
-          player,
-          pose,
-          this._tick * 60,
-          frameX,
-          frameY,
-          AVATAR_WIDTH,
-          avatarHeight,
-          this.motionOffset(player),
-        );
-      } else {
-        const spriteTop = CHARACTER_SPRITE_BOUNDS.top * CHARACTER_PIXEL_SIZE;
-        const spriteHeight =
-          (CHARACTER_SPRITE_BOUNDS.bottom - CHARACTER_SPRITE_BOUNDS.top) * CHARACTER_PIXEL_SIZE;
-        ctx.translate(
-          frameX + AVATAR_WIDTH / 2,
-          frameY + (avatarHeight - spriteHeight) / 2 - spriteTop,
-        );
-        const motion = this.motionOffset(player);
-        if (motion !== undefined) ctx.translate(motion.x, motion.y);
-        drawPixelCharacter(ctx, 0, 0, isPlayer, pose, this._tick * 60);
+    ctx.translate(this.combatOffsets[p].x, this.combatOffsets[p].y);
+    if (this.atlas !== null) {
+      // Prototype P2 flip: mirror only sprite pixels around this actor's own center.
+      if (p === 'P2') {
+        ctx.translate(a.x * 2, 0);
+        ctx.scale(-1, 1);
       }
-      ctx.restore();
-    };
-    const transition = this.transitions[player];
-    if (transition === undefined) drawPose(expression, 1);
-    else {
-      const t = Math.min(1, transition.elapsed / transition.duration);
-      const weight = t * t * (3 - 2 * t);
-      drawPose(transition.from, 1 - weight);
-      drawPose(expression, weight);
-    }
-
-    // 名牌：贴着头像框下沿向屏幕内侧排（越靠屏幕外缘越靠近法盘）。
-    const labelX = isPlayer ? frameX : frameX + AVATAR_WIDTH;
-    ctx.textAlign = isPlayer ? 'left' : 'right';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = PLAYER_COLOR[player];
-    ctx.font = `bold 11px ${THEME.font}`;
-    ctx.fillText(PLAYER_LABEL[player], labelX, frameY + avatarHeight + 12);
-    ctx.fillStyle = TEXT_COLOR;
-    ctx.font = `bold 12px ${THEME.font}`;
-    ctx.fillText(`得分 ${this._scores[player]}`, labelX, frameY + avatarHeight + 26);
-
-    if (isCurrent) {
-      ctx.fillStyle = this._isExtraTurn ? EXTRA_TURN_COLOR : ACTIVE_COLOR;
-      ctx.font = `bold 9px ${THEME.font}`;
-      ctx.fillText(this._isExtraTurn ? '连动行动中' : '行动中', labelX, frameY + avatarHeight + 40);
-    }
-
-    const bubble = this._bubbles[player];
-    if (bubble !== null) {
-      this.drawBubble(ctx, player, frameX, frameY, bubble.text);
-    }
-    ctx.restore();
-  }
-
-  /** 气泡：挂在头像上方，宽度夹在头像列与居中回合条之间，文本超宽时截断。 */
-  private drawBubble(
-    ctx: CanvasRenderingContext2D,
-    player: PlayerId,
-    frameX: number,
-    frameY: number,
-    text: string,
-  ): void {
-    const isPlayer = player === 'P1';
-    const maxWidth = this._width / 2 - SIDE_MARGIN - AVATAR_WIDTH - 12;
-    const fontSize = 10;
-    const label = truncateToWidth(text, maxWidth - 12, fontSize);
-    const width = estimateTextWidth(label, fontSize) + 12;
-    const height = 20;
-    const x = isPlayer
-      ? Math.min(frameX, Math.max(SIDE_MARGIN, frameX + AVATAR_WIDTH - width))
-      : Math.max(frameX + AVATAR_WIDTH - width, this._width - SIDE_MARGIN - width);
-    const y = frameY - height - 4;
-
-    drawPanel(ctx, x, y, width, height, EXTRA_TURN_COLOR);
-    drawPixelRect(ctx, x, y, width, 2, EXTRA_TURN_COLOR);
-    ctx.fillStyle = TEXT_COLOR;
-    ctx.font = `${fontSize}px ${THEME.font}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label, x + width / 2, y + height / 2 + 1);
-  }
-
-  /** 横幅：主文案（12px，最多两行）+ 副文案（9px，最多两行）。 */
-  private drawBanner(ctx: CanvasRenderingContext2D): void {
-    if (this._bannerText === '' && this._bannerSubText === '') {
-      return;
-    }
-    // 横幅夹在两侧头像列之间（左右各让出头像列 + 间距），长文案折行而不越界。
-    const x = SIDE_MARGIN + AVATAR_WIDTH + BANNER_GAP;
-    const width = Math.max(80, this._width - 2 * x);
-    const y = this._safeTop + TOP_BAR_HEIGHT + 4;
-
-    ctx.save();
-    drawPanel(ctx, x, y, width, this._compact ? 64 : BANNER_HEIGHT, PANEL_BORDER);
-
-    const textWidth = width - 16;
-    const mainLines = wrapText(this._bannerText, textWidth, 13, this._compact ? 1 : 2);
-    const subLines = wrapText(this._bannerSubText, textWidth, 11, this._compact ? 2 : 4);
-    const mainLineHeight = 16;
-    const subLineHeight = 14;
-    const blockHeight = mainLines.length * mainLineHeight + subLines.length * subLineHeight;
-    let cursor = y + ((this._compact ? 64 : BANNER_HEIGHT) - blockHeight) / 2 + mainLineHeight / 2;
-
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = TEXT_COLOR;
-    ctx.font = `bold 13px ${THEME.font}`;
-    for (const line of mainLines) {
-      ctx.fillText(line, x + width / 2, cursor);
-      cursor += mainLineHeight;
-    }
-    ctx.fillStyle = MUTED_COLOR;
-    ctx.font = `11px ${THEME.font}`;
-    for (const line of subLines) {
-      ctx.fillText(line, x + width / 2, cursor);
-      cursor += subLineHeight;
-    }
-    ctx.restore();
-  }
-}
-
-const PLAYER_IDS: readonly PlayerId[] = ['P1', 'P2'];
-
-/**
- * 按可用宽度折行：最多 `maxLines` 行；放不下的部分在末行以省略号收尾。
- * 折行以「可读单元」为单位：`【…】` 整组不可拆（否则会出现「天干【庚」/「】降临」这种断在括号里的难看折行）。
- */
-function wrapText(text: string, maxWidth: number, fontSize: number, maxLines: number): string[] {
-  if (text === '') {
-    return [];
-  }
-  const lines: string[] = [];
-  let current = '';
-  for (const unit of textUnits(text)) {
-    if (unit === '\n') {
-      lines.push(current);
-      current = '';
-      if (lines.length === maxLines) break;
-      continue;
-    }
-    const next = current + unit;
-    if (current !== '' && estimateTextWidth(next, fontSize) > maxWidth) {
-      lines.push(current);
-      current = unit;
-      if (lines.length === maxLines) {
-        break;
+      const drawPose = (pose: CharacterActionState): void => {
+        const draw = (): void =>
+          drawCharacterSprite(
+            ctx,
+            this.atlas!,
+            p,
+            pose,
+            this.tick * 60,
+            a.x - 44,
+            l.top,
+            88,
+            l.height,
+            { x: 0, y: 0 },
+          );
+        draw();
+        if (this.combatFlash[p] > 0) {
+          ctx.save();
+          // Basic Canvas additive blending works on WeChat without filter or a rebuilt atlas.
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha *= Math.min(1, this.combatFlash[p]);
+          draw();
+          draw();
+          ctx.restore();
+        }
+      };
+      const transition = this.transitions[p];
+      if (transition !== undefined) {
+        const t = transition.elapsed / transition.duration;
+        const weight = t * t * (3 - 2 * t);
+        ctx.save();
+        ctx.globalAlpha *= 1 - weight;
+        drawPose(transition.from);
+        ctx.restore();
+        ctx.globalAlpha *= weight;
       }
+      drawPose(this.expressions[p]);
     } else {
-      current = next;
+      const top = CHARACTER_SPRITE_BOUNDS.top * CHARACTER_PIXEL_SIZE;
+      const height =
+        (CHARACTER_SPRITE_BOUNDS.bottom - CHARACTER_SPRITE_BOUNDS.top) * CHARACTER_PIXEL_SIZE;
+      ctx.translate(a.x, l.top + (l.height - height) / 2 - top);
+      drawPixelCharacter(ctx, 0, 0, p === 'P1', this.expressions[p], this.tick * 60);
     }
+    ctx.restore();
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = p === 'P1' ? THEME.jade : THEME.rival;
+    ctx.font = `bold 11px ${THEME.font}`;
+    ctx.fillText(p === 'P1' ? '你 · 弈者' : '天道', a.x, l.top + l.height + 8);
+    ctx.fillStyle = THEME.ivory;
+    ctx.fillText(
+      `得分 ${this.scores[p]}${!this.isGameOver && this.currentPlayer === p ? ' · 行动中' : ''}`,
+      a.x,
+      l.top + l.height + 24,
+    );
+    ctx.restore();
   }
-  if (lines.length < maxLines && current !== '') {
-    lines.push(current);
-  }
-  if ([...lines.join('')].length < [...text.replace(/\n/g, '')].length) {
-    const last = lines[lines.length - 1] ?? '';
-    lines[lines.length - 1] = `${truncateToWidth(last, maxWidth, fontSize)}…`;
-  }
-  return lines;
-}
-
-/** 把文案切成折行的最小单位：`【…】` 整组一个单位，其余逐字。 */
-function textUnits(text: string): string[] {
-  const units: string[] = [];
-  let bracket = '';
-  for (const char of text) {
-    if (bracket !== '') {
-      bracket += char;
-      if (char === '】') {
-        units.push(bracket);
-        bracket = '';
-      }
-      continue;
-    }
-    if (char === '【') {
-      bracket = char;
-      continue;
-    }
-    units.push(char);
-  }
-  if (bracket !== '') {
-    units.push(bracket);
-  }
-  return units;
-}
-
-/** 截断到可用宽度（超出部分用省略号）。 */
-function truncateToWidth(text: string, maxWidth: number, fontSize: number): string {
-  if (estimateTextWidth(text, fontSize) <= maxWidth) {
-    return text;
-  }
-  const chars = [...text];
-  while (chars.length > 1 && estimateTextWidth(`${chars.join('')}…`, fontSize) > maxWidth) {
-    chars.pop();
-  }
-  return `${chars.join('')}…`;
 }

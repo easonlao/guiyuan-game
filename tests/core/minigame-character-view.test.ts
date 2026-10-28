@@ -145,6 +145,18 @@ describe('drawPixelCharacter：卡通修士造型', () => {
 });
 
 describe('CharacterView：双方角色卡投影', () => {
+  it('P2 图集及过渡绕自身中心镜像，姓名坐标保持原位', () => {
+    const view = makeView();
+    view.setSpriteAtlas({ image: {} as CanvasImageSource, width: 1254, height: 1254 });
+    view.setExpression('P2', 'cast', 1, 0.2);
+    view.updateTimers(0.1);
+    const ctx = new RecordingContext();
+    view.render(ctx.asContext());
+    expect(ctx.scales).toContainEqual({ x: -1, y: 1 });
+    expect(ctx.translations).toContainEqual({ x: view.combatAnchor('P2').x * 2, y: 0 });
+    expect(ctx.images).toHaveLength(3);
+    expect(ctx.texts.find(({ text }) => text === '天道')?.x).toBe(view.combatAnchor('P2').x);
+  });
   it('从只读快照投影回合、比分与当前行动方', () => {
     const view = makeView();
     expect(view.round).toBe(0);
@@ -265,18 +277,9 @@ describe('CharacterView：双方角色卡投影', () => {
     const ctx = new RecordingContext();
     view.render(ctx.asContext());
 
-    // 横幅底板不靠实现常量识别：它是画面里最宽的一块底板（两侧头像列给它让位）。
-    const banner = ctx.rects.reduce((widest, rect) => (rect.w > widest.w ? rect : widest));
-    const bannerTexts = ctx.texts.filter(
-      (line) => line.y >= banner.y && line.y <= banner.y + banner.h,
-    );
-    expect(bannerTexts.length).toBeGreaterThan(0);
-    for (const line of bannerTexts) {
-      // 全角等宽字的上界：每字不超过 1.25 倍字号。
-      const upperBound = [...line.text].length * line.fontSize * 1.25;
-      expect(line.x - upperBound / 2).toBeGreaterThanOrEqual(banner.x);
-      expect(line.x + upperBound / 2).toBeLessThanOrEqual(banner.x + banner.w);
-    }
+    expect(ctx.texts.some(({ text }) => text.includes('天命'))).toBe(false);
+    expect(ctx.strokedRects).toEqual([]);
+    expect(view.bannerText).toBe('【终轮绝杀·天命抽牌】');
   });
 
   it('视图按原尺寸落笔角色：头像里的路径与直接渲染该姿势一致', () => {
@@ -318,8 +321,8 @@ describe('CharacterView：双方角色卡投影', () => {
       const ctx = new RecordingContext();
       view.render(ctx.asContext());
       const borders = frameBorders(ctx);
-      expect(borders.length, `${pose} 的头像框描边`).toBeGreaterThan(0);
-      colors.set(pose, borders[0]);
+      expect(borders, `${pose} 不再绘制头像框`).toEqual([]);
+      colors.set(pose, JSON.stringify(ctx.paths));
     }
 
     // 配色取值不抄实现：只要两两不同，就算真的给每个姿势各自配了色。
@@ -336,20 +339,13 @@ describe('CharacterView：双方角色卡投影', () => {
 
     // 头像框底板不靠实现常量识别：画面里仅有的两块高 ≥ 100px 的大底板。
     const frames = ctx.rects.filter((rect) => rect.w >= 60 && rect.h >= 100);
-    expect(frames.length).toBe(2);
-    const [left, right] = [...frames].sort((a, b) => a.x - b.x);
-    expect(left.x).toBeGreaterThanOrEqual(0);
-    expect(right.x + right.w).toBeLessThanOrEqual(375);
-    // 两列左右对称，中间留给横幅。
-    expect(left.x).toBeCloseTo(375 - (right.x + right.w), 5);
-    expect(right.x - (left.x + left.w)).toBeGreaterThan(0);
-
-    // 框高落在 100–120px，且装得下放大后的角色（含跳跃浮动）。
-    expect(left.h).toBeGreaterThanOrEqual(100);
-    expect(left.h).toBeLessThanOrEqual(120);
-    const sprite = boundsOf(renderPose('celebrate'));
-    expect(left.h).toBeGreaterThanOrEqual(sprite.height);
-    expect(left.w).toBeGreaterThanOrEqual(sprite.width);
+    expect(frames).toEqual([]);
+    const left = view.combatAnchor('P1'),
+      right = view.combatAnchor('P2');
+    expect(left.y).toBe(right.y);
+    expect(right.x - left.x).toBe(190);
+    expect(left.x).toBe(375 - right.x);
+    expect(view.combatLayout.height).toBe(112);
   });
 
   it('视口变化后重新投影不抛错', () => {
@@ -374,11 +370,8 @@ describe('CharacterView: compact native result banner', () => {
     view.render(ctx.asContext());
     const lines = ctx.texts.filter(({ x }) => x === 160);
     const bannerLines = lines.filter(({ text }) => text !== '归元弈' && !text.startsWith('回合'));
-    expect(bannerLines.length).toBeGreaterThan(0);
-    expect(bannerLines.length).toBeLessThanOrEqual(3);
-    for (const line of bannerLines) {
-      expect(line.y - line.fontSize / 2).toBeGreaterThanOrEqual(118);
-      expect(line.y + line.fontSize / 2).toBeLessThanOrEqual(182);
-    }
+    expect(bannerLines).toEqual([]);
+    expect(view.bannerText).toBe(title);
+    expect(view.bannerSubText).toBe(detail);
   });
 });

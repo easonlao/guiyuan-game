@@ -50,10 +50,10 @@ const OUTER_RADIUS_RATIO = 0.4;
 const SEAL_SIZE_RATIO = 0.062;
 /**
  * 主印半径的可读性下限（像素）：可用高度宽裕时不再往小缩——再小鱼身上的等级就读不出来了。
- * `MIN_SEAL_COMPACT` 是内容区极矮（只剩一条缝）时的下限。
+ * `MIN_SEAL_COMPACT` 在紧凑内容区优先保住 12px 半径，靠压缩盘外空隙让位。
  */
 const MIN_SEAL_READABLE = 18;
-const MIN_SEAL_COMPACT = 4;
+const MIN_SEAL_COMPACT = 20;
 /** 避让把主印挤小了也不能低于可读性下限的这个比例：再小就不成其为法盘了，宁可让外溢稍稍越界。 */
 const SEAL_READABILITY_FLOOR = 0.6;
 
@@ -424,9 +424,9 @@ export class BoardView extends Container {
    */
   public resize(width: number, height: number, bounds?: { top: number; bottom: number }): void {
     const span = Math.min(width, height);
-    const available = bounds === undefined ? height : Math.max(100, bounds.bottom - bounds.top);
+    const available = bounds === undefined ? height : Math.max(1, bounds.bottom - bounds.top);
     const top = bounds?.top ?? 0;
-    const minInner = available < 244 ? Math.min(40, Math.max(30, (available - 80) / 3.3)) : 40;
+    const minInner = 40;
     const floor = available < 244 ? MIN_SEAL_COMPACT : MIN_SEAL_READABLE;
     // 主印半径下限只管「再小就读不出来」：装不下时允许走到这个下限之下，
     // 上面的二分自然会把主印缩到刚好放得下（下限高于它时就宁可让外溢稍稍越界）。
@@ -450,7 +450,7 @@ export class BoardView extends Container {
         seal,
         inner,
         outer,
-        height: topEdge + bottomEdge + BOARD_EDGE_PADDING * 2,
+        height: topEdge + bottomEdge + (available < 244 ? 4 : BOARD_EDGE_PADDING) * 2,
       };
     };
     let low = 0;
@@ -461,14 +461,17 @@ export class BoardView extends Container {
       else high = mid;
     }
     const fitted = dimensions(low);
+    // Shared combat area can leave less room than the readable geometry floor.
+    // Fit that floor uniformly rather than allowing the legend to cover result controls.
+    const fit = Math.min(1, available / fitted.height);
     this._layout = {
       ...this._layout,
       centerX: width / 2,
       // 盘心落在可用区域里：装得下就居中（bounds === undefined 时严格为视口中点）。
-      centerY: bounds === undefined ? height / 2 : top + Math.max(fitted.height, available) / 2,
-      innerRadius: fitted.inner,
-      outerRadius: fitted.outer,
-      sealSize: fitted.seal,
+      centerY: bounds === undefined ? height / 2 : top + available / 2,
+      innerRadius: fitted.inner * fit,
+      outerRadius: fitted.outer * fit,
+      sealSize: fitted.seal * fit,
     };
     this._rebuild();
   }

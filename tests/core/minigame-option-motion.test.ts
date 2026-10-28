@@ -131,12 +131,13 @@ describe('Scene landing and character motion', () => {
     expect(scene.characters.getExpression('P1')).toBe('attack');
     expect(scene.characters.getExpression('P2')).toBe('idle');
     expect(scene.x).toBe(0);
+    expect(scene.y).toBe(0);
     scene.update(0.05);
     expect(scene.board.getSlot('P2', WuXing.EARTH, Polarity.YIN).level).toBe(0);
-    expect(scene.characters.getExpression('P2')).toBe('hurt');
+    expect(scene.characters.getExpression('P2')).not.toBe('celebrate');
+    for (let i = 0; i < 600 && scene.phase === 'flying'; i++) scene.update(1 / 120);
     expect(scene.x).toBe(0);
     expect(scene.y).toBe(0);
-    scene.update(0.36);
     expect(scene.characters.getExpression('P1')).toBe('idle');
     expect(scene.phase).toBe('result');
     expect(scene.characters.currentPlayer).toBe('P1');

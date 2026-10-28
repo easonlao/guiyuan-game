@@ -1,0 +1,128 @@
+import type { TimelineTuning } from '../engine/timeline.js';
+import type { SwordRecipe } from '../primitives/sword.js';
+
+/** 原型 prototype-action-vfx.html:103-117、169-176 的剑术节奏与运动参数。 */
+export const SWORD_TUNING: TimelineTuning = {
+  springK: 55,
+  dampingBase: 0.02,
+  shakeDecayBase: 0.0005,
+  freezeJoltPx: 3,
+  freezeJoltPeriod: 0.02,
+  settleTime: 0.6,
+  minVelocity: 1,
+  settleDistance: 0.5,
+};
+export const SWORD_LIMITS = { maxStop: 0.3, rampLength: 4 };
+export const COMBAT_PLAYBACK = { flashDecay: 6, burstLife: 0.35, impactAge: 0.025 };
+export const SWORD_DISPLAY = {
+  standingGap: 190,
+  sideMargin: 24,
+  avatarWidth: 88,
+  avatarHeight: 112,
+  compactAvatarHeight: 48,
+  turnBarHeight: 26,
+  frameTopGap: 16,
+  labelRoom: 34,
+  contactInset: 20,
+  movePeak: 220,
+  hop: 9,
+  knockScale: 1,
+  fxScale: 0.24,
+  shakeFrequency: 55,
+  shakeYFrequency: 1.3,
+  shakeYScale: 0.6,
+  bladeOffsetX: 0,
+  bladeOffsetY: -14,
+  impactOffsetX: -10,
+  impactOffsetY: -6,
+};
+
+const NORMAL = {
+  bladeLife: 0.22,
+  starLife: 0.18,
+  debrisLife: 0.35,
+  duration: 0.045,
+  hold: 0.04,
+  fade: 0.13,
+  radius: 140,
+  width: 44,
+  starDuration: 0.03,
+  starHold: 0.03,
+  starFade: 0.12,
+  starRadius: 46,
+  rays: 8,
+  count: 10,
+  spread: Math.PI / 3,
+  speedMin: 260,
+  speedMax: 620,
+  particleLifeMin: 0.16,
+  particleLifeMax: 0.3,
+  gravity: 900,
+  trail: 0.03,
+  // 先建立可见命中形态，再由冻结时钟保持；单位为表现秒。
+  impactAge: 0.025,
+  startDegrees: -70,
+  sweepDegrees: 140,
+  gap: 6,
+  lineWidth: 5,
+  aspectRatio: 0.9,
+  echoDelay: 1 / 60,
+  echoRadiusScale: 0.84,
+  echoWidthScale: 0.55,
+  speedLineCount: 5,
+  speedLineDrift: 30,
+  speedLineLength: 26,
+  speedLineWidth: 2,
+  starWidthRatio: 0.22,
+  starRotationDegrees: 15,
+  starShortRayScale: 0.5,
+  starLongWidthScale: 0.6,
+  starShortWidthScale: 0.4,
+  starCoreScale: 0.9,
+  starRingScale: 0.7,
+  starRingWidth: 2,
+  debrisWidth: 2,
+};
+const HEAVY = {
+  ...NORMAL,
+  bladeLife: 0.29,
+  starLife: 0.31,
+  fade: 0.2,
+  radius: 165,
+  width: 56,
+  starHold: 0.08,
+  starFade: 0.2,
+  starRadius: 64,
+  rays: 12,
+  count: 28,
+  spread: Math.PI / 3,
+  speedMin: 300,
+  speedMax: 900,
+};
+/** 暂用原型火行的整套剑术参数；完整五行形态由票 04 提供。 */
+export const SWORD_SINGLE: SwordRecipe = {
+  name: '劈砍·一段',
+  material: {
+    ramp: ['#fff0dd', '#ff9c66', '#e2412f', '#6e1222'],
+    widthMultiplier: 1,
+    debrisMultiplier: 1.3,
+  },
+  normal: NORMAL,
+  heavy: HEAVY,
+  events: [
+    { t: 0, do: 'move', dx: 220, duration: 0.14, ease: 'out' },
+    { t: 0.14, do: 'slash', stop: 0.09, push: 240, shake: 7, angle: -0.3 },
+    { t: 0.5, do: 'move', dx: -220, duration: 0.26, ease: 'inout' },
+  ],
+};
+export const SWORD_TRIPLE: SwordRecipe = {
+  ...SWORD_SINGLE,
+  name: '劈砍·三段',
+  events: [
+    { t: 0, do: 'move', dx: 220, duration: 0.14, ease: 'out' },
+    { t: 0.14, do: 'slash', stop: 0.06, push: 120, shake: 4, angle: -0.5 },
+    { t: 0.44, do: 'slash', stop: 0.06, push: 120, shake: 4, angle: 0.5 },
+    { t: 0.74, do: 'slash', stop: 0.13, push: 340, shake: 11, angle: -0.1, heavy: true },
+    { t: 1.15, do: 'move', dx: -220, duration: 0.28, ease: 'inout' },
+  ],
+};

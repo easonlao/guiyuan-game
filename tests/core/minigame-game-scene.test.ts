@@ -455,8 +455,8 @@ describe('GameScene：回合生命周期与交互契约', () => {
     expect(scene.board.getSlot('P2', WuXing.EARTH, Polarity.YIN).level).toBe(0);
     expect(scene.board.getSlot('P1', WuXing.WOOD, Polarity.YIN).level).toBe(1);
 
-    advance(scene, 0.35);
-    // 落点后投影结算结果：P2 土阴侧 0 -> -1，且行动权已交给天道。
+    advanceUntil(scene, () => scene.characters.currentPlayer === 'P2');
+    // 剑术回位与结果停留结束后交接：P2 土阴侧 0 -> -1。
     expect(scene.board.getSlot('P2', WuXing.EARTH, Polarity.YIN).level).toBe(-1);
     expect(scene.characters.currentPlayer).toBe('P2');
   });
@@ -484,8 +484,8 @@ describe('GameScene：回合生命周期与交互契约', () => {
     expect(scene.turnManager.isExtraTurnActive()).toBe(true);
     expect(scene.characters.isExtraTurn).toBe(true);
 
-    // 跑完飞行与连动回合的降临。
-    advance(scene, 0.35);
+    // 等待三段剑术收步、结果停留与连动回合的降临。
+    advanceUntil(scene, () => scene.phase === 'auto-pending');
     expect(scene.turnManager.isExtraTurnActive()).toBe(true);
     expect(scene.characters.currentPlayer).toBe('P1');
     expect(scene.characters.bannerText).toBe('你的连动回合');
@@ -1444,13 +1444,77 @@ describe('GameScene：归一庆祝由 node:stateChanged 触发', () => {
     expect(scene.turnManager.getState().players.P2.board[WuXing.EARTH].yin).toBe(0);
     // 落点前不受击，抵达后只播受击、不播庆祝。
     expect(scene.characters.getExpression('P2')).toBe('idle');
-    advanceUntil(scene, () => scene.runeFlight.phase === 'impact');
+    advanceUntil(scene, () => scene.characters.combatFlash.P2 > 0);
     expect(scene.characters.getExpression('P2')).toBe('hurt');
     expect(scene.characters.getExpression('P2')).not.toBe('celebrate');
   });
 });
 
 describe('GameScene：视口自适应', () => {
+  it.each([
+    [460, 588],
+    [280, 480],
+    [375, 667],
+  ])('%ix%i 真实三候选双行按钮不遮挡图例，结果阶段保持可读', (width, height) => {
+    const scene = new GameScene({
+      ...FAST_TIMING,
+      width,
+      height,
+      safeBottom: 20,
+      initialState: gameStateWith({ P1: { [WuXing.WOOD]: { yin: 1, yang: 1 } } }),
+      prng: scriptedPrng([0]),
+    });
+    scene.start();
+    advanceUntil(scene, () => scene.phase === 'awaiting-player');
+    expect(scene.phase).toBe('awaiting-player');
+    expect(scene.actionBar.visible).toBe(true);
+    expect(scene.actionBar.getButtons().map(({ label }) => label)).toEqual([
+      '【破】',
+      '【强化】',
+      '【强破】',
+    ]);
+    const ctx = new RecordingContext();
+    scene.render(ctx.asContext());
+    const legend = ctx.texts.filter(({ text }) => ['道损', '虚空', '点亮', '加持'].includes(text));
+    expect(legend).toHaveLength(4);
+    for (const text of legend)
+      expect(text.y + text.fontSize / 2 + 4).toBeLessThanOrEqual(scene.actionBar.y);
+    expect(scene.board.layout.sealSize).toBeGreaterThanOrEqual(12);
+    expect(scene.actionBar.y + scene.actionBar.contentHeight + 4).toBeLessThanOrEqual(
+      scene.lastAction.y,
+    );
+    tapButton(new InputManager(scene), scene.actionBar.getButtons()[1]);
+    advanceUntil(scene, () => scene.phase === 'result');
+    expect(scene.phase).toBe('result');
+    expect(scene.actionBar.visible).toBe(false);
+    expect(scene.lastAction.visible).toBe(true);
+    scene.dispose();
+  });
+
+  it.each(['P1', 'P2', 'DRAW'] as const)(
+    '终局 %s 实际绘制胜负、原因、重开提示并更新回合条',
+    (winner) => {
+      const scene = new GameScene({
+        ...FAST_TIMING,
+        initialState: gameStateWith({ isGameOver: true, winner, endReason: 'MAX_ROUNDS' }),
+      });
+      scene.start();
+      const ctx = new RecordingContext();
+      scene.render(ctx.asContext());
+      const texts = ctx.texts.map(({ text }) => text);
+      expect(texts).toContain(winner === 'P1' ? '你获胜' : winner === 'P2' ? '天道获胜' : '平局');
+      expect(texts).toContain('终局回合结算');
+      expect(texts).toContain('点击空白处重新开局');
+      expect(texts.some((text) => text.includes('对局结束'))).toBe(true);
+      expect(
+        texts.some(
+          (text) => text.includes('你行动') || text.includes('天道行动') || text.includes('行动中'),
+        ),
+      ).toBe(false);
+      scene.dispose();
+    },
+  );
+
   it('抉择中缩窄屏幕后按钮仍在安全边界内且右列可触摸出手', () => {
     const scene = new GameScene({
       ...FAST_TIMING,

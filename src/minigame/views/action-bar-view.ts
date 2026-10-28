@@ -35,6 +35,8 @@ export interface ActionBarViewOptions {
   readonly gapY?: number;
   /** 是否允许玩家操作（如非玩家回合置 false）；默认 true。 */
   readonly interactive?: boolean;
+  /** 紧凑模式：按钮只留主标签（省掉副文案行），矮屏两行按钮少占 28px。 */
+  readonly compact?: boolean;
 }
 
 export class ActionBarView extends Container {
@@ -51,12 +53,17 @@ export class ActionBarView extends Container {
   private readonly maxColumns: number;
   private readonly gapX: number;
   private readonly gapY: number;
+  /** 紧凑模式：按钮只留主标签（省掉副文案行），矮屏两行按钮少占 28px。 */
+  private _compact: boolean;
   /** 按动作键复用按钮，避免每次重排都重建节点（保住按压反馈与节点身份）。 */
   private readonly buttonsByKey = new Map<string, Button>();
   /** 当前排版顺序的按钮（与 `getAvailableActions()` 顺序一致）。 */
   private readonly buttons: Button[] = [];
   /** 最近一次排版的实测内容高度（按钮总高 + 行间距）；无按钮时为 0。 */
   private _contentHeight = 0;
+  /** 满额两行网格的预留高度（紧凑 / 完整两套按钮实测，供棋盘预算共用同一几何）。 */
+  private readonly reservedCompactHeight: number;
+  private readonly reservedFullHeight: number;
   private readonly unsubscribes: (() => void)[] = [];
 
   public constructor(options: ActionBarViewOptions) {
@@ -68,6 +75,9 @@ export class ActionBarView extends Container {
     this.gapY = options.gapY ?? DEFAULT_GAP_Y;
     this.interactive = options.interactive ?? true;
     this.y = options.y ?? 0;
+    this._compact = options.compact ?? false;
+    this.reservedCompactHeight = new Button({ label: '' }).height * 2 + this.gapY;
+    this.reservedFullHeight = new Button({ label: '', subLabel: ' ' }).height * 2 + this.gapY;
     // 订阅核心事件：回合一旦结算，按钮立刻置灰，不会留下能点的陈旧按钮。
     this.unsubscribes.push(
       this.turnManager.getEventBus().on('action:executed', () => this.refresh()),
@@ -84,9 +94,27 @@ export class ActionBarView extends Container {
     return this._contentHeight;
   }
 
+  /** 满额两行网格的预留高度：与渲染按钮同一套实测尺寸，紧凑与否各一套。 */
+  public get reservedHeight(): number {
+    return this._compact ? this.reservedCompactHeight : this.reservedFullHeight;
+  }
+
   /** Reflow existing buttons and their hit regions when the viewport changes. */
-  public resize(width: number): void {
+  public resize(width: number, compact = this._compact): void {
+    const compactChanged = compact !== this._compact;
     this.availableWidth = width;
+    this._compact = compact;
+    if (compactChanged) {
+      // 按钮高度随模式变（副文案行有无）：丢掉缓存按钮，下一次投影按新模式重建。
+      for (const button of this.buttonsByKey.values()) {
+        this.removeChild(button);
+      }
+      this.buttonsByKey.clear();
+      this.buttons.length = 0;
+      this._contentHeight = 0;
+      this.refresh();
+      return;
+    }
     this.layout();
   }
 
@@ -134,7 +162,8 @@ export class ActionBarView extends Container {
     const formatted = formatActionButton(action);
     return new Button({
       label: formatted.label,
-      subLabel: formatted.subLabel,
+      // 紧凑模式省掉副文案行：按钮矮 14px，两行满额从 110px 收到 82px。
+      subLabel: this._compact ? '' : formatted.subLabel,
       color: formatted.color,
       onPress: () => this.onPreview?.(action),
       onRelease: () => this.onPreview?.(null),

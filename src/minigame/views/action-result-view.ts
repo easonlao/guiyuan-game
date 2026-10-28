@@ -52,11 +52,17 @@ export function describeNodeChange(change: NodeChange): string {
   return `${change.player === 'P1' ? '你' : '天道'}·${WUXING_PALETTE[change.element].name}${change.polarity === Polarity.YIN ? '阴' : '阳'} ${LEVEL_LABEL[change.before]}→${LEVEL_LABEL[change.after]}`;
 }
 
+/** 终局结果条标题与重开提示（顶部播报框已删，终局信息由这条常驻结果区讲清）。 */
+export const GAME_OVER_TITLE = '对局结束';
+export const GAME_OVER_RESTART_HINT = '点击空白处重新开局';
+
 /** The last action remains readable after the turn changes; tap to see every actual delta. */
 export class ActionResultView extends Container {
   public changes: readonly NodeChange[] = [];
   public title = '';
   public note: string | undefined;
+  /** 终局模式：非 null 时结果条改画「胜负 / 结束原因 / 重开提示」，覆盖上一招内容。 */
+  public gameOverLines: readonly string[] | null = null;
   private width: number;
   private expanded = false;
   public constructor(width: number) {
@@ -79,7 +85,18 @@ export class ActionResultView extends Container {
     this.title = `上一招 · ${actor === 'P1' ? '你' : '天道'}用${stem} · ${action === 'showdown' ? '天命抽牌' : ACTION_LABEL[action]}`;
     this.changes = [...changes];
     this.note = note;
+    this.gameOverLines = null;
     this.expanded = false;
+    this.visible = true;
+    this.reflow();
+  }
+  /** 终局展示：明确胜负、结束原因与重开提示都进现有结果区，不依赖已删的顶部播报框。 */
+  public setGameOver(resultText: string, reasonText: string): void {
+    this.title = GAME_OVER_TITLE;
+    this.changes = [];
+    this.note = undefined;
+    this.gameOverLines = [resultText, reasonText, GAME_OVER_RESTART_HINT];
+    this.expanded = true;
     this.visible = true;
     this.reflow();
   }
@@ -87,6 +104,7 @@ export class ActionResultView extends Container {
     this.visible = false;
     this.title = '';
     this.changes = [];
+    this.gameOverLines = null;
     this.expanded = false;
   }
   public resize(width: number): void {
@@ -94,9 +112,11 @@ export class ActionResultView extends Container {
     this.reflow();
   }
   private reflow(): void {
-    const height = this.expanded
-      ? 32 + Math.max(1, this.changes.length + (this.note ? 1 : 0)) * 18
-      : 34;
+    const lineCount =
+      this.gameOverLines !== null
+        ? this.gameOverLines.length
+        : this.changes.length + (this.note ? 1 : 0);
+    const height = this.expanded ? 32 + Math.max(1, lineCount) * 18 : 34;
     this.hitArea = { x: 0, y: 34 - height, width: this.width, height };
   }
   protected override renderSelf(ctx: CanvasRenderingContext2D): void {
@@ -110,23 +130,35 @@ export class ActionResultView extends Container {
     ctx.fillStyle = THEME.ivory;
     if (this.expanded) {
       const lines =
-        this.changes.length === 0 ? ['未改变任何阴阳状态'] : this.changes.map(describeNodeChange);
-      if (this.note) lines.unshift(this.note);
+        this.gameOverLines !== null
+          ? [...this.gameOverLines]
+          : this.changes.length === 0
+            ? ['未改变任何阴阳状态']
+            : this.changes.map(describeNodeChange);
+      if (this.note && this.gameOverLines === null) lines.unshift(this.note);
       lines.forEach((line, index) => ctx.fillText(line, 9, area.y + 32 + index * 18));
-      ctx.textAlign = 'right';
-      ctx.fillStyle = THEME.muted;
-      ctx.fillText('收起', this.width - 9, area.y + 10);
+      if (this.gameOverLines === null) {
+        ctx.textAlign = 'right';
+        ctx.fillStyle = THEME.muted;
+        ctx.fillText('收起', this.width - 9, area.y + 10);
+      }
     } else {
       const first = this.changes[0];
       ctx.fillText(
-        this.note ?? (first === undefined ? '未改变任何阴阳状态' : describeNodeChange(first)),
+        this.gameOverLines !== null
+          ? this.gameOverLines[0]
+          : (this.note ?? (first === undefined ? '未改变任何阴阳状态' : describeNodeChange(first))),
         9,
         25,
       );
       ctx.textAlign = 'right';
       ctx.fillStyle = THEME.jade;
       ctx.fillText(
-        this.changes.length > 1 ? `${this.changes.length}处 · 展开` : '查看',
+        this.gameOverLines !== null
+          ? '展开'
+          : this.changes.length > 1
+            ? `${this.changes.length}处 · 展开`
+            : '查看',
         this.width - 9,
         25,
       );

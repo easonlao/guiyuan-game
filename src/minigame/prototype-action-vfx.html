@@ -2,18 +2,18 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>【原型】归元·动作打击感时间线 — 看完即弃</title>
+<title>【原型】归元·顶部区域交手 — 看完即弃</title>
 <style>
   :root { --accent:#c0392b; --ink:#2c3e50; --muted:#7f8c8d; --bg:#faf8f4; }
   * { box-sizing:border-box; margin:0; padding:0; }
   body { font-family:"Microsoft YaHei",system-ui,sans-serif; background:var(--bg); color:var(--ink);
-         max-width:960px; margin:0 auto; padding:32px 24px 80px; line-height:1.7; }
+         max-width:960px; margin:0 auto; padding:24px 12px 80px; line-height:1.7; }
   .tag { display:inline-block; background:var(--accent); color:#fff; font-size:12px;
          padding:2px 10px; border-radius:99px; letter-spacing:2px; }
   h1 { font-size:24px; margin:10px 0 6px; }
   .q { background:#fff; border-left:4px solid var(--accent); padding:12px 16px; margin:16px 0;
        border-radius:0 8px 8px 0; font-size:14px; }
-  canvas { display:block; width:100%; background:#1a1d29; border-radius:12px; margin:16px 0; }
+  canvas { display:block; width:100%; background:#12151f; border-radius:10px; }
   .panel { background:#fff; border:1px solid #e8e2d8; border-radius:12px; padding:16px 20px; margin:16px 0; }
   .panel h2 { font-size:15px; margin-bottom:10px; }
   .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
@@ -27,22 +27,61 @@
            white-space:pre-wrap; }
   .sep { color:var(--muted); font-size:13px; margin:0 4px; }
   kbd { background:#eee; border-radius:4px; padding:1px 6px; font-size:12px; }
+  .screenwrap { max-width:460px; margin:12px auto 0; }
+  .screenlabel { font-size:12px; color:var(--muted); text-align:center; margin-bottom:6px; }
+  .selfcheck { font-family:Consolas,monospace; font-size:12px; margin-top:10px; white-space:pre-wrap; }
+  .ok { color:#1e8449; } .bad { color:#c0392b; font-weight:bold; }
 </style>
 </head>
 <body>
 
 <span class="tag">原型 · 看完即弃</span>
-<h1>动作打击感时间线原型</h1>
+<h1>顶部区域交手原型</h1>
 <div class="q">
-  <b>要回答的问题：</b>参考 combat-vfx-demo 的「事件时间线」做法（hit-stop 冻结时钟 + 击退 + 震屏，
-  全部由参数表驱动），搬到归元的 Canvas 2D 表现层后，手感是否成立？
-  玩家动作走<b>剑术</b>（劈砍）、天道动作走<b>法术</b>（弹道+落点冲击），五种五行属性只换材质参数。
-  <br><b>看的时候注意：</b>打击瞬间的「停顿」是否让命中感成立？剑术与法术的节奏差异是否足够区分两个阵营？
-  同一动作切换五行材质时，辨识度够不够？
+  <b>要回答的问题：</b>上方两角色（你 / 天道）在<b>顶部角色区</b>如何交手？把「屏幕中部战斗舞台」与中间的播报框
+  和人物方框都去掉，顶部是一块两人共用的对战场地：<b>你</b>持剑冲刺到天道身旁劈砍；<b>天道</b>原地起手施法，符弹飞向你并在你身上爆开；
+  受击方后退、闪色、弹簧回位。刀光 crescent、星芒 spark、碎屑、hit-stop、震屏照旧复用已移植的实现。
+  <br><b>看的时候注意：</b>460×1215（常规屏）与 460×588（紧凑屏）两种高度下是否被裁切？特效是否
+  完整落在屏内（不越过屏幕上沿 y=0）、也不越进下方法盘区？两个方向（你→天道 剑术 / 天道→你 法术）是否都成立？
+  <br><b>这是回答「上方两角色如何交手」的一次性原型，看完即弃。</b>
 </div>
 
-<canvas id="cv" width="912" height="380"></canvas>
-<div class="state" id="state"></div>
+<div class="panel">
+  <h2>⓪ 顶部区域交手（尺寸自检）</h2>
+  <div class="row">
+    <span style="font-size:13px;color:var(--muted)">方向：</span>
+    <button data-dir="P1">你 → 天道（剑术）</button>
+    <button data-dir="P2">天道 → 你（法术）</button>
+    <span class="sep">|</span>
+    <button id="freezeBtn">命中定格（截图）</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <span style="font-size:13px;color:var(--muted)">剑术节奏（你）：</span>
+    <button data-rhythm="slash1" data-side="P1" class="on">一段</button>
+    <button data-rhythm="slash3" data-side="P1">三段</button>
+    <span class="sep">|</span>
+    <span style="font-size:13px;color:var(--muted)">法术节奏（天道）：</span>
+    <button data-rhythm="bolt" data-side="P2" class="on">单发</button>
+    <button data-rhythm="barrage" data-side="P2">三连</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <span style="font-size:13px;color:var(--muted)">尺寸自检：</span>
+    <button data-size="588" class="on">紧凑屏 460×588（默认）</button>
+    <button data-size="1215">常规屏 460×1215</button>
+    <span class="sep">|</span>
+    <button id="guideBtn">辅助线</button>
+    <span class="sep">|</span>
+    <button data-act="reset">重置</button>
+  </div>
+  <div class="screenwrap">
+    <div class="screenlabel" id="screenlabel"></div>
+    <canvas id="screen" width="460" height="588"></canvas>
+  </div>
+  <div class="selfcheck" id="check"></div>
+  <div class="state" id="state"></div>
+  <div class="hint">模拟方式：整块画布就是「游戏屏幕」，顶部区域贴在屏幕最上方。
+    特效越过屏幕上沿会被画布裁掉——自检用离屏画布补了上/左/右三面的余量，能测出「被裁掉多少」。</div>
+</div>
 
 <div class="panel">
   <h2>① 选五行材质（只换参数，不换机制）</h2>
@@ -50,7 +89,7 @@
 </div>
 
 <div class="panel">
-  <h2>② 触发动作</h2>
+  <h2>② 触发动作（沿用原型的五行划分：玩家走剑术、天道走法术）</h2>
   <div class="row">
     <span style="font-size:13px;color:var(--muted)">玩家（剑术）：</span>
     <button data-act="slash1">劈砍 · 一段</button>
@@ -59,17 +98,16 @@
     <span style="font-size:13px;color:var(--muted)">天道（法术）：</span>
     <button data-act="bolt">符弹 · 单发</button>
     <button data-act="barrage">符弹 · 三连</button>
-    <span class="sep">|</span>
-    <button data-act="reset">重置</button>
   </div>
-  <div class="hint">快捷键：<kbd>1</kbd> 劈砍 <kbd>2</kbd> 三段 <kbd>3</kbd> 符弹 <kbd>4</kbd> 三连 <kbd>空格</kbd> 慢放/常速 <kbd>R</kbd> 重置</div>
+  <div class="hint">快捷键：<kbd>1</kbd> 劈砍 <kbd>2</kbd> 三段 <kbd>3</kbd> 符弹 <kbd>4</kbd> 三连
+    <kbd>Z</kbd> 你→天道 <kbd>X</kbd> 天道→你 <kbd>空格</kbd> 慢放/常速 <kbd>R</kbd> 重置</div>
 </div>
 
 <div class="panel">
   <h2>③ 情景走查（点一下自动演一遍）</h2>
   <div class="row">
     <button data-scene="feel">A. 打击感从哪来：同一个劈砍，先无停顿、再有 hit-stop</button>
-    <button data-scene="versus">B. 阵营对比：玩家三段剑术 → 天道三连法术</button>
+    <button data-scene="versus">B. 双向对比：你三段剑术 → 天道三连法术</button>
   </div>
 </div>
 
@@ -229,25 +267,119 @@ const ActionTimeline = (() => {
 })();
 
 /* ============================================================
- * 下面是一次性页面外壳：渲染 + 按钮。不进生产。
+ * 下面是一次性页面外壳：顶部区域舞台 + 按钮。不进生产。
  * ========================================================== */
-const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+const cv = document.getElementById("screen");
+const cvx = cv.getContext("2d");
+let ctx = cvx;                 // 当前绘制目标：主画布 / 特效离屏画布（移植的绘制函数直接用它）
+const ocv = document.createElement("canvas");
+const octx = ocv.getContext("2d", { willReadFrequently: true });
 const stateEl = document.getElementById("state");
-const GROUND = 300, AX = 300, TX = 640;
-let matKey = "fire", slow = false;
-let scene = null;            // 当前 ActionTimeline 状态
-let queue = [];              // 情景走查的动作队列
+const checkEl = document.getElementById("check");
+const labelEl = document.getElementById("screenlabel");
+
+let matKey = "fire", slow = false, frozen = false;
+let scene = null;              // 当前 ActionTimeline 状态
+let queue = [];                // 情景走查的动作队列
 let queueDelay = 0;
 
-function start(act, opts) { scene = ActionTimeline.create(act, Object.assign({ mat: matKey }, opts)); }
+/* ============================================================
+ * —— 可调参数区块（改这里就能看手感变化）——
+ * 顶部区域的几何全部对齐 CharacterView 的真实布局常量：
+ *   SIDE_MARGIN=10 / TOP_BAR_HEIGHT=26 / safeTop=24 / 头像框 88×112（紧凑 80）
+ *   compact = height < 650；不画播报框——顶部只有两个头像框，中间留空给交手。
+ * 交手的舞台就在这排头像框上，不再另开中部舞台。
+ * ========================================================== */
+const TOP = {
+  screenW: 460,               // 模拟屏宽（真实小游戏纵向视口的宽度）
+  defaultH: 588,              // 默认模拟屏高：紧凑屏（最容易出问题的那档）
 
-// 取特效自身锁定的材质（落回当前选择，兼容旧 fx）
-function fxMat(f) { return ActionTimeline.MATERIALS[f.mat] || ActionTimeline.MATERIALS[matKey]; }
+  // —— 顶部区域布局（对齐 CharacterView）——
+  safeTop: 24,                // 刘海安全区
+  turnBarH: 26,               // 回合信息条高度
+  frameTopGap: 16,            // 回合条与交战区间留出刀光展开空间
+  sideMargin: 24,             // 场地基线左右边距
+  standingGap: 190,           // 两人待机中心距离；集中在画面中部
+  avatarW: 88,                // 人物占位宽度，不绘制方框
+  avatarH: 112,               // 常规屏人物占位高度
+  avatarHCompact: 104,        // 紧凑屏也保留足够的人物与刀光空间
+  labelRoom: 34,              // 场地下方的姓名、得分与行动提示
+
+  // —— 交手几何（顶部区域的关键调参）——
+  contactInset: 20,           // 攻击方停在「防守方框中心再往自己这侧」多少像素处；0=正好站在框中心
+  knockScale: 1.0,            // 受击后退位移倍率（ActionTimeline 的 target.x 乘它）
+  hopPx: 9,                   // 进步途中抬起的最高像素（让两个剪影不在同一像素位置糊成一团）
+  bladeOffsetX: 0,            // 刀光中心相对命中点的水平偏移（正=朝防守方外侧）
+  bladeOffsetY: -14,          // 刀光中心相对命中点的竖直偏移
+  impactOffsetX: -10,         // 命中点相对防守方站位的水平偏移（沿用原型：目标中心偏内侧 10px）
+  impactOffsetY: -6,          // 命中点相对防守方站位的竖直偏移
+  figureRatio: 1.0,           // 半身剪影相对头像框高的比例微调
+
+  // —— 特效缩放（顶部区域只有一两百像素高，必须缩）——
+  fxScale: 0.24,              // 刀光 / 星芒 / 落点 / 蓄力环的整体缩放
+  sparksForwardOnly: true,    // true = 碎屑只向防守方一侧扇形喷；false = 照搬原型的 360° 重击喷
+  spellDip: 0,                // 法术弹道中段额外下潜的像素（没有播报框了，0 = 走直线）
+
+  // —— 震屏（沿用原型：正弦衰减，作用在整块顶部区域）——
+  shakeFreq: 55,
+  shakeYFreq: 1.3,
+  shakeYScale: 0.6,
+
+  // —— 自检用的离屏余量：特效画在带余量的离屏画布上，才能测出「被屏幕上沿裁掉多少」——
+  headroomX: 60,              // 左 / 右各留的余量像素
+  headroomY: 150,             // 上沿以上留的余量像素
+  scanH: 320,                 // 只扫顶部区域这一段（够用且快）
+};
+
+// 每种动作默认由谁出手（沿用原型的阵营划分：剑术=玩家，法术=天道）
+const ACT_ATTACKER = { slash1:"P1", slash3:"P1", bolt:"P2", barrage:"P2" };
+const ROUND_MAX = 30;
+let roundNow = 5;
+
+/* —— 全局表现态 —— */
+let attacker = "P1";          // 当前动作的攻击方
+let screenH = TOP.defaultH;   // 当前模拟屏高
+let showGuides = false;
+let turnText = `回合 ${roundNow}/${ROUND_MAX} · 你行动`;
+let swordRhythm = "slash1";   // 玩家（剑术）：一段 / 三段
+let magicRhythm = "bolt";     // 天道（法术）：单发 / 三连
+let lastDir = "P1";
+let shakeX = 0, shakeY = 0;
+let worst = { top:0, left:0, right:0, bottom:0 };   // 本次动作累计最差自检值
+
+function applySize() {
+  cv.width = TOP.screenW;
+  cv.height = screenH;
+  ocv.width = TOP.screenW + TOP.headroomX * 2;
+  ocv.height = TOP.scanH + TOP.headroomY;
+  labelEl.textContent =
+    `模拟屏 ${TOP.screenW} × ${screenH}（${screenH < 650 ? "紧凑屏" : "常规屏"}${screenH < 650 ? " · 默认" : ""}）`;
+}
+
+/** 本方向该演哪个动作：玩家走剑术节奏，天道走法术节奏。 */
+function actFor(dir) {
+  return dir === "P1" ? swordRhythm : magicRhythm;
+}
+
+function start(act, opts) {
+  const o = opts || {};
+  attacker = o.attacker || ACT_ATTACKER[act] || "P1";
+  scene = ActionTimeline.create(act, Object.assign({ mat: matKey }, o));
+  worst = { top:0, left:0, right:0, bottom:0 };
+  updateTurnText();
+}
+
+function updateTurnText() {
+  turnText = `回合 ${roundNow}/${ROUND_MAX} · ${attacker === "P1" ? "你行动" : "天道行动"}`;
+}
 
 /* —— 特效绘制：几何算法移植自 combat-vfx-demo，五行只换 ramp 与次要形态参数 —— */
 
 const deg = d => d * Math.PI / 180;
 const clamp01 = v => Math.min(Math.max(v, 0), 1);
+
+// 取特效自身锁定的材质（落回当前选择，兼容旧 fx）
+function fxMat(f) { return ActionTimeline.MATERIALS[f.mat] || ActionTimeline.MATERIALS[matKey]; }
 
 // [ported from combat-vfx-demo: vfx/pixel_slash.gd — PolyForm Noncommercial, 商用前需重写]
 // ease_swing()：中段快、收尾短促的挥击缓动
@@ -472,8 +604,362 @@ function drawProjectile(pj, x0, x1, ty) {
   ctx.globalAlpha = 1;
 }
 
+/* ============================================================
+ * 顶部区域布局：镜像 CharacterView 的真实几何
+ * ========================================================== */
+function layout() {
+  const compact = screenH < 650;                     // 与 GameScene 同判据：height < 650
+  const W = TOP.screenW, safeTop = TOP.safeTop;
+  const frameY = safeTop + TOP.turnBarH + TOP.frameTopGap;
+  const avatarH = compact ? TOP.avatarHCompact : TOP.avatarH;
+  const gap = Math.min(TOP.standingGap, W - 2 * TOP.sideMargin - TOP.avatarW);
+  const p1 = { x: (W - gap - TOP.avatarW) / 2, y: frameY, w: TOP.avatarW, h: avatarH };
+  const p2 = { x: (W + gap - TOP.avatarW) / 2, y: frameY, w: TOP.avatarW, h: avatarH };
+  const bottom = Math.max(p1.y + p1.h, p2.y + p2.h) + TOP.labelRoom;
+  return {
+    compact, W, safeTop, frameY, avatarH, p1, p2, bottom,
+    p1c: { x: p1.x + p1.w / 2, y: p1.y + avatarH / 2 },
+    p2c: { x: p2.x + p2.w / 2, y: p2.y + avatarH / 2 },
+  };
+}
 
-// —— 材质按钮 ——
+/** 事件表里 move 的最远累计位移（slash 一段/三段 = 220；法术 = 0；收步 -220 不抵消峰值）。 */
+function totalMoveDx(act) {
+  let sum = 0, peak = 0;
+  for (const e of ActionTimeline.buildEvents(act)) if (e.do === "move") {
+    sum += e.dx;
+    peak = Math.max(peak, Math.abs(sum));
+  }
+  return peak;
+}
+
+/** 本帧的攻击方 / 防守方站位与前进倍率：把原型的 220px 进步映射到两个头像框之间。 */
+function combatFrame(L) {
+  const dir = attacker === "P1" ? 1 : -1;            // 攻击方向：+1 向右（你→天道），-1 向左
+  const aHome = attacker === "P1" ? L.p1c : L.p2c;
+  const tHome = attacker === "P1" ? L.p2c : L.p1c;
+  const dx = totalMoveDx(scene ? scene.act : "slash1");
+  const span = Math.abs(tHome.x - aHome.x) - TOP.contactInset;   // 攻击方要走的净距离
+  const travelScale = dx > 0 ? span / dx : 0;
+  return { dir, aHome, tHome, span, travelScale };
+}
+
+/* ============================================================
+ * 绘制：颜色工具 + 半身剪影（简单几何，不求美术）
+ * ========================================================== */
+const P1_COLOR = "#7fd6ba", P2_COLOR = "#86b8cb", HURT_COLOR = "#ff5a4d";
+
+function hexToRgb(h) {
+  return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+}
+function mixColor(a, b, t) {
+  const A = hexToRgb(a), B = hexToRgb(b);
+  const c = A.map((v, i) => Math.round(v + (B[i] - v) * Math.max(0, Math.min(1, t))));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+/** 半身剪影：头 + 肩 + 躯干 + 一条持械手臂。flip=true 时朝左（天道一侧）。 */
+function drawFigure(g, x, y, s, base, flash, opts) {
+  const o = opts || {};
+  const col = mixColor(base, HURT_COLOR, flash);
+  g.save();
+  g.translate(x, y);
+  g.scale(s, s);
+  if (o.flip) g.scale(-1, 1);
+  const lean = o.lean || 0;
+  g.rotate(lean);
+  // 躯干
+  g.fillStyle = col;
+  g.beginPath();
+  g.moveTo(-13, -17); g.lineTo(13, -17); g.lineTo(17, 20); g.lineTo(-17, 20);
+  g.closePath(); g.fill();
+  // 肩
+  g.beginPath(); g.arc(0, -18, 12, Math.PI, 0); g.fill();
+  // 头
+  g.beginPath(); g.arc(0, -31, 11, 0, 7); g.fill();
+  // 持械手臂 + 兵器
+  if (o.weapon) {
+    const ax = o.armX === undefined ? 20 : o.armX;
+    const ay = o.armY === undefined ? -30 : o.armY;
+    g.strokeStyle = col; g.lineWidth = 5; g.lineCap = "round";
+    g.beginPath(); g.moveTo(5, -13); g.lineTo(ax, ay); g.stroke();
+    g.strokeStyle = "#e9eff4"; g.lineWidth = 2.5;
+    g.beginPath(); g.moveTo(ax, ay); g.lineTo(ax + 16, ay - 12); g.stroke();
+  }
+  g.restore();
+}
+
+/* ============================================================
+ * 顶部区域渲染
+ * ========================================================== */
+
+/** 头像框（含行动方描边）+ 回合条 + 名牌 / 得分。 */
+function drawPanels(g, L) {
+  // 屏幕底：下方是法盘 / 操作栏，本原型不画，只留一块占位
+  g.fillStyle = "#12151f";
+  g.fillRect(0, 0, cv.width, cv.height);
+  g.save();
+  g.setLineDash([6, 6]);
+  g.strokeStyle = "#2a3048"; g.lineWidth = 1;
+  g.strokeRect(14, L.bottom + 12, cv.width - 28, Math.max(0, cv.height - L.bottom - 26));
+  g.setLineDash([]);
+  g.fillStyle = "#39415c"; g.font = "13px Microsoft YaHei";
+  g.textAlign = "center"; g.textBaseline = "top";
+  g.fillText("（下方为五行法盘 / 操作栏 —— 本原型不画）", cv.width / 2, L.bottom + 30);
+  g.restore();
+
+  // 回合信息条（同 CharacterView.drawTurnStrip）
+  g.fillStyle = "#8e97ad"; g.font = "bold 12px Microsoft YaHei";
+  g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText(turnText, L.W / 2, L.safeTop + TOP.turnBarH / 2);
+
+  // 两人共用一条场地基线，人物之间没有卡片或边框。
+  const groundY = L.p1c.y + 23 * L.avatarH / TOP.avatarH;
+  g.save();
+  g.strokeStyle = "#343c51";
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(TOP.sideMargin, groundY);
+  g.lineTo(L.W - TOP.sideMargin, groundY);
+  g.stroke();
+  g.restore();
+
+  // 名字和得分保留在场地下方，不包围人物。
+  const sides = [[L.p1, P1_COLOR], [L.p2, P2_COLOR]];
+  for (const [f, color] of sides) {
+    const isPlayer = f === L.p1;
+    const isActive = isPlayer ? attacker === "P1" : attacker === "P2";
+    // 名牌 / 得分 / 行动中
+    const labelX = f.x + f.w / 2;
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillStyle = color; g.font = "bold 11px Microsoft YaHei";
+    g.fillText(isPlayer ? "你 · 弈者" : "天道", labelX, f.y + f.h + 8);
+    g.fillStyle = "#e6e9f0"; g.font = "11px Microsoft YaHei";
+    g.fillText(`${isPlayer ? "得分 12" : "得分 9"}${isActive ? " · 行动中" : ""}`, labelX, f.y + f.h + 24);
+  }
+}
+
+/** 播报横幅已按用户要求移除：顶部区域只有两个头像框与中间的空白交手区。 */
+
+/** 两个半身剪影：攻击方按进步插值平移（带抬身），防守方按击退位移 + 闪色。 */
+function drawActors(g, L) {
+  const F = combatFrame(L);
+  const s = (L.avatarH / TOP.avatarH) * TOP.figureRatio;
+  const t = scene ? scene.target : { x: 0, flash: 0, shake: 0 };
+  const casting = attacker === "P2";                  // 天道原地施法：不冲锋、不持剑
+
+  // 防守方（先画，攻击方压在上面）
+  const dx = t.x * TOP.knockScale;
+  const tx = F.tHome.x + F.dir * dx + (t.shake || 0);
+  drawFigure(g, tx, F.tHome.y, s, F.dir > 0 ? P2_COLOR : P1_COLOR, t.flash, { flip: F.dir > 0 });
+
+  // 攻击方：取进行中的最后一个 lunge 插值，否则用累计位移（同原型）
+  let adx = scene ? scene.attacker.dx : 0;
+  if (scene) for (const f of scene.fx) if (f.kind === "lunge") {
+    const p = Math.min(1, f.age / f.dur);
+    const e = f.ease === "out" ? 1 - (1 - p) * (1 - p) : p * p * (3 - 2 * p);
+    adx = f.from + (f.to - f.from) * e;
+  }
+  const moved = F.dir * adx * F.travelScale;                  // 净前进距离（可为负）
+  const prog = F.span > 0 ? clamp01(moved / F.span) : 0;
+  const ax = F.aHome.x + moved;
+  const ay = F.aHome.y - TOP.hopPx * Math.sin(Math.PI * prog);
+  // 出手时前倾；天道施法只抬手不位移（法术没有 move 事件，moved 恒为 0）
+  const lean = prog * 0.14 * F.dir;
+  drawFigure(g, ax, ay, s, F.dir > 0 ? P1_COLOR : P2_COLOR, 0,
+             { flip: F.dir < 0, weapon: !casting, lean: lean,
+               armX: casting ? 20 : prog > 0.05 ? 24 : 16,
+               armY: casting ? -36 : prog > 0.05 ? -34 : -22 });
+
+  // 蓄力光环（法术起手）：掌心后再补一颗符珠
+  if (scene) for (const f of scene.fx) if (f.kind === "charge") {
+    const FM = fxMat(f);
+    const p = f.age / f.life;
+    g.save();
+    g.globalAlpha = 0.4 + 0.6 * p;
+    g.strokeStyle = FM.glow; g.lineWidth = 3 * TOP.fxScale * s;
+    g.beginPath(); g.arc(ax, ay - 6, (34 - 14 * p) * TOP.fxScale * s, 0, 7); g.stroke();
+    g.fillStyle = FM.main; g.globalAlpha = 0.5 + 0.5 * p;
+    g.beginPath();
+    g.arc(ax + F.dir * 18 * s, ay - 22 * s, (3 + 4 * p) * s, 0, 7);
+    g.fill();
+    g.restore();
+  }
+  return { ax, ay, tx, ty: F.tHome.y, F };
+}
+
+/**
+ * 特效层：画到带余量的离屏画布 → 扫 alpha 求真实包围盒（才能测出「被屏幕上沿裁掉多少」）→ 贴回主画布。
+ * 看到的是同一份像素，量的是它。
+ */
+function drawFxLayer(g, L, P) {
+  octx.setTransform(1, 0, 0, 1, 0, 0);
+  octx.clearRect(0, 0, ocv.width, ocv.height);
+  let bb = null;
+  if (scene) {
+    ctx = octx;                                        // 移植的绘制函数一律画到离屏
+    octx.save();
+    octx.translate(TOP.headroomX + shakeX, TOP.headroomY + shakeY);
+    const k = TOP.fxScale;
+    const dir = P.F.dir;
+    const F = P.F;
+    const hitX = P.tx + dir * TOP.impactOffsetX;
+    const hitY = P.ty + TOP.impactOffsetY;
+    const bladeX = hitX + dir * TOP.bladeOffsetX;
+    const bladeY = hitY + TOP.bladeOffsetY;
+
+    // 弹道（法术）：起手位置 → 防守方命中点；-- 用镜像画布处理朝左的飞行
+    for (const pj of scene.projectiles) {
+      const q = Math.min(1, pj.age / pj.travel);
+      const y0 = P.ay, y1 = P.ty;
+      const py = y0 + (y1 - y0) * (q * q) + TOP.spellDip * Math.sin(Math.PI * q);
+      octx.save();
+      if (dir < 0) { octx.translate(L.W, 0); octx.scale(-1, 1); }
+      drawProjectile(pj, dir < 0 ? L.W - (P.ax + dir * 18) : P.ax + 18, dir < 0 ? L.W - P.tx : P.tx, py + 6);
+      octx.restore();
+    }
+
+    // 各特效：包一层「平移到中心 → 朝左时镜像 → 以 (0,0) 为心画」，移植函数原样复用
+    for (const f of scene.fx) {
+      if (f.kind === "lunge" || f.kind === "charge") continue;
+      let cx = hitX, cy = hitY, fn = null, arg = f, fc = true;
+      if (f.kind === "blade") { cx = bladeX; cy = bladeY; fn = drawCrescent; }
+      else if (f.kind === "star") { fn = drawStar; }
+      else if (f.kind === "burst") { cx = P.tx; cy = P.ty; fn = drawBurst; }
+      else if (f.kind === "sparks") {
+        fn = drawSparks;
+        // 重击在原型里是 360° 喷；顶部区域里那半边会糊到播报框上，默认改成只向前扇形喷
+        if (TOP.sparksForwardOnly && f.heavy) arg = Object.assign({}, f, { heavy: false });
+      }
+      if (!fn) continue;
+      octx.save();
+      octx.translate(cx, cy);
+      if (dir < 0) octx.scale(-1, 1);
+      octx.scale(k, k);
+      fn(arg, 0, 0);
+      octx.restore();
+    }
+    octx.restore();
+    ctx = cvx;
+    bb = scanBounds();
+    // 只把屏幕上可见的那一段贴回
+    cvx.drawImage(ocv, TOP.headroomX, TOP.headroomY, cv.width, TOP.scanH, 0, 0, cv.width, TOP.scanH);
+  }
+  return bb;
+}
+
+/** 扫离屏画布的 alpha，返回屏幕坐标系里的包围盒（可能为负 = 越出上/左沿）。 */
+function scanBounds() {
+  const w = ocv.width, h = TOP.headroomY + TOP.scanH;
+  const data = octx.getImageData(0, 0, w, h).data;
+  let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+  for (let y = 0; y < h; y++) {
+    const row = y * w * 4;
+    for (let x = 0; x < w; x++) {
+      if (data[row + x * 4 + 3] > 8) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < minX) return null;
+  return {
+    x0: minX - TOP.headroomX, y0: minY - TOP.headroomY,
+    x1: maxX - TOP.headroomX, y1: maxY - TOP.headroomY,
+  };
+}
+
+/** 自检：特效包围盒 vs 屏幕上沿 / 左右沿 / 顶部区域下沿。 */
+function runCheck(L, bb) {
+  if (!bb || !scene) return;
+  worst.top = Math.max(worst.top, Math.max(0, -bb.y0));
+  worst.left = Math.max(worst.left, Math.max(0, -bb.x0));
+  worst.right = Math.max(worst.right, Math.max(0, bb.x1 - L.W));
+  // 下沿：特效不得越进下方的法盘 / 操作栏区
+  worst.bottom = Math.max(worst.bottom, Math.max(0, bb.y1 - L.bottom));
+}
+
+function drawGuides(g, L) {
+  if (!showGuides) return;
+  g.save();
+  // 屏幕上沿 y=0
+  g.strokeStyle = "#c0392b"; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(0, 1); g.lineTo(L.W, 1); g.stroke();
+  g.fillStyle = "#c0392b"; g.font = "bold 11px Microsoft YaHei";
+  g.textAlign = "left"; g.textBaseline = "top";
+  g.fillText("屏幕上沿 y=0（特效不得越过）", 8, 4);
+  // 顶部区域下沿
+  g.setLineDash([5, 5]);
+  g.strokeStyle = "#27ae60"; g.lineWidth = 1.5;
+  g.beginPath(); g.moveTo(0, L.bottom); g.lineTo(L.W, L.bottom); g.stroke();
+  g.fillStyle = "#27ae60";
+  g.fillText(`顶部区域下沿 y=${L.bottom}（不得越入法盘区）`, 8, L.bottom + 3);
+  // 攻击方 / 防守方站位
+  const F = combatFrame(L);
+  g.setLineDash([]);
+  g.fillStyle = "#d4ac0d"; g.textAlign = "center";
+  g.fillText("◆", F.aHome.x, F.aHome.y - 2);
+  g.fillStyle = "#c0392b";
+  g.fillText("◆", F.tHome.x, F.tHome.y - 2);
+  g.restore();
+}
+
+function drawScreenChrome(g, L) {
+  g.save();
+  g.strokeStyle = "#0a0c14"; g.lineWidth = 4;
+  g.strokeRect(2, 2, cv.width - 4, cv.height - 4);
+  g.restore();
+}
+
+function render() {
+  const L = layout();
+  cvx.setTransform(1, 0, 0, 1, 0, 0);
+  cvx.clearRect(0, 0, cv.width, cv.height);
+
+  // 震屏偏移（沿用原型：正弦衰减）
+  shakeX = shakeY = 0;
+  if (scene && scene.shake.amp > 0.1) {
+    const a = scene.shake.amp, t = scene.shake.t * TOP.shakeFreq;
+    shakeX = Math.sin(t) * a;
+    shakeY = Math.cos(t * TOP.shakeYFreq) * a * TOP.shakeYScale;
+  }
+
+  cvx.save();
+  cvx.translate(shakeX, shakeY);
+  drawPanels(cvx, L);
+  const P = drawActors(cvx, L);
+  const bb = drawFxLayer(cvx, L, P);
+  runCheck(L, bb);
+  drawGuides(cvx, L);
+  cvx.restore();
+  drawScreenChrome(cvx, L);
+
+  // 状态面板
+  const tg = scene ? scene.target : { x: 0 };
+  stateEl.textContent = scene
+    ? `模拟屏=${TOP.screenW}×${screenH}（${L.compact ? "紧凑屏" : "常规屏"}）  出手=${attacker === "P1" ? "你→天道" : "天道→你"}  `
+    + `材质=${ActionTimeline.MATERIALS[scene.mat].name}  动作=${scene.act}  时钟=${scene.time.toFixed(2)}s  `
+    + `冻结=${scene.stopLeft > 0 ? scene.stopLeft.toFixed(2) + "s（hit-stop）" : "无"}  `
+    + `击退=${(tg.x * TOP.knockScale).toFixed(1)}px  震幅=${scene.shake.amp.toFixed(1)}  命中=${scene.hits}\n`
+    + `事件流水：${scene.log.slice(-8).join("  →  ")}`
+    : "待机。左上方选方向与节奏，或直接点 ② 的动作。";
+
+  // 自检面板
+  const okTop = worst.top <= 0, okL = worst.left <= 0, okR = worst.right <= 0, okB = worst.bottom <= 0;
+  checkEl.innerHTML =
+    `自检（本次动作累计最差）  屏幕上沿越界 `
+    + `<span class="${okTop ? "ok" : "bad"}">${worst.top.toFixed(0)}px ${okTop ? "✓" : "✗"}</span>`
+    + `   左沿 <span class="${okL ? "ok" : "bad"}">${worst.left.toFixed(0)}px ${okL ? "✓" : "✗"}</span>`
+    + `   右沿 <span class="${okR ? "ok" : "bad"}">${worst.right.toFixed(0)}px ${okR ? "✓" : "✗"}</span>`
+    + `   越入法盘区 <span class="${okB ? "ok" : "bad"}">${worst.bottom.toFixed(0)}px ${okB ? "✓" : "✗"}</span>`;
+}
+
+/* ============================================================
+ * 交互
+ * ========================================================== */
 const matRow = document.getElementById("materials");
 for (const [k, m] of Object.entries(ActionTimeline.MATERIALS)) {
   const b = document.createElement("button");
@@ -488,6 +974,42 @@ for (const [k, m] of Object.entries(ActionTimeline.MATERIALS)) {
   matRow.appendChild(b);
 }
 
+function trigger(dir) {
+  lastDir = dir;
+  frozen = false;
+  document.getElementById("freezeBtn").classList.remove("on");
+  start(actFor(dir), { attacker: dir });
+}
+
+function freezeAtHit() {
+  frozen = false;
+  start(actFor(lastDir), { attacker: lastDir });
+  while (scene.stopLeft <= 0) ActionTimeline.advance(scene, 1 / 240);
+  frozen = true;
+  document.getElementById("freezeBtn").classList.add("on");
+}
+
+document.getElementById("freezeBtn").onclick = freezeAtHit;
+document.querySelectorAll("[data-dir]").forEach(b =>
+  b.onclick = () => trigger(b.dataset.dir));
+document.querySelectorAll("[data-rhythm]").forEach(b =>
+  b.onclick = () => {
+    if (b.dataset.side === "P2") magicRhythm = b.dataset.rhythm;
+    else swordRhythm = b.dataset.rhythm;
+    document.querySelectorAll(`[data-rhythm][data-side="${b.dataset.side}"]`)
+      .forEach(x => x.classList.toggle("on", x === b));
+    trigger(b.dataset.side === "P2" ? "P2" : lastDir);   // 换节奏立刻重演一遍
+  });
+document.querySelectorAll("[data-size]").forEach(b =>
+  b.onclick = () => {
+    screenH = Number(b.dataset.size);
+    document.querySelectorAll("[data-size]").forEach(x => x.classList.toggle("on", x === b));
+    applySize();
+  });
+document.getElementById("guideBtn").onclick = e => {
+  showGuides = !showGuides;
+  e.target.classList.toggle("on", showGuides);
+};
 document.querySelectorAll("[data-act]").forEach(b =>
   b.onclick = () => { queue = []; start(b.dataset.act); });
 document.querySelectorAll("[data-scene]").forEach(b =>
@@ -498,6 +1020,8 @@ addEventListener("keydown", e => {
   if (e.key === "2") start("slash3");
   if (e.key === "3") start("bolt");
   if (e.key === "4") start("barrage");
+  if (e.key === "z" || e.key === "Z") trigger("P1");
+  if (e.key === "x" || e.key === "X") trigger("P2");
   if (e.key === "r" || e.key === "R") { scene = null; queue = []; }
   if (e.key === " ") { slow = !slow; e.preventDefault(); }
 });
@@ -510,111 +1034,24 @@ function runScene(name) {
   start(act, opts);
 }
 
-// —— 渲染（throwaway：能看清手感即可）——
-function draw() {
-  const M = ActionTimeline.MATERIALS[matKey];
-  ctx.clearRect(0,0,cv.width,cv.height);
-
-  // 震屏偏移
-  let sx = 0, sy = 0;
-  if (scene && scene.shake.amp > 0.1) {
-    const a = scene.shake.amp, t = scene.shake.t * 55;
-    sx = Math.sin(t) * a; sy = Math.cos(t * 1.3) * a * 0.6;
-  }
-  ctx.save(); ctx.translate(sx, sy);
-
-  // 地面
-  ctx.strokeStyle = "#3a4055"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(40, GROUND+40); ctx.lineTo(cv.width-40, GROUND+40); ctx.stroke();
-
-  const tg = scene ? scene.target : { x:0, flash:0, shake:0 };
-  // 攻击者位移：取进行中的最后一个 lunge 插值，否则用累计位移
-  let lungeDx = scene ? scene.attacker.dx : 0;
-  if (scene) for (const f of scene.fx) if (f.kind === "lunge") {
-    const p = Math.min(1, f.age / f.dur);
-    const e = f.ease === "out" ? 1-(1-p)*(1-p) : p*p*(3-2*p);
-    lungeDx = f.from + (f.to - f.from) * e;
-  }
-
-  // 攻击方（左，内环 · 玩家/天道通用剪影）
-  const ax = AX + lungeDx;
-  ctx.fillStyle = "#8e9bbf";
-  ctx.beginPath(); ctx.arc(ax, GROUND, 26, 0, 7); ctx.fill();
-  ctx.fillStyle = "#6d7b9e";
-  ctx.beginPath(); ctx.arc(ax, GROUND-38, 14, 0, 7); ctx.fill();
-
-  // 蓄力光环
-  if (scene) for (const f of scene.fx) if (f.kind === "charge") {
-    const FM = fxMat(f);
-    const p = f.age / f.life;
-    ctx.strokeStyle = FM.glow; ctx.globalAlpha = 0.4 + 0.6*p; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(ax, GROUND-20, 34 - 14*p, 0, 7); ctx.stroke();
-    ctx.globalAlpha = 1;
-  }
-
-  // 目标（右，五行节点：外圈环 + 内圆）；shake = hit-stop 冻结期的原地抖动（demo Block.shake）
-  const tx = TX + tg.x + (tg.shake || 0), ty = GROUND;
-  ctx.strokeStyle = M.main; ctx.lineWidth = 5;
-  ctx.beginPath(); ctx.arc(tx, ty, 34, 0, 7); ctx.stroke();
-  ctx.fillStyle = tg.flash > 0 ? M.spark : M.main;
-  ctx.globalAlpha = tg.flash > 0 ? 1 : 0.85;
-  ctx.beginPath(); ctx.arc(tx, ty, 22, 0, 7); ctx.fill();
-  ctx.globalAlpha = 1;
-
-  // 刀光：demo 式 crescent smear，锚在攻击者身上（demo 里 crescent 是 attacker 的子节点）
-  if (scene) for (const f of scene.fx) if (f.kind === "blade") drawCrescent(f, ax, GROUND - 20);
-
-  // 命中点（demo _hit 的 at：目标中心偏左上）
-  const hx = tx - 10, hy = ty - 24;
-
-  // 落点爆裂（demo burst 环 + 刺）
-  if (scene) for (const f of scene.fx) if (f.kind === "burst") drawBurst(f, tx, ty);
-
-  // 星形 hit spark（demo _draw_star）
-  if (scene) for (const f of scene.fx) if (f.kind === "star") drawStar(f, hx, hy);
-
-  // 碎屑喷射（demo 扇形 spray，带重力与拖痕）
-  if (scene) for (const f of scene.fx) if (f.kind === "sparks") drawSparks(f, hx, hy);
-
-  // 弹道（五行分形）
-  if (scene) for (const p of scene.projectiles) drawProjectile(p, ax + 30, tx, ty);
-
-  ctx.restore();
-
-  // 连击计数
-  if (scene && scene.hits > 0) {
-    ctx.fillStyle = M.main; ctx.font = "bold 28px Microsoft YaHei";
-    ctx.fillText(`${scene.hits} HIT`, cv.width - 110, 50);
-  }
-  if (!scene) {
-    ctx.fillStyle = "#5a6478"; ctx.font = "16px Microsoft YaHei";
-    ctx.fillText("选一个五行材质，再点一个动作", 340, 200);
-  }
-
-  // 状态面板（每次动作后可见变化）
-  stateEl.textContent = scene
-    ? `材质=${M.name}  动作=${scene.act}  时钟=${scene.time.toFixed(2)}s  `
-    + `冻结=${scene.stopLeft > 0 ? scene.stopLeft.toFixed(2)+"s（hit-stop）" : "无"}  `
-    + `目标位移=${tg.x.toFixed(1)}px  震幅=${scene.shake.amp.toFixed(1)}  命中=${scene.hits}\n`
-    + `事件流水：${scene.log.slice(-8).join("  →  ")}`
-    : "待机。";
-}
-
-// —— 主循环 ——
+/* —— 主循环 —— */
 let last = performance.now();
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000) * (slow ? 0.25 : 1);
   last = now;
   if (scene) {
-    ActionTimeline.advance(scene, dt);
+    if (!frozen) ActionTimeline.advance(scene, dt);
     if (scene.done && queue.length) {
       queueDelay += dt;
       if (queueDelay > 0.5) { queueDelay = 0; const [a,o] = queue.shift(); start(a,o); }
     }
   }
-  draw();
+  render();
   requestAnimationFrame(loop);
 }
+
+applySize();
+start("slash1", { attacker: "P1" });
 requestAnimationFrame(loop);
 </script>
 </body>
