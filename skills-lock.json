@@ -210,6 +210,12 @@
       "sourceType": "github",
       "skillPath": "skills/in-progress/writing-shape/SKILL.md",
       "computedHash": "0d0ac1150c4d65f8370ad194fc097ee17855247f6e5943d05f075806980e7401"
+    },
+    "scenario-pixel-vfx": {
+      "source": "scenario-com/pixel-vfx-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "manually-added-local-skill-see-agent-tooling-md"
     }
   }
 }
