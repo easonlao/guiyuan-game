@@ -9,7 +9,7 @@
     "tools"
   ],
   "engines": {
-    "node": "^24.22.1"
+    "node": "^24.16.0"
   },
   "scripts": {
     "postinstall": "patch-package",
