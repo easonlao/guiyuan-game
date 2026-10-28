@@ -25,6 +25,7 @@
 
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 
 /** 仓库根（从本脚本位置推，因此在 worktree 内跑也指向该 worktree 自己）。 */
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -72,8 +73,19 @@ if (dirty.length > 0) {
 }
 
 // ② 收尾验收：verify 不过就不推。
+// Windows 的 npm 是 npm.cmd，spawnSync('npm') 直接 ENOENT；与 check-facts.mjs ② 同解法，
+// 用 Node 直接跑 npm-cli.js。npm 脚本给出正在运行的 CLI，兜底取本机安装那份。
 step('② 跑 npm run verify');
-const verify = spawnSync('npm', ['run', 'verify'], { cwd: root, stdio: 'inherit' });
+const npmCli =
+  process.env.npm_execpath ??
+  (process.platform === 'win32'
+    ? resolve(process.execPath, '../node_modules/npm/bin/npm-cli.js')
+    : undefined);
+const verify = spawnSync(
+  npmCli === undefined ? 'npm' : process.execPath,
+  npmCli === undefined ? ['run', 'verify'] : [npmCli, 'run', 'verify'],
+  { cwd: root, stdio: 'inherit' },
+);
 if (verify.status !== 0) {
   fail(
     `npm run verify 失败（退出码 ${verify.status ?? '未知'}），不推送。\n` +
