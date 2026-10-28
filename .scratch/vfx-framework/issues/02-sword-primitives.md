@@ -2,7 +2,7 @@
 
 **Type:** task
 **Blocked by:** 01
-**Status:** claimed
+**Status:** resolved（2026-10-28，用户在真实预览走查通过：「基本上大框架是 ok 的，可以通过」；交付提交 4441184）
 **Slice:** S2
 
 **What to build：**
