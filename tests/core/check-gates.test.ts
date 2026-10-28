@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -64,18 +64,24 @@ function runFacts(cliSource: string) {
   }
 }
 
+// 版本号取自 `package.json#packageManager`，不写死：写死的话每次合法升级都要改测试，
+// 而这个用例要断言的是「相符则绿、不符则红」，与具体是哪个版本无关。
+const pinnedNpm = String(
+  JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).packageManager,
+).split('@')[1];
+
 describe('check:facts CLI', () => {
   it('通过当前 npm CLI 核对精确版本', () => {
-    const result = runFacts("process.stdout.write('11.13.0\\n');");
+    const result = runFacts(`process.stdout.write('${pinnedNpm}\\n');`);
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain('10 条不变式成立');
   });
 
   it('仍拒绝不匹配的 npm 版本', () => {
-    const result = runFacts("process.stdout.write('11.19.1\\n');");
+    const result = runFacts("process.stdout.write('9.9.9\\n');");
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain('本机 npm 是 11.19.1');
-    expect(result.stderr).toContain('npm@11.13.0');
+    expect(result.stderr).toContain('本机 npm 是 9.9.9');
+    expect(result.stderr).toContain(`npm@${pinnedNpm}`);
   });
 
   it('启动失败只报告无法核对，不再报告空版本不匹配', () => {
