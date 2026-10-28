@@ -43,4 +43,4 @@ status: accepted
 
 ## 现状勘误
 
-- **2026-10-11（07 落地）**：文末「把两块各自声明成包、由模块解析器在解析期拦未声明的跨区引用，是后续工作」已完成。`src/` = 包 `@guiyuan/game`，`tools/` = 包 `@guiyuan/devtools`，由根 `package.json#workspaces` 连起来；`tsconfig.json` 改用 `nodenext` 以真正读取 `exports` 并强制相对导入带扩展名。补充一条当时未写下的前提：npm 默认的 hoisted 布局下未声明的跨区 import 仍能解析，声明式边界要靠 `.npmrc` 的 `install-strategy=linked` 才成立。工程方案回写 `docs/HLD.md` §2/§4.2，安装布局的工具链适配与自检见 `docs/MUTATION-TESTING.md` §9。原决定与理由不改。
+- **2026-10-11（07 落地）**：文末「把两块各自声明成包、由模块解析器在解析期拦未声明的跨区引用，是后续工作」已完成。`src/` = 包 `@guiyuan/game`，`tools/` = 包 `@guiyuan/devtools`，由根 `package.json#workspaces` 连起来；`tsconfig.json` 改用 `nodenext` 以真正读取 `exports` 并强制相对导入带扩展名。补充一条当时未写下的前提：npm 默认的 hoisted 布局下未声明的跨区 import 仍能解析，声明式边界要靠 `.npmrc` 的 `install-strategy=linked` 才成立。工程方案回写 `docs/HLD.md` §2/§4.2，安装布局的工具链适配见 `docs/MUTATION-TESTING.md` §9。原决定与理由不改。

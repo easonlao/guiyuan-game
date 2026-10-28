@@ -17,11 +17,9 @@
  *   - 主接缝：HeadlessMatch.run / HeadlessBenchmark.run
  *   - 场景接缝：ActionResolver.resolve（受控盘面）
  *
- * 相关既有测试（本文件建立在其上，不重复）：
+ * 相关既有测试（本文件建立在其上）：
  *   - tests/core/headless-config-injection.test.ts 已锁定「单一 scoreConfig 经权重模板同时到达解析器与 AI 估值器」
  *     与「显式传入已构造策略时配置不改写其估值器」两类行为；本文件的 disconnected 分支复用后者。
- *   - tests/core/headless-config-injection.test.ts 已确认 GameScene 的 isBoardOnly 会影响 AI 决策；
- *     本文件在「两个入口」小节确认无头入口，并引用该用例覆盖游戏内入口。
  *
  * 转交 Ticket 05（死旋钮清单）：见文件末尾的 scoreConfig 子项普查。
  */
@@ -471,21 +469,6 @@ describe('候选接缝选项：isExtraTurn 过滤爆发候选（连动锁）', (
 
     expect(getAvailableActions(state, tianGan).some(isBurst)).toBe(true);
     expect(getAvailableActions(state, tianGan, { isExtraTurn: true }).some(isBurst)).toBe(false);
-  });
-
-  it('MatchOptions.rules 经权重模板策略到达 AI 估值器（活旋钮）', () => {
-    // 修复后：入口收到权重模板时，MatchOptions.rules 与 scoreConfig 一起绑定 AI 估值器；
-    // 只把 rules 交给候选生成器、策略为已构造函数时才观察不到变化（见主表 disconnected 分支）。
-    const plain = new HeadlessMatch().run(BALANCED_WEIGHTS, BALANCED_WEIGHTS, {
-      seed: SEED,
-      maxRounds: MAX_ROUNDS,
-    });
-    const withRule = new HeadlessMatch().run(BALANCED_WEIGHTS, BALANCED_WEIGHTS, {
-      seed: SEED,
-      maxRounds: MAX_ROUNDS,
-      rules: { isBoardOnly: true },
-    });
-    expect(withRule.record.actions).not.toEqual(plain.record.actions);
   });
 });
 

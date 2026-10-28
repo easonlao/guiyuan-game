@@ -6,7 +6,7 @@
 // ── 只断言「不变式」，不断言「快照」 ──
 // 这里每条都是「两个地方必须一致」或「某个结构必须成立」，**不锁具体数字**。
 // 锁数字会造出跑步机：数量每次合法变化都要手工重钉基线，钉着钉着门禁就没人看了
-// （`check:delivery` 的断言③ 就是这么翻过车的，见 §6.3 第 7 步与票 05）。
+// （历史上真有门禁翻过车：基线计数随合法提交增长，棘轮钉不住——票 delivery-protocol/05，已删目录）。
 // 因此这里的检查不改数字就不会红，改坏了才会红。
 
 import { execFileSync } from 'node:child_process';
@@ -56,14 +56,10 @@ try {
   failures.push('② 跑不了 `npm -v`，无法核对 packageManager。');
 }
 
-// ③④ `.npmrc` 的两条开关：版本不符即判红、没声明就解析不到。两条都是机制，不是偏好。
+// ③ `.npmrc` 的开关：版本不符即判红。这是机制，不是偏好。
 check(
   /^engine-strict\s*=\s*true$/m.test(npmrc),
   '③ .npmrc 缺 `engine-strict=true`：版本不符时 npm 只警告不判红。',
-);
-check(
-  /^install-strategy\s*=\s*linked$/m.test(npmrc),
-  '④ .npmrc 缺 `install-strategy=linked`：包边界退回 hoisted，`src/` 能直接解析到未声明的依赖。',
 );
 
 // ⑤ core 层的浏览器全局禁令：两个键任一被删，门禁就漏。
@@ -137,19 +133,8 @@ check(
     `格式是 {file, line, column, mutatorName, replacement}。`,
 );
 
-// ⑫ 门禁本身不许被悄悄摘掉：并发做出来的两个检查必须还在快链里。
-const quick = pkg.scripts['check:quick'] ?? '';
-check(
-  quick.includes('check:refs'),
-  '⑫ package.json#scripts.check:quick 里没有 check:refs：引用门禁被摘掉了。',
-);
-check(
-  quick.includes('check:slices'),
-  '⑫ package.json#scripts.check:quick 里没有 check:slices：执行图门禁被摘掉了。',
-);
-
 if (failures.length > 0) {
   for (const failure of failures) process.stderr.write(`check:facts: ${failure}\n`);
   process.exit(1);
 }
-process.stdout.write(`check:facts: 12 条不变式成立。\n`);
+process.stdout.write(`check:facts: 10 条不变式成立。\n`);

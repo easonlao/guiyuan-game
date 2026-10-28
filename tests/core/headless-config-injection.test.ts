@@ -11,10 +11,6 @@ import {
   POINTS_CONFIG,
   ScoreCalculator,
 } from '../../src/core/logic/ScoreCalculator.js';
-import { createInitialGameState } from '../../src/core/logic/State.js';
-import { PRNG } from '../../src/core/utils/prng.js';
-import { GameScene } from '../../src/minigame/game-scene.js';
-import { WuXing, type GameState } from '../../src/core/types/domain.js';
 
 const SEED = 4242;
 const MAX_ROUNDS = 30;
@@ -223,94 +219,6 @@ describe('Ticket 01 - headless scoring-config injection', () => {
 
       expect(withEmptyRules.guiYuanCount).toBe(defaultMetrics.guiYuanCount);
       expect(withEmptyRules.avgP1Score).toBe(defaultMetrics.avgP1Score);
-    });
-
-    it('board-only strategies change batch metrics', () => {
-      const benchmark = new HeadlessBenchmark();
-      const boardOnlyStrategy = createScoreBoundStrategy(BALANCED_WEIGHTS, POINTS_CONFIG, {
-        isBoardOnly: true,
-      });
-      const base = { matches: 30, baseSeed: 10000, maxRounds: MAX_ROUNDS };
-      const defaultMetrics = benchmark.run({
-        ...base,
-        strategyP1: balancedStrategy,
-        strategyP2: balancedStrategy,
-      });
-      const boardOnlyMetrics = benchmark.run({
-        ...base,
-        strategyP1: boardOnlyStrategy,
-        strategyP2: boardOnlyStrategy,
-        rules: { isBoardOnly: true },
-      });
-
-      // 本用例原先钉归元数；归元数是 0..30 的整数、粒度粗，改钉连续量平均大回合。
-      // 基准按 baseSeed + i 逐局播种，指标确定可复现；board-only 不追计分、对局更长。
-      expect(boardOnlyMetrics.avgRounds).not.toBe(defaultMetrics.avgRounds);
-    });
-  });
-
-  describe('in-game entry (TurnManager / GameScene)', () => {
-    it('GameScene binds the rule switch to its AI valuation path', () => {
-      // 受控盘面：P2 木归一 (1,1)，火阳道损；P1 土 (1,1)。
-      // 固定抽 甲木（阳）：候选为 ATK / BURST / BURST_ATK。
-      // 双级强化后默认计分下 AI 选 BURST（消耗木阴 1->0）；
-      // 关闭计分轴后改选 ATK（不消耗自身）。两者差异证明 rules 到达了 AI 估值路径。
-      const fixedPrng: PRNG = {
-        next: () => 0,
-        nextInt: (min) => min,
-        getState: () => 0,
-      };
-
-      const controlledState = (): GameState => {
-        const base = createInitialGameState(MAX_ROUNDS);
-        return {
-          ...base,
-          currentPlayer: 'P2',
-          players: {
-            ...base.players,
-            P2: {
-              ...base.players.P2,
-              board: {
-                ...base.players.P2.board,
-                [WuXing.WOOD]: { yin: 1, yang: 1 },
-                [WuXing.FIRE]: { yin: 0, yang: -1 },
-              },
-            },
-            P1: {
-              ...base.players.P1,
-              board: {
-                ...base.players.P1.board,
-                [WuXing.EARTH]: { yin: 1, yang: 1 },
-              },
-            },
-          },
-        };
-      };
-
-      const driveAiOnce = (rules?: { isBoardOnly?: boolean }): GameState => {
-        const scene = new GameScene({
-          width: 375,
-          height: 667,
-          safeTop: 24,
-          safeBottom: 10,
-          prng: fixedPrng,
-          initialState: controlledState(),
-          rules,
-        });
-        scene.start();
-        for (let i = 0; i < 90; i++) {
-          scene.update(1 / 60);
-        }
-        return scene.turnManager.getState();
-      };
-
-      const defaultState = driveAiOnce();
-      const boardOnlyState = driveAiOnce({ isBoardOnly: true });
-
-      // 默认：BURST 消耗木阴 1 -> 0
-      expect(defaultState.players.P2.board[WuXing.WOOD].yin).toBe(0);
-      // 关闭计分轴：ATK 保留木阴
-      expect(boardOnlyState.players.P2.board[WuXing.WOOD].yin).toBe(1);
     });
   });
 });

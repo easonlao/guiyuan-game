@@ -1,12 +1,9 @@
-// 执行图门禁：`Slice:` 归属与依赖无环（`npm run check:slices`，`check:quick` 一段）。
+// 执行图门禁：票据依赖无环（`npm run check:slices`，`check:quick` 一段）。
 //
-// 为什么要有这道门禁：切片依赖一旦成环，交付整理阶段的重排就无解——而那时才发现，
-// 代价是整个整理返工。`CONTRIBUTING.md` §6 把「切片依赖不得成环」写成了规则；规则
-// 写在文档里拦不住（本仓库已有两次先例），所以这里把它变成断言。
-//
-// ── 切片依赖从票据依赖推导，不单独声明 ──
-// 票 A 属于切片 S1、票 B 属于切片 S2，且 B 的 `Blocked by:` 里有 A，就得到 S1 → S2。
-// 声明两遍就会漂移，所以这里只推导。
+// 为什么要有这道门禁：票据依赖成环意味着这组票无法排出开工顺序——而那时才发现，
+// 代价是重新拆票。规则写在文档里拦不住（本仓库已有两次先例），所以这里把它变成断言。
+// 脚本名是历史遗留：曾兼管 `Slice:` 归属与切片依赖推导，随交付协议简化一并删掉；
+// 不改名是因为改名要动 `package.json` 与多处文档，收益低。
 //
 // ── 强制范围 ──
 // 只校验 `spec.md` 票据表里列出的票。历史票面写法不一（`**Status:**` 与 `Status:` 并存、
@@ -64,8 +61,8 @@ function readEffort(effort) {
   const specPath = join(scratchDir, effort, 'spec.md');
   const spec = readFileSync(specPath, 'utf8');
 
-  // 票据表：表行里第一个单元格是数字编号。切片取该行里第一个 `S<n>` / `none`。
-  const declared = new Map();
+  // 票据表：表行里第一个单元格是数字编号。
+  const declared = new Set();
   for (const line of spec.split(/\r?\n/)) {
     if (!line.trimStart().startsWith('|')) continue;
     const cells = line
@@ -73,8 +70,7 @@ function readEffort(effort) {
       .slice(1, -1)
       .map((cell) => cell.replaceAll('*', '').replaceAll('`', '').trim());
     if (!/^\d{1,3}$/.test(cells[0] ?? '')) continue;
-    const sliceCell = cells.find((cell) => /^(S\d+|none)$/i.test(cell));
-    declared.set(String(Number(cells[0])).padStart(2, '0'), sliceCell ?? 'none');
+    declared.add(String(Number(cells[0])).padStart(2, '0'));
   }
 
   const issuesDir = join(scratchDir, effort, 'issues');
@@ -87,7 +83,6 @@ function readEffort(effort) {
   for (const name of files) {
     const number = String(Number(name.slice(0, 2))).padStart(2, '0');
     const lines = readFileSync(join(issuesDir, name), 'utf8').split(/\r?\n/);
-    const slice = lines.map((line) => fieldValue(line, 'Slice')).find((v) => v !== undefined);
     const blockedBy = lines
       .map((line) => parseBlockers(fieldValue(line, 'Blocked by')))
       .find((v) => v !== undefined);
@@ -95,7 +90,6 @@ function readEffort(effort) {
     tickets.set(number, {
       file: `issues/${name}`,
       slug: name.replace(/\.md$/, ''),
-      slice,
       blockedBy,
       status,
     });
@@ -142,12 +136,14 @@ function findCycle(nodes, edges) {
   }
 }
 
-const efforts = readdirSync(scratchDir).filter((name) =>
-  statSync(join(scratchDir, name), { throwIfNoEntry: false })?.isDirectory(),
-);
+// `.scratch/` 可能整个不存在（没有在途 effort 是合法状态），按零个 effort 处理。
+const efforts = statSync(scratchDir, { throwIfNoEntry: false })?.isDirectory()
+  ? readdirSync(scratchDir).filter((name) =>
+      statSync(join(scratchDir, name), { throwIfNoEntry: false })?.isDirectory(),
+    )
+  : [];
 
 let ticketCount = 0;
-let sliceCount = 0;
 const frontierGroups = [];
 
 for (const effort of efforts) {
@@ -155,26 +151,14 @@ for (const effort of efforts) {
   const { declared, tickets } = readEffort(effort);
   if (declared.size === 0) continue;
 
-  // ① 归属：spec 表里列了切片，票面必须写同一个值。
-  for (const [number, slice] of declared) {
-    const ticket = tickets.get(number);
-    if (ticket === undefined) {
+  // ① 票面存在：spec 表里列出的票必须有对应的 issues/NN-*.md。
+  for (const number of declared) {
+    if (!tickets.has(number)) {
       failures.push(`[${effort}] 票 ${number} 在 spec 票据表里，但没有 issues/${number}-*.md`);
-      continue;
-    }
-    if (ticket.slice === undefined) {
-      failures.push(
-        `[${effort}] ${ticket.file} 缺 \`Slice:\` 行——spec 票据表里它属于 ${slice}。\n` +
-          `    加一行：Slice: ${slice}`,
-      );
-    } else if (ticket.slice.toLowerCase() !== slice.toLowerCase()) {
-      failures.push(
-        `[${effort}] ${ticket.file} 的 Slice 是 ${ticket.slice}，spec 票据表写的是 ${slice}——两处不一致。`,
-      );
     }
   }
 
-  // ② 票据依赖：目标必须是同一个 effort 里声明过的票。
+  // ② 票据依赖：目标必须是同一个 effort 里声明过的票，且全图无环。
   const ticketEdges = [];
   for (const [number, ticket] of tickets) {
     if (!declared.has(number)) continue;
@@ -189,31 +173,12 @@ for (const effort of efforts) {
     }
   }
 
-  const ticketNodes = [...declared.keys()];
+  const ticketNodes = [...declared];
   const ticketCycle = findCycle(ticketNodes, ticketEdges);
   if (ticketCycle.length > 0) {
     failures.push(`[${effort}] 票据依赖成环：${ticketCycle.join(' → ')}`);
   }
   ticketCount += ticketNodes.length;
-
-  // ③ 切片依赖：从票据依赖推导。同片内的依赖不算切片依赖。
-  const sliceOf = (number) => declared.get(number) ?? 'none';
-  const sliceEdges = [];
-  for (const [blocker, number] of ticketEdges) {
-    const from = sliceOf(blocker);
-    const to = sliceOf(number);
-    if (from !== to && from !== 'none' && to !== 'none') sliceEdges.push([from, to]);
-  }
-
-  const sliceNodes = [...new Set(declared.values())].filter((slice) => slice !== 'none');
-  const sliceCycle = findCycle(sliceNodes, sliceEdges);
-  if (sliceCycle.length > 0) {
-    failures.push(
-      `[${effort}] 切片依赖成环：${sliceCycle.join(' → ')}\n` +
-        `    环来自票据依赖的推导结果。先调整切片边界或票据归属，再开始实施。`,
-    );
-  }
-  sliceCount += sliceNodes.length;
 
   // ── frontier：现在能开工的票 ──
   // 判据取自 `docs/agents/issue-tracker.md` 的 Frontier 一条：票面 `Status:` 既不是
@@ -225,7 +190,7 @@ for (const effort of efforts) {
       .trim()
       .toLowerCase();
   const ready = [];
-  for (const number of [...declared.keys()].sort()) {
+  for (const number of [...declared].sort()) {
     const ticket = tickets.get(number);
     if (ticket === undefined) continue; // 缺票面文件已在①里报过，这里不重复报
     const status = statusOf(number);
@@ -238,9 +203,7 @@ for (const effort of efforts) {
 
 for (const failure of failures) process.stderr.write(`check:slices: ${failure}\n`);
 if (failures.length === 0) {
-  process.stdout.write(
-    `check:slices: ${ticketCount} 张票、${sliceCount} 个切片，票据与切片依赖均无环。\n`,
-  );
+  process.stdout.write(`check:slices: ${ticketCount} 张票，票据依赖无环。\n`);
 }
 process.stdout.write(renderFrontier(frontierGroups));
 if (failures.length > 0) process.exit(1);

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 
-function runSlices(eol: string, statuses: readonly string[], missingSlice = false) {
+function runSlices(eol: string, statuses: readonly string[]) {
   const fixture = mkdtempSync(join(tmpdir(), 'guiyuan-slices-'));
   try {
     mkdirSync(join(fixture, 'scripts'));
@@ -15,18 +15,13 @@ function runSlices(eol: string, statuses: readonly string[], missingSlice = fals
     copyFileSync(join(root, 'scripts/check-slices.mjs'), join(fixture, 'scripts/check-slices.mjs'));
     writeFileSync(
       join(fixture, '.scratch/example/spec.md'),
-      ['| 01 | S1 |', '| 02 | S2 |', '| 03 | S2 |', '| 04 | S2 |'].join(eol),
+      ['| 01 | 甲 |', '| 02 | 乙 |', '| 03 | 乙 |', '| 04 | 乙 |'].join(eol),
     );
     statuses.forEach((status, index) => {
       const number = String(index + 1).padStart(2, '0');
       writeFileSync(
         join(fixture, `.scratch/example/issues/${number}-ticket.md`),
-        [
-          `**Status:** ${status}`,
-          `Blocked by: ${index === 0 ? 'None' : '01'}`,
-          ...(missingSlice && index === 0 ? [] : [`Slice: S${index === 0 ? 1 : 2}`]),
-          '',
-        ].join(eol),
+        [`**Status:** ${status}`, `Blocked by: ${index === 0 ? 'None' : '01'}`, ''].join(eol),
       );
     });
     return spawnSync(process.execPath, [join(fixture, 'scripts/check-slices.mjs')], {
@@ -47,13 +42,6 @@ describe('check:slices CLI', () => {
     ]);
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain('可开工：02-ticket\n');
-  });
-
-  it('仍拦截缺失的 Slice 字段', () => {
-    const result = runSlices('\r\n', ['resolved', 'open', 'claimed', 'open'], true);
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain('01-ticket.md 缺 `Slice:` 行');
-    expect(result.stderr).not.toContain('02-ticket.md 缺');
   });
 });
 
@@ -80,7 +68,7 @@ describe('check:facts CLI', () => {
   it('通过当前 npm CLI 核对精确版本', () => {
     const result = runFacts("process.stdout.write('11.13.0\\n');");
     expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toContain('12 条不变式成立');
+    expect(result.stdout).toContain('10 条不变式成立');
   });
 
   it('仍拒绝不匹配的 npm 版本', () => {
